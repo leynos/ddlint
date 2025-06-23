@@ -10,7 +10,7 @@ described in the other design documents.
 ## Token Definitions
 
 Tokens are defined using Parsec's `TokenParser` facilities. The parser
-recognizes two sets of keywords:
+recognises two sets of keywords:
 
 - **Rust keywords** – reserved to avoid conflicts with future Rust code.
 - **DDlog keywords** – language syntax. These include type names and control
@@ -43,7 +43,7 @@ ddlogKeywords =
 
 【F:Parse.hs†L70-L96】
 
-Operators and punctuation recognized as single tokens are listed under
+Operators and punctuation recognised as single tokens are listed under
 `reservedOpNames`:
 
 ```haskell
@@ -58,7 +58,7 @@ reservedOpNames =
 【F:Parse.hs†L97-L109】
 
 The token parser configuration defines how comments, identifiers, and other
-lexical items are recognized:
+lexical items are recognised:
 
 ```haskell
 ccnDef = emptyDef { T.commentStart      = "/*"
@@ -145,7 +145,7 @@ spec = do
 
 ### Declarations
 
-`decl` recognizes one of several declaration forms, each constructing a specific
+`decl` recognises one of several declaration forms, each constructing a specific
 AST node (`Import`, `TypeDef`, `Relation`, `Index`, `Function`, `Transformer`,
 `Rule` or `Apply`). Attributes encountered before the item are attached to the
 resulting node when applicable.
