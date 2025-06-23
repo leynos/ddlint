@@ -1,16 +1,16 @@
 # Haskell Parser Analysis
 
-This document summarises the design of the parser implemented in
+This document summarizes the design of the parser implemented in
 `Language.DifferentialDatalog.Parse`. The original code is written in
 Haskell using Parsec. This overview highlights token definitions, entry
-points, major grammar rules and the AST structures they construct. The
+points, major grammar rules, and the AST structures they construct. The
 notes provide a reference for porting the parser to Rust using
 `chumsky` and `rowan` as described in the other design documents.
 
 ## Token Definitions
 
 Tokens are defined using Parsec's `TokenParser` facilities. The parser
-recognises two sets of keywords:
+recognizes two sets of keywords:
 
 - **Rust keywords** – reserved to avoid conflicts with future Rust code.
 - **DDlog keywords** – language syntax. These include type names and
@@ -43,7 +43,7 @@ ddlogKeywords =
 
 【F:Parse.hs†L70-L96】
 
-Operators and punctuation recognised as single tokens are listed under
+Operators and punctuation recognized as single tokens are listed under
 `reservedOpNames`:
 
 ```haskell
@@ -57,8 +57,8 @@ reservedOpNames =
 
 【F:Parse.hs†L97-L109】
 
-The token parser configuration defines how comments, identifiers and
-other lexical items are recognised:
+The token parser configuration defines how comments, identifiers, and
+other lexical items are recognized:
 
 ```haskell
 ccnDef = emptyDef { T.commentStart      = "/*"
@@ -75,7 +75,7 @@ ccnDef = emptyDef { T.commentStart      = "/*"
 
 【F:Parse.hs†L110-L120】
 
-Helper parsers such as `parens`, `braces` and `identifier` are generated
+Helper parsers such as `parens`, `braces`, and `identifier` are generated
 from this configuration.
 
 ## Parser Entry Points
@@ -139,7 +139,7 @@ spec = do
 
 ### Declarations
 
-`decl` recognises one of several declaration forms, each constructing a
+`decl` recognizes one of several declaration forms, each constructing a
 specific AST node (`Import`, `TypeDef`, `Relation`, `Index`, `Function`,
 `Transformer`, `Rule` or `Apply`). Attributes encountered before the
 item are attached to the resulting node when applicable.

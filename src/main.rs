@@ -4,4 +4,13 @@
 //! serves as a placeholder executable that will eventually invoke the
 //! parser and linter logic.
 
-fn main() {}
+use std::io::{self, Write};
+
+fn main() {
+    // Provide a minimal UX until the full CLI is implemented.
+    let _ = writeln!(
+        io::stdout(),
+        "ddlint: CLI not yet implemented. Run with --help for planned options."
+    );
+    std::process::exit(1);
+}
