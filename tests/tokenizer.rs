@@ -28,3 +28,44 @@ fn token_spans(simple_input: &str) {
         }
     }
 }
+
+#[rstest]
+#[case("123", SyntaxKind::T_NUMBER)]
+#[case("\"foo\"", SyntaxKind::T_STRING)]
+fn literal_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("no token"));
+    assert_eq!(first.0, expected);
+}
+
+#[rstest]
+#[case(" ", SyntaxKind::T_WHITESPACE)]
+#[case("\n", SyntaxKind::T_WHITESPACE)]
+#[case("/* c */", SyntaxKind::T_COMMENT)]
+#[case("// line", SyntaxKind::T_COMMENT)]
+fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("no token"));
+    assert_eq!(first.0, expected);
+}
+
+#[rstest]
+#[case("?")]
+#[case("$")]
+fn unknown_character_produces_error(#[case] source: &str) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("no token"));
+    assert_eq!(first.0, SyntaxKind::N_ERROR);
+}
