@@ -23,20 +23,15 @@ target/%/$(APP): ## Build binary in debug or release mode
 
 lint: ## Run Clippy with warnings denied
 	$(CARGO) clippy $(CLIPPY_FLAGS)
+# Macro ensuring a tool exists in PATH
+ensure_tool = $(if $(shell command -v $(1) >/dev/null 2>&1 && echo y),,\
+       $(error $(1) is required but not installed))
+
 # Ensure essential formatting tools exist to avoid missing-command errors
 tools:
-	command -v mdformat-all >/dev/null || { \
-		echo 'mdformat-all is required but not installed. Please install it to continue.' >&2; \
-		exit 1; \
-	}
-	command -v $(CARGO) >/dev/null || { \
-		echo '$(CARGO) is required but not installed. Please install Rust.' >&2; \
-		exit 1; \
-	}
-	command -v rustfmt >/dev/null || { \
-		echo 'rustfmt is required but not installed. Please install the rustfmt component.' >&2; \
-		exit 1; \
-	}
+       $(call ensure_tool,mdformat-all)
+       $(call ensure_tool,$(CARGO))
+       $(call ensure_tool,rustfmt)
 fmt: tools ## Format Rust and Markdown sources
 	$(CARGO) fmt --all
 	mdformat-all
