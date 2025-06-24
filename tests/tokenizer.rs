@@ -75,3 +75,37 @@ fn unknown_character_produces_error(#[case] source: &str) {
         .unwrap_or_else(|| panic!("no token"));
     assert_eq!(first.0, SyntaxKind::N_ERROR);
 }
+
+#[rstest]
+#[case("(", SyntaxKind::T_LPAREN)]
+#[case(")", SyntaxKind::T_RPAREN)]
+#[case("==", SyntaxKind::T_EQEQ)]
+#[case(":", SyntaxKind::T_COLON)]
+#[case("::", SyntaxKind::T_COLON_COLON)]
+#[case("->", SyntaxKind::T_ARROW)]
+#[case("=>", SyntaxKind::T_FAT_ARROW)]
+fn punctuation_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("no token"));
+    assert_eq!(first.0, expected);
+}
+
+#[test]
+fn empty_input_produces_no_tokens() {
+    let tokens = tokenize("");
+    assert!(tokens.is_empty());
+}
+
+#[test]
+fn complex_expression() {
+    let src = "R(a, b) :- Q(a) && S(b).";
+    let tokens = tokenize(src);
+    // ensure we tokenise without errors and capture punctuation
+    assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
+    assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_IMPLIES));
+    assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_DOT));
+}
