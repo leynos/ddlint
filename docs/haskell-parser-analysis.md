@@ -198,7 +198,7 @@ parseIfStatement = IfStatement nopos <$ reserved "if"
 
 【F:Parse.hs†L364-L395】
 
-`parseForStatement` recognises `for (pat in expr)` loops with an optional `if`
+`parseForStatement` recognizes `for (pat in expr)` loops with an optional `if`
 guard, while `parseIfStatement` handles conditional branching with an optional
 `else` clause. Both return structured statement nodes used by the rule parser.
 
