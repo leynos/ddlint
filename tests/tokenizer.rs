@@ -26,7 +26,9 @@ fn single_tokens(#[case] source: &str, #[case] expected: Vec<SyntaxKind>) {
 fn token_spans(simple_input: &str) {
     let tokens = tokenize(simple_input);
     for (kind, span) in tokens {
-        let text = simple_input.get(span.clone()).unwrap_or("");
+        let text = simple_input
+            .get(span.clone())
+            .unwrap_or_else(|| panic!("span should be valid for input"));
         if let SyntaxKind::K_INPUT = kind {
             assert_eq!(text, "input");
         } else if let SyntaxKind::K_RELATION = kind {
@@ -44,7 +46,22 @@ fn literal_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("no token"));
+        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
+    assert_eq!(first.0, expected);
+}
+
+#[rstest]
+#[case("0xFF", SyntaxKind::T_NUMBER)]
+#[case("0b1010", SyntaxKind::T_NUMBER)]
+#[case("0o77", SyntaxKind::T_NUMBER)]
+#[case("1e10", SyntaxKind::T_NUMBER)]
+fn extended_number_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
     assert_eq!(first.0, expected);
 }
 
@@ -59,7 +76,7 @@ fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("no token"));
+        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
     assert_eq!(first.0, expected);
 }
 
@@ -72,8 +89,18 @@ fn unknown_character_produces_error(#[case] source: &str) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("no token"));
+        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
     assert_eq!(first.0, SyntaxKind::N_ERROR);
+}
+
+#[test]
+fn unterminated_string_is_error() {
+    let tokens = tokenize("\"foo");
+    assert_eq!(tokens.len(), 1);
+    match tokens.first() {
+        Some(t) => assert_eq!(t.0, SyntaxKind::N_ERROR),
+        None => panic!("tokenizer should produce at least one token"),
+    }
 }
 
 #[rstest]
@@ -90,7 +117,7 @@ fn punctuation_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("no token"));
+        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
     assert_eq!(first.0, expected);
 }
 
