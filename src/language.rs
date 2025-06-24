@@ -6,13 +6,15 @@
 //! implements `rowan::Language` using conversions provided by
 //! `num_derive`.
 
-use num_derive::{FromPrimitive, ToPrimitive};
+use num_derive::{FromPrimitive as FromPrimitiveDerive, ToPrimitive as ToPrimitiveDerive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use rowan::Language as RowanLanguage;
 use rowan::SyntaxKind as RowanSyntaxKind;
 
 /// Every possible token or node in the `DDlog` syntax tree.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, ToPrimitive)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitiveDerive, ToPrimitiveDerive,
+)]
 #[repr(u16)]
 #[expect(non_camel_case_types, reason = "token naming follows design spec")]
 pub enum SyntaxKind {
@@ -178,6 +180,9 @@ impl RowanLanguage for DdlogLanguage {
     }
 
     fn kind_to_raw(kind: Self::Kind) -> RowanSyntaxKind {
-        RowanSyntaxKind(kind.to_u16().unwrap_or(SyntaxKind::N_ERROR as u16))
+        RowanSyntaxKind(
+            kind.to_u16()
+                .unwrap_or_else(|| unreachable!("all SyntaxKind variants map to u16")),
+        )
     }
 }

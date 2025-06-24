@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rowan = "0.15"
-num-derive = "0.4"
-num-traits = "0.2"
+rowan = { version = "0.15", default-features = false }
+num-derive = { version = "0.4", default-features = false }
+num-traits = { version = "0.2", default-features = false, features = ["std"] }
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
