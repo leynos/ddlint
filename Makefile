@@ -25,9 +25,18 @@ lint: ## Run Clippy with warnings denied
 	$(CARGO) clippy $(CLIPPY_FLAGS)
 # Ensure essential formatting tools exist to avoid missing-command errors
 tools:
-	@command -v mdformat-all >/dev/null
-	@command -v $(CARGO) >/dev/null
-	@command -v rustfmt >/dev/null
+	command -v mdformat-all >/dev/null || { \
+		echo 'mdformat-all is required but not installed. Please install it to continue.' >&2; \
+		exit 1; \
+	}
+	command -v $(CARGO) >/dev/null || { \
+		echo '$(CARGO) is required but not installed. Please install Rust.' >&2; \
+		exit 1; \
+	}
+	command -v rustfmt >/dev/null || { \
+		echo 'rustfmt is required but not installed. Please install the rustfmt component.' >&2; \
+		exit 1; \
+	}
 fmt: tools ## Format Rust and Markdown sources
 	$(CARGO) fmt --all
 	mdformat-all
