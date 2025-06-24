@@ -38,6 +38,22 @@ current implementation opts for a small `logos` lexer because it keeps the token
 definitions declarative while still interoperating smoothly with `chumsky`
 parsers.
 
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Tokenizer
+    participant LogosLexer
+    participant SyntaxKind
+    Client->>Tokenizer: tokenize(src: &str)
+    Tokenizer->>LogosLexer: Token::lexer(src)
+    loop for each token
+        LogosLexer-->>Tokenizer: next() -> Token + span
+        Tokenizer->>SyntaxKind: map Token to SyntaxKind
+        Tokenizer-->>Tokenizer: collect (SyntaxKind, Span)
+    end
+    Tokenizer-->>Client: Vec<(SyntaxKind, Span)>
+```
+
 ## 4. Construct the Parser with `chumsky`
 
 1. Express each grammar rule using `chumsky` combinators. The parser should
