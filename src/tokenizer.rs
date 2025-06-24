@@ -96,6 +96,17 @@ enum Token {
     Apostrophe,
 }
 
+/// Returns the `SyntaxKind` for a given identifier if it matches a recognised keyword.
+///
+/// If the input string corresponds to a DDlog or Rust keyword, returns the associated
+/// `SyntaxKind` variant; otherwise, returns `None`.
+///
+/// # Examples
+///
+/// ```no_run
+/// assert_eq!(keyword_kind("fn"), Some(SyntaxKind::K_FN));
+/// assert_eq!(keyword_kind("foobar"), None);
+/// ```
 fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
     Some(match ident {
         "abstract" => SyntaxKind::K_ABSTRACT,
@@ -177,7 +188,22 @@ fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
     })
 }
 
-/// Tokenise the provided `DDlog` source.
+/// Converts DDlog source text into a sequence of syntax tokens with their corresponding byte spans.
+///
+/// Each token is represented as a `(SyntaxKind, Span)` pair, where `Span` is the byte range of the token in the input.
+/// Whitespace and comments are preserved in the output. Identifiers that match keywords are assigned the appropriate
+/// keyword kind; otherwise, they are treated as generic identifiers. Unrecognised or invalid tokens are marked with
+/// `SyntaxKind::N_ERROR`.
+///
+/// # Examples
+///
+/// ```no_run
+/// use ddlog_tokenizer::{tokenize, SyntaxKind};
+///
+/// let src = "relation R(x: bit<32>) // comment";
+/// let tokens = tokenize(src);
+/// assert!(tokens.iter().any(|(kind, _)| *kind == SyntaxKind::T_IDENT));
+/// ```
 #[must_use]
 pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
     let mut lexer = Token::lexer(src);
