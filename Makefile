@@ -1,4 +1,5 @@
-.PHONY: help all clean test build release lint fmt check-fmt markdownlint nixie tools
+.PHONY: help all clean test build release lint fmt check-fmt markdownlint \
+        nixie tools
 
 APP ?= ddlint
 CARGO ?= cargo
@@ -24,14 +25,16 @@ target/%/$(APP): ## Build binary in debug or release mode
 lint: ## Run Clippy with warnings denied
 	$(CARGO) clippy $(CLIPPY_FLAGS)
 # Macro ensuring a tool exists in PATH
-ensure_tool = $(if $(shell command -v $(1) >/dev/null 2>&1 && echo y),,\
-       $(error $(1) is required but not installed))
+define ensure_tool
+$(if $(shell command -v $(1) >/dev/null 2>&1 && echo y),,\
+$(error $(1) is required but not installed))
+endef
 
 # Ensure essential formatting tools exist to avoid missing-command errors
 tools:
-       $(call ensure_tool,mdformat-all)
-       $(call ensure_tool,$(CARGO))
-       $(call ensure_tool,rustfmt)
+	$(call ensure_tool,mdformat-all)
+	$(call ensure_tool,$(CARGO))
+	$(call ensure_tool,rustfmt)
 fmt: tools ## Format Rust and Markdown sources
 	$(CARGO) fmt --all
 	mdformat-all
