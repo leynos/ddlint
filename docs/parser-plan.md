@@ -33,7 +33,10 @@ transparently.
 Use `chumsky`'s text utilities (or integrate a `logos` lexer if preferred) to
 convert the source text into a stream of `(SyntaxKind, Span)` pairs. Each span
 records byte offsets so that the resulting CST can precisely mirror the input.
-Whitespace and comments should produce tokens so they can be preserved.
+Whitespace and comments should produce tokens so they can be preserved. The
+current implementation opts for a small `logos` lexer because it keeps the token
+definitions declarative while still interoperating smoothly with `chumsky`
+parsers.
 
 ## 4. Construct the Parser with `chumsky`
 

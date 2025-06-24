@@ -7,6 +7,10 @@ edition = "2024"
 rowan = { version = "0.15", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
+logos = { version = "0.13", default-features = false, features = ["export_derive"] }
+
+[dev-dependencies]
+rstest = "0.18"
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
