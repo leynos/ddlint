@@ -1,3 +1,9 @@
+//! Integration tests for the tokenizer module.
+//!
+//! Tests verify that the logos-based lexer correctly tokenises `DDlog` source
+//! code into `(SyntaxKind, Span)` pairs, covering keywords, literals, trivia,
+//! and error cases.
+
 use ddlint::{SyntaxKind, tokenize};
 use rstest::{fixture, rstest};
 

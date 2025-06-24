@@ -1,6 +1,6 @@
 //! Library crate for ddlint.
 //!
-//! Currently exposes only the parser language definitions.
+//! Exposes parser language definitions and lexical analysis functionality.
 
 #![forbid(unsafe_code)]
 
