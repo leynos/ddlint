@@ -9,9 +9,9 @@
 use chumsky::Stream;
 use chumsky::prelude::*;
 use log::warn;
-use rowan::{GreenNode, GreenNodeBuilder, Language, SyntaxNode};
+use rowan::{GreenNode, GreenNodeBuilder, Language};
 
-use crate::{DdlogLanguage, SyntaxKind, tokenize};
+use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 
 /// Result of a parse operation.
 #[derive(Debug)]
@@ -42,29 +42,40 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let len = src.len();
+    let parsed_kinds = parse_tokens(&tokens, src.len());
+    debug_assert_eq!(
+        parsed_kinds.len(),
+        tokens.len(),
+        "parser output token count differs from lexer",
+    );
+
+    let green = build_green_tree(tokens, src);
+    let root = ast::Root::from_green(green.clone());
+
+    Parsed { green, root }
+}
+
+fn parse_tokens(tokens: &[(SyntaxKind, Span)], len: usize) -> Vec<SyntaxKind> {
     let stream = Stream::from_iter(0..len, tokens.iter().cloned());
 
-    // Placeholder parser: simply consume all tokens.
     let parser = any::<SyntaxKind, Simple<SyntaxKind>>()
         .repeated()
         .then_ignore(end());
     let (parsed_kinds, _errors) = parser.parse_recovery(stream);
-    let parsed_kinds = parsed_kinds.unwrap_or_default();
-    debug_assert_eq!(
-        parsed_kinds.len(),
-        tokens.len(),
-        "parser output token count differs from lexer"
-    );
 
+    parsed_kinds.unwrap_or_default()
+}
+
+fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str) -> GreenNode {
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
     for (kind, span) in tokens {
-        let text = src.get(span.clone()).map_or_else(
+        let log_span = span.clone();
+        let text = src.get(span).map_or_else(
             || {
                 warn!(
                     "token span {:?} out of bounds for source of length {}",
-                    span,
+                    log_span,
                     src.len()
                 );
                 ""
@@ -80,11 +91,7 @@ pub fn parse(src: &str) -> Parsed {
         }
     }
     builder.finish_node();
-    let green = builder.finish();
-    let root_node = SyntaxNode::<DdlogLanguage>::new_root(green.clone());
-    let root = ast::Root { syntax: root_node };
-
-    Parsed { green, root }
+    builder.finish()
 }
 
 pub mod ast {

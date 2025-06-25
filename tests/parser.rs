@@ -7,6 +7,10 @@
 use ddlint::{SyntaxKind, parse};
 use rstest::{fixture, rstest};
 
+/// Recursively collect the text of a syntax subtree.
+///
+/// This helper enables round-trip tests that assert the printed output
+/// matches the original source.
 fn pretty_print(node: &rowan::SyntaxNode<ddlint::DdlogLanguage>) -> String {
     let mut out = String::new();
     for element in node.children_with_tokens() {
