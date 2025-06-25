@@ -162,7 +162,7 @@ pub enum SyntaxKind {
     N_HO_FIELD,
     N_TRANSFORMER,
     N_APPLY,
-    N_IMPORT,
+    N_IMPORT_STMT,
     N_DATALOG_PROGRAM,
     // Special
     N_ERROR,

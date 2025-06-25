@@ -94,11 +94,14 @@ To navigate the different testing methodologies, the following table summarizes
 the primary tools and their roles within the context of parser development. It
 serves as a mental model for selecting the right tool for a given testing task.
 
-| **Strategy**               | **Primary Tool(s)** | **Core Purpose**                                                            | **Best Suited For**                                                                                 |
-| :------------------------- | :------------------ | :-------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
-| **Example-Based Testing**  | `rstest`            | Verify known correct and incorrect behaviors against explicit expectations. | Specific edge cases, happy paths, known bugs, individual token definitions, simple parser rules. 10 |
-| **Snapshot Testing**       | `insta`             | Detect regressions in complex, large, or frequently changing outputs.       | Full AST/CST structures, formatted error diagnostics, pretty-printed source code. 11                |
-| **Property-Based Testing** | `proptest`          | Discover unknown/unforeseen bugs via automated, random input generation.    | Round-trip validation (parse/unparse), fuzzing for panics, checking universal invariants. 13        |
+The main strategies and tools are:
+
+- **Example-Based Testing** with `rstest` verifies specific behaviours and
+  handles edge cases or known bugs.
+- **Snapshot Testing** using `insta` detects regressions in full syntax trees or
+  error diagnostics.
+- **Property-Based Testing** powered by `proptest` uncovers unforeseen bugs via
+  random input generation and round-trip validation.
 
 This structured approach, combining conventional file organization with a clear
 understanding of each testing paradigm's purpose, lays the groundwork for the

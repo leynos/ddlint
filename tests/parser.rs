@@ -73,3 +73,40 @@ fn error_token_produces_error_node() {
         .any(|node| node.kind() == SyntaxKind::N_ERROR);
     assert!(has_error);
 }
+
+#[rstest]
+fn import_statement_standard_case() {
+    let src = "import standard_library";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty());
+    let imports = parsed.root().imports();
+    assert_eq!(imports.len(), 1);
+    let Some(imp) = imports.first() else {
+        panic!("expected import");
+    };
+    assert_eq!(imp.path(), "standard_library");
+    assert!(imp.alias().is_none());
+}
+
+#[rstest]
+fn import_statement_with_alias() {
+    let src = "import collections::vector as vec";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty());
+    let imports = parsed.root().imports();
+    assert_eq!(imports.len(), 1);
+    let Some(imp) = imports.first() else {
+        panic!("expected import");
+    };
+    assert_eq!(imp.path(), "collections::vector");
+    assert_eq!(imp.alias(), Some("vec".to_string()));
+}
+
+#[rstest]
+fn import_statement_invalid_missing_path() {
+    let src = "import as missing_path";
+    let parsed = parse(src);
+    assert!(!parsed.errors().is_empty());
+    let imports = parsed.root().imports();
+    assert!(imports.is_empty());
+}
