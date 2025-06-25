@@ -42,7 +42,7 @@ impl Parsed {
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
     let len = src.len();
-    let stream = Stream::from_iter(len..len, tokens.clone().into_iter());
+    let stream = Stream::from_iter(0..len, tokens.clone().into_iter());
 
     // Placeholder parser: simply consume all tokens.
     let parser = any::<SyntaxKind, Simple<SyntaxKind>>()
@@ -50,12 +50,27 @@ pub fn parse(src: &str) -> Parsed {
         .then_ignore(end());
     let (parsed_kinds, _errors) = parser.parse_recovery(stream);
     let parsed_kinds = parsed_kinds.unwrap_or_default();
+    debug_assert_eq!(
+        parsed_kinds.len(),
+        tokens.len(),
+        "parser output token count differs from lexer"
+    );
 
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
-    for (kind_span, _) in tokens.into_iter().zip(parsed_kinds) {
-        let (kind, span) = kind_span;
-        let text = src.get(span.clone()).unwrap_or("");
+    for (kind, span) in tokens {
+        let text = src.get(span.clone()).map_or_else(
+            || {
+                debug_assert!(
+                    false,
+                    "token span {:?} out of bounds for source of length {}",
+                    span,
+                    src.len()
+                );
+                ""
+            },
+            |t| t,
+        );
         if kind == SyntaxKind::N_ERROR {
             builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_ERROR));
             builder.token(DdlogLanguage::kind_to_raw(kind), text);
@@ -84,6 +99,9 @@ pub mod ast {
     use crate::{DdlogLanguage, SyntaxKind};
 
     /// The root of a parsed `DDlog` file.
+    ///
+    /// Provides typed access to the syntax tree root node with methods
+    /// for navigation and introspection.
     #[derive(Debug, Clone)]
     pub struct Root {
         pub(crate) syntax: SyntaxNode<DdlogLanguage>,

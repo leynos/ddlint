@@ -23,6 +23,8 @@ fn simple_prog() -> &'static str {
     "input relation R(x: u32);"
 }
 
+/// Verifies that parsing and pretty-printing preserves the original input text
+/// and produces the expected root node kind.
 #[rstest]
 fn parse_round_trip(simple_prog: &str) {
     let parsed = parse(simple_prog);
