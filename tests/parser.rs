@@ -7,24 +7,45 @@
 use ddlint::{SyntaxKind, parse};
 use rstest::{fixture, rstest};
 
-/// Recursively collect the text of a syntax subtree.
+/// Collect the text of a syntax subtree.
 ///
-/// This helper enables round-trip tests that assert the printed output
-/// matches the original source.
+/// This helper iteratively traverses the tree using an explicit stack so
+/// deeply nested inputs do not risk recursion overflow. It enables
+/// round-trip tests that assert the printed output matches the original
+/// source.
 fn pretty_print(node: &rowan::SyntaxNode<ddlint::DdlogLanguage>) -> String {
     let mut out = String::new();
-    for element in node.children_with_tokens() {
-        match element {
-            rowan::NodeOrToken::Node(n) => out.push_str(&pretty_print(&n)),
-            rowan::NodeOrToken::Token(t) => out.push_str(t.text()),
+    let mut stack = vec![rowan::SyntaxElement::Node(node.clone())];
+
+    while let Some(item) = stack.pop() {
+        match item {
+            rowan::SyntaxElement::Token(t) => out.push_str(t.text()),
+            rowan::SyntaxElement::Node(n) => {
+                let children: Vec<rowan::SyntaxElement<ddlint::DdlogLanguage>> =
+                    n.children_with_tokens().collect();
+                for child in children.into_iter().rev() {
+                    stack.push(child);
+                }
+            }
         }
     }
+
     out
 }
 
 #[fixture]
 fn simple_prog() -> &'static str {
     "input relation R(x: u32);"
+}
+
+#[fixture]
+fn complex_prog() -> &'static str {
+    "input relation R(x: u32);\noutput relation S(y: string);"
+}
+
+#[fixture]
+fn empty_prog() -> &'static str {
+    ""
 }
 
 /// Verifies that parsing and pretty-printing preserves the original input text

@@ -77,19 +77,24 @@ fn parse_tokens(
         .then_ignore(end());
     let (parsed_kinds, errors) = parser.parse_recovery(stream);
 
-    (parsed_kinds.unwrap_or_default(), errors)
+    let result = parsed_kinds.unwrap_or_default();
+    debug_assert_eq!(
+        result.len(),
+        tokens.len(),
+        "parser combinator output differs from input token count",
+    );
+    (result, errors)
 }
 
 fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str) -> GreenNode {
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
     for (kind, span) in tokens {
-        let log_span = span.clone();
-        let text = src.get(span).map_or_else(
+        let text = src.get(span.clone()).map_or_else(
             || {
                 warn!(
                     "token span {:?} out of bounds for source of length {}",
-                    log_span,
+                    span,
                     src.len()
                 );
                 ""
