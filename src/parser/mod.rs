@@ -18,6 +18,7 @@ use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 pub struct Parsed {
     green: GreenNode,
     root: ast::Root,
+    errors: Vec<Simple<SyntaxKind>>,
 }
 
 impl Parsed {
@@ -32,6 +33,12 @@ impl Parsed {
     pub fn root(&self) -> &ast::Root {
         &self.root
     }
+
+    /// Access parser errors collected during recovery.
+    #[must_use]
+    pub fn errors(&self) -> &[Simple<SyntaxKind>] {
+        &self.errors
+    }
 }
 
 /// Parse the provided source string.
@@ -42,7 +49,7 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let parsed_kinds = parse_tokens(&tokens, src.len());
+    let (parsed_kinds, errors) = parse_tokens(&tokens, src.len());
     debug_assert_eq!(
         parsed_kinds.len(),
         tokens.len(),
@@ -52,18 +59,25 @@ pub fn parse(src: &str) -> Parsed {
     let green = build_green_tree(tokens, src);
     let root = ast::Root::from_green(green.clone());
 
-    Parsed { green, root }
+    Parsed {
+        green,
+        root,
+        errors,
+    }
 }
 
-fn parse_tokens(tokens: &[(SyntaxKind, Span)], len: usize) -> Vec<SyntaxKind> {
+fn parse_tokens(
+    tokens: &[(SyntaxKind, Span)],
+    len: usize,
+) -> (Vec<SyntaxKind>, Vec<Simple<SyntaxKind>>) {
     let stream = Stream::from_iter(0..len, tokens.iter().cloned());
 
     let parser = any::<SyntaxKind, Simple<SyntaxKind>>()
         .repeated()
         .then_ignore(end());
-    let (parsed_kinds, _errors) = parser.parse_recovery(stream);
+    let (parsed_kinds, errors) = parser.parse_recovery(stream);
 
-    parsed_kinds.unwrap_or_default()
+    (parsed_kinds.unwrap_or_default(), errors)
 }
 
 fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str) -> GreenNode {
@@ -133,6 +147,18 @@ pub mod ast {
         #[must_use]
         pub fn kind(&self) -> SyntaxKind {
             self.syntax.kind()
+        }
+
+        /// Get the text range covered by this root node.
+        #[must_use]
+        pub fn text_range(&self) -> rowan::TextRange {
+            self.syntax.text_range()
+        }
+
+        /// Get the text content of this root node.
+        #[must_use]
+        pub fn text(&self) -> String {
+            self.syntax.text().to_string()
         }
     }
 }
