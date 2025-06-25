@@ -73,3 +73,17 @@ fn error_token_produces_error_node() {
         .any(|node| node.kind() == SyntaxKind::N_ERROR);
     assert!(has_error);
 }
+
+#[fixture]
+fn import_prog() -> &'static str {
+    "import foo;"
+}
+
+#[rstest]
+fn import_item_parsed(import_prog: &str) {
+    let parsed = parse(import_prog);
+    assert!(matches!(
+        parsed.items().first(),
+        Some(ddlint::parser::ast::Item::Import(i)) if i.module == "foo"
+    ));
+}
