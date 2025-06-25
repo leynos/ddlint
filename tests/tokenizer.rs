@@ -4,6 +4,8 @@
 //! code into `(SyntaxKind, Span)` pairs, covering keywords, literals, trivia,
 //! and error cases.
 
+#![expect(clippy::expect_used, reason = "tests assert exact behaviour")]
+
 use ddlint::{SyntaxKind, tokenize};
 use rstest::{fixture, rstest};
 
@@ -28,7 +30,7 @@ fn token_spans(simple_input: &str) {
     for (kind, span) in tokens {
         let text = simple_input
             .get(span.clone())
-            .unwrap_or_else(|| panic!("span should be valid for input"));
+            .expect("span should be valid for input");
         if let SyntaxKind::K_INPUT = kind {
             assert_eq!(text, "input");
         } else if let SyntaxKind::K_RELATION = kind {
@@ -46,7 +48,7 @@ fn literal_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
+        .expect("tokenizer should produce at least one token");
     assert_eq!(first.0, expected);
 }
 
@@ -61,13 +63,14 @@ fn extended_number_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
+        .expect("tokenizer should produce at least one token");
     assert_eq!(first.0, expected);
 }
 
 #[rstest]
 #[case(" ", SyntaxKind::T_WHITESPACE)]
 #[case("\n", SyntaxKind::T_WHITESPACE)]
+#[case("\t", SyntaxKind::T_WHITESPACE)]
 #[case("/* c */", SyntaxKind::T_COMMENT)]
 #[case("// line", SyntaxKind::T_COMMENT)]
 fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
@@ -76,7 +79,7 @@ fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
+        .expect("tokenizer should produce at least one token");
     assert_eq!(first.0, expected);
 }
 
@@ -89,7 +92,7 @@ fn unknown_character_produces_error(#[case] source: &str) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
+        .expect("tokenizer should produce at least one token");
     assert_eq!(first.0, SyntaxKind::N_ERROR);
 }
 
@@ -97,10 +100,10 @@ fn unknown_character_produces_error(#[case] source: &str) {
 fn unterminated_string_is_error() {
     let tokens = tokenize("\"foo");
     assert_eq!(tokens.len(), 1);
-    match tokens.first() {
-        Some(t) => assert_eq!(t.0, SyntaxKind::N_ERROR),
-        None => panic!("tokenizer should produce at least one token"),
-    }
+    let first = tokens
+        .first()
+        .expect("tokenizer should produce at least one token");
+    assert_eq!(first.0, SyntaxKind::N_ERROR);
 }
 
 #[rstest]
@@ -117,8 +120,82 @@ fn punctuation_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let first = tokens
         .first()
         .cloned()
-        .unwrap_or_else(|| panic!("tokenizer should produce at least one token"));
+        .expect("tokenizer should produce at least one token");
     assert_eq!(first.0, expected);
+}
+
+#[rstest]
+#[case("{", SyntaxKind::T_LBRACE)]
+#[case("}", SyntaxKind::T_RBRACE)]
+#[case("[", SyntaxKind::T_LBRACKET)]
+#[case("]", SyntaxKind::T_RBRACKET)]
+#[case(";", SyntaxKind::T_SEMI)]
+#[case(",", SyntaxKind::T_COMMA)]
+#[case(".", SyntaxKind::T_DOT)]
+fn delimiter_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .expect("tokenizer should produce at least one token");
+    assert_eq!(first.0, expected);
+}
+
+#[rstest]
+#[case("|", SyntaxKind::T_PIPE)]
+#[case("&", SyntaxKind::T_AMP)]
+#[case("=", SyntaxKind::T_EQ)]
+#[case("==", SyntaxKind::T_EQEQ)]
+#[case(":-", SyntaxKind::T_IMPLIES)]
+#[case("%", SyntaxKind::T_PERCENT)]
+#[case("*", SyntaxKind::T_STAR)]
+#[case("/", SyntaxKind::T_SLASH)]
+#[case("+", SyntaxKind::T_PLUS)]
+#[case("-", SyntaxKind::T_MINUS)]
+#[case("->", SyntaxKind::T_ARROW)]
+#[case("=>", SyntaxKind::T_FAT_ARROW)]
+#[case("<=", SyntaxKind::T_LTE)]
+#[case("<=>", SyntaxKind::T_SPACESHIP)]
+#[case(">=", SyntaxKind::T_GTE)]
+#[case("<", SyntaxKind::T_LT)]
+#[case(">", SyntaxKind::T_GT)]
+#[case("!=", SyntaxKind::T_NEQ)]
+#[case(">>", SyntaxKind::T_SHR)]
+#[case("<<", SyntaxKind::T_SHL)]
+#[case("~", SyntaxKind::T_TILDE)]
+#[case("@", SyntaxKind::T_AT)]
+#[case("#", SyntaxKind::T_HASH)]
+#[case("'", SyntaxKind::T_APOSTROPHE)]
+fn operator_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
+    let tokens = tokenize(source);
+    assert_eq!(tokens.len(), 1);
+    let first = tokens
+        .first()
+        .cloned()
+        .expect("tokenizer should produce at least one token");
+    assert_eq!(first.0, expected);
+}
+
+#[test]
+fn negative_number_tokens() {
+    let tokens = tokenize("-1");
+    let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
+    assert_eq!(kinds, vec![SyntaxKind::T_MINUS, SyntaxKind::T_NUMBER]);
+}
+
+#[test]
+fn escaped_string_token() {
+    let tokens = tokenize("\"a\\\"b\"");
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens.first().expect("token").0, SyntaxKind::T_STRING);
+}
+
+#[test]
+fn unterminated_comment_is_error() {
+    let tokens = tokenize("/* comment");
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens.first().expect("token").0, SyntaxKind::N_ERROR);
 }
 
 #[test]
