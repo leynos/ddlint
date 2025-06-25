@@ -212,6 +212,7 @@ enum SyntaxKind {
     T_IDENT,            // An identifier, like a relation or variable name
     T_STRING_LIT,       // A string literal
     T_NUMBER,           // A numeric literal
+                        // decimal, floating-point, hex, binary, or octal
     T_LPAREN,           // '('
     T_RPAREN,           // ')'
     T_LBRACE,           // '{'

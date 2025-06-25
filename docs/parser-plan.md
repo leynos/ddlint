@@ -33,7 +33,26 @@ transparently.
 Use `chumsky`'s text utilities (or integrate a `logos` lexer if preferred) to
 convert the source text into a stream of `(SyntaxKind, Span)` pairs. Each span
 records byte offsets so that the resulting CST can precisely mirror the input.
-Whitespace and comments should produce tokens so they can be preserved.
+Whitespace and comments should produce tokens so they can be preserved. The
+current implementation opts for a small `logos` lexer because it keeps the token
+definitions declarative while still interoperating smoothly with `chumsky`
+parsers. Keyword lookups use a `phf::Map` for zero-cost perfect hashing.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Tokenizer
+    participant LogosLexer
+    participant SyntaxKind
+    Client->>Tokenizer: tokenize(src: &str)
+    Tokenizer->>LogosLexer: Token::lexer(src)
+    loop for each token
+        LogosLexer-->>Tokenizer: next() -> Token + span
+        Tokenizer->>SyntaxKind: map Token to SyntaxKind
+        Tokenizer-->>Tokenizer: collect (SyntaxKind, Span)
+    end
+    Tokenizer-->>Client: Vec<(SyntaxKind, Span)>
+```
 
 ## 4. Construct the Parser with `chumsky`
 
