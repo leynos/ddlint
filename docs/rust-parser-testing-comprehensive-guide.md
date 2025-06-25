@@ -73,18 +73,19 @@ A well-organized test suite is critical for maintainability. Rust's standard
 testing conventions provide a solid foundation.4
 
 - **Unit Tests:** Tests for individual lexer tokens or isolated parser rules are
-best placed within a `mod tests` block, annotated with `#[cfg(test)]`, inside
-the source file where the code under test is defined. This co-location makes it
-easy to find and update tests when the corresponding implementation changes.
+  best placed within a `mod tests` block, annotated with `#[cfg(test)]`, inside
+  the source file where the code under test is defined. This co-location makes
+  it easy to find and update tests when the corresponding implementation
+  changes.
 
 - **Integration and Corpus-Based Tests:** Larger tests, especially those that
-operate on entire source files, are typically placed in a top-level `tests/`
-directory. Each file in this directory is compiled as a separate crate, which
-naturally enforces testing only the public API of the library.6 This is the
-ideal location for snapshot tests that run against a corpus of valid and invalid
-code samples, a common practice for validating parser correctness across a wide
-range of language features.7 For larger projects, it can be beneficial to move
-even unit tests to their own files (e.g.,
+  operate on entire source files, are typically placed in a top-level `tests/`
+  directory. Each file in this directory is compiled as a separate crate, which
+  naturally enforces testing only the public API of the library.6 This is the
+  ideal location for snapshot tests that run against a corpus of valid and
+  invalid code samples, a common practice for validating parser correctness
+  across a wide range of language features.7 For larger projects, it can be
+  beneficial to move even unit tests to their own files (e.g.,
 
   `src/my_module/tests.rs`) to keep source files from becoming unwieldy with
   test code.
@@ -93,11 +94,11 @@ To navigate the different testing methodologies, the following table summarizes
 the primary tools and their roles within the context of parser development. It
 serves as a mental model for selecting the right tool for a given testing task.
 
-| **Strategy** | **Primary Tool(s)** | **Core Purpose** | **Best Suited For** |
-| :--- | :--- | :--- | :--- |
-| **Example-Based Testing** | `rstest` | Verify known correct and incorrect behaviors against explicit expectations. | Specific edge cases, happy paths, known bugs, individual token definitions, simple parser rules. 10 |
-| **Snapshot Testing** | `insta` | Detect regressions in complex, large, or frequently changing outputs. | Full AST/CST structures, formatted error diagnostics, pretty-printed source code. 11 |
-| **Property-Based Testing**| `proptest` | Discover unknown/unforeseen bugs via automated, random input generation. | Round-trip validation (parse/unparse), fuzzing for panics, checking universal invariants. 13 |
+| **Strategy**               | **Primary Tool(s)** | **Core Purpose**                                                            | **Best Suited For**                                                                                 |
+| :------------------------- | :------------------ | :-------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| **Example-Based Testing**  | `rstest`            | Verify known correct and incorrect behaviors against explicit expectations. | Specific edge cases, happy paths, known bugs, individual token definitions, simple parser rules. 10 |
+| **Snapshot Testing**       | `insta`             | Detect regressions in complex, large, or frequently changing outputs.       | Full AST/CST structures, formatted error diagnostics, pretty-printed source code. 11                |
+| **Property-Based Testing** | `proptest`          | Discover unknown/unforeseen bugs via automated, random input generation.    | Round-trip validation (parse/unparse), fuzzing for panics, checking universal invariants. 13        |
 
 This structured approach, combining conventional file organization with a clear
 understanding of each testing paradigm's purpose, lays the groundwork for the
@@ -567,10 +568,10 @@ Testing error recovery requires a dedicated suite of tests that use malformed
 inputs. For each invalid input, the test must verify two critical properties:
 
 1. **Correct Errors:** The parser produced the expected set of errors, with the
-correct error messages and spans.
+   correct error messages and spans.
 
 2. **Correct Recovery:** The parser successfully recovered and was able to
-produce a useful partial AST for the valid parts of the code.
+   produce a useful partial AST for the valid parts of the code.
 
 Snapshot testing is the perfect tool for this. By snapshotting both the error
 vector and the resulting partial AST, we can validate the entire behavior of the
@@ -679,10 +680,10 @@ simple:
 1. Parse a source string into a `rowan::SyntaxNode`.
 
 2. Traverse the `SyntaxNode`, concatenating the text of every `SyntaxToken`
-(including trivia like whitespace and comments).
+   (including trivia like whitespace and comments).
 
 3. Assert that the resulting string is byte-for-byte identical to the original
-input string.
+   input string.
 
 If this property holds for a comprehensive corpus of source files, it provides
 extremely high confidence that the parser is correctly capturing the entire
@@ -776,11 +777,11 @@ methods for navigating the tree, as demonstrated in `rowan`'s `s_expressions.rs`
 example.31
 
 For example, a `FunctionDef` struct might wrap a `SyntaxNode` of kind `FN_DEF`
-and provide methods like `name() -> Option<SyntaxToken>` and `body() ->
-Option<BlockExpr>`. Tests for this layer should verify that these navigational
-methods work correctly. They should check that the accessors return the expected
-node types (`Some` for well-formed input, `None` for malformed input) and that
-the returned nodes are themselves correct.
+and provide methods like `name() -> Option<SyntaxToken>` and
+`body() -> Option<BlockExpr>`. Tests for this layer should verify that these
+navigational methods work correctly. They should check that the accessors return
+the expected node types (`Some` for well-formed input, `None` for malformed
+input) and that the returned nodes are themselves correct.
 
 ```rust
 // Assuming a typed AST layer exists
@@ -834,17 +835,17 @@ still reproduces the failure, making debugging far easier.2
 The core workflow of property-based testing is:
 
 1. **Define a Property:** A function that takes one or more generated inputs and
-asserts an invariant. For example, for any list `v`, `v.reverse().reverse() ==
-v`.
+   asserts an invariant. For example, for any list `v`,
+   `v.reverse().reverse() == v`.
 
 2. **Generate Inputs:** `proptest` uses "strategies" to generate random inputs
-that conform to certain rules (e.g., integers within a range, strings matching a
-regex, or complex, custom data structures).
+   that conform to certain rules (e.g., integers within a range, strings
+   matching a regex, or complex, custom data structures).
 
 3. **Test and Shrink:** The test runner executes the property function hundreds
-or thousands of times with different generated inputs. If an assertion fails,
-`proptest` begins a shrinking process, iteratively simplifying the failing input
-to find a minimal counterexample.
+   or thousands of times with different generated inputs. If an assertion fails,
+   `proptest` begins a shrinking process, iteratively simplifying the failing
+   input to find a minimal counterexample.
 
 For parsers, this approach is invaluable for uncovering obscure bugs that would
 be nearly impossible to find with hand-written tests.
@@ -887,11 +888,11 @@ turning a discovered bug into a permanent regression test.13
 
 The most powerful property for a parser is round-trip correctness: for any valid
 AST, pretty-printing it to a string and parsing that string back should result
-in an identical AST. This can be expressed as `parse(pretty_print(ast)) ==
-Ok(ast)`. If this property holds, it provides exceptionally strong evidence that
-the parser can correctly handle any valid program construct that the AST is
-capable of representing. This is a common and highly effective strategy used in
-production-grade systems.2
+in an identical AST. This can be expressed as
+`parse(pretty_print(ast)) == Ok(ast)`. If this property holds, it provides
+exceptionally strong evidence that the parser can correctly handle any valid
+program construct that the AST is capable of representing. This is a common and
+highly effective strategy used in production-grade systems.2
 
 Implementing this test involves three steps:
 
@@ -1025,32 +1026,35 @@ and `rowan`. By moving from foundational unit tests to comprehensive snapshot
 and property-based tests, developers can create a formidable shield against
 regressions and uncover bugs that would otherwise remain hidden.
 
-The key takeaways from this analysis can be synthesized into a holistic testing philosophy:
+The key takeaways from this analysis can be synthesized into a holistic testing
+philosophy:
 
 1. **Embrace a Layered Strategy:** No single testing method is sufficient. A
-combination of example-based tests with `rstest` for known edge cases, snapshot
-tests with `insta` for complex outputs like ASTs and error reports, and
-property-based tests with `proptest` for universal invariants provides
-comprehensive coverage.
+   combination of example-based tests with `rstest` for known edge cases,
+   snapshot tests with `insta` for complex outputs like ASTs and error reports,
+   and property-based tests with `proptest` for universal invariants provides
+   comprehensive coverage.
 
 2. **Prioritize High-Leverage Tests:** In the context of parsing, the most
-powerful tests are often those that verify the integration of the entire
-pipeline. The AST round-trip property test and the CST losslessness test are
-paramount. Investing in the infrastructure for these tests (i.e., `Arbitrary`
-implementations and a pretty-printer) early in the development process yields
-the highest return.
+   powerful tests are often those that verify the integration of the entire
+   pipeline. The AST round-trip property test and the CST losslessness test are
+   paramount. Investing in the infrastructure for these tests (i.e., `Arbitrary`
+   implementations and a pretty-printer) early in the development process yields
+   the highest return.
 
 3. **Treat Spans and Errors as First-Class Citizens:** A parser is not merely a
-validator; it is a critical component of the developer experience. The quality
-of its error messages and the accuracy of its source location information are
-non-negotiable features. Every stage of testing, from the `logos` lexer to the
-`chumsky` parser, must rigorously validate spans and error structures, with
-snapshot testing being the ideal tool for this purpose.
+   validator; it is a critical component of the developer experience. The
+   quality of its error messages and the accuracy of its source location
+   information are non-negotiable features. Every stage of testing, from the
+   `logos` lexer to the `chumsky` parser, must rigorously validate spans and
+   error structures, with snapshot testing being the ideal tool for this
+   purpose.
 
 4. **Integrate Testing into the Development Workflow:** Tools like `insta` are
-not just for preventing regressions; they are powerful aids for development and
-refactoring. The `cargo insta review` workflow allows for rapid, confident
-iteration on a language's syntax and its corresponding AST structure.
+   not just for preventing regressions; they are powerful aids for development
+   and refactoring. The `cargo insta review` workflow allows for rapid,
+   confident iteration on a language's syntax and its corresponding AST
+   structure.
 
 For integration into a Continuous Integration/Continuous Deployment (CI/CD)
 pipeline, a tiered approach is recommended. The fast-running unit tests and
