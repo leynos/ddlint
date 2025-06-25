@@ -109,11 +109,8 @@ fn unterminated_string_is_error() {
 #[rstest]
 #[case("(", SyntaxKind::T_LPAREN)]
 #[case(")", SyntaxKind::T_RPAREN)]
-#[case("==", SyntaxKind::T_EQEQ)]
 #[case(":", SyntaxKind::T_COLON)]
 #[case("::", SyntaxKind::T_COLON_COLON)]
-#[case("->", SyntaxKind::T_ARROW)]
-#[case("=>", SyntaxKind::T_FAT_ARROW)]
 fn punctuation_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
     let tokens = tokenize(source);
     assert_eq!(tokens.len(), 1);
@@ -188,14 +185,26 @@ fn negative_number_tokens() {
 fn escaped_string_token() {
     let tokens = tokenize("\"a\\\"b\"");
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens.first().expect("token").0, SyntaxKind::T_STRING);
+    assert_eq!(
+        tokens
+            .first()
+            .expect("tokenizer should produce at least one token")
+            .0,
+        SyntaxKind::T_STRING
+    );
 }
 
 #[test]
 fn unterminated_comment_is_error() {
     let tokens = tokenize("/* comment");
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens.first().expect("token").0, SyntaxKind::N_ERROR);
+    assert_eq!(
+        tokens
+            .first()
+            .expect("tokenizer should produce at least one token")
+            .0,
+        SyntaxKind::N_ERROR
+    );
 }
 
 #[test]

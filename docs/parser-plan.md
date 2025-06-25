@@ -36,7 +36,7 @@ records byte offsets so that the resulting CST can precisely mirror the input.
 Whitespace and comments should produce tokens so they can be preserved. The
 current implementation opts for a small `logos` lexer because it keeps the token
 definitions declarative while still interoperating smoothly with `chumsky`
-parsers.
+parsers. Keyword lookups use a `phf::Map` for zero-cost perfect hashing.
 
 ```mermaid
 sequenceDiagram
