@@ -8,6 +8,7 @@
 
 use chumsky::Stream;
 use chumsky::prelude::*;
+use log::warn;
 use rowan::{GreenNode, GreenNodeBuilder, Language, SyntaxNode};
 
 use crate::{DdlogLanguage, SyntaxKind, tokenize};
@@ -42,7 +43,7 @@ impl Parsed {
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
     let len = src.len();
-    let stream = Stream::from_iter(0..len, tokens.clone().into_iter());
+    let stream = Stream::from_iter(0..len, tokens.iter().cloned());
 
     // Placeholder parser: simply consume all tokens.
     let parser = any::<SyntaxKind, Simple<SyntaxKind>>()
@@ -61,8 +62,7 @@ pub fn parse(src: &str) -> Parsed {
     for (kind, span) in tokens {
         let text = src.get(span.clone()).map_or_else(
             || {
-                debug_assert!(
-                    false,
+                warn!(
                     "token span {:?} out of bounds for source of length {}",
                     span,
                     src.len()

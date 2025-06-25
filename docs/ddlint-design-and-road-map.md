@@ -175,8 +175,25 @@ reinforces the others.
 The first and most critical step in the linting process is the transformation of
 raw DDlog source text into the structured `rowan` CST that the rest of the
 system consumes. The quality and resilience of this parsing stage directly
-determine the linter's ability to provide value, especially when analyzing
-real-world code that is often in a syntactically incomplete or incorrect state.
+determine the linter's ability to provide value, especially when analysing
+real‑world code that is often in a syntactically incomplete or incorrect state.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Parser
+    participant Tokenizer
+    participant SyntaxTree
+
+    User->>Parser: parse(source)
+    Parser->>Tokenizer: tokenize(source)
+    Tokenizer-->>Parser: tokens
+    Parser->>Parser: build token stream
+    Parser->>SyntaxTree: construct green tree from tokens
+    SyntaxTree-->>Parser: green tree
+    Parser->>Parser: wrap green tree in AST root
+    Parser-->>User: Parsed { green, root }
+```
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 
