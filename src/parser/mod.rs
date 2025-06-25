@@ -19,6 +19,7 @@ pub struct Parsed {
     green: GreenNode,
     root: ast::Root,
     errors: Vec<Simple<SyntaxKind>>,
+    items: Vec<ast::Item>,
 }
 
 impl Parsed {
@@ -39,6 +40,12 @@ impl Parsed {
     pub fn errors(&self) -> &[Simple<SyntaxKind>] {
         &self.errors
     }
+
+    /// Access parsed items such as imports.
+    #[must_use]
+    pub fn items(&self) -> &[ast::Item] {
+        &self.items
+    }
 }
 
 /// Parse the provided source string.
@@ -49,12 +56,7 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (parsed_kinds, errors) = parse_tokens(&tokens, src.len());
-    debug_assert_eq!(
-        parsed_kinds.len(),
-        tokens.len(),
-        "parser output token count differs from lexer",
-    );
+    let (items, errors) = parse_tokens(&tokens, src.len(), src);
 
     let green = build_green_tree(tokens, src);
     let root = ast::Root::from_green(green.clone());
@@ -63,27 +65,23 @@ pub fn parse(src: &str) -> Parsed {
         green,
         root,
         errors,
+        items,
     }
 }
 
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     len: usize,
-) -> (Vec<SyntaxKind>, Vec<Simple<SyntaxKind>>) {
+    src: &str,
+) -> (Vec<ast::Item>, Vec<Simple<SyntaxKind>>) {
     let stream = Stream::from_iter(0..len, tokens.iter().cloned());
-
-    let parser = any::<SyntaxKind, Simple<SyntaxKind>>()
+    let parser = decl(src)
         .repeated()
-        .then_ignore(end());
-    let (parsed_kinds, errors) = parser.parse_recovery(stream);
+        .then_ignore(end())
+        .map(|items| items.into_iter().flatten().collect());
+    let (items, errors) = parser.parse_recovery(stream);
 
-    let result = parsed_kinds.unwrap_or_default();
-    debug_assert_eq!(
-        result.len(),
-        tokens.len(),
-        "parser combinator output differs from input token count",
-    );
-    (result, errors)
+    (items.unwrap_or_default(), errors)
 }
 
 fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str) -> GreenNode {
@@ -111,6 +109,32 @@ fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str) -> GreenNode {
     }
     builder.finish_node();
     builder.finish()
+}
+
+fn parse_import(
+    src: &str,
+) -> impl Parser<SyntaxKind, ast::Import, Error = Simple<SyntaxKind>> + Clone + '_ {
+    just(SyntaxKind::K_IMPORT)
+        .then_ignore(select! { SyntaxKind::T_WHITESPACE => () }.repeated())
+        .ignore_then(select!(|span| SyntaxKind::T_IDENT => span))
+        .then_ignore(just(SyntaxKind::T_SEMI))
+        .map(move |span: Span| {
+            let text = src.get(span.clone()).unwrap_or("");
+            ast::Import {
+                module: text.to_string(),
+            }
+        })
+        .boxed()
+}
+
+fn decl(
+    src: &str,
+) -> impl Parser<SyntaxKind, Option<ast::Item>, Error = Simple<SyntaxKind>> + Clone + '_ {
+    parse_import(src)
+        .map(ast::Item::Import)
+        .map(Some)
+        .or(any::<SyntaxKind, Simple<SyntaxKind>>().map(|_| None))
+        .boxed()
 }
 
 pub mod ast {
@@ -165,5 +189,49 @@ pub mod ast {
         pub fn text(&self) -> String {
             self.syntax.text().to_string()
         }
+    }
+
+    /// An import declaration.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Import {
+        /// The imported module path as text.
+        pub module: String,
+    }
+
+    /// Top-level items recognised by the parser.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Item {
+        /// An import statement.
+        Import(Import),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chumsky::Parser;
+
+    #[test]
+    fn import_parses() {
+        let src = "import foo;";
+        let tokens = crate::tokenize(src);
+        let stream = Stream::from_iter(0..src.len(), tokens.clone().into_iter());
+        let (out, _errs) = parse_import(src).parse_recovery(stream);
+        assert_eq!(
+            out,
+            Some(ast::Import {
+                module: "foo".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn import_missing_semicolon_errors() {
+        let src = "import foo";
+        let tokens = crate::tokenize(src);
+        let stream = Stream::from_iter(0..src.len(), tokens.clone().into_iter());
+        let (out, errs) = parse_import(src).parse_recovery(stream);
+        assert!(out.is_none());
+        assert!(!errs.is_empty());
     }
 }
