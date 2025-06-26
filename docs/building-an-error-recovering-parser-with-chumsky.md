@@ -16,7 +16,7 @@ and you’ll be spelunking inside recursive lambdas at 2 a.m.
 - A complete token list
 - Precedence rules in plain English (“multiply before add, semicolons end
   statements, tea before Arthur, etc.”)
-- Examples of legal *and* illegal programmes
+- Examples of legal *and* illegal programmes.
 
 ### 2 Feed It Tokens, Not Breadcrumbs
 
@@ -50,7 +50,7 @@ Error recovery is what turns your parser from Vogon poetry into a Babel fish.
 2. **Labels:** Tag sub-parsers with `.labelled("expression")` so the diagnostics
    mention something friendlier than “expected `Unknown(42)`”.
 3. **Tri-state nodes:** Return `Option<AstNode>`; missing bits propagate but the
-   parse soldier on.
+   parser soldiers on.
 
 In practice you’ll compose the built-ins (`NestedDelimiters`, `SkipUntil`) with
 a couple of bespoke closures and quickly look like you own the place.

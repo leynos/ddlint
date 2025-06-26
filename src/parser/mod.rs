@@ -224,38 +224,36 @@ pub mod ast {
         /// The module path text as written in the source.
         #[must_use]
         pub fn path(&self) -> String {
-            let mut capture = false;
-            let mut out = String::new();
-            for element in self.syntax.children_with_tokens() {
-                if let rowan::NodeOrToken::Token(tok) = element {
-                    match tok.kind() {
-                        SyntaxKind::K_IMPORT => capture = true,
-                        SyntaxKind::K_AS => break,
-                        _ => {
-                            if capture {
-                                out.push_str(tok.text());
-                            }
-                        }
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_IMPORT))
+                .skip(1)
+                .take_while(|e| !matches!(e.kind(), SyntaxKind::K_AS))
+                .filter_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
                     }
-                }
-            }
-            out.trim().to_string()
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_COLON_COLON => {
+                        Some("::".to_string())
+                    }
+                    _ => None,
+                })
+                .collect::<String>()
         }
 
         /// The alias assigned with `as`, if any.
         #[must_use]
         pub fn alias(&self) -> Option<String> {
-            let mut seen_as = false;
-            for element in self.syntax.children_with_tokens() {
-                if let rowan::NodeOrToken::Token(tok) = element {
-                    match tok.kind() {
-                        SyntaxKind::K_AS => seen_as = true,
-                        SyntaxKind::T_IDENT if seen_as => return Some(tok.text().to_string()),
-                        _ => {}
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_AS))
+                .skip(1)
+                .find_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
                     }
-                }
-            }
-            None
+                    _ => None,
+                })
         }
     }
 }
