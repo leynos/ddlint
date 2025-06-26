@@ -4,6 +4,8 @@
 //! property holds for simple inputs. Grammar-specific assertions will be added
 //! once the parser rules are implemented.
 
+#![expect(clippy::expect_used, reason = "tests assert exact behaviour")]
+
 use ddlint::{SyntaxKind, ast::Import, parse};
 use rstest::{fixture, rstest};
 
@@ -154,4 +156,42 @@ fn import_multiple_statements() {
     let imports = parsed.root().imports();
     let paths: Vec<_> = imports.iter().map(|i| (i.path(), i.alias())).collect();
     assert_eq!(paths, [("a".into(), None), ("b".into(), Some("c".into()))]);
+}
+
+#[rstest]
+fn typedef_standard_case() {
+    let src = "typedef Uuid = string";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty());
+    let defs = parsed.root().type_defs();
+    let def = defs.first().expect("expected typedef");
+    assert_eq!(def.name().as_deref(), Some("Uuid"));
+    assert_eq!(def.definition(), Some("string".into()));
+    assert!(!def.is_extern());
+}
+
+#[rstest]
+fn typedef_complex_case() {
+    let src = "typedef UserRecord = (name: string, age: u64, active: bool)";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty());
+    let defs = parsed.root().type_defs();
+    let def = defs.first().expect("expected typedef");
+    assert_eq!(def.name().as_deref(), Some("UserRecord"));
+    assert_eq!(
+        def.definition().as_deref(),
+        Some("(name: string, age: u64, active: bool)")
+    );
+}
+
+#[rstest]
+fn extern_type_case() {
+    let src = "extern type FfiHandle";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty());
+    let defs = parsed.root().type_defs();
+    let def = defs.first().expect("expected typedef");
+    assert_eq!(def.name().as_deref(), Some("FfiHandle"));
+    assert!(def.definition().is_none());
+    assert!(def.is_extern());
 }
