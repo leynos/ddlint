@@ -1,4 +1,4 @@
-# DON’T PANIC: Building an Error-Recovering Parser with **Chumsky**
+# DON’T PANIC: A Hitchhiker’s Guide to Building an Error-Recovering Parser with **Chumsky**
 
 > *A completely remarkable book. Probably the most remarkable, certainly the
 > most successful book ever to come out of the great publishing corporations of
