@@ -99,8 +99,14 @@ fn parse_tokens(tokens: &[(SyntaxKind, Span)], len: usize) -> (Vec<Span>, Vec<Si
 fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, imports: &[Span]) -> GreenNode {
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
+    // Iterator over the spans recorded for each `import` statement.  Each span
+    // covers the entire statement so we can nest tokens inside an
+    // `N_IMPORT_STMT` node while building the CST.
     let mut import_iter = imports.iter().peekable();
     for (kind, span) in tokens {
+        // Advance to the next import span if this token lies after the end of
+        // the current one.  Multiple tokens can share the same span, so we need
+        // to skip spans that have already been closed.
         while let Some(next) = import_iter.peek() {
             if span.start >= next.end {
                 import_iter.next();
@@ -108,6 +114,9 @@ fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, imports: &[Span]
                 break;
             }
         }
+        // Begin an `N_IMPORT_STMT` node when this token marks the start of an
+        // import span. Tokens emitted by the lexer appear in order, so equality
+        // is sufficient here.
         if import_iter
             .peek()
             .is_some_and(|current| span.start == current.start)
@@ -132,6 +141,9 @@ fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, imports: &[Span]
         } else {
             builder.token(DdlogLanguage::kind_to_raw(kind), text);
         }
+        // Close an `N_IMPORT_STMT` when this token reaches or passes the end of
+        // the active import span. Tokens can span multiple characters and may
+        // end exactly on the boundary, so we use `>=` rather than equality.
         if import_iter
             .peek()
             .is_some_and(|current| span.end >= current.end)
