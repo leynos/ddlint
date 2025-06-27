@@ -18,14 +18,28 @@ use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 /// The macro loops until the token slice is exhausted, invoking the matching
 /// handler for each recognised `SyntaxKind`. Any token kinds not provided in the
 /// pattern cause the state's index to advance with no other action.
-macro_rules! token_dispatch {
-    ( $state:ident, $tokens:ident, {
+/// Iterate over tokens and call a handler for each recognised kind.
+///
+/// The macro expects a state object that contains a `cursor` field tracking the
+/// current position in the token slice. Handlers mutate the state to consume
+/// tokens. Any unhandled kind simply advances the cursor by one.
+///
+/// # Examples
+///
+/// ```
+/// dispatch_tokens!(st, tokens, {
+///     SyntaxKind::K_IMPORT => handle_import,
+///     SyntaxKind::K_TYPEDEF => handle_typedef,
+/// });
+/// ```
+macro_rules! dispatch_tokens {
+    ( $state:ident, $token_list:ident, {
         $( $kind:path => $handler:ident ),* $(,)?
     } ) => {{
-        while let Some((kind, span)) = $tokens.get($state.i).cloned() {
+        while let Some((kind, span)) = $token_list.get($state.cursor).cloned() {
             match kind {
                 $( $kind => $handler(&mut $state, span), )*
-                _ => $state.i += 1,
+                _ => $state.cursor += 1,
             }
         }
     }};
@@ -144,7 +158,7 @@ fn collect_import_spans(
     src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     struct State<'a> {
-        i: usize,
+        cursor: usize,
         spans: Vec<Span>,
         errors: Vec<Simple<SyntaxKind>>,
         tokens: &'a [(SyntaxKind, Span)],
@@ -179,29 +193,29 @@ fn collect_import_spans(
             .padded_by(ws.repeated())
             .map_with_span(|_, sp: Span| sp);
 
-        let iter = st.tokens.iter().skip(st.i).cloned();
+        let iter = st.tokens.iter().skip(st.cursor).cloned();
         let sub_stream = Stream::from_iter(span.start..st.src.len(), iter);
         let (res, err) = imprt.parse_recovery(sub_stream);
         if let Some(sp) = res {
             let end = sp.end;
             st.spans.push(sp);
-            skip_tokens_until(&mut st.i, st.tokens, end);
+            skip_tokens_until(&mut st.cursor, st.tokens, end);
         } else {
             st.errors.extend(err);
-            let end = line_end(st.tokens, st.src, st.i);
-            skip_tokens_until(&mut st.i, st.tokens, end);
+            let end = line_end(st.tokens, st.src, st.cursor);
+            skip_tokens_until(&mut st.cursor, st.tokens, end);
         }
     }
 
     let mut st = State {
-        i: 0,
+        cursor: 0,
         spans: Vec::new(),
         errors: Vec::new(),
         tokens,
         src,
     };
 
-    token_dispatch!(st, tokens, {
+    dispatch_tokens!(st, tokens, {
         SyntaxKind::K_IMPORT => handle_import,
     });
 
@@ -214,7 +228,7 @@ fn collect_import_spans(
 /// `N_TYPE_DEF` nodes later when building the CST.
 fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
     struct State<'a> {
-        i: usize,
+        cursor: usize,
         spans: Vec<Span>,
         tokens: &'a [(SyntaxKind, Span)],
         src: &'a str,
@@ -222,37 +236,37 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 
     fn handle_typedef(st: &mut State<'_>, span: Span) {
         let start = span.start;
-        st.i += 1;
-        let end = line_end(st.tokens, st.src, st.i);
-        skip_tokens_until(&mut st.i, st.tokens, end);
+        st.cursor += 1;
+        let end = line_end(st.tokens, st.src, st.cursor);
+        skip_tokens_until(&mut st.cursor, st.tokens, end);
         st.spans.push(start..end);
     }
 
     fn handle_extern(st: &mut State<'_>, span: Span) {
         let start = span.start;
-        st.i += 1;
-        skip_ws_no_newline(st.tokens, st.src, &mut st.i);
-        if let Some((SyntaxKind::K_TYPE, _)) = st.tokens.get(st.i).cloned() {
-            st.i += 1;
-            let end = line_end(st.tokens, st.src, st.i);
-            skip_tokens_until(&mut st.i, st.tokens, end);
+        st.cursor += 1;
+        skip_ws_no_newline(st.tokens, st.src, &mut st.cursor);
+        if let Some((SyntaxKind::K_TYPE, _)) = st.tokens.get(st.cursor).cloned() {
+            st.cursor += 1;
+            let end = line_end(st.tokens, st.src, st.cursor);
+            skip_tokens_until(&mut st.cursor, st.tokens, end);
             st.spans.push(start..end);
         } else {
             // Currently only `extern type` is recognised. Skip the remainder
             // of this line so parsing can continue.
-            let end = line_end(st.tokens, st.src, st.i);
-            skip_tokens_until(&mut st.i, st.tokens, end);
+            let end = line_end(st.tokens, st.src, st.cursor);
+            skip_tokens_until(&mut st.cursor, st.tokens, end);
         }
     }
 
     let mut st = State {
-        i: 0,
+        cursor: 0,
         spans: Vec::new(),
         tokens,
         src,
     };
 
-    token_dispatch!(st, tokens, {
+    dispatch_tokens!(st, tokens, {
         SyntaxKind::K_TYPEDEF => handle_typedef,
         SyntaxKind::K_EXTERN => handle_extern,
     });
