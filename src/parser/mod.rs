@@ -13,6 +13,11 @@ use rowan::{GreenNode, GreenNodeBuilder, Language};
 
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 
+/// Iterate over tokens and dispatch to a handler based on the token kind.
+///
+/// The macro loops until the token slice is exhausted, invoking the matching
+/// handler for each recognised `SyntaxKind`. Any token kinds not provided in the
+/// pattern cause the state's index to advance with no other action.
 macro_rules! token_dispatch {
     ( $state:ident, $tokens:ident, {
         $( $kind:path => $handler:ident ),* $(,)?
@@ -85,6 +90,10 @@ fn parse_tokens(
     (import_spans, typedef_spans, errors)
 }
 
+/// Advance `offset` past tokens whose span ends before or at `end`.
+///
+/// This helper is used when a parser has consumed a known span and the token
+/// iterator should skip ahead to resume scanning from the end of that span.
 fn skip_tokens_until(offset: &mut usize, tokens: &[(SyntaxKind, Span)], end: usize) {
     while let Some(span) = tokens.get(*offset).map(|t| &t.1) {
         if span.end <= end {
@@ -95,8 +104,12 @@ fn skip_tokens_until(offset: &mut usize, tokens: &[(SyntaxKind, Span)], end: usi
     }
 }
 
+/// Return the position one past the newline after `start` or the source length.
+///
+/// The `start` index refers to a position within `tokens`. If it lies beyond the
+/// token slice the function returns `src.len()`.
 fn line_end(tokens: &[(SyntaxKind, Span)], src: &str, start: usize) -> usize {
-    let mut end = tokens.get(start).map_or(0, |t| t.1.end);
+    let mut end = tokens.get(start).map_or(src.len(), |t| t.1.end);
     for tok in tokens.iter().skip(start) {
         end = tok.1.end;
         let text = src.get(tok.1.clone()).unwrap_or("");
@@ -107,6 +120,10 @@ fn line_end(tokens: &[(SyntaxKind, Span)], src: &str, start: usize) -> usize {
     end
 }
 
+/// Skip whitespace and comments that do not contain newlines.
+///
+/// Used when parsing single-line constructs to ignore inline whitespace without
+/// crossing line boundaries.
 fn skip_ws_no_newline(tokens: &[(SyntaxKind, Span)], src: &str, index: &mut usize) {
     while let Some(tok) = tokens.get(*index) {
         if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
@@ -119,6 +136,10 @@ fn skip_ws_no_newline(tokens: &[(SyntaxKind, Span)], src: &str, index: &mut usiz
     }
 }
 
+/// Scan the token stream for `import` statements and record their spans.
+///
+/// Returns the list of spans and any parse errors encountered while
+/// recovering from malformed import statements.
 fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],
     len: usize,
@@ -186,6 +207,10 @@ fn collect_import_spans(
     (st.spans, st.errors)
 }
 
+/// Collect the spans of `typedef` and `extern type` declarations.
+///
+/// Spans cover the full declaration line so tokens can be grouped into
+/// `N_TYPE_DEF` nodes later when building the CST.
 fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
     struct State<'a> {
         i: usize,
@@ -229,6 +254,10 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
     st.spans
 }
 
+/// Construct the CST from the token stream and recorded statement spans.
+///
+/// `imports` and `typedefs` contain the ranges of completed statements so that
+/// tokens can be wrapped in the appropriate nodes during tree construction.
 fn build_green_tree(
     tokens: Vec<(SyntaxKind, Span)>,
     src: &str,
@@ -268,6 +297,9 @@ fn build_green_tree(
     builder.finish()
 }
 
+/// Move the iterator forward past any spans that end before `pos`.
+///
+/// This keeps the peeked span aligned with the current token position.
 fn advance_span_iter(iter: &mut std::iter::Peekable<std::slice::Iter<'_, Span>>, pos: usize) {
     while let Some(next) = iter.peek() {
         if pos >= next.end {
@@ -278,6 +310,7 @@ fn advance_span_iter(iter: &mut std::iter::Peekable<std::slice::Iter<'_, Span>>,
     }
 }
 
+/// Start a new syntax node if the current position matches the start of a span.
 fn maybe_start(
     builder: &mut GreenNodeBuilder,
     iter: &mut std::iter::Peekable<std::slice::Iter<Span>>,
@@ -289,6 +322,7 @@ fn maybe_start(
     }
 }
 
+/// Finish the active syntax node when the current position reaches its end.
 fn maybe_finish(
     builder: &mut GreenNodeBuilder,
     iter: &mut std::iter::Peekable<std::slice::Iter<Span>>,
@@ -300,6 +334,7 @@ fn maybe_finish(
     }
 }
 
+/// Push a token to the tree, wrapping `N_ERROR` tokens in an error node.
 fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: Span, src: &str) {
     let text = src.get(span.clone()).map_or_else(
         || {
@@ -462,7 +497,7 @@ pub mod ast {
         #[must_use]
         pub fn name(&self) -> Option<String> {
             let mut iter = self.syntax.children_with_tokens();
-            if !skip_to_keyword(&mut iter) {
+            if !skip_to_typedef_keyword(&mut iter) {
                 return None;
             }
             take_first_ident(iter)
@@ -477,7 +512,8 @@ pub mod ast {
         }
     }
 
-    fn skip_to_keyword(
+    /// Advance the iterator until `typedef` or `type` is encountered.
+    fn skip_to_typedef_keyword(
         iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     ) -> bool {
         for e in iter.by_ref() {
@@ -546,5 +582,13 @@ mod tests {
             tokens.get(idx).map(|t| t.0),
             Some(SyntaxKind::K_TYPE)
         ));
+    }
+
+    #[rstest]
+    fn line_end_out_of_bounds_returns_len() {
+        let src = "typedef A = string\n";
+        let tokens = tokenize(src);
+        let start = tokens.len();
+        assert_eq!(line_end(&tokens, src, start), src.len());
     }
 }
