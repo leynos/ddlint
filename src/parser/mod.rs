@@ -183,8 +183,9 @@ fn collect_import_spans(
         let sub_stream = Stream::from_iter(span.start..st.src.len(), iter);
         let (res, err) = imprt.parse_recovery(sub_stream);
         if let Some(sp) = res {
-            st.spans.push(sp.clone());
-            skip_tokens_until(&mut st.i, st.tokens, sp.end);
+            let end = sp.end;
+            st.spans.push(sp);
+            skip_tokens_until(&mut st.i, st.tokens, end);
         } else {
             st.errors.extend(err);
             let end = line_end(st.tokens, st.src, st.i);
@@ -261,14 +262,17 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 
 /// Construct the CST from the token stream and recorded statement spans.
 ///
-/// `imports` and `typedefs` contain the ranges of completed statements so that
-/// tokens can be wrapped in the appropriate nodes during tree construction.
+/// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
+/// are wrapped into well-formed nodes during tree construction.
+/// Spans are checked with debug assertions.
 fn build_green_tree(
     tokens: Vec<(SyntaxKind, Span)>,
     src: &str,
     imports: &[Span],
     typedefs: &[Span],
 ) -> GreenNode {
+    assert_spans_sorted(imports);
+    assert_spans_sorted(typedefs);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
@@ -292,7 +296,7 @@ fn build_green_tree(
             SyntaxKind::N_TYPE_DEF,
         );
 
-        push_token(&mut builder, kind, span.clone(), src);
+        push_token(&mut builder, kind, &span, src);
 
         maybe_finish(&mut builder, &mut import_iter, span.end);
         maybe_finish(&mut builder, &mut typedef_iter, span.end);
@@ -339,8 +343,16 @@ fn maybe_finish(
     }
 }
 
+/// Assert that spans are sorted and non-overlapping.
+fn assert_spans_sorted(spans: &[Span]) {
+    for pair in spans.windows(2) {
+        let [first, second] = pair else { continue };
+        debug_assert!(first.end <= second.start, "spans overlap or are unsorted");
+    }
+}
+
 /// Push a token to the tree, wrapping `N_ERROR` tokens in an error node.
-fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: Span, src: &str) {
+fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: &Span, src: &str) {
     let text = src.get(span.clone()).map_or_else(
         || {
             warn!(
@@ -353,12 +365,13 @@ fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: Span, src:
         |t| t,
     );
 
+    let raw = DdlogLanguage::kind_to_raw(kind);
     if kind == SyntaxKind::N_ERROR {
         builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_ERROR));
-        builder.token(DdlogLanguage::kind_to_raw(kind), text);
+    }
+    builder.token(raw, text);
+    if kind == SyntaxKind::N_ERROR {
         builder.finish_node();
-    } else {
-        builder.token(DdlogLanguage::kind_to_raw(kind), text);
     }
 }
 
