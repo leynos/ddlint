@@ -4,7 +4,11 @@
 //! property holds for simple inputs. Grammar-specific assertions will be added
 //! once the parser rules are implemented.
 
-use ddlint::{SyntaxKind, ast::Import, parse};
+use ddlint::{
+    SyntaxKind,
+    ast::{Import, TypeDef},
+    parse,
+};
 use rstest::{fixture, rstest};
 
 /// Collect the text of a syntax subtree.
@@ -125,6 +129,15 @@ fn import_statement_invalid_missing_path() {
 }
 
 #[rstest]
+fn import_invalid_then_valid() {
+    let src = "import as\nimport foo";
+    let parsed = parse(src);
+    let imports = parsed.root().imports();
+    assert_eq!(imports.len(), 1);
+    assert_eq!(imports.first().map(Import::path), Some("foo".to_string()));
+}
+
+#[rstest]
 fn import_statement_multi_segment() {
     let src = "import foo::bar::baz";
     let parsed = parse(src);
@@ -190,6 +203,18 @@ fn extern_type() {
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
     assert_eq!(def.name(), Some("FfiHandle".into()));
     assert!(def.is_extern());
+}
+
+#[rstest]
+fn extern_without_type_is_ignored() {
+    let src = "extern foo\nextern type Bar";
+    let parsed = parse(src);
+    let defs = parsed.root().type_defs();
+    assert_eq!(defs.len(), 1);
+    assert_eq!(
+        defs.first().and_then(TypeDef::name),
+        Some("Bar".to_string())
+    );
 }
 
 #[rstest]

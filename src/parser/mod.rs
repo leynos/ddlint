@@ -67,7 +67,7 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (import_spans, typedef_spans, errors) = parse_tokens(&tokens, src.len(), src);
+    let (import_spans, typedef_spans, errors) = parse_tokens(&tokens, src);
 
     let green = build_green_tree(tokens, src, &import_spans, &typedef_spans);
     let root = ast::Root::from_green(green.clone());
@@ -81,10 +81,9 @@ pub fn parse(src: &str) -> Parsed {
 
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
-    len: usize,
     src: &str,
 ) -> (Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
-    let (import_spans, errors) = collect_import_spans(tokens, len);
+    let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
 
     (import_spans, typedef_spans, errors)
@@ -142,14 +141,14 @@ fn skip_ws_no_newline(tokens: &[(SyntaxKind, Span)], src: &str, index: &mut usiz
 /// recovering from malformed import statements.
 fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],
-    len: usize,
+    src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     struct State<'a> {
         i: usize,
         spans: Vec<Span>,
         errors: Vec<Simple<SyntaxKind>>,
         tokens: &'a [(SyntaxKind, Span)],
-        len: usize,
+        src: &'a str,
     }
 
     fn handle_import(st: &mut State<'_>, span: Span) {
@@ -181,14 +180,15 @@ fn collect_import_spans(
             .map_with_span(|_, sp: Span| sp);
 
         let iter = st.tokens.iter().skip(st.i).cloned();
-        let sub_stream = Stream::from_iter(span.start..st.len, iter);
+        let sub_stream = Stream::from_iter(span.start..st.src.len(), iter);
         let (res, err) = imprt.parse_recovery(sub_stream);
         if let Some(sp) = res {
             st.spans.push(sp.clone());
             skip_tokens_until(&mut st.i, st.tokens, sp.end);
         } else {
             st.errors.extend(err);
-            st.i += 1;
+            let end = line_end(st.tokens, st.src, st.i);
+            skip_tokens_until(&mut st.i, st.tokens, end);
         }
     }
 
@@ -197,7 +197,7 @@ fn collect_import_spans(
         spans: Vec::new(),
         errors: Vec::new(),
         tokens,
-        len,
+        src,
     };
 
     token_dispatch!(st, tokens, {
@@ -236,6 +236,11 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
             let end = line_end(st.tokens, st.src, st.i);
             skip_tokens_until(&mut st.i, st.tokens, end);
             st.spans.push(start..end);
+        } else {
+            // Currently only `extern type` is recognised. Skip the remainder
+            // of this line so parsing can continue.
+            let end = line_end(st.tokens, st.src, st.i);
+            skip_tokens_until(&mut st.i, st.tokens, end);
         }
     }
 
