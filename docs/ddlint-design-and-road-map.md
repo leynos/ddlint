@@ -549,6 +549,24 @@ This schema provides a clear and powerful way for users to tailor the linter's
 behavior to their project's specific needs, from disabling entire classes of
 rules to fine-tuning the parameters of stylistic checks.
 
+### 4.4. Logging
+
+The parser emits warnings using the [`log`](https://docs.rs/log/) crate. No
+logger is initialised by default. A consuming binary should call a logger setup
+routine early in `main` to surface these messages. One convenient option is
+[`env_logger`](https://docs.rs/env_logger/):
+
+```rust
+fn main() {
+    // Cargo.toml: env_logger = "0.11"
+    env_logger::init();
+    // run ddlint or your application logic
+}
+```
+
+Set the `RUST_LOG` environment variable to control verbosity. For example, you
+can set `RUST_LOG=warn` to display warnings while suppressing debug output.
+
 ## V. Advanced Features: Diagnostics and Automated Fixes
 
 The core value of a linter is delivered through its diagnostics and its ability
