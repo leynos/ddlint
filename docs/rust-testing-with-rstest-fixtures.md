@@ -107,9 +107,9 @@ section:
 
 ```toml
 [dev-dependencies]
-rstest = "0.18" # Or the latest version available on crates.io
+rstest = "0.25" # Or the latest version available on crates.io
 # rstest_macros may also be needed explicitly depending on usage or version
-# rstest_macros = "0.18" # Check crates.io for the latest version
+# rstest_macros = "0.25" # Check crates.io for the latest version
 ```
 
 It is advisable to check `crates.io` for the latest stable version of `rstest`
