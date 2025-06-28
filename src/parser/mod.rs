@@ -103,6 +103,17 @@ pub fn parse(src: &str) -> Parsed {
     }
 }
 
+/// Identifies and collects the spans of `import` and `typedef` statements in a token stream.
+///
+/// Returns tuples containing the spans of `import` statements, `typedef`/`extern type` declarations,
+/// and any parse errors encountered during import span collection.
+///
+/// # Examples
+///
+/// ```no_run
+/// let (imports, typedefs, errors) = parse_tokens(&tokens, src);
+/// assert!(imports.iter().all(|span| span.start < span.end));
+/// ```
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -113,16 +124,38 @@ fn parse_tokens(
     (import_spans, typedef_spans, errors)
 }
 
-/// Scan the token stream for `import` statements and record their spans.
+/// Scans the token stream for `import` statements and collects their spans.
 ///
-/// Returns the list of spans and any parse errors encountered while
-/// recovering from malformed import statements.
+/// Parses the token stream to identify well-formed `import` statements, recording the
+/// corresponding spans. If a malformed `import` statement is encountered, attempts to
+/// recover by skipping to the end of the line and records any parse errors encountered
+/// during recovery.
+///
+/// # Returns
+///
+/// A tuple containing a vector of spans for valid `import` statements and a vector of
+/// parse errors for malformed statements.
+///
+/// # Examples
+///
+/// ```no_run
+/// use parser::{collect_import_spans, SyntaxKind, Span};
+///
+/// let tokens: Vec<(SyntaxKind, Span)> = /* tokenized source */;
+/// let src = "import foo::bar as baz;";
+/// let (import_spans, errors) = collect_import_spans(&tokens, src);
+/// assert!(!import_spans.is_empty());
+/// ```
 fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
+    /// Attempts to parse an `import` statement at the given span, recording its span or collecting errors.
+    ///
+    /// If parsing succeeds, the span of the `import` statement is added to the state's span list and the token stream is advanced past it.
+    /// On failure, errors are collected and the stream is advanced to the end of the current line.
     fn handle_import(st: &mut State<'_>, span: Span) {
         let ws = filter(|kind: &SyntaxKind| {
             matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
@@ -174,13 +207,37 @@ fn collect_import_spans(
     st.into_parts()
 }
 
-/// Collect the spans of `typedef` and `extern type` declarations.
+/// Collects the spans of `typedef` and `extern type` declarations in the token stream.
 ///
-/// Spans cover the full declaration line so tokens can be grouped into
-/// `N_TYPE_DEF` nodes later when building the CST.
+/// Each span covers the entire line of the declaration, enabling grouping of tokens into
+/// `N_TYPE_DEF` nodes during CST construction. Only `extern type` declarations are recognised
+/// for `extern` statements; other forms are skipped.
+///
+/// # Returns
+///
+/// A vector of spans, each representing a `typedef` or `extern type` declaration.
+///
+/// # Examples
+///
+/// ```no_run
+/// let tokens = tokenize("typedef Foo = Bar;\nextern type Baz;\n", None);
+/// let spans = collect_typedef_spans(&tokens, "typedef Foo = Bar;\nextern type Baz;\n");
+/// assert_eq!(spans.len(), 2);
+/// ```
 fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
     type State<'a> = SpanCollector<'a, ()>;
 
+    /// Handles a `typedef` token by advancing the token stream to the end of the line and recording the span.
+    ///
+    /// Records the span from the start of the `typedef` token to the end of the line in the state's span list.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// // Given a State positioned at a typedef token:
+    /// handle_typedef(&mut state, typedef_span);
+    /// // The span from the typedef to the line end is recorded in state.spans.
+    /// ```
     fn handle_typedef(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
@@ -189,6 +246,18 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
         st.spans.push(start..end);
     }
 
+    /// Handles an `extern` declaration, collecting the span if it is an `extern type` statement.
+    ///
+    /// Advances the token stream past the `extern` keyword and any inline whitespace. If the next
+    /// token is `type`, advances past it and collects the span up to the end of the line. Otherwise,
+    /// skips the remainder of the line without collecting a span.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// // Used internally during typedef span collection:
+    /// handle_extern(&mut state, span);
+    /// ```
     fn handle_extern(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
@@ -528,6 +597,18 @@ mod tests {
     use crate::tokenize;
     use rstest::rstest;
 
+    /// Tests that `skip_until` advances the token stream cursor past the specified span end.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let src = "import foo\n";
+    /// let tokens = tokenize(src);
+    /// let mut stream = TokenStream::new(&tokens, src);
+    /// let end = stream.line_end(0);
+    /// stream.skip_until(end);
+    /// assert_eq!(stream.cursor(), tokens.len());
+    /// ```
     #[rstest]
     fn skip_until_advances_past_span() {
         let src = "import foo\n";
@@ -538,6 +619,19 @@ mod tests {
         assert_eq!(stream.cursor(), tokens.len());
     }
 
+    /// Tests that `TokenStream::line_end` returns the position immediately after the end of the current line.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let src = "typedef A = string\nnext";
+    /// let tokens = tokenize(src);
+    /// let stream = TokenStream::new(&tokens, src);
+    /// let start = 1; // token after 'typedef'
+    /// let end = stream.line_end(start);
+    /// let newline = src.find('\n').unwrap_or_else(|| panic!("newline missing"));
+    /// assert_eq!(end, newline + 1);
+    /// ```
     #[rstest]
     fn line_end_returns_span_end() {
         let src = "typedef A = string\nnext";
@@ -549,6 +643,21 @@ mod tests {
         assert_eq!(end, newline + 1);
     }
 
+    /// Tests that `skip_ws_inline` correctly skips inline whitespace tokens in the token stream.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let src = "extern    type Foo";
+    /// let tokens = tokenize(src);
+    /// let mut stream = TokenStream::new(&tokens, src);
+    /// stream.advance();
+    /// stream.skip_ws_inline();
+    /// assert!(matches!(
+    ///     stream.peek().map(|t| t.0),
+    ///     Some(SyntaxKind::K_TYPE)
+    /// ));
+    /// ```
     #[rstest]
     fn skip_ws_inline_skips_spaces() {
         let src = "extern    type Foo";
@@ -562,6 +671,17 @@ mod tests {
         ));
     }
 
+    /// Tests that `line_end` returns the length of the source string when called with an out-of-bounds index.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let src = "typedef A = string\n";
+    /// let tokens = tokenize(src);
+    /// let stream = TokenStream::new(&tokens, src);
+    /// let start = tokens.len();
+    /// assert_eq!(stream.line_end(start), src.len());
+    /// ```
     #[rstest]
     fn line_end_out_of_bounds_returns_len() {
         let src = "typedef A = string\n";
