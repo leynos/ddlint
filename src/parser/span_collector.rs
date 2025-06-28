@@ -36,3 +36,36 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
         (self.spans, self.extra)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    fn new_initialises_state() {
+        let tokens = &[(SyntaxKind::K_IMPORT, 0..6)];
+        let src = "import";
+        let extra = vec![1, 2, 3];
+        let collector = SpanCollector::new(tokens, src, extra.clone());
+
+        assert_eq!(collector.cursor, 0);
+        assert!(collector.spans.is_empty());
+        assert_eq!(collector.extra, extra);
+        assert_eq!(collector.tokens, tokens);
+        assert_eq!(collector.src, src);
+    }
+
+    #[rstest]
+    fn into_parts_returns_components() {
+        let tokens = &[(SyntaxKind::K_IMPORT, 0..6)];
+        let src = "import";
+        let mut collector = SpanCollector::new(tokens, src, 42);
+        collector.spans.push(0..6);
+
+        let (spans, extra) = collector.into_parts();
+
+        assert_eq!(spans, vec![0..6]);
+        assert_eq!(extra, 42);
+    }
+}
