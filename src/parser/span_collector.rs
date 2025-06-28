@@ -58,11 +58,16 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for `SpanCollector` using the `TokenStream` abstraction.
+    //!
+    //! These tests validate that the collector exposes its token stream
+    //! correctly and that extra state can be retrieved without consuming the
+    //! collected spans.
     use super::*;
     use rstest::rstest;
 
     #[rstest]
-    fn new_initialises_stream_and_state() {
+    fn new_initialises_state() {
         let src = "import foo";
         let tokens = crate::tokenize(src);
         let collector = SpanCollector::new(&tokens, src, ());
