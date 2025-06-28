@@ -45,8 +45,8 @@ impl<'a> TokenStream<'a> {
 
     /// Peek at the token under the cursor.
     #[must_use]
-    pub(crate) fn peek(&self) -> Option<(SyntaxKind, Span)> {
-        self.tokens.get(self.cursor).cloned()
+    pub(crate) fn peek(&self) -> Option<&(SyntaxKind, Span)> {
+        self.tokens.get(self.cursor)
     }
 
     /// Advance the cursor by one token.
@@ -85,7 +85,11 @@ impl<'a> TokenStream<'a> {
         let mut end = self.tokens.get(start).map_or(self.src.len(), |t| t.1.end);
         for tok in self.tokens.iter().skip(start) {
             end = tok.1.end;
-            if self.src.get(tok.1.clone()).unwrap_or("").contains('\n') {
+            if self
+                .src
+                .get(tok.1.clone())
+                .is_some_and(|text| text.contains('\n'))
+            {
                 break;
             }
         }
@@ -96,7 +100,10 @@ impl<'a> TokenStream<'a> {
     pub(crate) fn skip_ws_inline(&mut self) {
         while let Some(tok) = self.tokens.get(self.cursor) {
             if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-                && !self.src.get(tok.1.clone()).unwrap_or("").contains('\n')
+                && !self
+                    .src
+                    .get(tok.1.clone())
+                    .is_some_and(|text| text.contains('\n'))
             {
                 self.cursor += 1;
                 continue;
