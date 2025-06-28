@@ -46,9 +46,10 @@ macro_rules! token_dispatch {
     ( $ctx:ident, {
         $( $kind:path => $handler:ident ),* $(,)?
     } ) => {{
-        while let Some((kind, span)) = $ctx.stream.peek() {
+        while let Some(&(kind, ref span_ref)) = $ctx.stream.peek() {
+            let span = span_ref.clone();
             match kind {
-                $( $kind => $handler(&mut $ctx, span), )*
+                $( $kind => $handler(&mut $ctx, span.clone()), )*
                 _ => $ctx.stream.advance(),
             }
         }
@@ -193,7 +194,11 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
         let start = span.start;
         st.stream.advance();
         st.stream.skip_ws_inline();
-        if let Some((SyntaxKind::K_TYPE, _)) = st.stream.peek() {
+        if st
+            .stream
+            .peek()
+            .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TYPE)
+        {
             st.stream.advance();
             let end = st.stream.line_end(st.stream.cursor());
             st.stream.skip_until(end);
