@@ -55,3 +55,31 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
         (self.spans, self.extra)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    fn new_initialises_stream_and_state() {
+        let src = "import foo";
+        let tokens = crate::tokenize(src);
+        let collector = SpanCollector::new(&tokens, src, ());
+        assert_eq!(collector.stream.cursor(), 0);
+        assert_eq!(collector.stream.tokens(), tokens.as_slice());
+        assert_eq!(collector.stream.src(), src);
+        assert!(collector.spans.is_empty());
+    }
+
+    #[test]
+    fn into_parts_returns_collected_spans_and_extra() {
+        let src = "input";
+        let tokens = crate::tokenize(src);
+        let mut collector = SpanCollector::new(&tokens, src, 99u8);
+        collector.spans.push(0..5);
+        let (spans, extra) = collector.into_parts();
+        assert_eq!(spans, vec![0..5]);
+        assert_eq!(extra, 99);
+    }
+}
