@@ -16,5 +16,5 @@ fn main() {
 }
 ```
 
-Control the verbosity with the `RUST_LOG` environment variable. For example,
-`RUST_LOG=warn` will show warnings.
+Control the verbosity with the `RUST_LOG` environment variable. For example, you
+can set `RUST_LOG=warn` to display warnings.

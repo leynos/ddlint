@@ -564,8 +564,8 @@ fn main() {
 }
 ```
 
-Set the `RUST_LOG` environment variable to control verbosity. For example,
-`RUST_LOG=warn` will display warnings while suppressing debug output.
+Set the `RUST_LOG` environment variable to control verbosity. For example, you
+can set `RUST_LOG=warn` to display warnings while suppressing debug output.
 
 ## V. Advanced Features: Diagnostics and Automated Fixes
 
