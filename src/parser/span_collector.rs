@@ -87,17 +87,4 @@ mod tests {
         assert_eq!(spans, vec![0..5]);
         assert_eq!(extra, 99);
     }
-
-    #[rstest]
-    fn into_parts_returns_components() {
-        let tokens = &[(SyntaxKind::K_IMPORT, 0..6)];
-        let src = "import";
-        let mut collector = SpanCollector::new(tokens, src, 42);
-        collector.spans.push(0..6);
-
-        let (spans, extra) = collector.into_parts();
-
-        assert_eq!(spans, vec![0..6]);
-        assert_eq!(extra, 42);
-    }
 }
