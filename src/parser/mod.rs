@@ -125,6 +125,7 @@ fn line_end(tokens: &[(SyntaxKind, Span)], src: &str, start: usize) -> usize {
     let mut end = tokens.get(start).map_or(src.len(), |t| t.1.end);
     for tok in tokens.iter().skip(start) {
         end = tok.1.end;
+        // `Span` (`Range<usize>`) is not `Copy`, so we clone it for `str::get`.
         let text = src.get(tok.1.clone()).unwrap_or("");
         if text.contains('\n') {
             break;
@@ -135,11 +136,13 @@ fn line_end(tokens: &[(SyntaxKind, Span)], src: &str, start: usize) -> usize {
 
 /// Skip whitespace and comments that do not contain newlines.
 ///
-/// Used when parsing single-line constructs to ignore inline whitespace without
-/// crossing line boundaries.
+/// Tokens containing newline characters remain in the stream so callers can
+/// detect line boundaries. Used when parsing single-line constructs to ignore
+/// inline whitespace without crossing to the next line.
 fn skip_ws_no_newline(tokens: &[(SyntaxKind, Span)], src: &str, index: &mut usize) {
     while let Some(tok) = tokens.get(*index) {
         if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+            // `Span` is cloned because `str::get` requires an owned range.
             && !src.get(tok.1.clone()).unwrap_or("").contains('\n')
         {
             *index += 1;
@@ -367,6 +370,7 @@ fn assert_spans_sorted(spans: &[Span]) {
 
 /// Push a token to the tree, wrapping `N_ERROR` tokens in an error node.
 fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: &Span, src: &str) {
+    // `Span` is cloned because `str::get` takes the range by value.
     let text = src.get(span.clone()).map_or_else(
         || {
             warn!(
