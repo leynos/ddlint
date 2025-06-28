@@ -195,6 +195,11 @@ sequenceDiagram
     Parser-->>User: Parsed { green, root }
 ```
 
+After tokenization the parser wraps the vector of tokens in a lightweight
+`TokenStream`. This structure manages the current cursor and exposes helper
+methods such as `line_end` or `skip_ws_inline`. Navigating tokens through this
+abstraction avoids manual index arithmetic and reduces boundary errors.
+
 ### 2.1. Defining the DDlog `SyntaxKind`
 
 Following the established `rowan` pattern, the grammar of the DDlog language
