@@ -58,8 +58,35 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for `SpanCollector` using the `TokenStream` abstraction.
+    //!
+    //! These tests validate that the collector exposes its token stream
+    //! correctly and that extra state can be retrieved without consuming the
+    //! collected spans.
     use super::*;
     use rstest::rstest;
+
+    #[rstest]
+    fn new_initialises_state() {
+        let src = "import foo";
+        let tokens = crate::tokenize(src);
+        let collector = SpanCollector::new(&tokens, src, ());
+        assert_eq!(collector.stream.cursor(), 0);
+        assert_eq!(collector.stream.tokens(), tokens.as_slice());
+        assert_eq!(collector.stream.src(), src);
+        assert!(collector.spans.is_empty());
+    }
+
+    #[test]
+    fn into_parts_returns_collected_spans_and_extra() {
+        let src = "input";
+        let tokens = crate::tokenize(src);
+        let mut collector = SpanCollector::new(&tokens, src, 99u8);
+        collector.spans.push(0..5);
+        let (spans, extra) = collector.into_parts();
+        assert_eq!(spans, vec![0..5]);
+        assert_eq!(extra, 99);
+    }
 
     #[rstest]
     fn new_initialises_state() {
