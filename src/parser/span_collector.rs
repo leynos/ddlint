@@ -7,14 +7,14 @@
 
 use crate::{Span, SyntaxKind};
 
+use super::token_stream::TokenStream;
+
 /// Common state used when scanning the token stream.
 #[derive(Debug)]
 pub(crate) struct SpanCollector<'a, Extra> {
-    pub(crate) cursor: usize,
+    pub(crate) stream: TokenStream<'a>,
     pub(crate) spans: Vec<Span>,
     pub(crate) extra: Extra,
-    pub(crate) tokens: &'a [(SyntaxKind, Span)],
-    pub(crate) src: &'a str,
 }
 
 impl<'a, Extra> SpanCollector<'a, Extra> {
@@ -22,11 +22,9 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
     #[must_use]
     pub(crate) fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str, extra: Extra) -> Self {
         Self {
-            cursor: 0,
+            stream: TokenStream::new(tokens, src),
             spans: Vec::new(),
             extra,
-            tokens,
-            src,
         }
     }
 
