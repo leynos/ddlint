@@ -16,30 +16,40 @@ use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 mod span_collector;
 use span_collector::SpanCollector;
 
-/// Iterate over tokens and dispatch to a handler based on the token kind.
+/// Iterate over `tokens` and dispatch handlers by [`SyntaxKind`].
 ///
-/// The macro loops until the token slice is exhausted, invoking the matching
-/// handler for each recognised `SyntaxKind`. It expects a state object that
-/// contains a `cursor` field tracking the current position in the token slice.
-/// Handlers mutate the state to consume tokens. Any unhandled kind simply
-/// advances the cursor by one.
+/// The macro expects a parsing context `ctx` with a `cursor` field and a slice
+/// of tokens. It loops from `ctx.cursor` until the slice is exhausted,
+/// invoking the handler associated with each recognised kind. Handlers must
+/// advance the cursor to consume the tokens they process. Any unhandled kind
+/// increments `ctx.cursor`.
 ///
 /// # Examples
 ///
+///
 /// ```
-/// dispatch_tokens!(st, tokens, {
-///     SyntaxKind::K_IMPORT => handle_import,
-///     SyntaxKind::K_TYPEDEF => handle_typedef,
+/// struct State<'a> {
+///     cursor: usize,
+///     tokens: &'a [(SyntaxKind, Span)],
+/// }
+///
+/// fn handle_kw(st: &mut State<'_>, _span: Span) {
+///     st.cursor += 1;
+/// }
+///
+/// let mut st = State { cursor: 0, tokens: &tokens };
+/// token_dispatch!(st, tokens, {
+///     SyntaxKind::K_IMPORT => handle_kw,
 /// });
 /// ```
-macro_rules! dispatch_tokens {
-    ( $state:ident, $token_list:ident, {
+macro_rules! token_dispatch {
+    ( $ctx:ident, $tokens:ident, {
         $( $kind:path => $handler:ident ),* $(,)?
     } ) => {{
-        while let Some((kind, span)) = $token_list.get($state.cursor).cloned() {
+        while let Some((kind, span)) = $tokens.get($ctx.cursor).cloned() {
             match kind {
-                $( $kind => $handler(&mut $state, span), )*
-                _ => $state.cursor += 1,
+                $( $kind => $handler(&mut $ctx, span), )*
+                _ => $ctx.cursor += 1,
             }
         }
     }};
@@ -206,7 +216,7 @@ fn collect_import_spans(
 
     let mut st = State::new(tokens, src, Vec::new());
 
-    dispatch_tokens!(st, tokens, {
+    token_dispatch!(st, tokens, {
         SyntaxKind::K_IMPORT => handle_import,
     });
 
@@ -247,7 +257,7 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 
     let mut st = State::new(tokens, src, ());
 
-    dispatch_tokens!(st, tokens, {
+    token_dispatch!(st, tokens, {
         SyntaxKind::K_TYPEDEF => handle_typedef,
         SyntaxKind::K_EXTERN => handle_extern,
     });
