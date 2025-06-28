@@ -10,6 +10,7 @@ Initialise a logger in your `main` function to display these messages. The
 
 ```rust
 fn main() {
+    // Cargo.toml: env_logger = "0.11"
     env_logger::init();
     // run ddlint or your integration here
 }

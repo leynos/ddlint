@@ -558,6 +558,7 @@ routine early in `main` to surface these messages. One convenient option is
 
 ```rust
 fn main() {
+    // Cargo.toml: env_logger = "0.11"
     env_logger::init();
     // run ddlint or your application logic
 }
