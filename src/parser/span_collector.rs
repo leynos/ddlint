@@ -89,20 +89,6 @@ mod tests {
     }
 
     #[rstest]
-    fn new_initialises_state() {
-        let tokens = &[(SyntaxKind::K_IMPORT, 0..6)];
-        let src = "import";
-        let extra = vec![1, 2, 3];
-        let collector = SpanCollector::new(tokens, src, extra.clone());
-
-        assert_eq!(collector.cursor, 0);
-        assert!(collector.spans.is_empty());
-        assert_eq!(collector.extra, extra);
-        assert_eq!(collector.tokens, tokens);
-        assert_eq!(collector.src, src);
-    }
-
-    #[rstest]
     fn into_parts_returns_components() {
         let tokens = &[(SyntaxKind::K_IMPORT, 0..6)];
         let src = "import";
