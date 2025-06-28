@@ -16,13 +16,10 @@ use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 /// Iterate over tokens and dispatch to a handler based on the token kind.
 ///
 /// The macro loops until the token slice is exhausted, invoking the matching
-/// handler for each recognised `SyntaxKind`. Any token kinds not provided in the
-/// pattern cause the state's index to advance with no other action.
-/// Iterate over tokens and call a handler for each recognised kind.
-///
-/// The macro expects a state object that contains a `cursor` field tracking the
-/// current position in the token slice. Handlers mutate the state to consume
-/// tokens. Any unhandled kind simply advances the cursor by one.
+/// handler for each recognised `SyntaxKind`. It expects a state object that
+/// contains a `cursor` field tracking the current position in the token slice.
+/// Handlers mutate the state to consume tokens. Any unhandled kind simply
+/// advances the cursor by one.
 ///
 /// # Examples
 ///
