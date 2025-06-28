@@ -18,7 +18,28 @@ pub(crate) struct SpanCollector<'a, Extra> {
 }
 
 impl<'a, Extra> SpanCollector<'a, Extra> {
-    /// Create a new collector over `tokens`.
+    /// Constructs a new `SpanCollector` for the given token stream, source string, and extra state.
+    ///
+    /// # Parameters
+    ///
+    /// - `tokens`: Slice of token and span pairs to be scanned.
+    /// - `src`: The source string corresponding to the tokens.
+    /// - `extra`: Additional state required for parsing logic.
+    ///
+    /// # Returns
+    ///
+    /// A `SpanCollector` instance ready to collect statement spans during parsing.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use crate::parser::{SpanCollector, SyntaxKind, Span};
+    ///
+    /// let tokens: &[(SyntaxKind, Span)] = &[];
+    /// let src = "";
+    /// let extra = ();
+    /// let collector = SpanCollector::new(tokens, src, extra);
+    /// ```
     #[must_use]
     pub(crate) fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str, extra: Extra) -> Self {
         Self {
