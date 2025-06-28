@@ -193,16 +193,15 @@ impl<'a> TokenStream<'a> {
     /// ```
     pub(crate) fn skip_ws_inline(&mut self) {
         while let Some(tok) = self.tokens.get(self.cursor) {
-            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-                && !self
+            if !matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+                || self
                     .src
                     .get(tok.1.clone())
                     .is_some_and(|text| text.contains('\n'))
             {
-                self.cursor += 1;
-                continue;
+                break;
             }
-            break;
+            self.cursor += 1;
         }
     }
 }
