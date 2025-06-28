@@ -13,6 +13,9 @@ use rowan::{GreenNode, GreenNodeBuilder, Language};
 
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 
+mod span_collector;
+use span_collector::SpanCollector;
+
 /// Iterate over tokens and dispatch to a handler based on the token kind.
 ///
 /// The macro loops until the token slice is exhausted, invoking the matching
@@ -157,13 +160,7 @@ fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
-    struct State<'a> {
-        cursor: usize,
-        spans: Vec<Span>,
-        errors: Vec<Simple<SyntaxKind>>,
-        tokens: &'a [(SyntaxKind, Span)],
-        src: &'a str,
-    }
+    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
     fn handle_import(st: &mut State<'_>, span: Span) {
         let ws = filter(|kind: &SyntaxKind| {
@@ -201,25 +198,19 @@ fn collect_import_spans(
             st.spans.push(sp);
             skip_tokens_until(&mut st.cursor, st.tokens, end);
         } else {
-            st.errors.extend(err);
+            st.extra.extend(err);
             let end = line_end(st.tokens, st.src, st.cursor);
             skip_tokens_until(&mut st.cursor, st.tokens, end);
         }
     }
 
-    let mut st = State {
-        cursor: 0,
-        spans: Vec::new(),
-        errors: Vec::new(),
-        tokens,
-        src,
-    };
+    let mut st = State::new(tokens, src, Vec::new());
 
     dispatch_tokens!(st, tokens, {
         SyntaxKind::K_IMPORT => handle_import,
     });
 
-    (st.spans, st.errors)
+    st.into_parts()
 }
 
 /// Collect the spans of `typedef` and `extern type` declarations.
@@ -227,12 +218,7 @@ fn collect_import_spans(
 /// Spans cover the full declaration line so tokens can be grouped into
 /// `N_TYPE_DEF` nodes later when building the CST.
 fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
-    struct State<'a> {
-        cursor: usize,
-        spans: Vec<Span>,
-        tokens: &'a [(SyntaxKind, Span)],
-        src: &'a str,
-    }
+    type State<'a> = SpanCollector<'a, ()>;
 
     fn handle_typedef(st: &mut State<'_>, span: Span) {
         let start = span.start;
@@ -259,12 +245,7 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
         }
     }
 
-    let mut st = State {
-        cursor: 0,
-        spans: Vec::new(),
-        tokens,
-        src,
-    };
+    let mut st = State::new(tokens, src, ());
 
     dispatch_tokens!(st, tokens, {
         SyntaxKind::K_TYPEDEF => handle_typedef,
