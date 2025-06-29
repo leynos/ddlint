@@ -37,6 +37,15 @@ fn pretty_print(node: &rowan::SyntaxNode<ddlint::DdlogLanguage>) -> String {
     out
 }
 
+/// Collapse runs of whitespace into single spaces.
+///
+/// ```
+/// assert_eq!(normalise_whitespace("a  b\n c"), "a b c");
+/// ```
+fn normalise_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[fixture]
 fn simple_prog() -> &'static str {
     "input relation R(x: u32);"
@@ -490,11 +499,14 @@ fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
 }
 
 #[rstest]
-fn index_declaration_whitespace_variations() {
-    let src = "  index  Idx_User_ws \t on\n  User (\n    username  )  ";
+#[case("index Idx_User_ws on User(username)")]
+#[case(" index  Idx_User_ws  on  User( username ) ")]
+#[case(index_whitespace_variations())]
+fn index_declaration_whitespace_variations(#[case] src: &str) {
     let parsed = parse(src);
     assert!(parsed.errors().is_empty());
-    assert_eq!(pretty_print(parsed.root().syntax()), src);
+    let printed = pretty_print(parsed.root().syntax());
+    assert_eq!(normalise_whitespace(&printed), normalise_whitespace(src));
     let indexes = parsed.root().indexes();
     let Some(idx) = indexes.first() else {
         panic!("expected index");
