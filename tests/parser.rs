@@ -37,6 +37,15 @@ fn pretty_print(node: &rowan::SyntaxNode<ddlint::DdlogLanguage>) -> String {
     out
 }
 
+/// Collapse runs of whitespace into single spaces.
+///
+/// ```
+/// assert_eq!(normalise_whitespace("a  b\n c"), "a b c");
+/// ```
+fn normalise_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[fixture]
 fn simple_prog() -> &'static str {
     "input relation R(x: u32);"
@@ -95,6 +104,11 @@ fn index_nested_function() -> &'static str {
 #[fixture]
 fn index_unbalanced_parentheses() -> &'static str {
     "index Idx_Unbalanced on User(lower(username)"
+}
+
+#[fixture]
+fn index_whitespace_variations() -> &'static str {
+    "  index  Idx_User_ws \t on\n  User (\n    username  )  "
 }
 
 /// Verifies that parsing and pretty-printing preserves the original input text
@@ -482,4 +496,22 @@ fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
     let parsed = parse(index_unbalanced_parentheses);
     assert!(!parsed.errors().is_empty());
     assert!(parsed.root().indexes().is_empty());
+}
+
+#[rstest]
+#[case("index Idx_User_ws on User(username)")]
+#[case(" index  Idx_User_ws  on  User( username ) ")]
+#[case(index_whitespace_variations())]
+fn index_declaration_whitespace_variations(#[case] src: &str) {
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty());
+    let printed = pretty_print(parsed.root().syntax());
+    assert_eq!(normalise_whitespace(&printed), normalise_whitespace(src));
+    let indexes = parsed.root().indexes();
+    let Some(idx) = indexes.first() else {
+        panic!("expected index");
+    };
+    assert_eq!(idx.name(), Some("Idx_User_ws".into()));
+    assert_eq!(idx.relation(), Some("User".into()));
+    assert_eq!(idx.columns(), vec![String::from("username")]);
 }
