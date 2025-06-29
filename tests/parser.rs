@@ -52,6 +52,21 @@ fn empty_prog() -> &'static str {
     ""
 }
 
+#[fixture]
+fn input_relation_pk() -> &'static str {
+    "input relation User(user_id: u32, username: string) primary key (user_id)"
+}
+
+#[fixture]
+fn output_relation_no_pk() -> &'static str {
+    "output relation Alert(message: string, timestamp: u64)"
+}
+
+#[fixture]
+fn internal_relation_compound_pk() -> &'static str {
+    "relation UserSession(user_id: u32, session_id: string, start_time: u64) primary key (user_id, session_id)"
+}
+
 /// Verifies that parsing and pretty-printing preserves the original input text
 /// and produces the expected root node kind.
 #[rstest]
@@ -279,4 +294,74 @@ fn typedef_missing_name_returns_none() {
         .first()
         .unwrap_or_else(|| panic!("typedef span exists"));
     assert_eq!(def.name(), None);
+}
+
+#[rstest]
+fn input_relation_parsed(input_relation_pk: &str) {
+    let parsed = parse(input_relation_pk);
+    let relations = parsed.root().relations();
+    assert_eq!(relations.len(), 1);
+    let rel = relations
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("relation missing"));
+    assert!(rel.is_input());
+    assert!(!rel.is_output());
+    assert_eq!(rel.name(), Some("User".into()));
+    assert_eq!(
+        rel.columns(),
+        vec![
+            ("user_id".into(), "u32".into()),
+            ("username".into(), "string".into()),
+        ]
+    );
+    assert_eq!(rel.primary_key(), Some(vec!["user_id".into()]));
+}
+
+#[rstest]
+fn output_relation_parsed(output_relation_no_pk: &str) {
+    let parsed = parse(output_relation_no_pk);
+    let relations = parsed.root().relations();
+    assert_eq!(relations.len(), 1);
+    let rel = relations
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("relation missing"));
+    assert!(!rel.is_input());
+    assert!(rel.is_output());
+    assert_eq!(rel.name(), Some("Alert".into()));
+    assert_eq!(
+        rel.columns(),
+        vec![
+            ("message".into(), "string".into()),
+            ("timestamp".into(), "u64".into()),
+        ]
+    );
+    assert!(rel.primary_key().is_none());
+}
+
+#[rstest]
+fn internal_relation_parsed(internal_relation_compound_pk: &str) {
+    let parsed = parse(internal_relation_compound_pk);
+    let relations = parsed.root().relations();
+    assert_eq!(relations.len(), 1);
+    let rel = relations
+        .first()
+        .cloned()
+        .unwrap_or_else(|| panic!("relation missing"));
+    assert!(!rel.is_input());
+    assert!(!rel.is_output());
+    assert_eq!(rel.name(), Some("UserSession".into()));
+    assert_eq!(
+        rel.columns(),
+        vec![
+            ("user_id".into(), "u32".into()),
+            ("session_id".into(), "string".into()),
+            ("start_time".into(), "u64".into()),
+        ]
+    );
+    assert_eq!(
+        rel.primary_key(),
+        Some(vec!["user_id".into(), "session_id".into()])
+    );
 }

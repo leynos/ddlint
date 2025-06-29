@@ -92,9 +92,9 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (import_spans, typedef_spans, errors) = parse_tokens(&tokens, src);
+    let (import_spans, typedef_spans, relation_spans, errors) = parse_tokens(&tokens, src);
 
-    let green = build_green_tree(tokens, src, &import_spans, &typedef_spans);
+    let green = build_green_tree(tokens, src, &import_spans, &typedef_spans, &relation_spans);
     let root = ast::Root::from_green(green.clone());
 
     Parsed {
@@ -104,25 +104,26 @@ pub fn parse(src: &str) -> Parsed {
     }
 }
 
-/// Identifies and collects the spans of `import` and `typedef` statements in a token stream.
+/// Identifies and collects the spans of `import`, `typedef`, and `relation` statements in a token stream.
 ///
 /// Returns tuples containing the spans of `import` statements, `typedef`/`extern type` declarations,
-/// and any parse errors encountered during import span collection.
+/// relation declarations, and any parse errors encountered during import span collection.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// let (imports, typedefs, errors) = parse_tokens(&tokens, src);
+/// let (imports, typedefs, relations, errors) = parse_tokens(&tokens, src);
 /// assert!(imports.iter().all(|span| span.start < span.end));
 /// ```
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-) -> (Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
+) -> (Vec<Span>, Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
+    let relation_spans = collect_relation_spans(tokens, src);
 
-    (import_spans, typedef_spans, errors)
+    (import_spans, typedef_spans, relation_spans, errors)
 }
 
 /// Scans the token stream for `import` statements and collects their spans.
@@ -290,6 +291,59 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
     st.spans
 }
 
+/// Collects the spans of relation declarations in the token stream.
+///
+/// A relation declaration may start with the optional keywords `input` or
+/// `output` followed by `relation`. The span extends to the end of the line
+/// containing the declaration. No validation of the declaration contents is
+/// performed at this stage.
+fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
+    type State<'a> = SpanCollector<'a, ()>;
+
+    fn record_relation(st: &mut State<'_>, start: usize) {
+        let end = st.stream.line_end(st.stream.cursor());
+        st.stream.skip_until(end);
+        st.spans.push(start..end);
+    }
+
+    fn handle_input(st: &mut State<'_>, span: Span) {
+        let start = span.start;
+        st.stream.advance();
+        st.stream.skip_ws_inline();
+        if st
+            .stream
+            .peek()
+            .is_some_and(|(kind, _)| *kind == SyntaxKind::K_RELATION)
+        {
+            st.stream.advance();
+            record_relation(st, start);
+        } else {
+            let end = st.stream.line_end(st.stream.cursor());
+            st.stream.skip_until(end);
+        }
+    }
+
+    fn handle_output(st: &mut State<'_>, span: Span) {
+        handle_input(st, span);
+    }
+
+    fn handle_relation(st: &mut State<'_>, span: Span) {
+        let start = span.start;
+        st.stream.advance();
+        record_relation(st, start);
+    }
+
+    let mut st = State::new(tokens, src, ());
+
+    token_dispatch!(st, {
+        SyntaxKind::K_INPUT => handle_input,
+        SyntaxKind::K_OUTPUT => handle_output,
+        SyntaxKind::K_RELATION => handle_relation,
+    });
+
+    st.spans
+}
+
 /// Construct the CST from the token stream and recorded statement spans.
 ///
 /// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
@@ -300,18 +354,22 @@ fn build_green_tree(
     src: &str,
     imports: &[Span],
     typedefs: &[Span],
+    relations: &[Span],
 ) -> GreenNode {
     assert_spans_sorted(imports);
     assert_spans_sorted(typedefs);
+    assert_spans_sorted(relations);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
     let mut import_iter = imports.iter().peekable();
     let mut typedef_iter = typedefs.iter().peekable();
+    let mut relation_iter = relations.iter().peekable();
 
     for (kind, span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
         advance_span_iter(&mut typedef_iter, span.start);
+        advance_span_iter(&mut relation_iter, span.start);
 
         maybe_start(
             &mut builder,
@@ -325,11 +383,18 @@ fn build_green_tree(
             span.start,
             SyntaxKind::N_TYPE_DEF,
         );
+        maybe_start(
+            &mut builder,
+            &mut relation_iter,
+            span.start,
+            SyntaxKind::N_RELATION_DECL,
+        );
 
         push_token(&mut builder, kind, &span, src);
 
         maybe_finish(&mut builder, &mut import_iter, span.end);
         maybe_finish(&mut builder, &mut typedef_iter, span.end);
+        maybe_finish(&mut builder, &mut relation_iter, span.end);
     }
 
     builder.finish_node();
@@ -478,6 +543,16 @@ pub mod ast {
                 .map(|syntax| TypeDef { syntax })
                 .collect()
         }
+
+        /// Collect all relation declarations under this root.
+        #[must_use]
+        pub fn relations(&self) -> Vec<Relation> {
+            self.syntax
+                .children()
+                .filter(|n| n.kind() == SyntaxKind::N_RELATION_DECL)
+                .map(|syntax| Relation { syntax })
+                .collect()
+        }
     }
 
     /// Typed wrapper for an `import` statement.
@@ -592,6 +667,87 @@ pub mod ast {
             }
         }
         None
+    }
+
+    /// Typed wrapper for a relation declaration.
+    #[derive(Debug, Clone)]
+    pub struct Relation {
+        pub(crate) syntax: SyntaxNode<DdlogLanguage>,
+    }
+
+    impl Relation {
+        /// Access the underlying syntax node.
+        #[must_use]
+        pub fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
+            &self.syntax
+        }
+
+        /// Name of the relation if present.
+        #[must_use]
+        pub fn name(&self) -> Option<String> {
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_RELATION))
+                .skip(1)
+                .find_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
+                    }
+                    _ => None,
+                })
+        }
+
+        /// Whether the relation is declared as `input`.
+        #[must_use]
+        pub fn is_input(&self) -> bool {
+            self.syntax
+                .children_with_tokens()
+                .any(|e| e.kind() == SyntaxKind::K_INPUT)
+        }
+
+        /// Whether the relation is declared as `output`.
+        #[must_use]
+        pub fn is_output(&self) -> bool {
+            self.syntax
+                .children_with_tokens()
+                .any(|e| e.kind() == SyntaxKind::K_OUTPUT)
+        }
+
+        /// Columns declared for the relation.
+        #[must_use]
+        pub fn columns(&self) -> Vec<(String, String)> {
+            let text = self.syntax.text().to_string();
+            let inner = text
+                .split_once('(')
+                .and_then(|(_, rest)| rest.split_once(')').map(|(i, _)| i))
+                .unwrap_or("");
+            inner
+                .split(',')
+                .filter_map(|part| {
+                    let mut split = part.split(':');
+                    let name = split.next()?.trim();
+                    let ty = split.next()?.trim();
+                    Some((name.to_string(), ty.to_string()))
+                })
+                .collect()
+        }
+
+        /// Primary key column names if specified.
+        #[must_use]
+        pub fn primary_key(&self) -> Option<Vec<String>> {
+            let text = self.syntax.text().to_string();
+            let inner = text
+                .split("primary key")
+                .nth(1)
+                .and_then(|s| s.split_once('('))
+                .and_then(|(_, rest)| rest.split_once(')').map(|(i, _)| i))?;
+            let keys = inner
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>();
+            if keys.is_empty() { None } else { Some(keys) }
+        }
     }
 }
 
