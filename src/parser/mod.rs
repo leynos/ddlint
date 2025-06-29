@@ -56,6 +56,23 @@ macro_rules! token_dispatch {
     }};
 }
 
+/// Parser recognising whitespace and comment tokens.
+///
+/// The combinator is useful for padding other parsers where whitespace is
+/// allowed. It matches [`SyntaxKind::T_WHITESPACE`] and
+/// [`SyntaxKind::T_COMMENT`] tokens and discards them.
+///
+/// # Examples
+///
+/// ```no_run
+/// use ddlint::parser::inline_ws;
+/// let parser = inline_ws().repeated();
+/// ```
+fn inline_ws() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    filter(|kind: &SyntaxKind| matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .ignored()
+}
+
 /// Result of a parse operation.
 #[derive(Debug)]
 pub struct Parsed {
@@ -92,9 +109,17 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (import_spans, typedef_spans, relation_spans, errors) = parse_tokens(&tokens, src);
+    let (import_spans, typedef_spans, relation_spans, index_spans, errors) =
+        parse_tokens(&tokens, src);
 
-    let green = build_green_tree(tokens, src, &import_spans, &typedef_spans, &relation_spans);
+    let green = build_green_tree(
+        tokens,
+        src,
+        &import_spans,
+        &typedef_spans,
+        &relation_spans,
+        &index_spans,
+    );
     let root = ast::Root::from_green(green.clone());
 
     Parsed {
@@ -104,26 +129,45 @@ pub fn parse(src: &str) -> Parsed {
     }
 }
 
-/// Identifies and collects the spans of `import`, `typedef`, and `relation` statements in a token stream.
+/// Identifies and collects the spans of `import`, `typedef`, `relation`, and
+/// `index` statements in a token stream.
 ///
 /// Returns tuples containing the spans of `import` statements, `typedef`/`extern type` declarations,
-/// relation declarations, and any parse errors encountered during import span collection.
+/// relation declarations, index declarations, and any parse errors encountered
+/// during span collection.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// let (imports, typedefs, relations, errors) = parse_tokens(&tokens, src);
+/// let (imports, typedefs, relations, indexes, errors) = parse_tokens(&tokens, src);
 /// assert!(imports.iter().all(|span| span.start < span.end));
 /// ```
+#[expect(clippy::type_complexity, reason = "returning multiple span lists")]
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-) -> (Vec<Span>, Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
+) -> (
+    Vec<Span>,
+    Vec<Span>,
+    Vec<Span>,
+    Vec<Span>,
+    Vec<Simple<SyntaxKind>>,
+) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
     let relation_spans = collect_relation_spans(tokens, src);
+    let (index_spans, index_errors) = collect_index_spans(tokens, src);
 
-    (import_spans, typedef_spans, relation_spans, errors)
+    let mut all_errors = errors;
+    all_errors.extend(index_errors);
+
+    (
+        import_spans,
+        typedef_spans,
+        relation_spans,
+        index_spans,
+        all_errors,
+    )
 }
 
 /// Scans the token stream for `import` statements and collects their spans.
@@ -410,6 +454,99 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
     st.spans
 }
 
+/// Collects the spans of index declarations in the token stream.
+///
+/// The parser recognises the pattern `index <name> on <relation>(<cols>)` and
+/// records the span covering the entire statement. Any syntax errors are
+/// collected for later reporting and the cursor skips to the end of the line.
+fn collect_index_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
+
+    /// Parser for the column list of an index declaration.
+    ///
+    /// The parser consumes tokens between the parentheses, tracking nested
+    /// parentheses so expressions like `lower(name)` parse correctly. It returns
+    /// an error when encountering a closing parenthesis that balances the outer
+    /// one, signalling the end of the column list.
+    fn index_columns() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
+        use std::cell::Cell;
+
+        let depth = Cell::new(0usize);
+
+        just(SyntaxKind::T_LPAREN)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(
+                filter_map(move |span, kind| match kind {
+                    SyntaxKind::T_LPAREN => {
+                        depth.set(depth.get() + 1);
+                        Ok(())
+                    }
+                    SyntaxKind::T_RPAREN => {
+                        if depth.get() == 0 {
+                            Err(Simple::custom(span, "unexpected ')'"))
+                        } else {
+                            depth.set(depth.get() - 1);
+                            Ok(())
+                        }
+                    }
+                    _ => Ok(()),
+                })
+                .padded_by(inline_ws().repeated())
+                .repeated()
+                .at_least(1),
+            )
+            .then_ignore(just(SyntaxKind::T_RPAREN))
+            .ignored()
+    }
+
+    /// Parser for an entire index declaration.
+    /// Returns the span of the declaration if parsing succeeds.
+    fn index_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+        let ident = just(SyntaxKind::T_IDENT)
+            .ignored()
+            .padded_by(inline_ws().repeated());
+
+        let columns = index_columns();
+
+        just(SyntaxKind::K_INDEX)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(ident.clone())
+            .then_ignore(just(SyntaxKind::K_ON).padded_by(inline_ws().repeated()))
+            .then(ident)
+            .then(columns)
+            .padded_by(inline_ws().repeated())
+            .map_with_span(|_, sp: Span| sp)
+    }
+
+    fn handle_index(st: &mut State<'_>, span: Span) {
+        let idx = index_decl();
+
+        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
+        let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
+        let (res, err) = idx.parse_recovery(sub);
+        if let Some(sp) = res {
+            let end = sp.end;
+            st.spans.push(sp);
+            st.stream.skip_until(end);
+        } else {
+            st.extra.extend(err);
+            let end = st.stream.line_end(st.stream.cursor());
+            st.stream.skip_until(end);
+        }
+    }
+
+    let mut st = State::new(tokens, src, Vec::new());
+
+    token_dispatch!(st, {
+        SyntaxKind::K_INDEX => handle_index,
+    });
+
+    st.into_parts()
+}
+
 /// Construct the CST from the token stream and recorded statement spans.
 ///
 /// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
@@ -421,21 +558,25 @@ fn build_green_tree(
     imports: &[Span],
     typedefs: &[Span],
     relations: &[Span],
+    indexes: &[Span],
 ) -> GreenNode {
     assert_spans_sorted(imports);
     assert_spans_sorted(typedefs);
     assert_spans_sorted(relations);
+    assert_spans_sorted(indexes);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
     let mut import_iter = imports.iter().peekable();
     let mut typedef_iter = typedefs.iter().peekable();
     let mut relation_iter = relations.iter().peekable();
+    let mut index_iter = indexes.iter().peekable();
 
     for (kind, span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
         advance_span_iter(&mut typedef_iter, span.start);
         advance_span_iter(&mut relation_iter, span.start);
+        advance_span_iter(&mut index_iter, span.start);
 
         maybe_start(
             &mut builder,
@@ -455,12 +596,19 @@ fn build_green_tree(
             span.start,
             SyntaxKind::N_RELATION_DECL,
         );
+        maybe_start(
+            &mut builder,
+            &mut index_iter,
+            span.start,
+            SyntaxKind::N_INDEX,
+        );
 
         push_token(&mut builder, kind, &span, src);
 
         maybe_finish(&mut builder, &mut import_iter, span.end);
         maybe_finish(&mut builder, &mut typedef_iter, span.end);
         maybe_finish(&mut builder, &mut relation_iter, span.end);
+        maybe_finish(&mut builder, &mut index_iter, span.end);
     }
 
     builder.finish_node();
@@ -617,6 +765,16 @@ pub mod ast {
                 .children()
                 .filter(|n| n.kind() == SyntaxKind::N_RELATION_DECL)
                 .map(|syntax| Relation { syntax })
+                .collect()
+        }
+
+        /// Collect all index declarations under this root.
+        #[must_use]
+        pub fn indexes(&self) -> Vec<Index> {
+            self.syntax
+                .children()
+                .filter(|n| n.kind() == SyntaxKind::N_INDEX)
+                .map(|syntax| Index { syntax })
                 .collect()
         }
     }
@@ -933,6 +1091,106 @@ pub mod ast {
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<_>>();
             if keys.is_empty() { None } else { Some(keys) }
+        }
+    }
+
+    /// Typed wrapper for an index declaration.
+    #[derive(Debug, Clone)]
+    pub struct Index {
+        pub(crate) syntax: SyntaxNode<DdlogLanguage>,
+    }
+
+    impl Index {
+        /// Access the underlying syntax node.
+        #[must_use]
+        pub fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
+            &self.syntax
+        }
+
+        /// Name of the index if present.
+        #[must_use]
+        pub fn name(&self) -> Option<String> {
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_INDEX))
+                .skip(1)
+                .find_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
+                    }
+                    _ => None,
+                })
+        }
+
+        /// Target relation name.
+        #[must_use]
+        pub fn relation(&self) -> Option<String> {
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_ON))
+                .skip(1)
+                .find_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
+                    }
+                    _ => None,
+                })
+        }
+
+        /// Column expressions included in the index.
+        ///
+        /// The method collects the text of each column expression, allowing for
+        /// nested parentheses in cases like `lower(name)` or
+        /// `func(col, other(col2))`.
+        #[must_use]
+        pub fn columns(&self) -> Vec<String> {
+            use rowan::NodeOrToken;
+
+            let mut iter = self.syntax.children_with_tokens();
+
+            // Skip tokens up to the opening parenthesis after the relation name
+            for e in &mut iter {
+                if e.kind() == SyntaxKind::T_LPAREN {
+                    break;
+                }
+            }
+
+            let mut cols = Vec::new();
+            let mut buf = String::new();
+            let mut depth = 0usize;
+
+            for e in iter {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_LPAREN => {
+                            depth += 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_RPAREN => {
+                            if depth == 0 {
+                                let col = buf.trim();
+                                if !col.is_empty() {
+                                    cols.push(col.to_string());
+                                }
+                                break;
+                            }
+                            depth -= 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_COMMA if depth == 0 => {
+                            let col = buf.trim();
+                            if !col.is_empty() {
+                                cols.push(col.to_string());
+                            }
+                            buf.clear();
+                        }
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+            }
+
+            cols
         }
     }
 }

@@ -173,7 +173,8 @@ Other notable grammar rules include:
   values.
 - `func` – parses function definitions, optionally with a body.
 - `transformer` – restricted to `extern` forms, returning a `Transformer` node.
-- `index` – defines an index on a relation.
+- `index` — defines an index on a relation. The Rust port keeps the same grammar
+  and supports nested parentheses within the column list.
 - `relation` – parses a relation declaration and its optional primary key.
 - `rule` – parses a rule head followed by an optional list of body clauses.
 - `statement` and its helpers – parse imperative statements used within rules.
