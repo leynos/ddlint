@@ -466,17 +466,37 @@ fn collect_index_spans(
     type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
     /// Parser for the column list of an index declaration.
+    ///
+    /// The parser consumes tokens between the parentheses, tracking nested
+    /// parentheses so expressions like `lower(name)` parse correctly. It returns
+    /// an error when encountering a closing parenthesis that balances the outer
+    /// one, signalling the end of the column list.
     fn index_columns() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
-        let ident = just(SyntaxKind::T_IDENT)
-            .ignored()
-            .padded_by(inline_ws().repeated());
+        use std::cell::Cell;
+
+        let depth = Cell::new(0usize);
 
         just(SyntaxKind::T_LPAREN)
             .padded_by(inline_ws().repeated())
             .ignore_then(
-                ident
-                    .separated_by(just(SyntaxKind::T_COMMA).padded_by(inline_ws().repeated()))
-                    .at_least(1),
+                filter_map(move |span, kind| match kind {
+                    SyntaxKind::T_LPAREN => {
+                        depth.set(depth.get() + 1);
+                        Ok(())
+                    }
+                    SyntaxKind::T_RPAREN => {
+                        if depth.get() == 0 {
+                            Err(Simple::custom(span, "unexpected ')'"))
+                        } else {
+                            depth.set(depth.get() - 1);
+                            Ok(())
+                        }
+                    }
+                    _ => Ok(()),
+                })
+                .padded_by(inline_ws().repeated())
+                .repeated()
+                .at_least(1),
             )
             .then_ignore(just(SyntaxKind::T_RPAREN))
             .ignored()
