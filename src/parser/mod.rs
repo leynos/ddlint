@@ -92,9 +92,9 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (import_spans, typedef_spans, errors) = parse_tokens(&tokens, src);
+    let (import_spans, typedef_spans, relation_spans, errors) = parse_tokens(&tokens, src);
 
-    let green = build_green_tree(tokens, src, &import_spans, &typedef_spans);
+    let green = build_green_tree(tokens, src, &import_spans, &typedef_spans, &relation_spans);
     let root = ast::Root::from_green(green.clone());
 
     Parsed {
@@ -104,25 +104,26 @@ pub fn parse(src: &str) -> Parsed {
     }
 }
 
-/// Identifies and collects the spans of `import` and `typedef` statements in a token stream.
+/// Identifies and collects the spans of `import`, `typedef`, and `relation` statements in a token stream.
 ///
 /// Returns tuples containing the spans of `import` statements, `typedef`/`extern type` declarations,
-/// and any parse errors encountered during import span collection.
+/// relation declarations, and any parse errors encountered during import span collection.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// let (imports, typedefs, errors) = parse_tokens(&tokens, src);
+/// let (imports, typedefs, relations, errors) = parse_tokens(&tokens, src);
 /// assert!(imports.iter().all(|span| span.start < span.end));
 /// ```
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-) -> (Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
+) -> (Vec<Span>, Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
+    let relation_spans = collect_relation_spans(tokens, src);
 
-    (import_spans, typedef_spans, errors)
+    (import_spans, typedef_spans, relation_spans, errors)
 }
 
 /// Scans the token stream for `import` statements and collects their spans.
@@ -290,6 +291,125 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
     st.spans
 }
 
+/// Collects the spans of relation declarations in the token stream.
+///
+/// A relation declaration may start with the optional keywords `input` or
+/// `output` followed by `relation`. The span extends to the end of the line
+/// containing the declaration. No validation of the declaration contents is
+/// performed at this stage.
+fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
+    type State<'a> = SpanCollector<'a, &'a str>;
+
+    fn skip_relation_columns(st: &mut State<'_>) {
+        st.stream.skip_ws_inline();
+        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_IDENT)) {
+            st.stream.advance();
+        }
+        st.stream.skip_ws_inline();
+        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
+            st.stream.advance();
+            let mut depth = 1usize;
+            while let Some((kind, _)) = st.stream.peek() {
+                match kind {
+                    SyntaxKind::T_LPAREN => depth += 1,
+                    SyntaxKind::T_RPAREN => {
+                        depth -= 1;
+                        if depth == 0 {
+                            st.stream.advance();
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+                st.stream.advance();
+            }
+        }
+    }
+
+    fn skip_primary_key_clause(st: &mut State<'_>) {
+        st.stream.skip_ws_inline();
+        if let Some((SyntaxKind::T_IDENT, span)) = st.stream.peek().cloned()
+            && st.extra.get(span.clone()) == Some("primary")
+        {
+            st.stream.advance();
+            st.stream.skip_ws_inline();
+            if let Some((SyntaxKind::T_IDENT, sp)) = st.stream.peek().cloned()
+                && st.extra.get(sp.clone()) == Some("key")
+            {
+                st.stream.advance();
+                st.stream.skip_ws_inline();
+                if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
+                    st.stream.advance();
+                    let mut depth = 1usize;
+                    while let Some((kind, _)) = st.stream.peek() {
+                        match kind {
+                            SyntaxKind::T_LPAREN => depth += 1,
+                            SyntaxKind::T_RPAREN => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    st.stream.advance();
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                        st.stream.advance();
+                    }
+                }
+            }
+        }
+    }
+
+    fn record_relation(st: &mut State<'_>, start: usize) {
+        // Consume columns and optional primary key clause so multi-line
+        // declarations are captured fully.
+        skip_relation_columns(st);
+        skip_primary_key_clause(st);
+
+        let end = st.stream.line_end(st.stream.cursor());
+        st.stream.skip_until(end);
+        st.spans.push(start..end);
+    }
+
+    fn handle_input(st: &mut State<'_>, span: Span) {
+        let start = span.start;
+        st.stream.advance();
+        st.stream.skip_ws_inline();
+        if st
+            .stream
+            .peek()
+            .is_some_and(|(kind, _)| *kind == SyntaxKind::K_RELATION)
+        {
+            st.stream.advance();
+            record_relation(st, start);
+        } else {
+            let end = st.stream.line_end(st.stream.cursor());
+            st.stream.skip_until(end);
+        }
+    }
+
+    /// Output relations follow the same pattern as input relations.
+    fn handle_output(st: &mut State<'_>, span: Span) {
+        handle_input(st, span);
+    }
+
+    fn handle_relation(st: &mut State<'_>, span: Span) {
+        let start = span.start;
+        st.stream.advance();
+        record_relation(st, start);
+    }
+
+    let mut st = State::new(tokens, src, src);
+
+    token_dispatch!(st, {
+        SyntaxKind::K_INPUT => handle_input,
+        SyntaxKind::K_OUTPUT => handle_output,
+        SyntaxKind::K_RELATION => handle_relation,
+    });
+
+    st.spans
+}
+
 /// Construct the CST from the token stream and recorded statement spans.
 ///
 /// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
@@ -300,18 +420,22 @@ fn build_green_tree(
     src: &str,
     imports: &[Span],
     typedefs: &[Span],
+    relations: &[Span],
 ) -> GreenNode {
     assert_spans_sorted(imports);
     assert_spans_sorted(typedefs);
+    assert_spans_sorted(relations);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
     let mut import_iter = imports.iter().peekable();
     let mut typedef_iter = typedefs.iter().peekable();
+    let mut relation_iter = relations.iter().peekable();
 
     for (kind, span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
         advance_span_iter(&mut typedef_iter, span.start);
+        advance_span_iter(&mut relation_iter, span.start);
 
         maybe_start(
             &mut builder,
@@ -325,11 +449,18 @@ fn build_green_tree(
             span.start,
             SyntaxKind::N_TYPE_DEF,
         );
+        maybe_start(
+            &mut builder,
+            &mut relation_iter,
+            span.start,
+            SyntaxKind::N_RELATION_DECL,
+        );
 
         push_token(&mut builder, kind, &span, src);
 
         maybe_finish(&mut builder, &mut import_iter, span.end);
         maybe_finish(&mut builder, &mut typedef_iter, span.end);
+        maybe_finish(&mut builder, &mut relation_iter, span.end);
     }
 
     builder.finish_node();
@@ -413,7 +544,7 @@ pub mod ast {
     //! exposes only the root node so tests and higher layers can navigate the
     //! parsed CST.
 
-    use rowan::{GreenNode, SyntaxNode};
+    use rowan::{GreenNode, SyntaxElement, SyntaxNode};
 
     use crate::{DdlogLanguage, SyntaxKind};
 
@@ -476,6 +607,16 @@ pub mod ast {
                 .children()
                 .filter(|n| n.kind() == SyntaxKind::N_TYPE_DEF)
                 .map(|syntax| TypeDef { syntax })
+                .collect()
+        }
+
+        /// Collect all relation declarations under this root.
+        #[must_use]
+        pub fn relations(&self) -> Vec<Relation> {
+            self.syntax
+                .children()
+                .filter(|n| n.kind() == SyntaxKind::N_RELATION_DECL)
+                .map(|syntax| Relation { syntax })
                 .collect()
         }
     }
@@ -592,6 +733,207 @@ pub mod ast {
             }
         }
         None
+    }
+
+    fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
+    where
+        I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+    {
+        while matches!(
+            iter.peek().map(SyntaxElement::kind),
+            Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+        ) {
+            iter.next();
+        }
+    }
+
+    /// Typed wrapper for a relation declaration.
+    #[derive(Debug, Clone)]
+    pub struct Relation {
+        pub(crate) syntax: SyntaxNode<DdlogLanguage>,
+    }
+
+    impl Relation {
+        /// Access the underlying syntax node.
+        #[must_use]
+        pub fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
+            &self.syntax
+        }
+
+        /// Name of the relation if present.
+        #[must_use]
+        pub fn name(&self) -> Option<String> {
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_RELATION))
+                .skip(1)
+                .find_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
+                    }
+                    _ => None,
+                })
+        }
+
+        /// Whether the relation is declared as `input`.
+        #[must_use]
+        pub fn is_input(&self) -> bool {
+            self.syntax
+                .children_with_tokens()
+                .any(|e| e.kind() == SyntaxKind::K_INPUT)
+        }
+
+        /// Whether the relation is declared as `output`.
+        #[must_use]
+        pub fn is_output(&self) -> bool {
+            self.syntax
+                .children_with_tokens()
+                .any(|e| e.kind() == SyntaxKind::K_OUTPUT)
+        }
+
+        /// Columns declared for the relation.
+        #[must_use]
+        pub fn columns(&self) -> Vec<(String, String)> {
+            use rowan::NodeOrToken;
+
+            let mut iter = self.syntax.children_with_tokens().peekable();
+            // Skip to the opening parenthesis
+            for e in &mut iter {
+                if e.kind() == SyntaxKind::T_LPAREN {
+                    break;
+                }
+            }
+
+            let mut cols = Vec::new();
+            let mut buf = String::new();
+            let mut name: Option<String> = None;
+            let mut depth = 0usize;
+
+            for e in iter.by_ref() {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_LPAREN => {
+                            depth += 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_RPAREN => {
+                            if depth == 0 {
+                                if let Some(n) = name.take() {
+                                    let ty = buf.trim();
+                                    if !ty.is_empty() {
+                                        cols.push((n, ty.to_string()));
+                                    }
+                                }
+                                break;
+                            }
+                            depth -= 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_COMMA if depth == 0 => {
+                            if let Some(n) = name.take() {
+                                let ty = buf.trim();
+                                if !ty.is_empty() {
+                                    cols.push((n, ty.to_string()));
+                                }
+                            }
+                            buf.clear();
+                        }
+                        SyntaxKind::T_COLON if depth == 0 => {
+                            name = Some(buf.trim().to_string());
+                            buf.clear();
+                        }
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+            }
+            cols
+        }
+
+        /// Primary key column names if specified.
+        #[must_use]
+        pub fn primary_key(&self) -> Option<Vec<String>> {
+            use rowan::NodeOrToken;
+
+            let mut iter = self.syntax.children_with_tokens().peekable();
+            // Skip to the first '(' and consume column list
+            for e in &mut iter {
+                if e.kind() == SyntaxKind::T_LPAREN {
+                    break;
+                }
+            }
+            let mut depth = 1usize;
+            for e in iter.by_ref() {
+                match e.kind() {
+                    SyntaxKind::T_LPAREN => depth += 1,
+                    SyntaxKind::T_RPAREN => {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Skip whitespace/comments
+            skip_whitespace_and_comments(&mut iter);
+
+            match iter.next() {
+                Some(NodeOrToken::Token(t))
+                    if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary" => {}
+                _ => return None,
+            }
+
+            skip_whitespace_and_comments(&mut iter);
+
+            match iter.next() {
+                Some(NodeOrToken::Token(t))
+                    if t.kind() == SyntaxKind::T_IDENT && t.text() == "key" => {}
+                _ => return None,
+            }
+
+            skip_whitespace_and_comments(&mut iter);
+
+            if !matches!(
+                iter.peek().map(rowan::SyntaxElement::kind),
+                Some(SyntaxKind::T_LPAREN)
+            ) {
+                return None;
+            }
+            iter.next(); // consume '('
+            depth = 1;
+            let mut buf = String::new();
+            for e in iter.by_ref() {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_LPAREN => {
+                            depth += 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_RPAREN => {
+                            if depth == 1 {
+                                break;
+                            }
+                            depth -= 1;
+                            buf.push_str(t.text());
+                        }
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+                if depth == 0 {
+                    break;
+                }
+            }
+
+            let keys = buf
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>();
+            if keys.is_empty() { None } else { Some(keys) }
+        }
     }
 }
 

@@ -142,6 +142,7 @@ pub enum SyntaxKind {
     N_IDENTIFIER_WITH_POS,
     N_TYPE,
     N_TYPE_DEF,
+    N_RELATION_DECL,
     N_CONSTRUCTOR,
     N_KEY_EXPR,
     N_RELATION_ROLE,
