@@ -87,6 +87,16 @@ fn index_invalid_missing_on() -> &'static str {
     "index Idx_Invalid User(username)"
 }
 
+#[fixture]
+fn index_nested_function() -> &'static str {
+    "index Idx_lower_username on User(lower(username))"
+}
+
+#[fixture]
+fn index_unbalanced_parentheses() -> &'static str {
+    "index Idx_Unbalanced on User(lower(username)"
+}
+
 /// Verifies that parsing and pretty-printing preserves the original input text
 /// and produces the expected root node kind.
 #[rstest]
@@ -451,4 +461,28 @@ fn index_missing_on_is_error(index_invalid_missing_on: &str) {
     };
     assert!(matches!(err.reason(), SimpleReason::Unexpected));
     assert_eq!(parsed.root().indexes().len(), 0);
+}
+
+#[rstest]
+fn index_nested_function_parsed(index_nested_function: &str) {
+    let parsed = parse(index_nested_function);
+    assert!(parsed.errors().is_empty());
+    let indexes = parsed.root().indexes();
+    assert_eq!(indexes.len(), 1);
+    let Some(idx) = indexes.first() else {
+        panic!("index should exist for valid source");
+    };
+    assert_eq!(idx.name(), Some("Idx_lower_username".into()));
+    assert_eq!(idx.relation(), Some("User".into()));
+    assert_eq!(
+        idx.columns(),
+        vec![String::from("lower"), String::from("username")]
+    );
+}
+
+#[rstest]
+fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
+    let parsed = parse(index_unbalanced_parentheses);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().indexes().is_empty());
 }
