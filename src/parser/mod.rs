@@ -56,6 +56,23 @@ macro_rules! token_dispatch {
     }};
 }
 
+/// Parser recognising whitespace and comment tokens.
+///
+/// The combinator is useful for padding other parsers where whitespace is
+/// allowed. It matches [`SyntaxKind::T_WHITESPACE`] and
+/// [`SyntaxKind::T_COMMENT`] tokens and discards them.
+///
+/// # Examples
+///
+/// ```no_run
+/// use ddlint::parser::inline_ws;
+/// let parser = inline_ws().repeated();
+/// ```
+fn inline_ws() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    filter(|kind: &SyntaxKind| matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .ignored()
+}
+
 /// Result of a parse operation.
 #[derive(Debug)]
 pub struct Parsed {
@@ -450,18 +467,15 @@ fn collect_index_spans(
 
     /// Parser for the column list of an index declaration.
     fn index_columns() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
-        let ws = filter(|kind: &SyntaxKind| {
-            matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-        })
-        .ignored();
-
-        let ident = just(SyntaxKind::T_IDENT).ignored().padded_by(ws.repeated());
+        let ident = just(SyntaxKind::T_IDENT)
+            .ignored()
+            .padded_by(inline_ws().repeated());
 
         just(SyntaxKind::T_LPAREN)
-            .padded_by(ws.repeated())
+            .padded_by(inline_ws().repeated())
             .ignore_then(
                 ident
-                    .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.repeated()))
+                    .separated_by(just(SyntaxKind::T_COMMA).padded_by(inline_ws().repeated()))
                     .at_least(1),
             )
             .then_ignore(just(SyntaxKind::T_RPAREN))
@@ -471,22 +485,19 @@ fn collect_index_spans(
     /// Parser for an entire index declaration.
     /// Returns the span of the declaration if parsing succeeds.
     fn index_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-        let ws = filter(|kind: &SyntaxKind| {
-            matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-        })
-        .ignored();
-
-        let ident = just(SyntaxKind::T_IDENT).ignored().padded_by(ws.repeated());
+        let ident = just(SyntaxKind::T_IDENT)
+            .ignored()
+            .padded_by(inline_ws().repeated());
 
         let columns = index_columns();
 
         just(SyntaxKind::K_INDEX)
-            .padded_by(ws.repeated())
-            .ignore_then(ident)
-            .then_ignore(just(SyntaxKind::K_ON).padded_by(ws.repeated()))
+            .padded_by(inline_ws().repeated())
+            .ignore_then(ident.clone())
+            .then_ignore(just(SyntaxKind::K_ON).padded_by(inline_ws().repeated()))
             .then(ident)
             .then(columns)
-            .padded_by(ws.repeated())
+            .padded_by(inline_ws().repeated())
             .map_with_span(|_, sp: Span| sp)
     }
 
@@ -1111,41 +1122,22 @@ pub mod ast {
         pub fn columns(&self) -> Vec<String> {
             use rowan::NodeOrToken;
 
-            fn push_col(buf: &mut String, cols: &mut Vec<String>) {
-                let col = buf.trim();
-                if !col.is_empty() {
-                    cols.push(col.to_string());
-                }
-                buf.clear();
-            }
+            let mut iter = self.syntax.children_with_tokens();
 
-            let mut iter = self.syntax.children_with_tokens().peekable();
             for e in &mut iter {
                 if e.kind() == SyntaxKind::T_LPAREN {
                     break;
                 }
             }
 
-            let mut cols = Vec::new();
-            let mut buf = String::new();
-
-            for e in iter {
-                match e {
-                    NodeOrToken::Token(t) => match t.kind() {
-                        SyntaxKind::T_RPAREN => {
-                            push_col(&mut buf, &mut cols);
-                            break;
-                        }
-                        SyntaxKind::T_COMMA => {
-                            push_col(&mut buf, &mut cols);
-                        }
-                        _ => buf.push_str(t.text()),
-                    },
-                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-                }
-            }
-
-            cols
+            iter.take_while(|e| e.kind() != SyntaxKind::T_RPAREN)
+                .filter_map(|e| match e {
+                    NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
+                    }
+                    _ => None,
+                })
+                .collect()
         }
     }
 }
