@@ -67,6 +67,11 @@ fn internal_relation_compound_pk() -> &'static str {
     "relation UserSession(user_id: u32, session_id: string, start_time: u64) primary key (user_id, session_id)"
 }
 
+#[fixture]
+fn multiline_relation() -> &'static str {
+    "input relation Log(\n    id: u32,\n    message: string\n) primary key (id)\n"
+}
+
 /// Verifies that parsing and pretty-printing preserves the original input text
 /// and produces the expected root node kind.
 #[rstest]
@@ -364,4 +369,26 @@ fn internal_relation_parsed(internal_relation_compound_pk: &str) {
         rel.primary_key(),
         Some(vec!["user_id".into(), "session_id".into()])
     );
+}
+
+#[rstest]
+fn multiline_relation_parsed(multiline_relation: &str) {
+    let parsed = parse(multiline_relation);
+    assert!(parsed.errors().is_empty());
+    let relations = parsed.root().relations();
+    assert_eq!(relations.len(), 1);
+    let rel = relations
+        .first()
+        .unwrap_or_else(|| panic!("relation missing"));
+    assert!(rel.is_input());
+    assert_eq!(rel.name(), Some("Log".into()));
+    assert_eq!(
+        rel.columns(),
+        vec![
+            ("id".into(), "u32".into()),
+            ("message".into(), "string".into()),
+        ]
+    );
+    assert_eq!(rel.primary_key(), Some(vec!["id".into()]));
+    assert_eq!(pretty_print(rel.syntax()), multiline_relation);
 }

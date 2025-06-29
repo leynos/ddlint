@@ -298,15 +298,76 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 /// containing the declaration. No validation of the declaration contents is
 /// performed at this stage.
 fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
-    type State<'a> = SpanCollector<'a, ()>;
+    type State<'a> = SpanCollector<'a, &'a str>;
 
     fn record_relation(st: &mut State<'_>, start: usize) {
+        // Consume tokens until the closing parenthesis of the declaration and
+        // any optional `primary key` clause. This allows relation declarations
+        // spanning multiple lines to be captured fully.
+        let mut depth;
+        // Skip the relation name if present.
+        st.stream.skip_ws_inline();
+        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_IDENT)) {
+            st.stream.advance();
+        }
+        st.stream.skip_ws_inline();
+        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
+            st.stream.advance();
+            depth = 1;
+            while let Some((kind, _)) = st.stream.peek() {
+                match kind {
+                    SyntaxKind::T_LPAREN => depth += 1,
+                    SyntaxKind::T_RPAREN => {
+                        depth -= 1;
+                        if depth == 0 {
+                            st.stream.advance();
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+                st.stream.advance();
+            }
+        }
+
+        st.stream.skip_ws_inline();
+        if let Some((SyntaxKind::T_IDENT, span)) = st.stream.peek().cloned()
+            && st.extra.get(span.clone()) == Some("primary")
+        {
+            st.stream.advance();
+            st.stream.skip_ws_inline();
+            if let Some((SyntaxKind::T_IDENT, sp)) = st.stream.peek().cloned()
+                && st.extra.get(sp.clone()) == Some("key")
+            {
+                st.stream.advance();
+                st.stream.skip_ws_inline();
+                if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
+                    st.stream.advance();
+                    depth = 1;
+                    while let Some((kind, _)) = st.stream.peek() {
+                        match kind {
+                            SyntaxKind::T_LPAREN => depth += 1,
+                            SyntaxKind::T_RPAREN => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    st.stream.advance();
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                        st.stream.advance();
+                    }
+                }
+            }
+        }
+
         let end = st.stream.line_end(st.stream.cursor());
         st.stream.skip_until(end);
         st.spans.push(start..end);
     }
 
-    fn handle_input(st: &mut State<'_>, span: Span) {
+    fn handle_direction(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
         st.stream.skip_ws_inline();
@@ -323,21 +384,17 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
         }
     }
 
-    fn handle_output(st: &mut State<'_>, span: Span) {
-        handle_input(st, span);
-    }
-
     fn handle_relation(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
         record_relation(st, start);
     }
 
-    let mut st = State::new(tokens, src, ());
+    let mut st = State::new(tokens, src, src);
 
     token_dispatch!(st, {
-        SyntaxKind::K_INPUT => handle_input,
-        SyntaxKind::K_OUTPUT => handle_output,
+        SyntaxKind::K_INPUT => handle_direction,
+        SyntaxKind::K_OUTPUT => handle_direction,
         SyntaxKind::K_RELATION => handle_relation,
     });
 
@@ -716,32 +773,155 @@ pub mod ast {
         /// Columns declared for the relation.
         #[must_use]
         pub fn columns(&self) -> Vec<(String, String)> {
-            let text = self.syntax.text().to_string();
-            let inner = text
-                .split_once('(')
-                .and_then(|(_, rest)| rest.split_once(')').map(|(i, _)| i))
-                .unwrap_or("");
-            inner
-                .split(',')
-                .filter_map(|part| {
-                    let mut split = part.split(':');
-                    let name = split.next()?.trim();
-                    let ty = split.next()?.trim();
-                    Some((name.to_string(), ty.to_string()))
-                })
-                .collect()
+            use rowan::NodeOrToken;
+
+            let mut iter = self.syntax.children_with_tokens().peekable();
+            // Skip to the opening parenthesis
+            for e in &mut iter {
+                if e.kind() == SyntaxKind::T_LPAREN {
+                    break;
+                }
+            }
+
+            let mut cols = Vec::new();
+            let mut buf = String::new();
+            let mut name: Option<String> = None;
+            let mut depth = 0usize;
+
+            for e in iter.by_ref() {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_LPAREN => {
+                            depth += 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_RPAREN => {
+                            if depth == 0 {
+                                if let Some(n) = name.take() {
+                                    let ty = buf.trim();
+                                    if !ty.is_empty() {
+                                        cols.push((n, ty.to_string()));
+                                    }
+                                }
+                                break;
+                            }
+                            depth -= 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_COMMA if depth == 0 => {
+                            if let Some(n) = name.take() {
+                                let ty = buf.trim();
+                                if !ty.is_empty() {
+                                    cols.push((n, ty.to_string()));
+                                }
+                            }
+                            buf.clear();
+                        }
+                        SyntaxKind::T_COLON if depth == 0 => {
+                            name = Some(buf.trim().to_string());
+                            buf.clear();
+                        }
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+            }
+            cols
         }
 
         /// Primary key column names if specified.
         #[must_use]
         pub fn primary_key(&self) -> Option<Vec<String>> {
-            let text = self.syntax.text().to_string();
-            let inner = text
-                .split("primary key")
-                .nth(1)
-                .and_then(|s| s.split_once('('))
-                .and_then(|(_, rest)| rest.split_once(')').map(|(i, _)| i))?;
-            let keys = inner
+            use rowan::NodeOrToken;
+
+            let mut iter = self.syntax.children_with_tokens().peekable();
+            // Skip to the first '(' and consume column list
+            for e in &mut iter {
+                if e.kind() == SyntaxKind::T_LPAREN {
+                    break;
+                }
+            }
+            let mut depth = 1usize;
+            for e in iter.by_ref() {
+                match e.kind() {
+                    SyntaxKind::T_LPAREN => depth += 1,
+                    SyntaxKind::T_RPAREN => {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Skip whitespace/comments
+            while matches!(
+                iter.peek().map(rowan::SyntaxElement::kind),
+                Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+            ) {
+                iter.next();
+            }
+
+            match iter.next() {
+                Some(NodeOrToken::Token(t))
+                    if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary" => {}
+                _ => return None,
+            }
+
+            while matches!(
+                iter.peek().map(rowan::SyntaxElement::kind),
+                Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+            ) {
+                iter.next();
+            }
+
+            match iter.next() {
+                Some(NodeOrToken::Token(t))
+                    if t.kind() == SyntaxKind::T_IDENT && t.text() == "key" => {}
+                _ => return None,
+            }
+
+            while matches!(
+                iter.peek().map(rowan::SyntaxElement::kind),
+                Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+            ) {
+                iter.next();
+            }
+
+            if !matches!(
+                iter.peek().map(rowan::SyntaxElement::kind),
+                Some(SyntaxKind::T_LPAREN)
+            ) {
+                return None;
+            }
+            iter.next(); // consume '('
+            depth = 1;
+            let mut buf = String::new();
+            for e in iter.by_ref() {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_LPAREN => {
+                            depth += 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_RPAREN => {
+                            if depth == 1 {
+                                break;
+                            }
+                            depth -= 1;
+                            buf.push_str(t.text());
+                        }
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+                if depth == 0 {
+                    break;
+                }
+            }
+
+            let keys = buf
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
