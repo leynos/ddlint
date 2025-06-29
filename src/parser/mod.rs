@@ -300,12 +300,7 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
     type State<'a> = SpanCollector<'a, &'a str>;
 
-    fn record_relation(st: &mut State<'_>, start: usize) {
-        // Consume tokens until the closing parenthesis of the declaration and
-        // any optional `primary key` clause. This allows relation declarations
-        // spanning multiple lines to be captured fully.
-        let mut depth;
-        // Skip the relation name if present.
+    fn skip_relation_columns(st: &mut State<'_>) {
         st.stream.skip_ws_inline();
         if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_IDENT)) {
             st.stream.advance();
@@ -313,7 +308,7 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
         st.stream.skip_ws_inline();
         if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
             st.stream.advance();
-            depth = 1;
+            let mut depth = 1usize;
             while let Some((kind, _)) = st.stream.peek() {
                 match kind {
                     SyntaxKind::T_LPAREN => depth += 1,
@@ -329,7 +324,9 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
                 st.stream.advance();
             }
         }
+    }
 
+    fn skip_primary_key_clause(st: &mut State<'_>) {
         st.stream.skip_ws_inline();
         if let Some((SyntaxKind::T_IDENT, span)) = st.stream.peek().cloned()
             && st.extra.get(span.clone()) == Some("primary")
@@ -343,7 +340,7 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
                 st.stream.skip_ws_inline();
                 if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
                     st.stream.advance();
-                    depth = 1;
+                    let mut depth = 1usize;
                     while let Some((kind, _)) = st.stream.peek() {
                         match kind {
                             SyntaxKind::T_LPAREN => depth += 1,
@@ -361,13 +358,20 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
                 }
             }
         }
+    }
+
+    fn record_relation(st: &mut State<'_>, start: usize) {
+        // Consume columns and optional primary key clause so multi-line
+        // declarations are captured fully.
+        skip_relation_columns(st);
+        skip_primary_key_clause(st);
 
         let end = st.stream.line_end(st.stream.cursor());
         st.stream.skip_until(end);
         st.spans.push(start..end);
     }
 
-    fn handle_direction(st: &mut State<'_>, span: Span) {
+    fn handle_input(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
         st.stream.skip_ws_inline();
@@ -384,6 +388,11 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
         }
     }
 
+    /// Output relations follow the same pattern as input relations.
+    fn handle_output(st: &mut State<'_>, span: Span) {
+        handle_input(st, span);
+    }
+
     fn handle_relation(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
@@ -393,8 +402,8 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
     let mut st = State::new(tokens, src, src);
 
     token_dispatch!(st, {
-        SyntaxKind::K_INPUT => handle_direction,
-        SyntaxKind::K_OUTPUT => handle_direction,
+        SyntaxKind::K_INPUT => handle_input,
+        SyntaxKind::K_OUTPUT => handle_output,
         SyntaxKind::K_RELATION => handle_relation,
     });
 
@@ -535,7 +544,7 @@ pub mod ast {
     //! exposes only the root node so tests and higher layers can navigate the
     //! parsed CST.
 
-    use rowan::{GreenNode, SyntaxNode};
+    use rowan::{GreenNode, SyntaxElement, SyntaxNode};
 
     use crate::{DdlogLanguage, SyntaxKind};
 
@@ -726,6 +735,18 @@ pub mod ast {
         None
     }
 
+    fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
+    where
+        I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+    {
+        while matches!(
+            iter.peek().map(SyntaxElement::kind),
+            Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+        ) {
+            iter.next();
+        }
+    }
+
     /// Typed wrapper for a relation declaration.
     #[derive(Debug, Clone)]
     pub struct Relation {
@@ -856,12 +877,7 @@ pub mod ast {
             }
 
             // Skip whitespace/comments
-            while matches!(
-                iter.peek().map(rowan::SyntaxElement::kind),
-                Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-            ) {
-                iter.next();
-            }
+            skip_whitespace_and_comments(&mut iter);
 
             match iter.next() {
                 Some(NodeOrToken::Token(t))
@@ -869,12 +885,7 @@ pub mod ast {
                 _ => return None,
             }
 
-            while matches!(
-                iter.peek().map(rowan::SyntaxElement::kind),
-                Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-            ) {
-                iter.next();
-            }
+            skip_whitespace_and_comments(&mut iter);
 
             match iter.next() {
                 Some(NodeOrToken::Token(t))
@@ -882,12 +893,7 @@ pub mod ast {
                 _ => return None,
             }
 
-            while matches!(
-                iter.peek().map(rowan::SyntaxElement::kind),
-                Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-            ) {
-                iter.next();
-            }
+            skip_whitespace_and_comments(&mut iter);
 
             if !matches!(
                 iter.peek().map(rowan::SyntaxElement::kind),
