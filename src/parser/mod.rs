@@ -1137,27 +1137,60 @@ pub mod ast {
                 })
         }
 
-        /// Column names included in the index.
+        /// Column expressions included in the index.
+        ///
+        /// The method collects the text of each column expression, allowing for
+        /// nested parentheses in cases like `lower(name)` or
+        /// `func(col, other(col2))`.
         #[must_use]
         pub fn columns(&self) -> Vec<String> {
             use rowan::NodeOrToken;
 
             let mut iter = self.syntax.children_with_tokens();
 
+            // Skip tokens up to the opening parenthesis after the relation name
             for e in &mut iter {
                 if e.kind() == SyntaxKind::T_LPAREN {
                     break;
                 }
             }
 
-            iter.take_while(|e| e.kind() != SyntaxKind::T_RPAREN)
-                .filter_map(|e| match e {
-                    NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                        Some(t.text().to_string())
-                    }
-                    _ => None,
-                })
-                .collect()
+            let mut cols = Vec::new();
+            let mut buf = String::new();
+            let mut depth = 0usize;
+
+            for e in iter {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_LPAREN => {
+                            depth += 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_RPAREN => {
+                            if depth == 0 {
+                                let col = buf.trim();
+                                if !col.is_empty() {
+                                    cols.push(col.to_string());
+                                }
+                                break;
+                            }
+                            depth -= 1;
+                            buf.push_str(t.text());
+                        }
+                        SyntaxKind::T_COMMA if depth == 0 => {
+                            let col = buf.trim();
+                            if !col.is_empty() {
+                                cols.push(col.to_string());
+                            }
+                            buf.clear();
+                        }
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+            }
+
+            cols
         }
     }
 }

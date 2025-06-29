@@ -474,10 +474,7 @@ fn index_nested_function_parsed(index_nested_function: &str) {
     };
     assert_eq!(idx.name(), Some("Idx_lower_username".into()));
     assert_eq!(idx.relation(), Some("User".into()));
-    assert_eq!(
-        idx.columns(),
-        vec![String::from("lower"), String::from("username")]
-    );
+    assert_eq!(idx.columns(), vec![String::from("lower(username)")]);
 }
 
 #[rstest]
