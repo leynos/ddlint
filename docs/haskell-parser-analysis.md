@@ -176,7 +176,16 @@ Other notable grammar rules include:
 - `index` — defines an index on a relation. The Rust port keeps the same grammar
   and supports nested parentheses within the column list.
 - `relation` – parses a relation declaration and its optional primary key.
-- `rule` – parses a rule head followed by an optional list of body clauses.
+- `rule` – parses a rule head followed by an optional list of body clauses. The
+  `rule` grammar in Haskell is succinct:
+
+```haskell
+rule = withPos $
+       Rule nopos <$> atom True
+                  <*> option [] (reservedOp "::-" *> commaSep1 literal)
+                  <*  dot
+```
+
 - `statement` and its helpers – parse imperative statements used within rules.
 - `expr` – an expression parser built via `buildExpressionParser`; it handles
   literals, operators and function calls.
