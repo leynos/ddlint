@@ -515,3 +515,54 @@ fn index_declaration_whitespace_variations(#[case] src: &str) {
     assert_eq!(idx.relation(), Some("User".into()));
     assert_eq!(idx.columns(), vec![String::from("username")]);
 }
+
+#[fixture]
+fn simple_rule() -> &'static str {
+    "ActiveUser(user_id) :- User(user_id, _, true)."
+}
+
+#[fixture]
+fn multi_literal_rule() -> &'static str {
+    "UserLogin(username, session_id) :- User(user_id, username, _), UserSession(user_id, session_id, _)."
+}
+
+#[fixture]
+fn fact_rule() -> &'static str {
+    "SystemAlert(\"System is now online.\")."
+}
+
+#[rstest]
+fn simple_rule_parsed(simple_rule: &str) {
+    let parsed = parse(simple_rule);
+    assert!(parsed.errors().is_empty());
+    let rules = parsed.root().rules();
+    assert_eq!(rules.len(), 1);
+    let Some(rule) = rules.first() else {
+        panic!("rule missing");
+    };
+    assert_eq!(pretty_print(rule.syntax()), simple_rule);
+}
+
+#[rstest]
+fn multi_literal_rule_parsed(multi_literal_rule: &str) {
+    let parsed = parse(multi_literal_rule);
+    assert!(parsed.errors().is_empty());
+    let rules = parsed.root().rules();
+    assert_eq!(rules.len(), 1);
+    let Some(rule) = rules.first() else {
+        panic!("rule missing");
+    };
+    assert_eq!(pretty_print(rule.syntax()), multi_literal_rule);
+}
+
+#[rstest]
+fn fact_rule_parsed(fact_rule: &str) {
+    let parsed = parse(fact_rule);
+    assert!(parsed.errors().is_empty());
+    let rules = parsed.root().rules();
+    assert_eq!(rules.len(), 1);
+    let Some(rule) = rules.first() else {
+        panic!("rule missing");
+    };
+    assert_eq!(pretty_print(rule.syntax()), fact_rule);
+}

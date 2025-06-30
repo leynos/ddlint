@@ -109,7 +109,7 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (import_spans, typedef_spans, relation_spans, index_spans, errors) =
+    let (import_spans, typedef_spans, relation_spans, index_spans, rule_spans, errors) =
         parse_tokens(&tokens, src);
 
     let green = build_green_tree(
@@ -119,6 +119,7 @@ pub fn parse(src: &str) -> Parsed {
         &typedef_spans,
         &relation_spans,
         &index_spans,
+        &rule_spans,
     );
     let root = ast::Root::from_green(green.clone());
 
@@ -151,12 +152,14 @@ fn parse_tokens(
     Vec<Span>,
     Vec<Span>,
     Vec<Span>,
+    Vec<Span>,
     Vec<Simple<SyntaxKind>>,
 ) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
     let relation_spans = collect_relation_spans(tokens, src);
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
+    let rule_spans = collect_rule_spans(tokens, src);
 
     let mut all_errors = errors;
     all_errors.extend(index_errors);
@@ -166,6 +169,7 @@ fn parse_tokens(
         typedef_spans,
         relation_spans,
         index_spans,
+        rule_spans,
         all_errors,
     )
 }
@@ -547,6 +551,77 @@ fn collect_index_spans(
     st.into_parts()
 }
 
+/// Collects the spans of rule declarations in the token stream.
+///
+/// A rule has the form `Head :- Body.` where the body is optional. The parser
+/// records the span from the start of the head atom to the terminating dot.
+fn collect_rule_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
+    type State<'a> = SpanCollector<'a, ()>;
+
+    fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+        let ws = inline_ws().repeated();
+        let ident = just(SyntaxKind::T_IDENT).ignored().padded_by(ws.clone());
+
+        let atom = ident
+            .clone()
+            .then(
+                just(SyntaxKind::T_LPAREN)
+                    .padded_by(ws.clone())
+                    .ignore_then(
+                        filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN)
+                            .ignored()
+                            .padded_by(ws.clone())
+                            .repeated(),
+                    )
+                    .then_ignore(just(SyntaxKind::T_RPAREN))
+                    .or_not(),
+            )
+            .ignored()
+            .padded_by(ws.clone());
+
+        let literal = atom.clone();
+
+        let body = literal
+            .clone()
+            .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
+            .allow_trailing();
+
+        atom.then(
+            just(SyntaxKind::T_IMPLIES)
+                .padded_by(ws.clone())
+                .ignore_then(body)
+                .or_not(),
+        )
+        .padded_by(ws.clone())
+        .then_ignore(just(SyntaxKind::T_DOT))
+        .padded_by(ws)
+        .map_with_span(|_, sp: Span| sp)
+    }
+
+    fn handle_ident(st: &mut State<'_>, span: Span) {
+        let parser = rule_decl();
+        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
+        let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
+        let (res, _) = parser.parse_recovery(sub);
+        if let Some(sp) = res {
+            let end = sp.end;
+            st.spans.push(sp);
+            st.stream.skip_until(end);
+        } else {
+            let end = st.stream.line_end(st.stream.cursor());
+            st.stream.skip_until(end);
+        }
+    }
+
+    let mut st = State::new(tokens, src, ());
+
+    token_dispatch!(st, {
+        SyntaxKind::T_IDENT => handle_ident,
+    });
+
+    st.spans
+}
+
 /// Construct the CST from the token stream and recorded statement spans.
 ///
 /// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
@@ -559,11 +634,13 @@ fn build_green_tree(
     typedefs: &[Span],
     relations: &[Span],
     indexes: &[Span],
+    rules: &[Span],
 ) -> GreenNode {
     assert_spans_sorted(imports);
     assert_spans_sorted(typedefs);
     assert_spans_sorted(relations);
     assert_spans_sorted(indexes);
+    assert_spans_sorted(rules);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
@@ -571,12 +648,14 @@ fn build_green_tree(
     let mut typedef_iter = typedefs.iter().peekable();
     let mut relation_iter = relations.iter().peekable();
     let mut index_iter = indexes.iter().peekable();
+    let mut rule_iter = rules.iter().peekable();
 
     for (kind, span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
         advance_span_iter(&mut typedef_iter, span.start);
         advance_span_iter(&mut relation_iter, span.start);
         advance_span_iter(&mut index_iter, span.start);
+        advance_span_iter(&mut rule_iter, span.start);
 
         maybe_start(
             &mut builder,
@@ -602,6 +681,7 @@ fn build_green_tree(
             span.start,
             SyntaxKind::N_INDEX,
         );
+        maybe_start(&mut builder, &mut rule_iter, span.start, SyntaxKind::N_RULE);
 
         push_token(&mut builder, kind, &span, src);
 
@@ -609,6 +689,7 @@ fn build_green_tree(
         maybe_finish(&mut builder, &mut typedef_iter, span.end);
         maybe_finish(&mut builder, &mut relation_iter, span.end);
         maybe_finish(&mut builder, &mut index_iter, span.end);
+        maybe_finish(&mut builder, &mut rule_iter, span.end);
     }
 
     builder.finish_node();
@@ -775,6 +856,16 @@ pub mod ast {
                 .children()
                 .filter(|n| n.kind() == SyntaxKind::N_INDEX)
                 .map(|syntax| Index { syntax })
+                .collect()
+        }
+
+        /// Collect all rule declarations under this root.
+        #[must_use]
+        pub fn rules(&self) -> Vec<Rule> {
+            self.syntax
+                .children()
+                .filter(|n| n.kind() == SyntaxKind::N_RULE)
+                .map(|syntax| Rule { syntax })
                 .collect()
         }
     }
@@ -1191,6 +1282,20 @@ pub mod ast {
             }
 
             cols
+        }
+    }
+
+    /// Typed wrapper for a rule declaration.
+    #[derive(Debug, Clone)]
+    pub struct Rule {
+        pub(crate) syntax: SyntaxNode<DdlogLanguage>,
+    }
+
+    impl Rule {
+        /// Access the underlying syntax node.
+        #[must_use]
+        pub fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
+            &self.syntax
         }
     }
 }
