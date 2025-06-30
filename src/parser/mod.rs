@@ -73,6 +73,47 @@ fn inline_ws() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clon
         .ignored()
 }
 
+/// Parser for an identifier padded by optional inline whitespace.
+///
+/// # Examples
+///
+/// ```no_run
+/// use ddlint::parser::ident;
+/// let parser = ident();
+/// ```
+fn ident() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    just(SyntaxKind::T_IDENT)
+        .ignored()
+        .padded_by(inline_ws().repeated())
+}
+
+/// Parser for a rule atom: `Ident` with optional argument list.
+///
+/// # Examples
+///
+/// ```no_run
+/// use ddlint::parser::atom;
+/// let parser = atom();
+/// ```
+fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    ident()
+        .clone()
+        .then(
+            just(SyntaxKind::T_LPAREN)
+                .padded_by(inline_ws().repeated())
+                .ignore_then(
+                    filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN)
+                        .ignored()
+                        .padded_by(inline_ws().repeated())
+                        .repeated(),
+                )
+                .then_ignore(just(SyntaxKind::T_RPAREN))
+                .or_not(),
+        )
+        .ignored()
+        .padded_by(inline_ws().repeated())
+}
+
 /// Result of a parse operation.
 #[derive(Debug)]
 pub struct Parsed {
@@ -159,10 +200,11 @@ fn parse_tokens(
     let typedef_spans = collect_typedef_spans(tokens, src);
     let relation_spans = collect_relation_spans(tokens, src);
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
-    let rule_spans = collect_rule_spans(tokens, src);
+    let (rule_spans, rule_errors) = collect_rule_spans(tokens, src);
 
     let mut all_errors = errors;
     all_errors.extend(index_errors);
+    all_errors.extend(rule_errors);
 
     (
         import_spans,
@@ -207,31 +249,29 @@ fn collect_import_spans(
     /// If parsing succeeds, the span of the `import` statement is added to the state's span list and the token stream is advanced past it.
     /// On failure, errors are collected and the stream is advanced to the end of the current line.
     fn handle_import(st: &mut State<'_>, span: Span) {
-        let ws = filter(|kind: &SyntaxKind| {
-            matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-        })
-        .ignored();
+        let ws = inline_ws().repeated();
 
-        let ident = just(SyntaxKind::T_IDENT).ignored().padded_by(ws.repeated());
+        let ident = ident();
 
         let module_path = ident
+            .clone()
             .then(
                 just(SyntaxKind::T_COLON_COLON)
-                    .padded_by(ws.repeated())
-                    .ignore_then(ident)
+                    .padded_by(ws.clone())
+                    .ignore_then(ident.clone())
                     .repeated(),
             )
             .ignored();
 
         let alias = just(SyntaxKind::K_AS)
-            .padded_by(ws.repeated())
-            .ignore_then(ident);
+            .padded_by(ws.clone())
+            .ignore_then(ident.clone());
 
         let imprt = just(SyntaxKind::K_IMPORT)
-            .padded_by(ws.repeated())
+            .padded_by(ws.clone())
             .ignore_then(module_path)
             .then(alias.or_not())
-            .padded_by(ws.repeated())
+            .padded_by(ws)
             .map_with_span(|_, sp: Span| sp);
 
         let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
@@ -509,9 +549,7 @@ fn collect_index_spans(
     /// Parser for an entire index declaration.
     /// Returns the span of the declaration if parsing succeeds.
     fn index_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-        let ident = just(SyntaxKind::T_IDENT)
-            .ignored()
-            .padded_by(inline_ws().repeated());
+        let ident = ident();
 
         let columns = index_columns();
 
@@ -555,71 +593,123 @@ fn collect_index_spans(
 ///
 /// A rule has the form `Head :- Body.` where the body is optional. The parser
 /// records the span from the start of the head atom to the terminating dot.
-fn collect_rule_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
-    type State<'a> = SpanCollector<'a, ()>;
+fn collect_rule_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
     fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
         let ws = inline_ws().repeated();
-        let ident = just(SyntaxKind::T_IDENT).ignored().padded_by(ws.clone());
 
-        let atom = ident
-            .clone()
-            .then(
-                just(SyntaxKind::T_LPAREN)
-                    .padded_by(ws.clone())
-                    .ignore_then(
-                        filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN)
-                            .ignored()
-                            .padded_by(ws.clone())
-                            .repeated(),
-                    )
-                    .then_ignore(just(SyntaxKind::T_RPAREN))
-                    .or_not(),
-            )
-            .ignored()
-            .padded_by(ws.clone());
+        let atom_p = atom();
 
-        let literal = atom.clone();
+        let literal = atom_p.clone();
 
         let body = literal
             .clone()
             .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
-            .allow_trailing();
+            .allow_trailing()
+            .at_least(1);
 
-        atom.then(
-            just(SyntaxKind::T_IMPLIES)
-                .padded_by(ws.clone())
-                .ignore_then(body)
-                .or_not(),
-        )
-        .padded_by(ws.clone())
-        .then_ignore(just(SyntaxKind::T_DOT))
-        .padded_by(ws)
-        .map_with_span(|_, sp: Span| sp)
+        atom_p
+            .then(
+                just(SyntaxKind::T_IMPLIES)
+                    .padded_by(ws.clone())
+                    .ignore_then(body)
+                    .or_not(),
+            )
+            .padded_by(ws.clone())
+            .then_ignore(just(SyntaxKind::T_DOT))
+            .padded_by(ws)
+            .map_with_span(|_, sp: Span| sp)
     }
 
     fn handle_ident(st: &mut State<'_>, span: Span) {
+        // Only attempt to parse a rule when starting a new line to avoid
+        // misinterpreting identifiers that appear inside other statements.
+        let prev_end = if st.stream.cursor() == 0 {
+            0
+        } else {
+            st.stream
+                .tokens()
+                .get(st.stream.cursor() - 1)
+                .map_or(0, |t| t.1.end)
+        };
+        let is_new_line = if st.stream.cursor() == 0 {
+            true
+        } else {
+            st.stream
+                .src()
+                .get(prev_end..span.start)
+                .is_some_and(|text| text.contains('\n'))
+        };
+        if !is_new_line {
+            st.stream.advance();
+            return;
+        }
+
         let parser = rule_decl();
         let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
         let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
-        let (res, _) = parser.parse_recovery(sub);
+        let (res, err) = parser.parse_recovery(sub);
         if let Some(sp) = res {
             let end = sp.end;
             st.spans.push(sp);
             st.stream.skip_until(end);
         } else {
+            st.extra.extend(err);
             let end = st.stream.line_end(st.stream.cursor());
             st.stream.skip_until(end);
         }
     }
 
-    let mut st = State::new(tokens, src, ());
+    fn handle_implies(st: &mut State<'_>, span: Span) {
+        // Treat a leading ':-' as a rule with a missing head.
+        let prev_end = if st.stream.cursor() == 0 {
+            0
+        } else {
+            st.stream
+                .tokens()
+                .get(st.stream.cursor() - 1)
+                .map_or(0, |t| t.1.end)
+        };
+        let is_new_line = if st.stream.cursor() == 0 {
+            true
+        } else {
+            st.stream
+                .src()
+                .get(prev_end..span.start)
+                .is_some_and(|text| text.contains('\n'))
+        };
+        if !is_new_line {
+            st.stream.advance();
+            return;
+        }
+
+        let parser = rule_decl();
+        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
+        let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
+        let (res, err) = parser.parse_recovery(sub);
+        if let Some(sp) = res {
+            let end = sp.end;
+            st.spans.push(sp);
+            st.stream.skip_until(end);
+        } else {
+            st.extra.extend(err);
+            let end = st.stream.line_end(st.stream.cursor());
+            st.stream.skip_until(end);
+        }
+    }
+
+    let mut st = State::new(tokens, src, Vec::new());
 
     token_dispatch!(st, {
         SyntaxKind::T_IDENT => handle_ident,
+        SyntaxKind::T_IMPLIES => handle_implies,
     });
 
-    st.spans
+    st.into_parts()
 }
 
 /// Construct the CST from the token stream and recorded statement spans.
@@ -1296,6 +1386,72 @@ pub mod ast {
         #[must_use]
         pub fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
             &self.syntax
+        }
+
+        /// Text of the rule head atom.
+        #[must_use]
+        pub fn head(&self) -> Option<String> {
+            use rowan::NodeOrToken;
+
+            let mut buf = String::new();
+            for e in self.syntax.children_with_tokens() {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => break,
+                        _ => buf.push_str(t.text()),
+                    },
+                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                }
+            }
+
+            let text = buf.trim();
+            if text.is_empty() {
+                None
+            } else {
+                Some(text.to_string())
+            }
+        }
+
+        /// Text of each body literal in order of appearance.
+        #[must_use]
+        pub fn body_literals(&self) -> Vec<String> {
+            use rowan::NodeOrToken;
+
+            let mut iter = self
+                .syntax
+                .children_with_tokens()
+                .skip_while(|e| e.kind() != SyntaxKind::T_IMPLIES);
+
+            // Skip the ':-' token if present
+            if matches!(iter.next().map(|e| e.kind()), Some(SyntaxKind::T_IMPLIES)) {
+                let mut buf = String::new();
+                let mut lits = Vec::new();
+                for e in iter {
+                    match e {
+                        NodeOrToken::Token(t) => match t.kind() {
+                            SyntaxKind::T_COMMA => {
+                                let lit = buf.trim();
+                                if !lit.is_empty() {
+                                    lits.push(lit.to_string());
+                                }
+                                buf.clear();
+                            }
+                            SyntaxKind::T_DOT => {
+                                let lit = buf.trim();
+                                if !lit.is_empty() {
+                                    lits.push(lit.to_string());
+                                }
+                                break;
+                            }
+                            _ => buf.push_str(t.text()),
+                        },
+                        NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+                    }
+                }
+                lits
+            } else {
+                Vec::new()
+            }
         }
     }
 }

@@ -566,3 +566,53 @@ fn fact_rule_parsed(fact_rule: &str) {
     };
     assert_eq!(pretty_print(rule.syntax()), fact_rule);
 }
+
+#[test]
+fn invalid_rule_missing_head() {
+    let input = ":- User(user_id, username, _).";
+    let parsed = parse(input);
+    assert!(
+        !parsed.errors().is_empty(),
+        "Expected errors for missing head"
+    );
+}
+
+#[test]
+fn invalid_rule_missing_body() {
+    let input = "UserLogin(username, session_id) :- .";
+    let parsed = parse(input);
+    assert!(
+        !parsed.errors().is_empty(),
+        "Expected errors for missing body"
+    );
+}
+
+#[test]
+fn invalid_rule_no_colon_dash() {
+    let input = "UserLogin(username, session_id) User(user_id, username, _).";
+    let parsed = parse(input);
+    assert!(
+        !parsed.errors().is_empty(),
+        "Expected errors for missing ':-'"
+    );
+}
+
+#[test]
+fn invalid_rule_missing_period() {
+    let input = "UserLogin(username, session_id) :- User(user_id, username, _)";
+    let parsed = parse(input);
+    assert!(
+        !parsed.errors().is_empty(),
+        "Expected errors for missing period at end"
+    );
+}
+
+#[test]
+fn invalid_rule_garbage() {
+    let input = "This is not a rule!";
+    let parsed = parse(input);
+    assert!(
+        !parsed.errors().is_empty(),
+        "Expected errors for completely invalid input"
+    );
+}
