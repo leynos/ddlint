@@ -625,9 +625,9 @@ fn collect_rule_spans(
             .map_with_span(|_, sp: Span| sp)
     }
 
-    fn handle_ident(st: &mut State<'_>, span: Span) {
-        // Only attempt to parse a rule when starting a new line to avoid
-        // misinterpreting identifiers that appear inside other statements.
+    fn parse_rule_at_line_start(st: &mut State<'_>, span: Span) {
+        // Parse a rule only when the current token begins a new line. This avoids
+        // misinterpreting identifiers inside other statements as rule heads.
         let prev_end = if st.stream.cursor() == 0 {
             0
         } else {
@@ -664,42 +664,13 @@ fn collect_rule_spans(
         }
     }
 
+    fn handle_ident(st: &mut State<'_>, span: Span) {
+        parse_rule_at_line_start(st, span);
+    }
+
     fn handle_implies(st: &mut State<'_>, span: Span) {
         // Treat a leading ':-' as a rule with a missing head.
-        let prev_end = if st.stream.cursor() == 0 {
-            0
-        } else {
-            st.stream
-                .tokens()
-                .get(st.stream.cursor() - 1)
-                .map_or(0, |t| t.1.end)
-        };
-        let is_new_line = if st.stream.cursor() == 0 {
-            true
-        } else {
-            st.stream
-                .src()
-                .get(prev_end..span.start)
-                .is_some_and(|text| text.contains('\n'))
-        };
-        if !is_new_line {
-            st.stream.advance();
-            return;
-        }
-
-        let parser = rule_decl();
-        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
-        let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
-        let (res, err) = parser.parse_recovery(sub);
-        if let Some(sp) = res {
-            let end = sp.end;
-            st.spans.push(sp);
-            st.stream.skip_until(end);
-        } else {
-            st.extra.extend(err);
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-        }
+        parse_rule_at_line_start(st, span);
     }
 
     let mut st = State::new(tokens, src, Vec::new());
