@@ -111,6 +111,21 @@ fn index_whitespace_variations() -> &'static str {
     "  index  Idx_User_ws \t on\n  User (\n    username  )  "
 }
 
+#[fixture]
+fn extern_function() -> &'static str {
+    "extern function hash(data: string): u64"
+}
+
+#[fixture]
+fn function_with_body() -> &'static str {
+    "function to_uppercase(s: string): string { }"
+}
+
+#[fixture]
+fn function_no_return() -> &'static str {
+    "function log_message(msg: string) { }"
+}
+
 /// Verifies that parsing and pretty-printing preserves the original input text
 /// and produces the expected root node kind.
 #[rstest]
@@ -514,4 +529,43 @@ fn index_declaration_whitespace_variations(#[case] src: &str) {
     assert_eq!(idx.name(), Some("Idx_User_ws".into()));
     assert_eq!(idx.relation(), Some("User".into()));
     assert_eq!(idx.columns(), vec![String::from("username")]);
+}
+
+#[rstest]
+fn extern_function_parsed(extern_function: &str) {
+    let parsed = parse(extern_function);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let Some(func) = funcs.first() else {
+        panic!("function should exist");
+    };
+    assert_eq!(func.name(), Some("hash".into()));
+    assert!(func.is_extern());
+}
+
+#[rstest]
+fn function_with_body_parsed(function_with_body: &str) {
+    let parsed = parse(function_with_body);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let Some(func) = funcs.first() else {
+        panic!("function should exist");
+    };
+    assert_eq!(func.name(), Some("to_uppercase".into()));
+    assert!(!func.is_extern());
+}
+
+#[rstest]
+fn function_no_return_parsed(function_no_return: &str) {
+    let parsed = parse(function_no_return);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let Some(func) = funcs.first() else {
+        panic!("function should exist");
+    };
+    assert_eq!(func.name(), Some("log_message".into()));
+    assert!(!func.is_extern());
 }
