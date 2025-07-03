@@ -1323,7 +1323,12 @@ pub mod ast {
                 {
                     break;
                 }
-                NodeOrToken::Token(t) => buf.push_str(t.text()),
+                NodeOrToken::Token(t) => {
+                    if t.kind() == SyntaxKind::T_WHITESPACE && t.text().contains('\n') {
+                        break;
+                    }
+                    buf.push_str(t.text());
+                }
                 NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
             }
         }
@@ -1668,20 +1673,16 @@ pub mod ast {
         /// Name of the function if present.
         #[must_use]
         pub fn name(&self) -> Option<String> {
-            let mut seen_fn = false;
-            for e in self.syntax.children_with_tokens() {
-                match e.kind() {
-                    SyntaxKind::K_FUNCTION => seen_fn = true,
-                    SyntaxKind::T_IDENT if seen_fn => {
-                        if let Some(tok) = e.into_token() {
-                            return Some(tok.text().to_string());
-                        }
-                        break;
+            self.syntax
+                .children_with_tokens()
+                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_FUNCTION))
+                .skip(1)
+                .find_map(|e| match e {
+                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
+                        Some(t.text().to_string())
                     }
-                    _ => {}
-                }
-            }
-            None
+                    _ => None,
+                })
         }
 
         /// Whether the function is declared as `extern`.
