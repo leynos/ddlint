@@ -119,42 +119,10 @@ fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
 /// matching closing delimiter while tracking nested pairs. Whitespace and
 /// comments are permitted between tokens. An error is produced if a closing
 /// token appears without a corresponding opener.
-fn balanced_block(
+fn balanced_block_with_min(
     open: SyntaxKind,
     close: SyntaxKind,
-) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    use std::cell::Cell;
-
-    let depth = Cell::new(0usize);
-    just(open)
-        .padded_by(inline_ws().repeated())
-        .ignore_then(
-            filter_map(move |span, kind| match kind {
-                k if k == open => {
-                    depth.set(depth.get() + 1);
-                    Ok(())
-                }
-                k if k == close => {
-                    if depth.get() == 0 {
-                        Err(Simple::custom(span, format!("unexpected '{close:?}'")))
-                    } else {
-                        depth.set(depth.get() - 1);
-                        Ok(())
-                    }
-                }
-                _ => Ok(()),
-            })
-            .padded_by(inline_ws().repeated())
-            .repeated(),
-        )
-        .then_ignore(just(close))
-        .ignored()
-}
-
-/// As [`balanced_block`] but requires at least one token inside the delimiters.
-fn balanced_block_nonempty(
-    open: SyntaxKind,
-    close: SyntaxKind,
+    min: usize,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
     use std::cell::Cell;
 
@@ -179,10 +147,25 @@ fn balanced_block_nonempty(
             })
             .padded_by(inline_ws().repeated())
             .repeated()
-            .at_least(1),
+            .at_least(min),
         )
         .then_ignore(just(close))
         .ignored()
+}
+
+fn balanced_block(
+    open: SyntaxKind,
+    close: SyntaxKind,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    balanced_block_with_min(open, close, 0)
+}
+
+/// As [`balanced_block`] but requires at least one token inside the delimiters.
+fn balanced_block_nonempty(
+    open: SyntaxKind,
+    close: SyntaxKind,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    balanced_block_with_min(open, close, 1)
 }
 
 /// Result of a parse operation.
