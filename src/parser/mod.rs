@@ -1,10 +1,10 @@
 //! Chumsky-based parser producing a rowan CST.
 //!
 //! This module contains the entry point for parsing `DDlog` source code.
-//! The grammar rules are not implemented yet. The parser currently tokenises
-//! the input and wraps the tokens into a `rowan::GreenNode`. It lays down the
-//! framework for integrating `chumsky` combinators and error recovery in later
-//! stages.
+//! The parser tokenises the input and wraps tokens into a `rowan::GreenNode`,
+//! with support for parsing imports, typedefs, relations, indexes, functions,
+//! and rules. It lays down the framework for integrating `chumsky` combinators
+//! and error recovery in later stages.
 
 use chumsky::prelude::*;
 use log::warn;
@@ -178,12 +178,11 @@ pub fn parse(src: &str) -> Parsed {
     }
 }
 
-/// Identifies and collects the spans of `import`, `typedef`, `relation`, and
-/// `index` statements in a token stream.
+/// Identifies and collects the spans of `import`, `typedef`, `relation`,
+/// `index`, and `function` statements in a token stream.
 ///
-/// Returns tuples containing the spans of `import` statements, `typedef`/`extern type` declarations,
-/// relation declarations, index declarations, and any parse errors encountered
-/// during span collection.
+/// Returns tuples containing the spans of each statement type as well as any
+/// parse errors encountered during span collection.
 ///
 /// # Examples
 ///
@@ -208,11 +207,12 @@ fn parse_tokens(
     let typedef_spans = collect_typedef_spans(tokens, src);
     let relation_spans = collect_relation_spans(tokens, src);
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
-    let function_spans = collect_function_spans(tokens, src);
+    let (function_spans, function_errors) = collect_function_spans(tokens, src);
     let (rule_spans, rule_errors) = collect_rule_spans(tokens, src);
 
     let mut all_errors = errors;
     all_errors.extend(index_errors);
+    all_errors.extend(function_errors);
     all_errors.extend(rule_errors);
 
     (
@@ -594,8 +594,11 @@ fn collect_index_spans(
 /// regular `function` definitions enclosed in braces. The span covers the
 /// entire declaration or definition.
 #[expect(clippy::too_many_lines, reason = "parser logic")]
-fn collect_function_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
-    type State<'a> = SpanCollector<'a, ()>;
+fn collect_function_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
     use chumsky::prelude::*;
 
     fn params() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
@@ -642,7 +645,7 @@ fn collect_function_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
             .ignored()
     }
 
-    fn body() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
+    fn body_block() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
         use std::cell::Cell;
         let depth = Cell::new(0usize);
         just(SyntaxKind::T_LBRACE)
@@ -668,55 +671,83 @@ fn collect_function_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
             )
             .then_ignore(just(SyntaxKind::T_RBRACE))
             .ignored()
-            .or_not()
-            .ignored()
     }
 
-    fn func_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+    fn body_optional() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
+        body_block().or_not().ignored()
+    }
+    fn func_decl(with_body: bool) -> BoxedParser<'static, SyntaxKind, Span, Simple<SyntaxKind>> {
         let ident = ident();
-        just(SyntaxKind::K_FUNCTION)
+        let parser = just(SyntaxKind::K_FUNCTION)
             .padded_by(inline_ws().repeated())
             .ignore_then(ident.clone())
             .then(params())
             .then(return_ty())
-            .then(body())
+            .then(if with_body {
+                body_block().boxed()
+            } else {
+                body_optional().boxed()
+            })
             .padded_by(inline_ws().repeated())
-            .map_with_span(|_, sp: Span| sp)
+            .map_with_span(|_, sp: Span| sp);
+        parser.boxed()
     }
 
     fn handle_extern(st: &mut State<'_>, span: Span) {
+        let mut idx = st.stream.cursor() + 1;
+        let tokens = st.stream.tokens();
+        while let Some(tok) = tokens.get(idx) {
+            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+                && st
+                    .stream
+                    .src()
+                    .get(tok.1.clone())
+                    .is_some_and(|t| !t.contains('\n'))
+            {
+                idx += 1;
+            } else {
+                break;
+            }
+        }
+        if !matches!(tokens.get(idx), Some((SyntaxKind::K_FUNCTION, _))) {
+            st.skip_line();
+            return;
+        }
+
         let parser = just(SyntaxKind::K_EXTERN)
             .padded_by(inline_ws().repeated())
-            .ignore_then(func_decl());
-        let (res, _err) = st.parse_span(parser, span.start);
+            .ignore_then(func_decl(false));
+        let (res, err) = st.parse_span(parser, span.start);
         if let Some(sp) = res {
             let full = span.start..sp.end;
             st.spans.push(full.clone());
             st.stream.skip_until(full.end);
         } else {
+            st.extra.extend(err);
             st.skip_line();
         }
     }
 
     fn handle_function(st: &mut State<'_>, span: Span) {
-        let parser = func_decl();
-        let (res, _err) = st.parse_span(parser, span.start);
+        let parser = func_decl(true);
+        let (res, err) = st.parse_span(parser, span.start);
         if let Some(sp) = res {
             st.spans.push(sp.clone());
             st.stream.skip_until(sp.end);
         } else {
+            st.extra.extend(err);
             st.skip_line();
         }
     }
 
-    let mut st = State::new(tokens, src, ());
+    let mut st = State::new(tokens, src, Vec::new());
 
     token_dispatch!(st, {
         SyntaxKind::K_EXTERN => handle_extern,
         SyntaxKind::K_FUNCTION => handle_function,
     });
 
-    st.spans
+    st.into_parts()
 }
 
 /// Collects the spans of rule declarations in the token stream.

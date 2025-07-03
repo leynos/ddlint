@@ -632,6 +632,16 @@ fn function_no_return() -> &'static str {
     "function log_message(msg: string) {\n}\n"
 }
 
+#[fixture]
+fn extern_function_missing_colon() -> &'static str {
+    "extern function missing_colon u32\n"
+}
+
+#[fixture]
+fn function_unterminated_body() -> &'static str {
+    "function foo() {"
+}
+
 #[rstest]
 fn extern_function_parsed(extern_function: &str) {
     let parsed = parse(extern_function);
@@ -672,4 +682,18 @@ fn function_no_return_parsed(function_no_return: &str) {
     assert_eq!(func.parameters(), vec![("msg".into(), "string".into())]);
     assert_eq!(func.return_type(), None);
     assert_eq!(pretty_print(func.syntax()), function_no_return);
+}
+
+#[rstest]
+fn extern_function_missing_colon_is_error(extern_function_missing_colon: &str) {
+    let parsed = parse(extern_function_missing_colon);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().functions().is_empty());
+}
+
+#[rstest]
+fn function_unterminated_body_is_error(function_unterminated_body: &str) {
+    let parsed = parse(function_unterminated_body);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().functions().is_empty());
 }
