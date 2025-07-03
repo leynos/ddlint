@@ -668,12 +668,13 @@ fn function_unclosed_params() -> &'static str {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn extern_function_parsed(extern_function: &str) {
     let parsed = parse(extern_function);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(func.name(), Some("hash".into()));
     assert!(func.is_extern());
     assert_eq!(func.parameters(), vec![("data".into(), "string".into())]);
@@ -682,12 +683,13 @@ fn extern_function_parsed(extern_function: &str) {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn function_with_body_parsed(function_with_body: &str) {
     let parsed = parse(function_with_body);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(func.name(), Some("to_uppercase".into()));
     assert!(!func.is_extern());
     assert_eq!(func.parameters(), vec![("s".into(), "string".into())]);
@@ -696,12 +698,13 @@ fn function_with_body_parsed(function_with_body: &str) {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn function_no_return_parsed(function_no_return: &str) {
     let parsed = parse(function_no_return);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(func.name(), Some("log_message".into()));
     assert!(!func.is_extern());
     assert_eq!(func.parameters(), vec![("msg".into(), "string".into())]);
@@ -710,24 +713,26 @@ fn function_no_return_parsed(function_no_return: &str) {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn function_no_params_parsed(function_no_params: &str) {
     let parsed = parse(function_no_params);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(func.name(), Some("greet".into()));
     assert_eq!(func.parameters(), Vec::<(String, String)>::new());
     assert_eq!(func.return_type(), Some("string".into()));
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn function_multi_params_parsed(function_multi_params: &str) {
     let parsed = parse(function_multi_params);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(
         func.parameters(),
         vec![("a".into(), "string".into()), ("b".into(), "string".into()),]
@@ -736,12 +741,13 @@ fn function_multi_params_parsed(function_multi_params: &str) {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn function_complex_params_parsed(function_complex_params: &str) {
     let parsed = parse(function_complex_params);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(
         func.parameters(),
         vec![("p".into(), "(u32, (u8, string))".into()),]
@@ -750,12 +756,13 @@ fn function_complex_params_parsed(function_complex_params: &str) {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn function_ws_comments_parsed(function_ws_comments: &str) {
     let parsed = parse(function_ws_comments);
     assert!(parsed.errors().is_empty());
     let funcs = parsed.root().functions();
     assert_eq!(funcs.len(), 1);
-    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    let func = funcs.first().expect("function missing");
     assert_eq!(func.name(), Some("spaced".into()));
     assert_eq!(func.parameters(), vec![("x".into(), "string".into())]);
     assert_eq!(func.return_type(), Some("u8".into()));

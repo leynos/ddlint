@@ -690,26 +690,14 @@ fn collect_function_spans(
     }
 
     fn handle_func(st: &mut State<'_>, span: Span, is_extern: bool) {
-        if is_extern {
-            let mut idx = st.stream.cursor() + 1;
-            let tokens = st.stream.tokens();
-            while let Some(tok) = tokens.get(idx) {
-                if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-                    && st
-                        .stream
-                        .src()
-                        .get(tok.1.clone())
-                        .is_some_and(|t| !t.contains('\n'))
-                {
-                    idx += 1;
-                } else {
-                    break;
-                }
-            }
-            if !matches!(tokens.get(idx), Some((SyntaxKind::K_FUNCTION, _))) {
-                st.skip_line();
-                return;
-            }
+        if is_extern
+            && !matches!(
+                st.stream.peek_after_ws_inline().map(|t| t.0),
+                Some(SyntaxKind::K_FUNCTION)
+            )
+        {
+            st.skip_line();
+            return;
         }
 
         let parser = if is_extern {
