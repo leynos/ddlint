@@ -689,33 +689,44 @@ fn collect_function_spans(
         parser.boxed()
     }
 
-    fn handle_extern(st: &mut State<'_>, span: Span) {
-        let mut idx = st.stream.cursor() + 1;
-        let tokens = st.stream.tokens();
-        while let Some(tok) = tokens.get(idx) {
-            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-                && st
-                    .stream
-                    .src()
-                    .get(tok.1.clone())
-                    .is_some_and(|t| !t.contains('\n'))
-            {
-                idx += 1;
-            } else {
-                break;
+    fn handle_func(st: &mut State<'_>, span: Span, is_extern: bool) {
+        if is_extern {
+            let mut idx = st.stream.cursor() + 1;
+            let tokens = st.stream.tokens();
+            while let Some(tok) = tokens.get(idx) {
+                if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+                    && st
+                        .stream
+                        .src()
+                        .get(tok.1.clone())
+                        .is_some_and(|t| !t.contains('\n'))
+                {
+                    idx += 1;
+                } else {
+                    break;
+                }
+            }
+            if !matches!(tokens.get(idx), Some((SyntaxKind::K_FUNCTION, _))) {
+                st.skip_line();
+                return;
             }
         }
-        if !matches!(tokens.get(idx), Some((SyntaxKind::K_FUNCTION, _))) {
-            st.skip_line();
-            return;
-        }
 
-        let parser = just(SyntaxKind::K_EXTERN)
-            .padded_by(inline_ws().repeated())
-            .ignore_then(func_decl(false));
+        let parser = if is_extern {
+            just(SyntaxKind::K_EXTERN)
+                .padded_by(inline_ws().repeated())
+                .ignore_then(func_decl(false))
+                .boxed()
+        } else {
+            func_decl(true)
+        };
         let (res, err) = st.parse_span(parser, span.start);
         if let Some(sp) = res {
-            let full = span.start..sp.end;
+            let full = if is_extern {
+                span.start..sp.end
+            } else {
+                sp.clone()
+            };
             st.spans.push(full.clone());
             st.stream.skip_until(full.end);
         } else {
@@ -724,16 +735,12 @@ fn collect_function_spans(
         }
     }
 
+    fn handle_extern(st: &mut State<'_>, span: Span) {
+        handle_func(st, span, true);
+    }
+
     fn handle_function(st: &mut State<'_>, span: Span) {
-        let parser = func_decl(true);
-        let (res, err) = st.parse_span(parser, span.start);
-        if let Some(sp) = res {
-            st.spans.push(sp.clone());
-            st.stream.skip_until(sp.end);
-        } else {
-            st.extra.extend(err);
-            st.skip_line();
-        }
+        handle_func(st, span, false);
     }
 
     let mut st = State::new(tokens, src, Vec::new());
