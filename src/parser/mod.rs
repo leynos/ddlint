@@ -6,7 +6,6 @@
 //! framework for integrating `chumsky` combinators and error recovery in later
 //! stages.
 
-use chumsky::Stream;
 use chumsky::prelude::*;
 use log::warn;
 use rowan::{GreenNode, GreenNodeBuilder, Language};
@@ -285,9 +284,7 @@ fn collect_import_spans(
             .padded_by(ws)
             .map_with_span(|_, sp: Span| sp);
 
-        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
-        let sub_stream = Stream::from_iter(span.start..st.stream.src().len(), iter);
-        let (res, err) = imprt.parse_recovery(sub_stream);
+        let (res, err) = st.parse_span(imprt, span.start);
         if let Some(sp) = res {
             let end = sp.end;
             st.spans.push(sp);
@@ -342,9 +339,7 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
     fn handle_typedef(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
-        let end = st.stream.line_end(st.stream.cursor());
-        st.stream.skip_until(end);
-        st.spans.push(start..end);
+        st.push_line_span(start);
     }
 
     /// Handles an `extern` declaration, collecting the span if it is an `extern type` statement.
@@ -369,14 +364,9 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
             .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TYPE)
         {
             st.stream.advance();
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-            st.spans.push(start..end);
+            st.push_line_span(start);
         } else {
-            // Currently only `extern type` is recognised. Skip the remainder
-            // of this line so parsing can continue.
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
+            st.skip_line();
         }
     }
 
@@ -577,9 +567,7 @@ fn collect_index_spans(
     fn handle_index(st: &mut State<'_>, span: Span) {
         let idx = index_decl();
 
-        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
-        let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
-        let (res, err) = idx.parse_recovery(sub);
+        let (res, err) = st.parse_span(idx, span.start);
         if let Some(sp) = res {
             let end = sp.end;
             st.spans.push(sp);
@@ -605,53 +593,120 @@ fn collect_index_spans(
 /// The function supports both `extern function` declarations without a body and
 /// regular `function` definitions enclosed in braces. The span covers the
 /// entire declaration or definition.
+#[expect(clippy::too_many_lines, reason = "parser logic")]
 fn collect_function_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
     type State<'a> = SpanCollector<'a, ()>;
+    use chumsky::prelude::*;
+
+    fn params() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
+        use std::cell::Cell;
+        let depth = Cell::new(0usize);
+        just(SyntaxKind::T_LPAREN)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(
+                filter_map(move |span, kind| match kind {
+                    SyntaxKind::T_LPAREN => {
+                        depth.set(depth.get() + 1);
+                        Ok(())
+                    }
+                    SyntaxKind::T_RPAREN => {
+                        if depth.get() == 0 {
+                            Err(Simple::custom(span, "unexpected ')'"))
+                        } else {
+                            depth.set(depth.get() - 1);
+                            Ok(())
+                        }
+                    }
+                    _ => Ok(()),
+                })
+                .padded_by(inline_ws().repeated())
+                .repeated(),
+            )
+            .then_ignore(just(SyntaxKind::T_RPAREN))
+            .ignored()
+    }
+
+    fn return_ty() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
+        just(SyntaxKind::T_COLON)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(
+                filter(|kind: &SyntaxKind| {
+                    !matches!(kind, SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI)
+                })
+                .ignored()
+                .padded_by(inline_ws().repeated())
+                .repeated(),
+            )
+            .ignored()
+            .or_not()
+            .ignored()
+    }
+
+    fn body() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
+        use std::cell::Cell;
+        let depth = Cell::new(0usize);
+        just(SyntaxKind::T_LBRACE)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(
+                filter_map(move |span, kind| match kind {
+                    SyntaxKind::T_LBRACE => {
+                        depth.set(depth.get() + 1);
+                        Ok(())
+                    }
+                    SyntaxKind::T_RBRACE => {
+                        if depth.get() == 0 {
+                            Err(Simple::custom(span, "unexpected '}'"))
+                        } else {
+                            depth.set(depth.get() - 1);
+                            Ok(())
+                        }
+                    }
+                    _ => Ok(()),
+                })
+                .padded_by(inline_ws().repeated())
+                .repeated(),
+            )
+            .then_ignore(just(SyntaxKind::T_RBRACE))
+            .ignored()
+            .or_not()
+            .ignored()
+    }
+
+    fn func_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+        let ident = ident();
+        just(SyntaxKind::K_FUNCTION)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(ident.clone())
+            .then(params())
+            .then(return_ty())
+            .then(body())
+            .padded_by(inline_ws().repeated())
+            .map_with_span(|_, sp: Span| sp)
+    }
 
     fn handle_extern(st: &mut State<'_>, span: Span) {
-        let start = span.start;
-        st.stream.advance();
-        st.stream.skip_ws_inline();
-        if st
-            .stream
-            .peek()
-            .is_some_and(|(kind, _)| *kind == SyntaxKind::K_FUNCTION)
-        {
-            st.stream.advance();
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-            st.spans.push(start..end);
+        let parser = just(SyntaxKind::K_EXTERN)
+            .padded_by(inline_ws().repeated())
+            .ignore_then(func_decl());
+        let (res, _err) = st.parse_span(parser, span.start);
+        if let Some(sp) = res {
+            let full = span.start..sp.end;
+            st.spans.push(full.clone());
+            st.stream.skip_until(full.end);
         } else {
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
+            st.skip_line();
         }
     }
 
     fn handle_function(st: &mut State<'_>, span: Span) {
-        let start = span.start;
-        st.stream.advance();
-        let mut depth = 0usize;
-        let mut end = span.end;
-        while let Some((kind, sp)) = st.stream.peek().cloned() {
-            st.stream.advance();
-            match kind {
-                SyntaxKind::T_LBRACE => {
-                    depth += 1;
-                }
-                SyntaxKind::T_RBRACE => {
-                    if depth == 0 {
-                        end = sp.end;
-                        break;
-                    }
-                    depth -= 1;
-                }
-                _ => {
-                    end = sp.end;
-                }
-            }
+        let parser = func_decl();
+        let (res, _err) = st.parse_span(parser, span.start);
+        if let Some(sp) = res {
+            st.spans.push(sp.clone());
+            st.stream.skip_until(sp.end);
+        } else {
+            st.skip_line();
         }
-        st.stream.skip_until(end);
-        st.spans.push(start..end);
     }
 
     let mut st = State::new(tokens, src, ());
@@ -725,9 +780,7 @@ fn collect_rule_spans(
         }
 
         let parser = rule_decl();
-        let iter = st.stream.tokens().iter().skip(st.stream.cursor()).cloned();
-        let sub = Stream::from_iter(span.start..st.stream.src().len(), iter);
-        let (res, err) = parser.parse_recovery(sub);
+        let (res, err) = st.parse_span(parser, span.start);
         if let Some(sp) = res {
             let end = sp.end;
             st.spans.push(sp);
@@ -1157,6 +1210,101 @@ pub mod ast {
         }
     }
 
+    fn parse_name_type_pairs<I>(mut iter: I) -> Vec<(String, String)>
+    where
+        I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+    {
+        use rowan::NodeOrToken;
+
+        // Skip to the first '('
+        let mut depth = 0usize;
+        for e in &mut iter {
+            if e.kind() == SyntaxKind::T_LPAREN {
+                break;
+            }
+        }
+
+        let mut pairs = Vec::new();
+        let mut buf = String::new();
+        let mut name: Option<String> = None;
+        for e in iter {
+            match e {
+                NodeOrToken::Token(t) => match t.kind() {
+                    SyntaxKind::T_LPAREN => {
+                        depth += 1;
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_RPAREN => {
+                        if depth == 0 {
+                            if let Some(n) = name.take() {
+                                let ty = buf.trim();
+                                if !ty.is_empty() {
+                                    pairs.push((n, ty.to_string()));
+                                }
+                            }
+                            break;
+                        }
+                        depth -= 1;
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_COMMA if depth == 0 => {
+                        if let Some(n) = name.take() {
+                            let ty = buf.trim();
+                            if !ty.is_empty() {
+                                pairs.push((n, ty.to_string()));
+                            }
+                        }
+                        buf.clear();
+                    }
+                    SyntaxKind::T_COLON if depth == 0 => {
+                        name = Some(buf.trim().to_string());
+                        buf.clear();
+                    }
+                    _ => buf.push_str(t.text()),
+                },
+                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+            }
+        }
+
+        pairs
+    }
+
+    fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
+    where
+        I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+    {
+        use rowan::NodeOrToken;
+
+        skip_whitespace_and_comments(iter);
+        if !matches!(
+            iter.peek().map(SyntaxElement::kind),
+            Some(SyntaxKind::T_COLON)
+        ) {
+            return None;
+        }
+        iter.next();
+
+        let mut buf = String::new();
+        for e in iter {
+            match e {
+                NodeOrToken::Token(t)
+                    if matches!(t.kind(), SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI) =>
+                {
+                    break;
+                }
+                NodeOrToken::Token(t) => buf.push_str(t.text()),
+                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+            }
+        }
+
+        let text = buf.trim();
+        if text.is_empty() {
+            None
+        } else {
+            Some(text.to_string())
+        }
+    }
+
     /// Typed wrapper for a relation declaration.
     #[derive(Debug, Clone)]
     pub struct Relation {
@@ -1204,59 +1352,7 @@ pub mod ast {
         /// Columns declared for the relation.
         #[must_use]
         pub fn columns(&self) -> Vec<(String, String)> {
-            use rowan::NodeOrToken;
-
-            let mut iter = self.syntax.children_with_tokens().peekable();
-            // Skip to the opening parenthesis
-            for e in &mut iter {
-                if e.kind() == SyntaxKind::T_LPAREN {
-                    break;
-                }
-            }
-            let mut cols = Vec::new();
-            let mut buf = String::new();
-            let mut name: Option<String> = None;
-            let mut depth = 0usize;
-
-            for e in iter.by_ref() {
-                match e {
-                    NodeOrToken::Token(t) => match t.kind() {
-                        SyntaxKind::T_LPAREN => {
-                            depth += 1;
-                            buf.push_str(t.text());
-                        }
-                        SyntaxKind::T_RPAREN => {
-                            if depth == 0 {
-                                if let Some(n) = name.take() {
-                                    let ty = buf.trim();
-                                    if !ty.is_empty() {
-                                        cols.push((n, ty.to_string()));
-                                    }
-                                }
-                                break;
-                            }
-                            depth -= 1;
-                            buf.push_str(t.text());
-                        }
-                        SyntaxKind::T_COMMA if depth == 0 => {
-                            if let Some(n) = name.take() {
-                                let ty = buf.trim();
-                                if !ty.is_empty() {
-                                    cols.push((n, ty.to_string()));
-                                }
-                            }
-                            buf.clear();
-                        }
-                        SyntaxKind::T_COLON if depth == 0 => {
-                            name = Some(buf.trim().to_string());
-                            buf.clear();
-                        }
-                        _ => buf.push_str(t.text()),
-                    },
-                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-                }
-            }
-            cols
+            parse_name_type_pairs(self.syntax.children_with_tokens())
         }
 
         /// Primary key column names if specified.
@@ -1568,69 +1664,12 @@ pub mod ast {
         /// Function parameters as name/type pairs.
         #[must_use]
         pub fn parameters(&self) -> Vec<(String, String)> {
-            use rowan::NodeOrToken;
-
-            let mut iter = self.syntax.children_with_tokens().peekable();
-            // Skip to '(' after the name
-            for e in &mut iter {
-                if e.kind() == SyntaxKind::T_LPAREN {
-                    break;
-                }
-            }
-
-            let mut params = Vec::new();
-            let mut buf = String::new();
-            let mut name: Option<String> = None;
-            let mut depth = 1usize;
-            for e in iter {
-                match e {
-                    NodeOrToken::Token(t) => match t.kind() {
-                        SyntaxKind::T_LPAREN => {
-                            depth += 1;
-                            if depth > 1 {
-                                buf.push_str(t.text());
-                            }
-                        }
-                        SyntaxKind::T_RPAREN => {
-                            if depth == 1 {
-                                if let Some(n) = name.take() {
-                                    let ty = buf.trim();
-                                    if !ty.is_empty() {
-                                        params.push((n, ty.to_string()));
-                                    }
-                                }
-                                break;
-                            }
-                            depth -= 1;
-                            buf.push_str(t.text());
-                        }
-                        SyntaxKind::T_COMMA if depth == 1 => {
-                            if let Some(n) = name.take() {
-                                let ty = buf.trim();
-                                if !ty.is_empty() {
-                                    params.push((n, ty.to_string()));
-                                }
-                            }
-                            buf.clear();
-                        }
-                        SyntaxKind::T_COLON if depth == 1 => {
-                            name = Some(buf.trim().to_string());
-                            buf.clear();
-                        }
-                        _ => buf.push_str(t.text()),
-                    },
-                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-                }
-            }
-            params
+            parse_name_type_pairs(self.syntax.children_with_tokens())
         }
 
         /// Return type text if specified.
         #[must_use]
-        #[expect(clippy::redundant_closure_for_method_calls, reason = "clarity")]
         pub fn return_type(&self) -> Option<String> {
-            use rowan::NodeOrToken;
-
             let mut iter = self.syntax.children_with_tokens().peekable();
             // Skip to ')' after parameters
             let mut depth = 0usize;
@@ -1647,32 +1686,7 @@ pub mod ast {
                 }
             }
 
-            skip_whitespace_and_comments(&mut iter);
-
-            if !matches!(iter.peek().map(|e| e.kind()), Some(SyntaxKind::T_COLON)) {
-                return None;
-            }
-            iter.next();
-
-            let mut buf = String::new();
-            for e in iter {
-                match e {
-                    NodeOrToken::Token(t)
-                        if matches!(t.kind(), SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI) =>
-                    {
-                        break;
-                    }
-                    NodeOrToken::Token(t) => buf.push_str(t.text()),
-                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-                }
-            }
-
-            let text = buf.trim();
-            if text.is_empty() {
-                None
-            } else {
-                Some(text.to_string())
-            }
+            parse_type_after_colon(&mut iter)
         }
     }
 }
