@@ -113,6 +113,78 @@ fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
         .padded_by(inline_ws().repeated())
 }
 
+/// Parser for a balanced token block such as parentheses or braces.
+///
+/// The parser consumes the opening delimiter, then all tokens until the
+/// matching closing delimiter while tracking nested pairs. Whitespace and
+/// comments are permitted between tokens. An error is produced if a closing
+/// token appears without a corresponding opener.
+fn balanced_block(
+    open: SyntaxKind,
+    close: SyntaxKind,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    use std::cell::Cell;
+
+    let depth = Cell::new(0usize);
+    just(open)
+        .padded_by(inline_ws().repeated())
+        .ignore_then(
+            filter_map(move |span, kind| match kind {
+                k if k == open => {
+                    depth.set(depth.get() + 1);
+                    Ok(())
+                }
+                k if k == close => {
+                    if depth.get() == 0 {
+                        Err(Simple::custom(span, format!("unexpected '{close:?}'")))
+                    } else {
+                        depth.set(depth.get() - 1);
+                        Ok(())
+                    }
+                }
+                _ => Ok(()),
+            })
+            .padded_by(inline_ws().repeated())
+            .repeated(),
+        )
+        .then_ignore(just(close))
+        .ignored()
+}
+
+/// As [`balanced_block`] but requires at least one token inside the delimiters.
+fn balanced_block_nonempty(
+    open: SyntaxKind,
+    close: SyntaxKind,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    use std::cell::Cell;
+
+    let depth = Cell::new(0usize);
+    just(open)
+        .padded_by(inline_ws().repeated())
+        .ignore_then(
+            filter_map(move |span, kind| match kind {
+                k if k == open => {
+                    depth.set(depth.get() + 1);
+                    Ok(())
+                }
+                k if k == close => {
+                    if depth.get() == 0 {
+                        Err(Simple::custom(span, format!("unexpected '{close:?}'")))
+                    } else {
+                        depth.set(depth.get() - 1);
+                        Ok(())
+                    }
+                }
+                _ => Ok(()),
+            })
+            .padded_by(inline_ws().repeated())
+            .repeated()
+            .at_least(1),
+        )
+        .then_ignore(just(close))
+        .ignored()
+}
+
 /// Result of a parse operation.
 #[derive(Debug)]
 pub struct Parsed {
@@ -517,34 +589,7 @@ fn collect_index_spans(
     /// an error when encountering a closing parenthesis that balances the outer
     /// one, signalling the end of the column list.
     fn index_columns() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
-        use std::cell::Cell;
-
-        let depth = Cell::new(0usize);
-
-        just(SyntaxKind::T_LPAREN)
-            .padded_by(inline_ws().repeated())
-            .ignore_then(
-                filter_map(move |span, kind| match kind {
-                    SyntaxKind::T_LPAREN => {
-                        depth.set(depth.get() + 1);
-                        Ok(())
-                    }
-                    SyntaxKind::T_RPAREN => {
-                        if depth.get() == 0 {
-                            Err(Simple::custom(span, "unexpected ')'"))
-                        } else {
-                            depth.set(depth.get() - 1);
-                            Ok(())
-                        }
-                    }
-                    _ => Ok(()),
-                })
-                .padded_by(inline_ws().repeated())
-                .repeated()
-                .at_least(1),
-            )
-            .then_ignore(just(SyntaxKind::T_RPAREN))
-            .ignored()
+        balanced_block_nonempty(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
     }
 
     /// Parser for an entire index declaration.
@@ -593,7 +638,6 @@ fn collect_index_spans(
 /// The function supports both `extern function` declarations without a body and
 /// regular `function` definitions enclosed in braces. The span covers the
 /// entire declaration or definition.
-#[expect(clippy::too_many_lines, reason = "parser logic")]
 fn collect_function_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -602,31 +646,7 @@ fn collect_function_spans(
     use chumsky::prelude::*;
 
     fn params() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
-        use std::cell::Cell;
-        let depth = Cell::new(0usize);
-        just(SyntaxKind::T_LPAREN)
-            .padded_by(inline_ws().repeated())
-            .ignore_then(
-                filter_map(move |span, kind| match kind {
-                    SyntaxKind::T_LPAREN => {
-                        depth.set(depth.get() + 1);
-                        Ok(())
-                    }
-                    SyntaxKind::T_RPAREN => {
-                        if depth.get() == 0 {
-                            Err(Simple::custom(span, "unexpected ')'"))
-                        } else {
-                            depth.set(depth.get() - 1);
-                            Ok(())
-                        }
-                    }
-                    _ => Ok(()),
-                })
-                .padded_by(inline_ws().repeated())
-                .repeated(),
-            )
-            .then_ignore(just(SyntaxKind::T_RPAREN))
-            .ignored()
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
     }
 
     fn return_ty() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
@@ -646,31 +666,7 @@ fn collect_function_spans(
     }
 
     fn body_block() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
-        use std::cell::Cell;
-        let depth = Cell::new(0usize);
-        just(SyntaxKind::T_LBRACE)
-            .padded_by(inline_ws().repeated())
-            .ignore_then(
-                filter_map(move |span, kind| match kind {
-                    SyntaxKind::T_LBRACE => {
-                        depth.set(depth.get() + 1);
-                        Ok(())
-                    }
-                    SyntaxKind::T_RBRACE => {
-                        if depth.get() == 0 {
-                            Err(Simple::custom(span, "unexpected '}'"))
-                        } else {
-                            depth.set(depth.get() - 1);
-                            Ok(())
-                        }
-                    }
-                    _ => Ok(()),
-                })
-                .padded_by(inline_ws().repeated())
-                .repeated(),
-            )
-            .then_ignore(just(SyntaxKind::T_RBRACE))
-            .ignored()
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE)
     }
 
     fn body_optional() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
