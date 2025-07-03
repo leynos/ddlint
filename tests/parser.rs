@@ -616,3 +616,60 @@ fn invalid_rule_garbage() {
         "Expected errors for completely invalid input"
     );
 }
+
+#[fixture]
+fn extern_function() -> &'static str {
+    "extern function hash(data: string): u64\n"
+}
+
+#[fixture]
+fn function_with_body() -> &'static str {
+    "function to_uppercase(s: string): string {\n}\n"
+}
+
+#[fixture]
+fn function_no_return() -> &'static str {
+    "function log_message(msg: string) {\n}\n"
+}
+
+#[rstest]
+fn extern_function_parsed(extern_function: &str) {
+    let parsed = parse(extern_function);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    assert_eq!(func.name(), Some("hash".into()));
+    assert!(func.is_extern());
+    assert_eq!(func.parameters(), vec![("data".into(), "string".into())]);
+    assert_eq!(func.return_type(), Some("u64".into()));
+    assert_eq!(pretty_print(func.syntax()), extern_function);
+}
+
+#[rstest]
+fn function_with_body_parsed(function_with_body: &str) {
+    let parsed = parse(function_with_body);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    assert_eq!(func.name(), Some("to_uppercase".into()));
+    assert!(!func.is_extern());
+    assert_eq!(func.parameters(), vec![("s".into(), "string".into())]);
+    assert_eq!(func.return_type(), Some("string".into()));
+    assert_eq!(pretty_print(func.syntax()), function_with_body);
+}
+
+#[rstest]
+fn function_no_return_parsed(function_no_return: &str) {
+    let parsed = parse(function_no_return);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().unwrap_or_else(|| panic!("function missing"));
+    assert_eq!(func.name(), Some("log_message".into()));
+    assert!(!func.is_extern());
+    assert_eq!(func.parameters(), vec![("msg".into(), "string".into())]);
+    assert_eq!(func.return_type(), None);
+    assert_eq!(pretty_print(func.syntax()), function_no_return);
+}
