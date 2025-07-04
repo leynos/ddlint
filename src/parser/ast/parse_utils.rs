@@ -8,6 +8,15 @@ use rowan::{NodeOrToken, SyntaxElement};
 use super::skip_whitespace_and_comments;
 use crate::{DdlogLanguage, SyntaxKind};
 
+/// Track nesting depth for delimiter pairs when parsing types.
+#[derive(Default)]
+struct DelimDepths {
+    paren: usize,
+    angle: usize,
+    bracket: usize,
+    brace: usize,
+}
+
 /// Consume `(name: type)` pairs from the provided iterator.
 ///
 /// The iterator should yield the tokens of a parameter or column list
@@ -28,7 +37,7 @@ where
     let mut pairs = Vec::new();
     let mut buf = String::new();
     let mut name: Option<String> = None;
-    let mut depth = 0usize;
+    let mut depth = DelimDepths::default();
 
     for e in iter {
         match e {
@@ -50,25 +59,70 @@ fn handle_token(
     buf: &mut String,
     name: &mut Option<String>,
     pairs: &mut Vec<(String, String)>,
-    depth: &mut usize,
+    depth: &mut DelimDepths,
 ) -> bool {
     match token.kind() {
         SyntaxKind::T_LPAREN => {
-            *depth += 1;
+            depth.paren += 1;
             buf.push_str(token.text());
         }
         SyntaxKind::T_RPAREN => {
-            if *depth == 0 {
+            if depth.paren == 0 && depth.angle == 0 && depth.bracket == 0 && depth.brace == 0 {
                 finalize_pair(name, buf, pairs);
                 return true; // end of list
             }
-            *depth -= 1;
+            if depth.paren > 0 {
+                depth.paren -= 1;
+            }
             buf.push_str(token.text());
         }
-        SyntaxKind::T_COMMA if *depth == 0 => {
+        SyntaxKind::T_LT => {
+            depth.angle += 1;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_GT => {
+            if depth.angle > 0 {
+                depth.angle -= 1;
+            }
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_SHL => {
+            depth.angle += 2;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_SHR => {
+            let dec = 2.min(depth.angle);
+            depth.angle -= dec;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_LBRACKET => {
+            depth.bracket += 1;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_RBRACKET => {
+            if depth.bracket > 0 {
+                depth.bracket -= 1;
+            }
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_LBRACE => {
+            depth.brace += 1;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_RBRACE => {
+            if depth.brace > 0 {
+                depth.brace -= 1;
+            }
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_COMMA
+            if depth.paren == 0 && depth.angle == 0 && depth.bracket == 0 && depth.brace == 0 =>
+        {
             finalize_pair(name, buf, pairs);
         }
-        SyntaxKind::T_COLON if *depth == 0 => {
+        SyntaxKind::T_COLON
+            if depth.paren == 0 && depth.angle == 0 && depth.bracket == 0 && depth.brace == 0 =>
+        {
             *name = Some(buf.trim().to_string());
             buf.clear();
         }
@@ -178,6 +232,14 @@ mod tests {
         vec![("id".into(), "u32".into()), ("name".into(), "string".into())]
     )]
     #[case("function wrap(t: Option<(u32, string)>) {}", vec![("t".into(), "Option<(u32, string)>".into())])]
+    #[case("function g(m: Map<string, u64>) {}", vec![("m".into(), "Map<string, u64>".into())])]
+    #[case(
+        "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
+        vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())]
+    )]
+    #[case("function array(a: [Vec<u32>]) {}", vec![("a".into(), "[Vec<u32>]".into())])]
+    #[case("function nested_vec(v: Vec<Vec<u8>>) {}", vec![("v".into(), "Vec<Vec<u8>>".into())])]
+    #[case("function weird(x: Vec<<u8>>) {}", vec![("x".into(), "Vec<<u8>>".into())])]
     #[case("function empty() {}", Vec::new())]
     #[case("function missing(a u32, b: bool) {}", vec![("b".into(), "bool".into())])]
     fn name_type_pairs(
