@@ -836,9 +836,10 @@ fn collect_rule_spans(
 
 /// Construct the CST from the token stream and recorded statement spans.
 ///
-/// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
-/// are wrapped into well-formed nodes during tree construction.
-/// Spans are checked with debug assertions.
+/// All span lists **must** be sorted and free from overlaps. The function
+/// validates this at runtime and panics if a violation is detected. Misordered
+/// spans would cause nodes to wrap the wrong tokens and corrupt the resulting
+/// CST.
 #[expect(
     clippy::too_many_arguments,
     reason = "green tree builder needs many spans"
@@ -961,10 +962,17 @@ fn maybe_finish(
 }
 
 /// Assert that spans are sorted and non-overlapping.
+///
+/// Panics with a helpful message if any two consecutive spans either overlap or
+/// are not strictly ordered. This safeguard prevents misaligned CST nodes when
+/// `build_green_tree` wraps tokens into syntax nodes.
 fn assert_spans_sorted(spans: &[Span]) {
     for pair in spans.windows(2) {
         let [first, second] = pair else { continue };
-        debug_assert!(first.end <= second.start, "spans overlap or are unsorted");
+        assert!(
+            first.end <= second.start,
+            "spans overlap or are unsorted: {first:?} then {second:?}",
+        );
     }
 }
 
@@ -1814,5 +1822,19 @@ mod tests {
         let stream = TokenStream::new(&tokens, src);
         let start = tokens.len();
         assert_eq!(stream.line_end(start), src.len());
+    }
+
+    #[test]
+    fn assert_spans_sorted_panics_on_overlap() {
+        let spans = vec![0..5, 4..8];
+        let result = std::panic::catch_unwind(|| super::assert_spans_sorted(&spans));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn assert_spans_sorted_panics_on_unsorted() {
+        let spans = vec![5..10, 0..2];
+        let result = std::panic::catch_unwind(|| super::assert_spans_sorted(&spans));
+        assert!(result.is_err());
     }
 }

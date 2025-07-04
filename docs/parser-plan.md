@@ -80,6 +80,10 @@ sequenceDiagram
     ASTRoot->>ASTRoot: functions() -> Vec<Function>
 ```
 
+`build_green_tree` expects every list of statement spans to be sorted by start
+offset and free from overlaps. If any span is mis-ordered, the builder panics to
+prevent mismatched nodes in the resulting CST.
+
 ## 5. Map CST Nodes to AST Structures
 
 Implement lightweight AST types that reference the CST. Each AST node should
