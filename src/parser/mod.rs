@@ -12,6 +12,21 @@ use rowan::{GreenNode, GreenNodeBuilder, Language};
 
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 
+fn token_display(kind: SyntaxKind) -> &'static str {
+    match kind {
+        SyntaxKind::T_LPAREN => "(",
+        SyntaxKind::T_RPAREN => ")",
+        SyntaxKind::T_LBRACE => "{",
+        SyntaxKind::T_RBRACE => "}",
+        SyntaxKind::T_LBRACKET => "[",
+        SyntaxKind::T_RBRACKET => "]",
+        SyntaxKind::T_COMMA => ",",
+        SyntaxKind::T_COLON => ":",
+        SyntaxKind::T_SEMI => ";",
+        _ => "",
+    }
+}
+
 mod token_stream;
 
 mod span_collector;
@@ -137,7 +152,10 @@ fn balanced_block_with_min(
                 }
                 k if k == close => {
                     if depth.get() == 0 {
-                        Err(Simple::custom(span, format!("unexpected '{close:?}'")))
+                        Err(Simple::custom(
+                            span,
+                            format!("unexpected '{}'", token_display(close)),
+                        ))
                     } else {
                         depth.set(depth.get() - 1);
                         Ok(())
