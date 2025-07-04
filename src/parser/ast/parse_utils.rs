@@ -154,7 +154,7 @@ fn handle_token(
         SyntaxKind::T_SHR => {
             let closed = close_and_push(token, buf, depth, Delim::Angle, 2);
             if closed < 2 {
-                // TODO: report unmatched '>>'
+                // TODO: report unmatched '>>' (See issue #54)
             }
         }
         SyntaxKind::T_LBRACKET => open_and_push(token, buf, depth, Delim::Bracket, 1),
