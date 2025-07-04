@@ -836,9 +836,10 @@ fn collect_rule_spans(
 
 /// Construct the CST from the token stream and recorded statement spans.
 ///
-/// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
-/// are wrapped into well-formed nodes during tree construction.
-/// Spans are checked with debug assertions.
+/// All span lists **must** be sorted and free from overlaps. The function
+/// aggregates ordering checks for all lists and panics with detailed messages
+/// if any violations are found. Misordered spans would cause nodes to wrap the
+/// wrong tokens and corrupt the resulting CST.
 #[expect(
     clippy::too_many_arguments,
     reason = "green tree builder needs many spans"
@@ -853,12 +854,14 @@ fn build_green_tree(
     functions: &[Span],
     rules: &[Span],
 ) -> GreenNode {
-    assert_spans_sorted(imports);
-    assert_spans_sorted(typedefs);
-    assert_spans_sorted(relations);
-    assert_spans_sorted(indexes);
-    assert_spans_sorted(functions);
-    assert_spans_sorted(rules);
+    ensure_span_lists_sorted(&[
+        ("imports", imports),
+        ("typedefs", typedefs),
+        ("relations", relations),
+        ("indexes", indexes),
+        ("functions", functions),
+        ("rules", rules),
+    ]);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
@@ -960,12 +963,51 @@ fn maybe_finish(
     }
 }
 
-/// Assert that spans are sorted and non-overlapping.
-fn assert_spans_sorted(spans: &[Span]) {
+/// Validate that spans are sorted and non-overlapping.
+///
+/// Returns an error describing the offending pair if any two consecutive spans
+/// overlap or are out of order. This helps callers diagnose invalid span lists
+/// before corrupting the CST.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SpanOrderError {
+    prev: Span,
+    next: Span,
+}
+
+impl std::fmt::Display for SpanOrderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "spans overlap or are unsorted: {:?} then {:?}",
+            self.prev, self.next
+        )
+    }
+}
+
+impl std::error::Error for SpanOrderError {}
+
+fn validate_spans_sorted(spans: &[Span]) -> Result<(), SpanOrderError> {
     for pair in spans.windows(2) {
         let [first, second] = pair else { continue };
-        debug_assert!(first.end <= second.start, "spans overlap or are unsorted");
+        if first.end > second.start {
+            return Err(SpanOrderError {
+                prev: first.clone(),
+                next: second.clone(),
+            });
+        }
     }
+    Ok(())
+}
+
+/// Panics if any span list is misordered, aggregating all violations.
+fn ensure_span_lists_sorted(lists: &[(&str, &[Span])]) {
+    let mut errors = Vec::new();
+    for (name, spans) in lists {
+        if let Err(e) = validate_spans_sorted(spans) {
+            errors.push(format!("{name} not sorted: {e}"));
+        }
+    }
+    assert!(errors.is_empty(), "{}", errors.join("\n"));
 }
 
 /// Push a token to the tree, wrapping `N_ERROR` tokens in an error node.
@@ -1717,5 +1759,82 @@ mod tests {
         let stream = TokenStream::new(&tokens, src);
         let start = tokens.len();
         assert_eq!(stream.line_end(start), src.len());
+    }
+
+    #[test]
+    fn validate_spans_sorted_err_on_overlap() {
+        let spans = vec![0..5, 4..8];
+        let result = super::validate_spans_sorted(&spans);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_spans_sorted_err_on_unsorted() {
+        let spans = vec![5..10, 0..2];
+        let result = super::validate_spans_sorted(&spans);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_spans_sorted_ok_on_empty() {
+        let spans: Vec<Span> = Vec::new();
+        assert!(super::validate_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn validate_spans_sorted_ok_on_single() {
+        let spans: Vec<Span> = vec![std::ops::Range { start: 0, end: 3 }];
+        assert!(super::validate_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn validate_spans_sorted_ok_on_sorted() {
+        let spans = vec![0..2, 3..5, 5..8];
+        assert!(super::validate_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn build_green_tree_panics_on_misordered_spans() {
+        let src = "import Foo";
+        let tokens = tokenize(src);
+        let unsorted = vec![1..2, 0..1];
+        let result = std::panic::catch_unwind(|| {
+            super::build_green_tree(tokens, src, &unsorted, &[], &[], &[], &[], &[]);
+        });
+        let Err(msg) = result else {
+            panic!("expected panic")
+        };
+        let text = msg.downcast_ref::<String>().map_or_else(
+            || {
+                msg.downcast_ref::<&str>()
+                    .map_or(String::new(), |s| (*s).to_string())
+            },
+            Clone::clone,
+        );
+        assert!(text.contains("imports not sorted"));
+        assert!(text.contains("0..1"));
+    }
+
+    #[test]
+    fn build_green_tree_reports_all_errors() {
+        let src = "import Foo; type T = string";
+        let tokens = tokenize(src);
+        let imports = vec![1..2, 0..1];
+        let typedefs = vec![4..5, 3..4];
+        let result = std::panic::catch_unwind(|| {
+            super::build_green_tree(tokens, src, &imports, &typedefs, &[], &[], &[], &[]);
+        });
+        let Err(msg) = result else {
+            panic!("expected panic")
+        };
+        let text = msg.downcast_ref::<String>().map_or_else(
+            || {
+                msg.downcast_ref::<&str>()
+                    .map_or(String::new(), |s| (*s).to_string())
+            },
+            Clone::clone,
+        );
+        assert!(text.contains("imports not sorted"));
+        assert!(text.contains("typedefs not sorted"));
     }
 }
