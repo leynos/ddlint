@@ -194,6 +194,23 @@ pub struct Parsed {
     errors: Vec<Simple<SyntaxKind>>,
 }
 
+/// Spans for each parsed statement category.
+#[derive(Debug)]
+pub struct ParsedSpans {
+    /// `import` statement spans.
+    pub imports: Vec<Span>,
+    /// `typedef` statement spans.
+    pub typedefs: Vec<Span>,
+    /// `relation` declaration spans.
+    pub relations: Vec<Span>,
+    /// `index` declaration spans.
+    pub indexes: Vec<Span>,
+    /// `function` definition spans.
+    pub functions: Vec<Span>,
+    /// Rule spans.
+    pub rules: Vec<Span>,
+}
+
 impl Parsed {
     /// Access the `rowan` green tree.
     #[must_use]
@@ -222,26 +239,9 @@ impl Parsed {
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
-    let (
-        import_spans,
-        typedef_spans,
-        relation_spans,
-        index_spans,
-        function_spans,
-        rule_spans,
-        errors,
-    ) = parse_tokens(&tokens, src);
+    let (spans, errors) = parse_tokens(&tokens, src);
 
-    let green = build_green_tree(
-        tokens,
-        src,
-        &import_spans,
-        &typedef_spans,
-        &relation_spans,
-        &index_spans,
-        &function_spans,
-        &rule_spans,
-    );
+    let green = build_green_tree(tokens, src, &spans);
     let root = ast::Root::from_green(green.clone());
 
     Parsed {
@@ -254,28 +254,19 @@ pub fn parse(src: &str) -> Parsed {
 /// Identifies and collects the spans of `import`, `typedef`, `relation`,
 /// `index`, and `function` statements in a token stream.
 ///
-/// Returns tuples containing the spans of each statement type as well as any
-/// parse errors encountered during span collection.
+/// Returns a [`ParsedSpans`] struct containing the spans of each statement type
+/// alongside any parse errors encountered during span collection.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// let (imports, typedefs, relations, indexes, errors) = parse_tokens(&tokens, src);
-/// assert!(imports.iter().all(|span| span.start < span.end));
+/// let (spans, errors) = parse_tokens(&tokens, src);
+/// assert!(spans.imports.iter().all(|span| span.start < span.end));
 /// ```
-#[expect(clippy::type_complexity, reason = "returning multiple span lists")]
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-) -> (
-    Vec<Span>,
-    Vec<Span>,
-    Vec<Span>,
-    Vec<Span>,
-    Vec<Span>,
-    Vec<Span>,
-    Vec<Simple<SyntaxKind>>,
-) {
+) -> (ParsedSpans, Vec<Simple<SyntaxKind>>) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
     let relation_spans = collect_relation_spans(tokens, src);
@@ -289,12 +280,14 @@ fn parse_tokens(
     all_errors.extend(rule_errors);
 
     (
-        import_spans,
-        typedef_spans,
-        relation_spans,
-        index_spans,
-        function_spans,
-        rule_spans,
+        ParsedSpans {
+            imports: import_spans,
+            typedefs: typedef_spans,
+            relations: relation_spans,
+            indexes: index_spans,
+            functions: function_spans,
+            rules: rule_spans,
+        },
         all_errors,
     )
 }
@@ -836,38 +829,25 @@ fn collect_rule_spans(
 
 /// Construct the CST from the token stream and recorded statement spans.
 ///
-/// `imports` and `typedefs` must be sorted and non-overlapping so that tokens
-/// are wrapped into well-formed nodes during tree construction.
+/// `spans.imports` and `spans.typedefs` must be sorted and non-overlapping so
+/// that tokens are wrapped into well-formed nodes during tree construction.
 /// Spans are checked with debug assertions.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "green tree builder needs many spans"
-)]
-fn build_green_tree(
-    tokens: Vec<(SyntaxKind, Span)>,
-    src: &str,
-    imports: &[Span],
-    typedefs: &[Span],
-    relations: &[Span],
-    indexes: &[Span],
-    functions: &[Span],
-    rules: &[Span],
-) -> GreenNode {
-    assert_spans_sorted(imports);
-    assert_spans_sorted(typedefs);
-    assert_spans_sorted(relations);
-    assert_spans_sorted(indexes);
-    assert_spans_sorted(functions);
-    assert_spans_sorted(rules);
+fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, spans: &ParsedSpans) -> GreenNode {
+    assert_spans_sorted(&spans.imports);
+    assert_spans_sorted(&spans.typedefs);
+    assert_spans_sorted(&spans.relations);
+    assert_spans_sorted(&spans.indexes);
+    assert_spans_sorted(&spans.functions);
+    assert_spans_sorted(&spans.rules);
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
-    let mut import_iter = imports.iter().peekable();
-    let mut typedef_iter = typedefs.iter().peekable();
-    let mut relation_iter = relations.iter().peekable();
-    let mut index_iter = indexes.iter().peekable();
-    let mut function_iter = functions.iter().peekable();
-    let mut rule_iter = rules.iter().peekable();
+    let mut import_iter = spans.imports.iter().peekable();
+    let mut typedef_iter = spans.typedefs.iter().peekable();
+    let mut relation_iter = spans.relations.iter().peekable();
+    let mut index_iter = spans.indexes.iter().peekable();
+    let mut function_iter = spans.functions.iter().peekable();
+    let mut rule_iter = spans.rules.iter().peekable();
 
     for (kind, span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
