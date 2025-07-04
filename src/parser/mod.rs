@@ -1233,6 +1233,70 @@ pub mod ast {
         }
     }
 
+    /// Tracks nesting for parentheses, angle brackets, square brackets and
+    /// braces when parsing name/type pairs.
+    #[derive(Default)]
+    struct DelimiterDepth {
+        parens: usize,
+        angles: usize,
+        squares: usize,
+        braces: usize,
+    }
+
+    impl DelimiterDepth {
+        fn open_paren(&mut self) {
+            self.parens += 1;
+        }
+        fn close_paren(&mut self) -> bool {
+            if self.parens == 0 {
+                false
+            } else {
+                self.parens -= 1;
+                true
+            }
+        }
+
+        fn open_angle(&mut self) {
+            self.angles += 1;
+        }
+        fn close_angle(&mut self) -> bool {
+            if self.angles == 0 {
+                false
+            } else {
+                self.angles -= 1;
+                true
+            }
+        }
+
+        fn open_square(&mut self) {
+            self.squares += 1;
+        }
+        fn close_square(&mut self) -> bool {
+            if self.squares == 0 {
+                false
+            } else {
+                self.squares -= 1;
+                true
+            }
+        }
+
+        fn open_brace(&mut self) {
+            self.braces += 1;
+        }
+        fn close_brace(&mut self) -> bool {
+            if self.braces == 0 {
+                false
+            } else {
+                self.braces -= 1;
+                true
+            }
+        }
+
+        fn is_top_level(&self) -> bool {
+            self.parens == 0 && self.angles == 0 && self.squares == 0 && self.braces == 0
+        }
+    }
+
     fn parse_name_type_pairs<I>(mut iter: I) -> Vec<(String, String)>
     where
         I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -1240,10 +1304,7 @@ pub mod ast {
         use rowan::NodeOrToken;
 
         // Skip to the first '('
-        let mut parens = 0usize;
-        let mut angles = 0usize;
-        let mut squares = 0usize;
-        let mut braces = 0usize;
+        let mut depth = DelimiterDepth::default();
         for e in &mut iter {
             if e.kind() == SyntaxKind::T_LPAREN {
                 break;
@@ -1257,11 +1318,11 @@ pub mod ast {
             match e {
                 NodeOrToken::Token(t) => match t.kind() {
                     SyntaxKind::T_LPAREN => {
-                        parens += 1;
+                        depth.open_paren();
                         buf.push_str(t.text());
                     }
                     SyntaxKind::T_RPAREN => {
-                        if parens == 0 && angles == 0 && squares == 0 && braces == 0 {
+                        if depth.is_top_level() {
                             if let Some(n) = name.take() {
                                 let ty = buf.trim();
                                 if !ty.is_empty() {
@@ -1270,48 +1331,58 @@ pub mod ast {
                             }
                             break;
                         }
-                        parens = parens.saturating_sub(1);
-                        buf.push_str(t.text());
+                        if depth.close_paren() {
+                            buf.push_str(t.text());
+                        } else {
+                            break;
+                        }
                     }
                     SyntaxKind::T_LT => {
-                        angles += 1;
+                        depth.open_angle();
                         buf.push_str(t.text());
                     }
                     SyntaxKind::T_GT => {
-                        angles = angles.saturating_sub(1);
-                        buf.push_str(t.text());
+                        if depth.close_angle() {
+                            buf.push_str(t.text());
+                        } else {
+                            break;
+                        }
                     }
                     SyntaxKind::T_SHL => {
-                        angles += 2;
+                        depth.open_angle();
+                        depth.open_angle();
                         buf.push_str(t.text());
                     }
                     SyntaxKind::T_SHR => {
-                        if angles >= 2 {
-                            angles -= 2;
+                        if depth.close_angle() && depth.close_angle() {
+                            buf.push_str(t.text());
                         } else {
-                            angles = angles.saturating_sub(1);
+                            break;
                         }
-                        buf.push_str(t.text());
                     }
                     SyntaxKind::T_LBRACKET => {
-                        squares += 1;
+                        depth.open_square();
                         buf.push_str(t.text());
                     }
                     SyntaxKind::T_RBRACKET => {
-                        squares = squares.saturating_sub(1);
-                        buf.push_str(t.text());
+                        if depth.close_square() {
+                            buf.push_str(t.text());
+                        } else {
+                            break;
+                        }
                     }
                     SyntaxKind::T_LBRACE => {
-                        braces += 1;
+                        depth.open_brace();
                         buf.push_str(t.text());
                     }
                     SyntaxKind::T_RBRACE => {
-                        braces = braces.saturating_sub(1);
-                        buf.push_str(t.text());
+                        if depth.close_brace() {
+                            buf.push_str(t.text());
+                        } else {
+                            break;
+                        }
                     }
-                    SyntaxKind::T_COMMA
-                        if parens == 0 && angles == 0 && squares == 0 && braces == 0 =>
-                    {
+                    SyntaxKind::T_COMMA if depth.is_top_level() => {
                         if let Some(n) = name.take() {
                             let ty = buf.trim();
                             if !ty.is_empty() {
@@ -1320,9 +1391,7 @@ pub mod ast {
                         }
                         buf.clear();
                     }
-                    SyntaxKind::T_COLON
-                        if parens == 0 && angles == 0 && squares == 0 && braces == 0 =>
-                    {
+                    SyntaxKind::T_COLON if depth.is_top_level() => {
                         name = Some(buf.trim().to_string());
                         buf.clear();
                     }
