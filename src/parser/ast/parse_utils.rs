@@ -89,17 +89,11 @@ where
     let mut buf = String::new();
     for e in iter {
         match e {
-            NodeOrToken::Token(t)
-                if matches!(t.kind(), SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI) =>
-            {
-                break;
-            }
-            NodeOrToken::Token(t) => {
-                if t.kind() == SyntaxKind::T_WHITESPACE && t.text().contains('\n') {
-                    break;
-                }
-                buf.push_str(t.text());
-            }
+            NodeOrToken::Token(t) => match t.kind() {
+                SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI => break,
+                SyntaxKind::T_WHITESPACE if t.text().contains('\n') => break,
+                _ => buf.push_str(t.text()),
+            },
             NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
         }
     }
