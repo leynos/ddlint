@@ -854,12 +854,24 @@ fn build_green_tree(
     functions: &[Span],
     rules: &[Span],
 ) -> GreenNode {
-    assert_spans_sorted(imports);
-    assert_spans_sorted(typedefs);
-    assert_spans_sorted(relations);
-    assert_spans_sorted(indexes);
-    assert_spans_sorted(functions);
-    assert_spans_sorted(rules);
+    if let Err(e) = assert_spans_sorted(imports) {
+        panic!("imports not sorted: {e}");
+    }
+    if let Err(e) = assert_spans_sorted(typedefs) {
+        panic!("typedefs not sorted: {e}");
+    }
+    if let Err(e) = assert_spans_sorted(relations) {
+        panic!("relations not sorted: {e}");
+    }
+    if let Err(e) = assert_spans_sorted(indexes) {
+        panic!("indexes not sorted: {e}");
+    }
+    if let Err(e) = assert_spans_sorted(functions) {
+        panic!("functions not sorted: {e}");
+    }
+    if let Err(e) = assert_spans_sorted(rules) {
+        panic!("rules not sorted: {e}");
+    }
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
@@ -961,19 +973,40 @@ fn maybe_finish(
     }
 }
 
-/// Assert that spans are sorted and non-overlapping.
+/// Validate that spans are sorted and non-overlapping.
 ///
-/// Panics with a helpful message if any two consecutive spans either overlap or
-/// are not strictly ordered. This safeguard prevents misaligned CST nodes when
-/// `build_green_tree` wraps tokens into syntax nodes.
-fn assert_spans_sorted(spans: &[Span]) {
+/// Returns an error describing the offending pair if any two consecutive spans
+/// overlap or are out of order. This helps callers diagnose invalid span lists
+/// before corrupting the CST.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SpanOrderError {
+    prev: Span,
+    next: Span,
+}
+
+impl std::fmt::Display for SpanOrderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "spans overlap or are unsorted: {:?} then {:?}",
+            self.prev, self.next
+        )
+    }
+}
+
+impl std::error::Error for SpanOrderError {}
+
+fn assert_spans_sorted(spans: &[Span]) -> Result<(), SpanOrderError> {
     for pair in spans.windows(2) {
         let [first, second] = pair else { continue };
-        assert!(
-            first.end <= second.start,
-            "spans overlap or are unsorted: {first:?} then {second:?}",
-        );
+        if first.end > second.start {
+            return Err(SpanOrderError {
+                prev: first.clone(),
+                next: second.clone(),
+            });
+        }
     }
+    Ok(())
 }
 
 /// Push a token to the tree, wrapping `N_ERROR` tokens in an error node.
@@ -1825,16 +1858,34 @@ mod tests {
     }
 
     #[test]
-    fn assert_spans_sorted_panics_on_overlap() {
+    fn assert_spans_sorted_err_on_overlap() {
         let spans = vec![0..5, 4..8];
-        let result = std::panic::catch_unwind(|| super::assert_spans_sorted(&spans));
+        let result = super::assert_spans_sorted(&spans);
         assert!(result.is_err());
     }
 
     #[test]
-    fn assert_spans_sorted_panics_on_unsorted() {
+    fn assert_spans_sorted_err_on_unsorted() {
         let spans = vec![5..10, 0..2];
-        let result = std::panic::catch_unwind(|| super::assert_spans_sorted(&spans));
+        let result = super::assert_spans_sorted(&spans);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn assert_spans_sorted_ok_on_empty() {
+        let spans: Vec<Span> = Vec::new();
+        assert!(super::assert_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn assert_spans_sorted_ok_on_single() {
+        let spans: Vec<Span> = vec![std::ops::Range { start: 0, end: 3 }];
+        assert!(super::assert_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn assert_spans_sorted_ok_on_sorted() {
+        let spans = vec![0..2, 3..5, 5..8];
+        assert!(super::assert_spans_sorted(&spans).is_ok());
     }
 }

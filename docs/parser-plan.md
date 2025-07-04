@@ -81,7 +81,7 @@ sequenceDiagram
 ```
 
 `build_green_tree` expects every list of statement spans to be sorted by start
-offset and free from overlaps. If any span is mis-ordered, the builder panics to
+offset and free from overlaps. If any span is misordered, the builder panics to
 prevent mismatched nodes in the resulting CST.
 
 ## 5. Map CST Nodes to AST Structures
