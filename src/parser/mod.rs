@@ -195,7 +195,7 @@ pub struct Parsed {
 }
 
 /// Spans for each parsed statement category.
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct ParsedSpans {
     /// `import` statement spans.
     pub imports: Vec<Span>,
@@ -209,6 +209,28 @@ pub struct ParsedSpans {
     pub functions: Vec<Span>,
     /// Rule spans.
     pub rules: Vec<Span>,
+}
+
+impl ParsedSpans {
+    /// Iterate over all span slices in declaration order.
+    fn iter_all(&self) -> std::array::IntoIter<&[Span], 6> {
+        [
+            self.imports.as_slice(),
+            self.typedefs.as_slice(),
+            self.relations.as_slice(),
+            self.indexes.as_slice(),
+            self.functions.as_slice(),
+            self.rules.as_slice(),
+        ]
+        .into_iter()
+    }
+
+    /// Assert that every span list is sorted and non-overlapping.
+    fn assert_sorted(&self) {
+        for spans in self.iter_all() {
+            assert_spans_sorted(spans);
+        }
+    }
 }
 
 impl Parsed {
@@ -833,12 +855,7 @@ fn collect_rule_spans(
 /// that tokens are wrapped into well-formed nodes during tree construction.
 /// Spans are checked with debug assertions.
 fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, spans: &ParsedSpans) -> GreenNode {
-    assert_spans_sorted(&spans.imports);
-    assert_spans_sorted(&spans.typedefs);
-    assert_spans_sorted(&spans.relations);
-    assert_spans_sorted(&spans.indexes);
-    assert_spans_sorted(&spans.functions);
-    assert_spans_sorted(&spans.rules);
+    spans.assert_sorted();
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
