@@ -195,7 +195,7 @@ pub struct Parsed {
 }
 
 /// Spans for each parsed statement category.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedSpans {
     /// `import` statement spans.
     pub imports: Vec<Span>,
