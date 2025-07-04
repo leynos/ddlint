@@ -678,6 +678,16 @@ fn function_complex_array_params() -> &'static str {
 }
 
 #[fixture]
+fn function_deep_generic_params() -> &'static str {
+    "function deep(item: Vec<Map<string, Vec<Vec<u8>>>>): bool {}\n"
+}
+
+#[fixture]
+fn function_map_array_generic_params() -> &'static str {
+    "function combos(map: Map<[string], Vec<(u32, [bool])>>): bool {}\n"
+}
+
+#[fixture]
 fn function_ws_comments() -> &'static str {
     "function  spaced  (  x : string )  :  u8 { /*empty*/ }\n"
 }
@@ -822,6 +832,36 @@ fn function_nested_generic_params_parsed(function_nested_generic_params: &str) {
     assert_eq!(
         func.parameters(),
         vec![("item".into(), "Vec<Map<string, Vec<u8>>>".into())],
+    );
+    assert_eq!(func.return_type(), Some("bool".into()));
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_deep_generic_params_parsed(function_deep_generic_params: &str) {
+    let parsed = parse(function_deep_generic_params);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(
+        func.parameters(),
+        vec![("item".into(), "Vec<Map<string, Vec<Vec<u8>>>>".into())],
+    );
+    assert_eq!(func.return_type(), Some("bool".into()));
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_map_array_generic_params_parsed(function_map_array_generic_params: &str) {
+    let parsed = parse(function_map_array_generic_params);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(
+        func.parameters(),
+        vec![("map".into(), "Map<[string], Vec<(u32, [bool])>>".into())],
     );
     assert_eq!(func.return_type(), Some("bool".into()));
 }
