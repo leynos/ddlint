@@ -8,13 +8,77 @@ use rowan::{NodeOrToken, SyntaxElement};
 use super::skip_whitespace_and_comments;
 use crate::{DdlogLanguage, SyntaxKind};
 
-/// Track nesting depth for delimiter pairs when parsing types.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Delim {
+    Paren,
+    Angle,
+    Bracket,
+    Brace,
+}
+
+/// Track delimiter nesting using a stack.
+///
+/// This structure allows the parser to support new delimiter pairs without
+/// additional counters and ensures they close in the correct order.
 #[derive(Default)]
-struct DelimDepths {
-    paren: usize,
-    angle: usize,
-    bracket: usize,
-    brace: usize,
+struct DelimStack(Vec<Delim>);
+
+impl DelimStack {
+    fn open(&mut self, delim: Delim, count: usize) {
+        for _ in 0..count {
+            self.0.push(delim);
+        }
+    }
+
+    /// Attempt to close `count` instances of `delim`.
+    ///
+    /// Returns the number of delimiters successfully closed so that callers
+    /// can detect mismatches.
+    fn close(&mut self, delim: Delim, count: usize) -> usize {
+        let mut closed = 0;
+        for _ in 0..count {
+            match self.0.pop() {
+                Some(d) if d == delim => closed += 1,
+                Some(d) => {
+                    self.0.push(d);
+                    break;
+                }
+                None => break,
+            }
+        }
+        closed
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+fn open_and_push(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    buf: &mut String,
+    stack: &mut DelimStack,
+    delim: Delim,
+    count: usize,
+) {
+    stack.open(delim, count);
+    buf.push_str(token.text());
+}
+
+fn close_and_push(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    buf: &mut String,
+    stack: &mut DelimStack,
+    delim: Delim,
+    count: usize,
+) -> usize {
+    let closed = stack.close(delim, count);
+    buf.push_str(token.text());
+    closed
+}
+
+fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
+    buf.push_str(token.text());
 }
 
 /// Consume `(name: type)` pairs from the provided iterator.
@@ -37,12 +101,22 @@ where
     let mut pairs = Vec::new();
     let mut buf = String::new();
     let mut name: Option<String> = None;
-    let mut depth = DelimDepths::default();
+    let mut depth = DelimStack::default();
+    // Track the outer parameter list separately so that nested
+    // parentheses inside types do not terminate parsing.
+    let mut outer_parens = 1usize;
 
     for e in iter {
         match e {
             NodeOrToken::Token(t) => {
-                if handle_token(&t, &mut buf, &mut name, &mut pairs, &mut depth) {
+                if handle_token(
+                    &t,
+                    &mut buf,
+                    &mut name,
+                    &mut pairs,
+                    &mut depth,
+                    &mut outer_parens,
+                ) {
                     break;
                 }
             }
@@ -59,74 +133,46 @@ fn handle_token(
     buf: &mut String,
     name: &mut Option<String>,
     pairs: &mut Vec<(String, String)>,
-    depth: &mut DelimDepths,
+    depth: &mut DelimStack,
+    outer_parens: &mut usize,
 ) -> bool {
     match token.kind() {
-        SyntaxKind::T_LPAREN => {
-            depth.paren += 1;
-            buf.push_str(token.text());
-        }
+        SyntaxKind::T_LPAREN => open_and_push(token, buf, depth, Delim::Paren, 1),
         SyntaxKind::T_RPAREN => {
-            if depth.paren == 0 && depth.angle == 0 && depth.bracket == 0 && depth.brace == 0 {
+            if depth.close(Delim::Paren, 1) == 0 {
+                *outer_parens = outer_parens.saturating_sub(1);
                 finalize_pair(name, buf, pairs);
-                return true; // end of list
+                return *outer_parens == 0;
             }
-            if depth.paren > 0 {
-                depth.paren -= 1;
-            }
-            buf.push_str(token.text());
+            push(token, buf);
         }
-        SyntaxKind::T_LT => {
-            depth.angle += 1;
-            buf.push_str(token.text());
-        }
+        SyntaxKind::T_LT => open_and_push(token, buf, depth, Delim::Angle, 1),
         SyntaxKind::T_GT => {
-            if depth.angle > 0 {
-                depth.angle -= 1;
-            }
-            buf.push_str(token.text());
+            close_and_push(token, buf, depth, Delim::Angle, 1);
         }
-        SyntaxKind::T_SHL => {
-            depth.angle += 2;
-            buf.push_str(token.text());
-        }
+        SyntaxKind::T_SHL => open_and_push(token, buf, depth, Delim::Angle, 2),
         SyntaxKind::T_SHR => {
-            let dec = 2.min(depth.angle);
-            depth.angle -= dec;
-            buf.push_str(token.text());
+            let closed = close_and_push(token, buf, depth, Delim::Angle, 2);
+            if closed < 2 {
+                // TODO: report unmatched '>>'
+            }
         }
-        SyntaxKind::T_LBRACKET => {
-            depth.bracket += 1;
-            buf.push_str(token.text());
-        }
+        SyntaxKind::T_LBRACKET => open_and_push(token, buf, depth, Delim::Bracket, 1),
         SyntaxKind::T_RBRACKET => {
-            if depth.bracket > 0 {
-                depth.bracket -= 1;
-            }
-            buf.push_str(token.text());
+            close_and_push(token, buf, depth, Delim::Bracket, 1);
         }
-        SyntaxKind::T_LBRACE => {
-            depth.brace += 1;
-            buf.push_str(token.text());
-        }
+        SyntaxKind::T_LBRACE => open_and_push(token, buf, depth, Delim::Brace, 1),
         SyntaxKind::T_RBRACE => {
-            if depth.brace > 0 {
-                depth.brace -= 1;
-            }
-            buf.push_str(token.text());
+            close_and_push(token, buf, depth, Delim::Brace, 1);
         }
-        SyntaxKind::T_COMMA
-            if depth.paren == 0 && depth.angle == 0 && depth.bracket == 0 && depth.brace == 0 =>
-        {
+        SyntaxKind::T_COMMA if depth.is_empty() && *outer_parens == 1 => {
             finalize_pair(name, buf, pairs);
         }
-        SyntaxKind::T_COLON
-            if depth.paren == 0 && depth.angle == 0 && depth.bracket == 0 && depth.brace == 0 =>
-        {
+        SyntaxKind::T_COLON if depth.is_empty() && *outer_parens == 1 => {
             *name = Some(buf.trim().to_string());
             buf.clear();
         }
-        _ => buf.push_str(token.text()),
+        _ => push(token, buf),
     }
     false
 }
