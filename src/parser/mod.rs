@@ -957,12 +957,51 @@ fn maybe_finish(
     }
 }
 
-/// Assert that spans are sorted and non-overlapping.
-fn assert_spans_sorted(spans: &[Span]) {
+/// Validate that spans are sorted and non-overlapping.
+///
+/// Returns an error describing the offending pair if any two consecutive spans
+/// overlap or are out of order. This helps callers diagnose invalid span lists
+/// before corrupting the CST.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SpanOrderError {
+    prev: Span,
+    next: Span,
+}
+
+impl std::fmt::Display for SpanOrderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "spans overlap or are unsorted: {:?} then {:?}",
+            self.prev, self.next
+        )
+    }
+}
+
+impl std::error::Error for SpanOrderError {}
+
+fn validate_spans_sorted(spans: &[Span]) -> Result<(), SpanOrderError> {
     for pair in spans.windows(2) {
         let [first, second] = pair else { continue };
-        debug_assert!(first.end <= second.start, "spans overlap or are unsorted");
+        if first.end > second.start {
+            return Err(SpanOrderError {
+                prev: first.clone(),
+                next: second.clone(),
+            });
+        }
     }
+    Ok(())
+}
+
+/// Panics if any span list is misordered, aggregating all violations.
+fn ensure_span_lists_sorted(lists: &[(&str, &[Span])]) {
+    let mut errors = Vec::new();
+    for (name, spans) in lists {
+        if let Err(e) = validate_spans_sorted(spans) {
+            errors.push(format!("{name} not sorted: {e}"));
+        }
+    }
+    assert!(errors.is_empty(), "{}", errors.join("\n"));
 }
 
 /// Push a token to the tree, wrapping `N_ERROR` tokens in an error node.
@@ -1218,7 +1257,7 @@ pub mod ast {
         None
     }
 
-    fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
+    pub(super) fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
     where
         I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
     {
@@ -1230,105 +1269,8 @@ pub mod ast {
         }
     }
 
-    fn parse_name_type_pairs<I>(mut iter: I) -> Vec<(String, String)>
-    where
-        I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-    {
-        use rowan::NodeOrToken;
-
-        // Skip to the first '('
-        let mut depth = 0usize;
-        for e in &mut iter {
-            if e.kind() == SyntaxKind::T_LPAREN {
-                break;
-            }
-        }
-
-        let mut pairs = Vec::new();
-        let mut buf = String::new();
-        let mut name: Option<String> = None;
-        for e in iter {
-            match e {
-                NodeOrToken::Token(t) => match t.kind() {
-                    SyntaxKind::T_LPAREN => {
-                        depth += 1;
-                        buf.push_str(t.text());
-                    }
-                    SyntaxKind::T_RPAREN => {
-                        if depth == 0 {
-                            if let Some(n) = name.take() {
-                                let ty = buf.trim();
-                                if !ty.is_empty() {
-                                    pairs.push((n, ty.to_string()));
-                                }
-                            }
-                            break;
-                        }
-                        depth -= 1;
-                        buf.push_str(t.text());
-                    }
-                    SyntaxKind::T_COMMA if depth == 0 => {
-                        if let Some(n) = name.take() {
-                            let ty = buf.trim();
-                            if !ty.is_empty() {
-                                pairs.push((n, ty.to_string()));
-                            }
-                        }
-                        buf.clear();
-                    }
-                    SyntaxKind::T_COLON if depth == 0 => {
-                        name = Some(buf.trim().to_string());
-                        buf.clear();
-                    }
-                    _ => buf.push_str(t.text()),
-                },
-                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-            }
-        }
-
-        pairs
-    }
-
-    fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
-    where
-        I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-    {
-        use rowan::NodeOrToken;
-
-        skip_whitespace_and_comments(iter);
-        if !matches!(
-            iter.peek().map(SyntaxElement::kind),
-            Some(SyntaxKind::T_COLON)
-        ) {
-            return None;
-        }
-        iter.next();
-
-        let mut buf = String::new();
-        for e in iter {
-            match e {
-                NodeOrToken::Token(t)
-                    if matches!(t.kind(), SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI) =>
-                {
-                    break;
-                }
-                NodeOrToken::Token(t) => {
-                    if t.kind() == SyntaxKind::T_WHITESPACE && t.text().contains('\n') {
-                        break;
-                    }
-                    buf.push_str(t.text());
-                }
-                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-            }
-        }
-
-        let text = buf.trim();
-        if text.is_empty() {
-            None
-        } else {
-            Some(text.to_string())
-        }
-    }
+    mod parse_utils;
+    use parse_utils::{parse_name_type_pairs, parse_type_after_colon};
 
     /// Typed wrapper for a relation declaration.
     #[derive(Debug, Clone)]
@@ -1811,5 +1753,82 @@ mod tests {
         let stream = TokenStream::new(&tokens, src);
         let start = tokens.len();
         assert_eq!(stream.line_end(start), src.len());
+    }
+
+    #[test]
+    fn validate_spans_sorted_err_on_overlap() {
+        let spans = vec![0..5, 4..8];
+        let result = super::validate_spans_sorted(&spans);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_spans_sorted_err_on_unsorted() {
+        let spans = vec![5..10, 0..2];
+        let result = super::validate_spans_sorted(&spans);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_spans_sorted_ok_on_empty() {
+        let spans: Vec<Span> = Vec::new();
+        assert!(super::validate_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn validate_spans_sorted_ok_on_single() {
+        let spans: Vec<Span> = vec![std::ops::Range { start: 0, end: 3 }];
+        assert!(super::validate_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn validate_spans_sorted_ok_on_sorted() {
+        let spans = vec![0..2, 3..5, 5..8];
+        assert!(super::validate_spans_sorted(&spans).is_ok());
+    }
+
+    #[test]
+    fn build_green_tree_panics_on_misordered_spans() {
+        let src = "import Foo";
+        let tokens = tokenize(src);
+        let unsorted = vec![1..2, 0..1];
+        let result = std::panic::catch_unwind(|| {
+            super::build_green_tree(tokens, src, &unsorted, &[], &[], &[], &[], &[]);
+        });
+        let Err(msg) = result else {
+            panic!("expected panic")
+        };
+        let text = msg.downcast_ref::<String>().map_or_else(
+            || {
+                msg.downcast_ref::<&str>()
+                    .map_or(String::new(), |s| (*s).to_string())
+            },
+            Clone::clone,
+        );
+        assert!(text.contains("imports not sorted"));
+        assert!(text.contains("0..1"));
+    }
+
+    #[test]
+    fn build_green_tree_reports_all_errors() {
+        let src = "import Foo; type T = string";
+        let tokens = tokenize(src);
+        let imports = vec![1..2, 0..1];
+        let typedefs = vec![4..5, 3..4];
+        let result = std::panic::catch_unwind(|| {
+            super::build_green_tree(tokens, src, &imports, &typedefs, &[], &[], &[], &[]);
+        });
+        let Err(msg) = result else {
+            panic!("expected panic")
+        };
+        let text = msg.downcast_ref::<String>().map_or_else(
+            || {
+                msg.downcast_ref::<&str>()
+                    .map_or(String::new(), |s| (*s).to_string())
+            },
+            Clone::clone,
+        );
+        assert!(text.contains("imports not sorted"));
+        assert!(text.contains("typedefs not sorted"));
     }
 }
