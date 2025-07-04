@@ -1240,7 +1240,10 @@ pub mod ast {
         use rowan::NodeOrToken;
 
         // Skip to the first '('
-        let mut depth = 0usize;
+        let mut parens = 0usize;
+        let mut angles = 0usize;
+        let mut squares = 0usize;
+        let mut braces = 0usize;
         for e in &mut iter {
             if e.kind() == SyntaxKind::T_LPAREN {
                 break;
@@ -1254,11 +1257,11 @@ pub mod ast {
             match e {
                 NodeOrToken::Token(t) => match t.kind() {
                     SyntaxKind::T_LPAREN => {
-                        depth += 1;
+                        parens += 1;
                         buf.push_str(t.text());
                     }
                     SyntaxKind::T_RPAREN => {
-                        if depth == 0 {
+                        if parens == 0 && angles == 0 && squares == 0 && braces == 0 {
                             if let Some(n) = name.take() {
                                 let ty = buf.trim();
                                 if !ty.is_empty() {
@@ -1267,10 +1270,48 @@ pub mod ast {
                             }
                             break;
                         }
-                        depth -= 1;
+                        parens = parens.saturating_sub(1);
                         buf.push_str(t.text());
                     }
-                    SyntaxKind::T_COMMA if depth == 0 => {
+                    SyntaxKind::T_LT => {
+                        angles += 1;
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_GT => {
+                        angles = angles.saturating_sub(1);
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_SHL => {
+                        angles += 2;
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_SHR => {
+                        if angles >= 2 {
+                            angles -= 2;
+                        } else {
+                            angles = angles.saturating_sub(1);
+                        }
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_LBRACKET => {
+                        squares += 1;
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_RBRACKET => {
+                        squares = squares.saturating_sub(1);
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_LBRACE => {
+                        braces += 1;
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_RBRACE => {
+                        braces = braces.saturating_sub(1);
+                        buf.push_str(t.text());
+                    }
+                    SyntaxKind::T_COMMA
+                        if parens == 0 && angles == 0 && squares == 0 && braces == 0 =>
+                    {
                         if let Some(n) = name.take() {
                             let ty = buf.trim();
                             if !ty.is_empty() {
@@ -1279,7 +1320,9 @@ pub mod ast {
                         }
                         buf.clear();
                     }
-                    SyntaxKind::T_COLON if depth == 0 => {
+                    SyntaxKind::T_COLON
+                        if parens == 0 && angles == 0 && squares == 0 && braces == 0 =>
+                    {
                         name = Some(buf.trim().to_string());
                         buf.clear();
                     }
