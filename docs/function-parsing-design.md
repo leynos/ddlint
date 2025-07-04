@@ -2,8 +2,9 @@
 
 This document outlines the strategy for parsing `function` definitions and
 declarations within `ddlint`. The parser relies on small helpers to interpret
-parameter lists and optional return types. These helpers are shared with
-relation parsing to avoid duplication.
+parameter lists and optional return types. These helpers now live in the
+`parser::ast::parse_utils` module so that both `Function` and `Relation` AST
+nodes can reuse them.
 
 ```mermaid
 classDiagram
