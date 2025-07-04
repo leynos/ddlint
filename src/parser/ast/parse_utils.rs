@@ -29,46 +29,63 @@ where
     let mut buf = String::new();
     let mut name: Option<String> = None;
     let mut depth = 0usize;
+
     for e in iter {
         match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_LPAREN => {
-                    depth += 1;
-                    buf.push_str(t.text());
+            NodeOrToken::Token(t) => {
+                if handle_token(&t, &mut buf, &mut name, &mut pairs, &mut depth) {
+                    break;
                 }
-                SyntaxKind::T_RPAREN => {
-                    if depth == 0 {
-                        if let Some(n) = name.take() {
-                            let ty = buf.trim();
-                            if !ty.is_empty() {
-                                pairs.push((n, ty.to_string()));
-                            }
-                        }
-                        break;
-                    }
-                    depth -= 1;
-                    buf.push_str(t.text());
-                }
-                SyntaxKind::T_COMMA if depth == 0 => {
-                    if let Some(n) = name.take() {
-                        let ty = buf.trim();
-                        if !ty.is_empty() {
-                            pairs.push((n, ty.to_string()));
-                        }
-                    }
-                    buf.clear();
-                }
-                SyntaxKind::T_COLON if depth == 0 => {
-                    name = Some(buf.trim().to_string());
-                    buf.clear();
-                }
-                _ => buf.push_str(t.text()),
-            },
+            }
             NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
         }
     }
 
     pairs
+}
+
+/// Handle a single token during name-type pair parsing.
+fn handle_token(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    buf: &mut String,
+    name: &mut Option<String>,
+    pairs: &mut Vec<(String, String)>,
+    depth: &mut usize,
+) -> bool {
+    match token.kind() {
+        SyntaxKind::T_LPAREN => {
+            *depth += 1;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_RPAREN => {
+            if *depth == 0 {
+                finalize_pair(name, buf, pairs);
+                return true; // end of list
+            }
+            *depth -= 1;
+            buf.push_str(token.text());
+        }
+        SyntaxKind::T_COMMA if *depth == 0 => {
+            finalize_pair(name, buf, pairs);
+        }
+        SyntaxKind::T_COLON if *depth == 0 => {
+            *name = Some(buf.trim().to_string());
+            buf.clear();
+        }
+        _ => buf.push_str(token.text()),
+    }
+    false
+}
+
+/// Finalise a name-type pair and add it to the pairs vector.
+fn finalize_pair(name: &mut Option<String>, buf: &mut String, pairs: &mut Vec<(String, String)>) {
+    if let Some(n) = name.take() {
+        let ty = buf.trim();
+        if !ty.is_empty() {
+            pairs.push((n, ty.to_string()));
+        }
+    }
+    buf.clear();
 }
 
 /// Parse a trailing type after a colon, stopping at braces or a newline.
@@ -110,10 +127,10 @@ where
 mod tests {
     use super::*;
     use crate::parser::parse;
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
 
-    #[expect(clippy::expect_used, reason = "tests assert AST nodes exist")]
-    fn tokens_for(src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
+    #[fixture]
+    fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
         let parsed = parse(src);
         let functions = parsed.root().functions();
         functions.first().map_or_else(
@@ -121,7 +138,7 @@ mod tests {
                 let relations = parsed.root().relations();
                 relations
                     .first()
-                    .expect("relation missing in test")
+                    .unwrap_or_else(|| panic!("relation missing in test"))
                     .syntax()
                     .children_with_tokens()
                     .collect()
@@ -130,11 +147,13 @@ mod tests {
         )
     }
 
-    #[expect(clippy::expect_used, reason = "tests assert function exists")]
-    fn return_type_for(src: &str) -> Option<String> {
+    #[fixture]
+    fn return_type_for(#[default("function t() {}")] src: &str) -> Option<String> {
         let parsed = parse(src);
         let functions = parsed.root().functions();
-        let func = functions.first().expect("function missing");
+        let func = functions
+            .first()
+            .unwrap_or_else(|| panic!("function missing"));
         let mut iter = func.syntax().children_with_tokens().peekable();
         let mut depth = 0usize;
         for e in &mut iter {
@@ -161,8 +180,13 @@ mod tests {
     #[case("function wrap(t: Option<(u32, string)>) {}", vec![("t".into(), "Option<(u32, string)>".into())])]
     #[case("function empty() {}", Vec::new())]
     #[case("function missing(a u32, b: bool) {}", vec![("b".into(), "bool".into())])]
-    fn name_type_pairs(#[case] src: &str, #[case] expected: Vec<(String, String)>) {
-        let elements = tokens_for(src);
+    fn name_type_pairs(
+        #[case] src: &str,
+        #[case] expected: Vec<(String, String)>,
+        #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
+    ) {
+        let _ = src;
+        let elements = tokens_for;
         let result = parse_name_type_pairs(elements.into_iter());
         assert_eq!(result, expected);
     }
@@ -173,7 +197,12 @@ mod tests {
     #[case("function f() {}", None)]
     #[case("function f():\n    u32 {}", None)]
     #[case("function f(): {}", None)]
-    fn trailing_type(#[case] src: &str, #[case] expected: Option<String>) {
-        assert_eq!(return_type_for(src), expected);
+    fn trailing_type(
+        #[case] src: &str,
+        #[case] expected: Option<String>,
+        #[with(src)] return_type_for: Option<String>,
+    ) {
+        let _ = src;
+        assert_eq!(return_type_for, expected);
     }
 }
