@@ -121,6 +121,39 @@ fn parse_round_trip(simple_prog: &str) {
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
 }
 
+/// Verifies parsing of a multi-statement program and round-trip printing.
+#[rstest]
+fn complex_program_round_trip(complex_prog: &str) {
+    let parsed = parse(complex_prog);
+    assert!(parsed.errors().is_empty());
+    let text = pretty_print(parsed.root().syntax());
+    assert_eq!(text, complex_prog);
+    let relations = parsed.root().relations();
+    assert_eq!(relations.len(), 2);
+    let [first, second] = relations.as_slice() else {
+        panic!("expected two relations");
+    };
+    assert!(first.is_input());
+    assert!(second.is_output());
+    assert_eq!(first.name(), Some("R".into()));
+    assert_eq!(second.name(), Some("S".into()));
+}
+
+/// Parsing an empty program should produce an empty root node.
+#[rstest]
+fn empty_program_has_no_items(empty_prog: &str) {
+    let parsed = parse(empty_prog);
+    assert!(parsed.errors().is_empty());
+    assert!(parsed.root().imports().is_empty());
+    assert!(parsed.root().type_defs().is_empty());
+    assert!(parsed.root().relations().is_empty());
+    assert!(parsed.root().functions().is_empty());
+    assert!(parsed.root().indexes().is_empty());
+    assert!(parsed.root().rules().is_empty());
+    assert_eq!(pretty_print(parsed.root().syntax()), "");
+    assert_eq!(parsed.root().syntax().children().count(), 0);
+}
+
 /// Ensures that invalid tokens are represented by `N_ERROR` nodes in the CST.
 #[rstest]
 fn error_token_produces_error_node() {
