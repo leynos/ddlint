@@ -212,24 +212,16 @@ pub struct ParsedSpans {
 }
 
 impl ParsedSpans {
-    /// Iterate over all span slices in declaration order.
-    fn iter_all(&self) -> std::array::IntoIter<&[Span], 6> {
-        [
-            self.imports.as_slice(),
-            self.typedefs.as_slice(),
-            self.relations.as_slice(),
-            self.indexes.as_slice(),
-            self.functions.as_slice(),
-            self.rules.as_slice(),
-        ]
-        .into_iter()
-    }
-
     /// Assert that every span list is sorted and non-overlapping.
     fn assert_sorted(&self) {
-        for spans in self.iter_all() {
-            assert_spans_sorted(spans);
-        }
+        ensure_span_lists_sorted(&[
+            ("imports", &self.imports),
+            ("typedefs", &self.typedefs),
+            ("relations", &self.relations),
+            ("indexes", &self.indexes),
+            ("functions", &self.functions),
+            ("rules", &self.rules),
+        ]);
     }
 }
 
@@ -1792,8 +1784,12 @@ mod tests {
         let src = "import Foo";
         let tokens = tokenize(src);
         let unsorted = vec![1..2, 0..1];
+        let spans = super::ParsedSpans {
+            imports: unsorted,
+            ..Default::default()
+        };
         let result = std::panic::catch_unwind(|| {
-            super::build_green_tree(tokens, src, &unsorted, &[], &[], &[], &[], &[]);
+            super::build_green_tree(tokens, src, &spans);
         });
         let Err(msg) = result else {
             panic!("expected panic")
@@ -1815,8 +1811,13 @@ mod tests {
         let tokens = tokenize(src);
         let imports = vec![1..2, 0..1];
         let typedefs = vec![4..5, 3..4];
+        let spans = super::ParsedSpans {
+            imports,
+            typedefs,
+            ..Default::default()
+        };
         let result = std::panic::catch_unwind(|| {
-            super::build_green_tree(tokens, src, &imports, &typedefs, &[], &[], &[], &[]);
+            super::build_green_tree(tokens, src, &spans);
         });
         let Err(msg) = result else {
             panic!("expected panic")
