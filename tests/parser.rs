@@ -616,3 +616,175 @@ fn invalid_rule_garbage() {
         "Expected errors for completely invalid input"
     );
 }
+
+#[fixture]
+fn extern_function() -> &'static str {
+    "extern function hash(data: string): u64\n"
+}
+
+#[fixture]
+fn function_with_body() -> &'static str {
+    "function to_uppercase(s: string): string {\n}\n"
+}
+
+#[fixture]
+fn function_no_return() -> &'static str {
+    "function log_message(msg: string) {\n}\n"
+}
+
+#[fixture]
+fn extern_function_missing_colon() -> &'static str {
+    "extern function missing_colon u32\n"
+}
+
+#[fixture]
+fn function_unterminated_body() -> &'static str {
+    "function foo() {"
+}
+
+#[fixture]
+fn function_no_params() -> &'static str {
+    "function greet(): string {\n}\n"
+}
+
+#[fixture]
+fn function_multi_params() -> &'static str {
+    "function concat(a: string, b: string): string {\n}\n"
+}
+
+#[fixture]
+fn function_complex_params() -> &'static str {
+    "function complex(p: (u32, (u8, string))): bool {\n}\n"
+}
+
+#[fixture]
+fn function_ws_comments() -> &'static str {
+    "function  spaced  (  x : string )  :  u8 { /*empty*/ }\n"
+}
+
+#[fixture]
+fn function_unclosed_params() -> &'static str {
+    "function bad(a: string { }\n"
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn extern_function_parsed(extern_function: &str) {
+    let parsed = parse(extern_function);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(func.name(), Some("hash".into()));
+    assert!(func.is_extern());
+    assert_eq!(func.parameters(), vec![("data".into(), "string".into())]);
+    assert_eq!(func.return_type(), Some("u64".into()));
+    assert_eq!(pretty_print(func.syntax()), extern_function);
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_with_body_parsed(function_with_body: &str) {
+    let parsed = parse(function_with_body);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(func.name(), Some("to_uppercase".into()));
+    assert!(!func.is_extern());
+    assert_eq!(func.parameters(), vec![("s".into(), "string".into())]);
+    assert_eq!(func.return_type(), Some("string".into()));
+    assert_eq!(pretty_print(func.syntax()), function_with_body);
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_no_return_parsed(function_no_return: &str) {
+    let parsed = parse(function_no_return);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(func.name(), Some("log_message".into()));
+    assert!(!func.is_extern());
+    assert_eq!(func.parameters(), vec![("msg".into(), "string".into())]);
+    assert_eq!(func.return_type(), None);
+    assert_eq!(pretty_print(func.syntax()), function_no_return);
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_no_params_parsed(function_no_params: &str) {
+    let parsed = parse(function_no_params);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(func.name(), Some("greet".into()));
+    assert_eq!(func.parameters(), Vec::<(String, String)>::new());
+    assert_eq!(func.return_type(), Some("string".into()));
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_multi_params_parsed(function_multi_params: &str) {
+    let parsed = parse(function_multi_params);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(
+        func.parameters(),
+        vec![("a".into(), "string".into()), ("b".into(), "string".into()),]
+    );
+    assert_eq!(func.return_type(), Some("string".into()));
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_complex_params_parsed(function_complex_params: &str) {
+    let parsed = parse(function_complex_params);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(
+        func.parameters(),
+        vec![("p".into(), "(u32, (u8, string))".into()),]
+    );
+    assert_eq!(func.return_type(), Some("bool".into()));
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn function_ws_comments_parsed(function_ws_comments: &str) {
+    let parsed = parse(function_ws_comments);
+    assert!(parsed.errors().is_empty());
+    let funcs = parsed.root().functions();
+    assert_eq!(funcs.len(), 1);
+    let func = funcs.first().expect("function missing");
+    assert_eq!(func.name(), Some("spaced".into()));
+    assert_eq!(func.parameters(), vec![("x".into(), "string".into())]);
+    assert_eq!(func.return_type(), Some("u8".into()));
+}
+
+#[rstest]
+fn function_unclosed_params_is_error(function_unclosed_params: &str) {
+    let parsed = parse(function_unclosed_params);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().functions().is_empty());
+}
+
+#[rstest]
+fn extern_function_missing_colon_is_error(extern_function_missing_colon: &str) {
+    let parsed = parse(extern_function_missing_colon);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().functions().is_empty());
+}
+
+#[rstest]
+fn function_unterminated_body_is_error(function_unterminated_body: &str) {
+    let parsed = parse(function_unterminated_body);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().functions().is_empty());
+}

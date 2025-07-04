@@ -204,4 +204,27 @@ impl<'a> TokenStream<'a> {
             self.cursor += 1;
         }
     }
+
+    /// Peeks ahead to the next non-whitespace token on the same line.
+    ///
+    /// Skips inline whitespace and comments without modifying the cursor and
+    /// returns the first subsequent token. Tokens containing a newline end the
+    /// search.
+    #[must_use]
+    pub(crate) fn peek_after_ws_inline(&self) -> Option<&(SyntaxKind, Span)> {
+        let mut idx = self.cursor + 1;
+        while let Some(tok) = self.tokens.get(idx) {
+            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+                && self
+                    .src
+                    .get(tok.1.clone())
+                    .is_some_and(|text| !text.contains('\n'))
+            {
+                idx += 1;
+            } else {
+                break;
+            }
+        }
+        self.tokens.get(idx)
+    }
 }

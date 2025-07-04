@@ -67,6 +67,19 @@ sequenceDiagram
 The parser's final output is the AST root together with a `GreenNode` that
 contains the full CST.
 
+```mermaid
+sequenceDiagram
+    participant Parser
+    participant SpanCollector
+    participant CSTBuilder
+    participant ASTRoot
+    Parser->>SpanCollector: collect_function_spans(tokens, src)
+    SpanCollector-->>Parser: (function_spans, errors)
+    Parser->>CSTBuilder: build_green_tree(..., function_spans, ...)
+    CSTBuilder-->>ASTRoot: Root::from_green(green)
+    ASTRoot->>ASTRoot: functions() -> Vec<Function>
+```
+
 ## 5. Map CST Nodes to AST Structures
 
 Implement lightweight AST types that reference the CST. Each AST node should
