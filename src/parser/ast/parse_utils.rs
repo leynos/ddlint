@@ -144,15 +144,19 @@ fn close_and_push(
     closed
 }
 
-/// Appends the text of a syntax token to the provided buffer.
+//// Appends the text of a syntax token to the provided buffer.
 ///
-/// # Examples
+/// # Example
 ///
-/// ```no_run
+/// ```ignore
+/// // Assuming you have a `SyntaxToken<DdlogLanguage>` named `token`:
 /// let mut buf = String::new();
 /// push(&token, &mut buf);
 /// assert!(buf.contains(token.text()));
 /// ```
+///
+/// Note: Constructing a `SyntaxToken<DdlogLanguage>` requires a parsed syntax tree,
+/// so a fully self-contained example is not practical here.
 fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
     buf.push_str(token.text());
 }
