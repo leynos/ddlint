@@ -152,7 +152,7 @@ fn close_and_push(
     closed
 }
 
-//// Appends the text of a syntax token to the provided buffer.
+/// Appends the text of a syntax token to the provided buffer.
 ///
 /// # Example
 ///
