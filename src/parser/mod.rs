@@ -1309,9 +1309,15 @@ pub mod ast {
         }
 
         /// Columns declared for the relation.
+        ///
+        /// Delimiter errors detected during parsing are ignored.
+        /// This may change in future to surface these diagnostics.
         #[must_use]
         pub fn columns(&self) -> Vec<(String, String)> {
-            parse_name_type_pairs(self.syntax.children_with_tokens()).0
+            let (pairs, errors) = parse_name_type_pairs(self.syntax.children_with_tokens());
+            // Delimiter errors are ignored for now. Future versions may surface them.
+            let _ = errors;
+            pairs
         }
 
         /// Primary key column names if specified.
@@ -1617,9 +1623,15 @@ pub mod ast {
         }
 
         /// Function parameters as name/type pairs.
+        ///
+        /// Delimiter errors detected during parsing are ignored.
+        /// This may change in future to surface these diagnostics.
         #[must_use]
         pub fn parameters(&self) -> Vec<(String, String)> {
-            parse_name_type_pairs(self.syntax.children_with_tokens()).0
+            let (pairs, errors) = parse_name_type_pairs(self.syntax.children_with_tokens());
+            // Delimiter errors are ignored for now. Future versions may surface them.
+            let _ = errors;
+            pairs
         }
 
         /// Return type text if specified.

@@ -48,8 +48,8 @@ impl std::fmt::Display for DelimiterError {
         };
         write!(
             f,
-            "expected '{expected}' before '{found}' at {:#?}",
-            self.span
+            "expected '{}' before '{}' at {:#?}",
+            expected, found, self.span
         )
     }
 }
@@ -114,6 +114,18 @@ fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
     buf.push_str(token.text());
 }
 
+fn push_error(
+    errors: &mut Vec<DelimiterError>,
+    expected: Delim,
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+) {
+    errors.push(DelimiterError {
+        expected,
+        found: token.kind(),
+        span: token.text_range(),
+    });
+}
+
 /// Consume `(name: type)` pairs from the provided iterator.
 ///
 /// The iterator should yield the tokens of a parameter or column list
@@ -140,7 +152,7 @@ where
     // parentheses inside types do not terminate parsing.
     let mut outer_parens = 1usize;
 
-    for e in iter {
+    for e in iter.by_ref() {
         match e {
             NodeOrToken::Token(t) => {
                 if handle_token(
@@ -156,6 +168,21 @@ where
                 }
             }
             NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+        }
+    }
+
+    // Capture unmatched closing tokens after the parameter list ends.
+    for e in iter {
+        if let NodeOrToken::Token(t) = e {
+            match t.kind() {
+                SyntaxKind::T_RPAREN => push_error(&mut errors, Delim::Paren, &t),
+                SyntaxKind::T_RBRACKET => push_error(&mut errors, Delim::Bracket, &t),
+                SyntaxKind::T_RBRACE => push_error(&mut errors, Delim::Brace, &t),
+                SyntaxKind::T_GT | SyntaxKind::T_SHR => push_error(&mut errors, Delim::Angle, &t),
+                _ => break,
+            }
+        } else {
+            break;
         }
     }
 
@@ -185,41 +212,25 @@ fn handle_token(
         SyntaxKind::T_LT => open_and_push(token, buf, depth, Delim::Angle, 1),
         SyntaxKind::T_GT => {
             if close_and_push(token, buf, depth, Delim::Angle, 1) < 1 {
-                errors.push(DelimiterError {
-                    expected: Delim::Angle,
-                    found: token.kind(),
-                    span: token.text_range(),
-                });
+                push_error(errors, Delim::Angle, token);
             }
         }
         SyntaxKind::T_SHL => open_and_push(token, buf, depth, Delim::Angle, 2),
         SyntaxKind::T_SHR => {
             if close_and_push(token, buf, depth, Delim::Angle, 2) < 2 {
-                errors.push(DelimiterError {
-                    expected: Delim::Angle,
-                    found: token.kind(),
-                    span: token.text_range(),
-                });
+                push_error(errors, Delim::Angle, token);
             }
         }
         SyntaxKind::T_LBRACKET => open_and_push(token, buf, depth, Delim::Bracket, 1),
         SyntaxKind::T_RBRACKET => {
             if close_and_push(token, buf, depth, Delim::Bracket, 1) < 1 {
-                errors.push(DelimiterError {
-                    expected: Delim::Bracket,
-                    found: token.kind(),
-                    span: token.text_range(),
-                });
+                push_error(errors, Delim::Bracket, token);
             }
         }
         SyntaxKind::T_LBRACE => open_and_push(token, buf, depth, Delim::Brace, 1),
         SyntaxKind::T_RBRACE => {
             if close_and_push(token, buf, depth, Delim::Brace, 1) < 1 {
-                errors.push(DelimiterError {
-                    expected: Delim::Brace,
-                    found: token.kind(),
-                    span: token.text_range(),
-                });
+                push_error(errors, Delim::Brace, token);
             }
         }
         SyntaxKind::T_COMMA if depth.is_empty() && *outer_parens == 1 => {
@@ -360,6 +371,22 @@ mod tests {
     #[test]
     fn unmatched_shift_errors() {
         let src = "function bad(x: Vec<u8>>): bool {}";
+        let elements = tokens_for(src);
+        let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn unmatched_bracket_error() {
+        let src = "function bad(x: Vec<u8>], y: u32) {}";
+        let elements = tokens_for(src);
+        let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn unmatched_brace_error() {
+        let src = "function bad(x: u32}, y: bool) {}";
         let elements = tokens_for(src);
         let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
         assert_eq!(errors.len(), 1);
