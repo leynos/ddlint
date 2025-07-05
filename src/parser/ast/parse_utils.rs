@@ -43,15 +43,26 @@ pub(super) struct DelimiterError {
 pub(super) enum ParseError {
     /// A closing delimiter did not match the expected opener.
     Delimiter(DelimiterError),
+    /// An opening delimiter was not closed before the expression ended.
+    UnclosedDelimiter { delimiter: char, span: TextRange },
     /// A parameter name was not followed by a colon.
     MissingColon { message: String, span: TextRange },
+    /// A parameter name was not provided.
+    MissingName { span: TextRange },
+    /// A parameter type was not provided.
+    MissingType { span: TextRange },
 }
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Delimiter(err) => write!(f, "{err}"),
+            Self::UnclosedDelimiter { delimiter, span } => {
+                write!(f, "unclosed delimiter '{delimiter}' at {span:#?}")
+            }
             Self::MissingColon { message, span } => write!(f, "{message} at {span:#?}"),
+            Self::MissingName { span } => write!(f, "parameter name missing at {span:#?}"),
+            Self::MissingType { span } => write!(f, "parameter type missing at {span:#?}"),
         }
     }
 }
@@ -305,19 +316,13 @@ where
         && !ty.is_empty()
         && let Some(s) = span
     {
-        errors.push(ParseError::MissingColon {
-            message: "Parameter name is empty".to_string(),
-            span: s,
-        });
+        errors.push(ParseError::MissingName { span: s });
     }
     if !name.is_empty()
         && ty.is_empty()
         && let Some(s) = span
     {
-        errors.push(ParseError::MissingColon {
-            message: "Parameter type is empty".to_string(),
-            span: s,
-        });
+        errors.push(ParseError::MissingType { span: s });
     }
 
     if !name.is_empty() && !ty.is_empty() {
@@ -511,14 +516,14 @@ where
 
     // Report any unclosed delimiters that remain on the stack.
     while let Some(unclosed) = depth.0.pop() {
-        let delimiter_char = match unclosed {
-            Delim::Paren => ")",
-            Delim::Angle => ">",
-            Delim::Bracket => "]",
-            Delim::Brace => "}",
+        let ch = match unclosed {
+            Delim::Paren => ')',
+            Delim::Angle => '>',
+            Delim::Bracket => ']',
+            Delim::Brace => '}',
         };
-        errors.push(ParseError::MissingColon {
-            message: format!("Unclosed delimiter: expected '{delimiter_char}'"),
+        errors.push(ParseError::UnclosedDelimiter {
+            delimiter: ch,
             span: TextRange::empty(0.into()),
         });
     }
