@@ -462,7 +462,12 @@ where
                 }
             },
             NodeOrToken::Node(n) => {
-                buf.push_str(&n.text().to_string());
+                let text = n.text().to_string();
+                let is_whitespace = text.chars().all(char::is_whitespace);
+                let is_comment = n.kind() == SyntaxKind::T_COMMENT;
+                if !is_whitespace && !is_comment {
+                    buf.push_str(&text);
+                }
                 iter.next();
             }
         }
