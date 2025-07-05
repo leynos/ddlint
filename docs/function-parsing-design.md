@@ -31,3 +31,10 @@ capture the following type expression. That helper recursively parses nested
 delimiters so constructs like `Vec<Map<string, Vec<u8>>>` are handled without
 maintaining a delimiter stack in `parse_name_type_pairs` itself. Parameters end
 when a comma or the closing `)` of the list is reached.
+
+Missing colons between a parameter name and type trigger a
+`ParseError::MissingColon`. The parser attaches the span of the comma or
+parenthesis that ended the parameter so diagnostics can highlight the exact
+location of the issue. Helper functions `collect_parameter_name` and
+`finalise_parameter` keep the main loop small by handling name collection and
+type parsing respectively.

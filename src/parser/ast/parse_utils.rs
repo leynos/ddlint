@@ -38,6 +38,26 @@ pub(super) struct DelimiterError {
     span: TextRange,
 }
 
+/// Error types produced when parsing name-type pairs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum ParseError {
+    /// A closing delimiter did not match the expected opener.
+    Delimiter(DelimiterError),
+    /// A parameter name was not followed by a colon.
+    MissingColon { message: String, span: TextRange },
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Delimiter(err) => write!(f, "{err}"),
+            Self::MissingColon { message, span } => write!(f, "{message} at {span:#?}"),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
+
 impl std::fmt::Display for DelimiterError {
     /// Formats a `DelimiterError` for display, indicating the expected delimiter,
     /// the actual token found, and the location of the error.
@@ -173,18 +193,106 @@ fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
 ///
 /// Records the expected delimiter, the actual token kind found, and the token's text range.
 fn push_error(
-    errors: &mut Vec<DelimiterError>,
+    errors: &mut Vec<ParseError>,
     expected: Delim,
     token: &rowan::SyntaxToken<DdlogLanguage>,
 ) {
-    errors.push(DelimiterError {
+    errors.push(ParseError::Delimiter(DelimiterError {
         expected,
         found: token.kind(),
         span: token.text_range(),
-    });
+    }));
 }
 
-/// Parses `(name: type)` pairs from a parameter or column list, returning both the pairs and any delimiter errors encountered.
+fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> (String, bool, Option<TextRange>)
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    let mut name_buf = String::new();
+    let mut found_colon = false;
+    let mut span = None;
+
+    while let Some(e) = iter.peek() {
+        match e {
+            NodeOrToken::Token(t) => match t.kind() {
+                SyntaxKind::T_COLON => {
+                    span = Some(t.text_range());
+                    iter.next();
+                    found_colon = true;
+                    break;
+                }
+                SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => {
+                    span = Some(t.text_range());
+                    break;
+                }
+                _ => {
+                    span = Some(t.text_range());
+                    name_buf.push_str(t.text());
+                    iter.next();
+                }
+            },
+            NodeOrToken::Node(n) => {
+                span = Some(n.text_range());
+                name_buf.push_str(&n.text().to_string());
+                iter.next();
+            }
+        }
+    }
+
+    (name_buf.trim().to_string(), found_colon, span)
+}
+
+fn finalise_parameter<I>(
+    name: String,
+    found_colon: bool,
+    span: Option<TextRange>,
+    iter: &mut std::iter::Peekable<I>,
+    errors: &mut Vec<ParseError>,
+) -> Option<(String, String)>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if !found_colon {
+        if let Some(s) = span {
+            errors.push(ParseError::MissingColon {
+                message: "Expected ':' after name, but found ',' or ')' instead".to_string(),
+                span: s,
+            });
+        }
+
+        while let Some(e) = iter.peek() {
+            match e.kind() {
+                SyntaxKind::T_COMMA => {
+                    iter.next();
+                    break;
+                }
+                SyntaxKind::T_RPAREN => {
+                    iter.next();
+                    return None;
+                }
+                _ => {
+                    iter.next();
+                }
+            }
+        }
+        return None;
+    }
+
+    skip_whitespace_and_comments(iter);
+    let (ty, mut errs) = parse_type_expr(iter);
+    errors.append(&mut errs);
+
+    if !name.is_empty() && !ty.is_empty() {
+        Some((name, ty))
+    } else {
+        None
+    }
+}
+
+/// Parses `(name: type)` pairs from a parameter or column list, returning both
+/// the pairs and any parse errors encountered.
 ///
 /// The iterator should yield syntax elements starting at the opening parenthesis of the list. The function tracks delimiter nesting and collects errors for unmatched or unexpected delimiters. Each returned pair consists of the parameter or column name and its associated type as strings.
 ///
@@ -192,23 +300,24 @@ fn push_error(
 ///
 /// A tuple containing:
 /// - A vector of `(name, type)` pairs extracted from the list.
-/// - A vector of `DelimiterError`s for any unmatched or unexpected delimiters found during parsing.
+/// - A vector of [`ParseError`]s for unmatched delimiters or missing colons
+///   encountered during parsing.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// use parser::ast::parse_utils::{parse_name_type_pairs, DelimiterError};
+/// use parser::ast::parse_utils::{parse_name_type_pairs, ParseError};
 /// use parser::ast::DdlogLanguage;
 /// use parser::syntax::{SyntaxElement, SyntaxKind};
 ///
 /// // Example: parsing a parameter list "(x: int, y: string)"
 /// let tokens: Vec<SyntaxElement<DdlogLanguage>> = /* token stream for "(x: int, y: string)" */;
-/// let (pairs, errors): (Vec<(String, String)>, Vec<DelimiterError>) = parse_name_type_pairs(tokens.into_iter());
+/// let (pairs, errors): (Vec<(String, String)>, Vec<ParseError>) = parse_name_type_pairs(tokens.into_iter());
 /// assert_eq!(pairs, vec![("x".to_string(), "int".to_string()), ("y".to_string(), "string".to_string())]);
 /// assert!(errors.is_empty());
 /// ```
 #[must_use]
-pub(super) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<DelimiterError>)
+pub(super) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
@@ -238,57 +347,9 @@ where
             _ => {}
         }
 
-        // Collect name until colon/comma/closing paren.
-        let mut name_buf = String::new();
-        let mut found_colon = false;
-        while let Some(e) = iter.peek() {
-            match e {
-                NodeOrToken::Token(t) => match t.kind() {
-                    SyntaxKind::T_COLON => {
-                        iter.next();
-                        found_colon = true;
-                        break;
-                    }
-                    SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => break,
-                    _ => {
-                        name_buf.push_str(t.text());
-                        iter.next();
-                    }
-                },
-                NodeOrToken::Node(n) => {
-                    name_buf.push_str(&n.text().to_string());
-                    iter.next();
-                }
-            }
-        }
-
-        if !found_colon {
-            // Skip until comma or closing paren.
-            while let Some(e) = iter.peek() {
-                match e.kind() {
-                    SyntaxKind::T_COMMA => {
-                        iter.next();
-                        break;
-                    }
-                    SyntaxKind::T_RPAREN => {
-                        iter.next();
-                        return (pairs, errors);
-                    }
-                    _ => {
-                        iter.next();
-                    }
-                }
-            }
-            continue;
-        }
-
-        let name = name_buf.trim().to_string();
-        skip_whitespace_and_comments(&mut iter);
-        let (ty, mut errs) = parse_type_expr(&mut iter);
-        errors.append(&mut errs);
-
-        if !name.is_empty() && !ty.is_empty() {
-            pairs.push((name, ty));
+        let (name, found_colon, span) = collect_parameter_name(&mut iter);
+        if let Some(pair) = finalise_parameter(name, found_colon, span, &mut iter, &mut errors) {
+            pairs.push(pair);
         }
 
         skip_whitespace_and_comments(&mut iter);
@@ -326,11 +387,11 @@ where
 ///
 /// Nested delimiters are handled recursively so that constructs like
 /// `Vec<Map<string, u32>>` are captured correctly. Delimiter mismatches are
-/// recorded in the returned error list. The iterator is left positioned on the
-/// token that ended the type expression so the caller can consume the comma or
-/// closing parenthesis as appropriate.
+/// recorded in the returned [`ParseError`] list. The iterator is left positioned
+/// on the token that ended the type expression so the caller can consume the
+/// comma or closing parenthesis as appropriate.
 #[must_use]
-pub(super) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<DelimiterError>)
+pub(super) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
@@ -511,31 +572,62 @@ mod tests {
     /// );
     /// ```
     #[rstest]
-    #[case("function f(a: u32, b: string) {}", vec![("a".into(), "u32".into()), ("b".into(), "string".into())])]
     #[case(
-    "input relation R(id: u32, name: string)",
-    vec![("id".into(), "u32".into()), ("name".into(), "string".into())]
+        "function f(a: u32, b: string) {}",
+        vec![("a".into(), "u32".into()), ("b".into(), "string".into())],
+        0
     )]
-    #[case("function wrap(t: Option<(u32, string)>) {}", vec![("t".into(), "Option<(u32, string)>".into())])]
-    #[case("function g(m: Map<string, u64>) {}", vec![("m".into(), "Map<string, u64>".into())])]
     #[case(
-    "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
-    vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())]
+        "input relation R(id: u32, name: string)",
+        vec![("id".into(), "u32".into()), ("name".into(), "string".into())],
+        0
     )]
-    #[case("function array(a: [Vec<u32>]) {}", vec![("a".into(), "[Vec<u32>]".into())])]
-    #[case("function nested_vec(v: Vec<Vec<u8>>) {}", vec![("v".into(), "Vec<Vec<u8>>".into())])]
-    #[case("function weird(x: Vec<<u8>>) {}", vec![("x".into(), "Vec<<u8>>".into())])]
-    #[case("function empty() {}", Vec::new())]
-    #[case("function missing(a u32, b: bool) {}", vec![("b".into(), "bool".into())])]
+    #[case(
+        "function wrap(t: Option<(u32, string)>) {}",
+        vec![("t".into(), "Option<(u32, string)>".into())],
+        0
+    )]
+    #[case(
+        "function g(m: Map<string, u64>) {}",
+        vec![("m".into(), "Map<string, u64>".into())],
+        0
+    )]
+    #[case(
+        "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
+        vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())],
+        0
+    )]
+    #[case(
+        "function array(a: [Vec<u32>]) {}",
+        vec![("a".into(), "[Vec<u32>]".into())],
+        0
+    )]
+    #[case(
+        "function nested_vec(v: Vec<Vec<u8>>) {}",
+        vec![("v".into(), "Vec<Vec<u8>>".into())],
+        0
+    )]
+    #[case(
+        "function weird(x: Vec<<u8>>) {}",
+        vec![("x".into(), "Vec<<u8>>".into())],
+        0
+    )]
+    #[case("function empty() {}", Vec::new(), 0)]
+    #[case(
+        "function missing(a u32, b: bool) {}",
+        vec![("b".into(), "bool".into())],
+        1
+    )]
     fn name_type_pairs(
         #[case] src: &str,
         #[case] expected: Vec<(String, String)>,
+        #[case] err_count: usize,
         #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
     ) {
         let _ = src;
         let elements = tokens_for;
         let (result, errors) = parse_name_type_pairs(elements.into_iter());
-        assert!(errors.is_empty());
+        assert_eq!(errors.len(), err_count);
         assert_eq!(result, expected);
     }
 
