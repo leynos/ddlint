@@ -1311,7 +1311,7 @@ pub mod ast {
         /// Columns declared for the relation.
         #[must_use]
         pub fn columns(&self) -> Vec<(String, String)> {
-            parse_name_type_pairs(self.syntax.children_with_tokens())
+            parse_name_type_pairs(self.syntax.children_with_tokens()).0
         }
 
         /// Primary key column names if specified.
@@ -1619,7 +1619,7 @@ pub mod ast {
         /// Function parameters as name/type pairs.
         #[must_use]
         pub fn parameters(&self) -> Vec<(String, String)> {
-            parse_name_type_pairs(self.syntax.children_with_tokens())
+            parse_name_type_pairs(self.syntax.children_with_tokens()).0
         }
 
         /// Return type text if specified.
