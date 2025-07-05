@@ -208,11 +208,15 @@ fn push_error(
 /// assert!(errors.is_empty());
 /// ```
 #[must_use]
-pub(super) fn parse_name_type_pairs<I>(mut iter: I) -> (Vec<(String, String)>, Vec<DelimiterError>)
+pub(super) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<DelimiterError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    // Skip to the first '(' to handle leading trivia.
+    use rowan::NodeOrToken;
+
+    let mut iter = iter.peekable();
+
+    // Skip to the opening '('.
     for e in &mut iter {
         if e.kind() == SyntaxKind::T_LPAREN {
             break;
@@ -221,29 +225,82 @@ where
 
     let mut pairs = Vec::new();
     let mut errors = Vec::new();
-    let mut buf = String::new();
-    let mut name: Option<String> = None;
-    let mut depth = DelimStack::default();
-    // Track the outer parameter list separately so that nested
-    // parentheses inside types do not terminate parsing.
-    let mut outer_parens = 1usize;
 
-    for e in iter.by_ref() {
-        match e {
-            NodeOrToken::Token(t) => {
-                if handle_token(
-                    &t,
-                    &mut buf,
-                    &mut name,
-                    &mut pairs,
-                    &mut depth,
-                    &mut outer_parens,
-                    &mut errors,
-                ) {
-                    break;
+    loop {
+        skip_whitespace_and_comments(&mut iter);
+
+        match iter.peek() {
+            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_RPAREN => {
+                iter.next();
+                break;
+            }
+            None => break,
+            _ => {}
+        }
+
+        // Collect name until colon/comma/closing paren.
+        let mut name_buf = String::new();
+        let mut found_colon = false;
+        while let Some(e) = iter.peek() {
+            match e {
+                NodeOrToken::Token(t) => match t.kind() {
+                    SyntaxKind::T_COLON => {
+                        iter.next();
+                        found_colon = true;
+                        break;
+                    }
+                    SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => break,
+                    _ => {
+                        name_buf.push_str(t.text());
+                        iter.next();
+                    }
+                },
+                NodeOrToken::Node(n) => {
+                    name_buf.push_str(&n.text().to_string());
+                    iter.next();
                 }
             }
-            NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+        }
+
+        if !found_colon {
+            // Skip until comma or closing paren.
+            while let Some(e) = iter.peek() {
+                match e.kind() {
+                    SyntaxKind::T_COMMA => {
+                        iter.next();
+                        break;
+                    }
+                    SyntaxKind::T_RPAREN => {
+                        iter.next();
+                        return (pairs, errors);
+                    }
+                    _ => {
+                        iter.next();
+                    }
+                }
+            }
+            continue;
+        }
+
+        let name = name_buf.trim().to_string();
+        skip_whitespace_and_comments(&mut iter);
+        let (ty, mut errs) = parse_type_expr(&mut iter);
+        errors.append(&mut errs);
+
+        if !name.is_empty() && !ty.is_empty() {
+            pairs.push((name, ty));
+        }
+
+        skip_whitespace_and_comments(&mut iter);
+        match iter.peek() {
+            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_COMMA => {
+                iter.next();
+            }
+            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_RPAREN => {
+                iter.next();
+                break;
+            }
+            _ => {}
         }
     }
 
@@ -265,91 +322,92 @@ where
     (pairs, errors)
 }
 
-/// Processes a single token while parsing name-type pairs, updating buffers, delimiter
-/// stack, and error tracking as needed.
+/// Parse a single type expression until a comma or closing parenthesis.
 ///
-/// Handles delimiter nesting, finalises pairs on commas, and records delimiter errors.
-/// Returns `true` if the outermost parentheses have closed and parsing should stop.
-///
-/// # Examples
-///
-/// ```no_run
-/// # use ddlog_parser::ast::parse_utils::{handle_token, DelimStack, DelimiterError};
-/// # use ddlog_parser::DdlogLanguage;
-/// # use rowan::{SyntaxKind, SyntaxToken, TextRange};
-/// let mut buf = String::new();
-/// let mut name = None;
-/// let mut pairs = Vec::new();
-/// let mut depth = DelimStack::default();
-/// let mut outer_parens = 1;
-/// let mut errors = Vec::<DelimiterError>::new();
-/// // Suppose `token` is a colon at the outermost level:
-/// // handle_token(&token, &mut buf, &mut name, &mut pairs, &mut depth, &mut outer_parens, &mut errors);
-/// ```
-fn handle_token(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    buf: &mut String,
-    name: &mut Option<String>,
-    pairs: &mut Vec<(String, String)>,
-    depth: &mut DelimStack,
-    outer_parens: &mut usize,
-    errors: &mut Vec<DelimiterError>,
-) -> bool {
-    match token.kind() {
-        SyntaxKind::T_LPAREN => open_and_push(token, buf, depth, Delim::Paren, 1),
-        SyntaxKind::T_RPAREN => {
-            if depth.close(Delim::Paren, 1) == 0 {
-                *outer_parens = outer_parens.saturating_sub(1);
-                finalize_pair(name, buf, pairs);
-                return *outer_parens == 0;
-            }
-            push(token, buf);
-        }
-        SyntaxKind::T_LT => open_and_push(token, buf, depth, Delim::Angle, 1),
-        SyntaxKind::T_GT => {
-            if close_and_push(token, buf, depth, Delim::Angle, 1) < 1 {
-                push_error(errors, Delim::Angle, token);
-            }
-        }
-        SyntaxKind::T_SHL => open_and_push(token, buf, depth, Delim::Angle, 2),
-        SyntaxKind::T_SHR => {
-            if close_and_push(token, buf, depth, Delim::Angle, 2) < 2 {
-                push_error(errors, Delim::Angle, token);
-            }
-        }
-        SyntaxKind::T_LBRACKET => open_and_push(token, buf, depth, Delim::Bracket, 1),
-        SyntaxKind::T_RBRACKET => {
-            if close_and_push(token, buf, depth, Delim::Bracket, 1) < 1 {
-                push_error(errors, Delim::Bracket, token);
-            }
-        }
-        SyntaxKind::T_LBRACE => open_and_push(token, buf, depth, Delim::Brace, 1),
-        SyntaxKind::T_RBRACE => {
-            if close_and_push(token, buf, depth, Delim::Brace, 1) < 1 {
-                push_error(errors, Delim::Brace, token);
-            }
-        }
-        SyntaxKind::T_COMMA if depth.is_empty() && *outer_parens == 1 => {
-            finalize_pair(name, buf, pairs);
-        }
-        SyntaxKind::T_COLON if depth.is_empty() && *outer_parens == 1 => {
-            *name = Some(buf.trim().to_string());
-            buf.clear();
-        }
-        _ => push(token, buf),
-    }
-    false
-}
+/// Nested delimiters are handled recursively so that constructs like
+/// `Vec<Map<string, u32>>` are captured correctly. Delimiter mismatches are
+/// recorded in the returned error list. The iterator is left positioned on the
+/// token that ended the type expression so the caller can consume the comma or
+/// closing parenthesis as appropriate.
+#[must_use]
+pub(super) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<DelimiterError>)
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
 
-/// Finalise a name-type pair and add it to the pairs vector.
-fn finalize_pair(name: &mut Option<String>, buf: &mut String, pairs: &mut Vec<(String, String)>) {
-    if let Some(n) = name.take() {
-        let ty = buf.trim();
-        if !ty.is_empty() {
-            pairs.push((n, ty.to_string()));
+    let mut buf = String::new();
+    let mut errors = Vec::new();
+    let mut depth = DelimStack::default();
+
+    while let Some(e) = iter.peek() {
+        match e {
+            NodeOrToken::Token(t) => match t.kind() {
+                SyntaxKind::T_LPAREN => {
+                    open_and_push(t, &mut buf, &mut depth, Delim::Paren, 1);
+                    iter.next();
+                }
+                SyntaxKind::T_RPAREN => {
+                    if depth.close(Delim::Paren, 1) == 0 {
+                        break;
+                    }
+                    push(t, &mut buf);
+                    iter.next();
+                }
+                SyntaxKind::T_LT => {
+                    open_and_push(t, &mut buf, &mut depth, Delim::Angle, 1);
+                    iter.next();
+                }
+                SyntaxKind::T_SHL => {
+                    open_and_push(t, &mut buf, &mut depth, Delim::Angle, 2);
+                    iter.next();
+                }
+                SyntaxKind::T_GT => {
+                    if close_and_push(t, &mut buf, &mut depth, Delim::Angle, 1) < 1 {
+                        push_error(&mut errors, Delim::Angle, t);
+                    }
+                    iter.next();
+                }
+                SyntaxKind::T_SHR => {
+                    if close_and_push(t, &mut buf, &mut depth, Delim::Angle, 2) < 2 {
+                        push_error(&mut errors, Delim::Angle, t);
+                    }
+                    iter.next();
+                }
+                SyntaxKind::T_LBRACKET => {
+                    open_and_push(t, &mut buf, &mut depth, Delim::Bracket, 1);
+                    iter.next();
+                }
+                SyntaxKind::T_RBRACKET => {
+                    if close_and_push(t, &mut buf, &mut depth, Delim::Bracket, 1) < 1 {
+                        push_error(&mut errors, Delim::Bracket, t);
+                    }
+                    iter.next();
+                }
+                SyntaxKind::T_LBRACE => {
+                    open_and_push(t, &mut buf, &mut depth, Delim::Brace, 1);
+                    iter.next();
+                }
+                SyntaxKind::T_RBRACE => {
+                    if close_and_push(t, &mut buf, &mut depth, Delim::Brace, 1) < 1 {
+                        push_error(&mut errors, Delim::Brace, t);
+                    }
+                    iter.next();
+                }
+                SyntaxKind::T_COMMA if depth.is_empty() => break,
+                _ => {
+                    push(t, &mut buf);
+                    iter.next();
+                }
+            },
+            NodeOrToken::Node(n) => {
+                buf.push_str(&n.text().to_string());
+                iter.next();
+            }
         }
     }
-    buf.clear();
+
+    (buf.trim().to_string(), errors)
 }
 
 /// Parse a trailing type after a colon, stopping at braces or a newline.
