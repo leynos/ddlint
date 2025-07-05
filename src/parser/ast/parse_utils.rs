@@ -31,6 +31,29 @@ pub(super) struct DelimiterError {
 }
 
 impl std::fmt::Display for DelimiterError {
+    /// Formats a `DelimiterError` for display, indicating the expected delimiter,
+    /// the actual token found, and the location of the error.
+    ///
+    /// This is used to provide clear error messages when delimiter mismatches
+    /// occur during parsing.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use crate::parser::ast::parse_utils::{DelimiterError, Delim};
+    /// use rowan::TextRange;
+    /// use crate::parser::SyntaxKind;
+    ///
+    /// let err = DelimiterError {
+    ///     expected: Delim::Angle,
+    ///     found: SyntaxKind::T_SHR,
+    ///     span: TextRange::new(0.into(), 2.into()),
+    /// };
+    /// assert_eq!(
+    ///     format!("{}", err),
+    ///     "expected '>' before '>>' at 0..2"
+    /// );
+    /// ```
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let expected = match self.expected {
             Delim::Paren => ")",
@@ -57,6 +80,17 @@ impl std::fmt::Display for DelimiterError {
 impl std::error::Error for DelimiterError {}
 
 impl DelimStack {
+    /// Pushes one or more delimiters of the specified type onto the stack.
+    ///
+    /// This increases the nesting level for the given delimiter by the specified count.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let mut stack = DelimStack::default();
+    /// stack.open(Delim::Paren, 2);
+    /// assert_eq!(stack.0, vec![Delim::Paren, Delim::Paren]);
+    /// ```
     fn open(&mut self, delim: Delim, count: usize) {
         for _ in 0..count {
             self.0.push(delim);
@@ -110,10 +144,22 @@ fn close_and_push(
     closed
 }
 
+/// Appends the text of a syntax token to the provided buffer.
+///
+/// # Examples
+///
+/// ```no_run
+/// let mut buf = String::new();
+/// push(&token, &mut buf);
+/// assert!(buf.contains(token.text()));
+/// ```
 fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
     buf.push_str(token.text());
 }
 
+/// Appends a `DelimiterError` to the error list for an unexpected delimiter token.
+///
+/// Records the expected delimiter, the actual token kind found, and the token's text range.
 fn push_error(
     errors: &mut Vec<DelimiterError>,
     expected: Delim,
@@ -126,11 +172,29 @@ fn push_error(
     });
 }
 
-/// Consume `(name: type)` pairs from the provided iterator.
+/// Parses `(name: type)` pairs from a parameter or column list, returning both the pairs and any delimiter errors encountered.
 ///
-/// The iterator should yield the tokens of a parameter or column list
-/// starting at the opening parenthesis. The returned vector contains
-/// each name and its associated type text.
+/// The iterator should yield syntax elements starting at the opening parenthesis of the list. The function tracks delimiter nesting and collects errors for unmatched or unexpected delimiters. Each returned pair consists of the parameter or column name and its associated type as strings.
+///
+/// # Returns
+///
+/// A tuple containing:
+/// - A vector of `(name, type)` pairs extracted from the list.
+/// - A vector of `DelimiterError`s for any unmatched or unexpected delimiters found during parsing.
+///
+/// # Examples
+///
+/// ```no_run
+/// use parser::ast::parse_utils::{parse_name_type_pairs, DelimiterError};
+/// use parser::ast::DdlogLanguage;
+/// use parser::syntax::{SyntaxElement, SyntaxKind};
+///
+/// // Example: parsing a parameter list "(x: int, y: string)"
+/// let tokens: Vec<SyntaxElement<DdlogLanguage>> = /* token stream for "(x: int, y: string)" */;
+/// let (pairs, errors): (Vec<(String, String)>, Vec<DelimiterError>) = parse_name_type_pairs(tokens.into_iter());
+/// assert_eq!(pairs, vec![("x".to_string(), "int".to_string()), ("y".to_string(), "string".to_string())]);
+/// assert!(errors.is_empty());
+/// ```
 #[must_use]
 pub(super) fn parse_name_type_pairs<I>(mut iter: I) -> (Vec<(String, String)>, Vec<DelimiterError>)
 where
@@ -189,7 +253,27 @@ where
     (pairs, errors)
 }
 
-/// Handle a single token during name-type pair parsing.
+/// Processes a single token while parsing name-type pairs, updating buffers, delimiter
+/// stack, and error tracking as needed.
+///
+/// Handles delimiter nesting, finalises pairs on commas, and records delimiter errors.
+/// Returns `true` if the outermost parentheses have closed and parsing should stop.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use ddlog_parser::ast::parse_utils::{handle_token, DelimStack, DelimiterError};
+/// # use ddlog_parser::DdlogLanguage;
+/// # use rowan::{SyntaxKind, SyntaxToken, TextRange};
+/// let mut buf = String::new();
+/// let mut name = None;
+/// let mut pairs = Vec::new();
+/// let mut depth = DelimStack::default();
+/// let mut outer_parens = 1;
+/// let mut errors = Vec::<DelimiterError>::new();
+/// // Suppose `token` is a colon at the outermost level:
+/// // handle_token(&token, &mut buf, &mut name, &mut pairs, &mut depth, &mut outer_parens, &mut errors);
+/// ```
 fn handle_token(
     token: &rowan::SyntaxToken<DdlogLanguage>,
     buf: &mut String,
@@ -339,17 +423,34 @@ mod tests {
         parse_type_after_colon(&mut iter)
     }
 
+    /// Tests the extraction of name-type pairs from function and relation parameter lists.
+    ///
+    /// This parameterised test verifies that `parse_name_type_pairs` correctly parses
+    /// parameter declarations of the form `(name: type)` from various function and relation
+    /// signatures, including cases with nested delimiters, missing colons, and empty parameter
+    /// lists. It asserts that the extracted pairs match the expected output and that no
+    /// delimiter errors are reported.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// name_type_pairs(
+    ///     "function f(a: u32, b: string) {}",
+    ///     vec![("a".into(), "u32".into()), ("b".into(), "string".into())],
+    ///     tokens_for,
+    /// );
+    /// ```
     #[rstest]
     #[case("function f(a: u32, b: string) {}", vec![("a".into(), "u32".into()), ("b".into(), "string".into())])]
     #[case(
-        "input relation R(id: u32, name: string)",
-        vec![("id".into(), "u32".into()), ("name".into(), "string".into())]
+    "input relation R(id: u32, name: string)",
+    vec![("id".into(), "u32".into()), ("name".into(), "string".into())]
     )]
     #[case("function wrap(t: Option<(u32, string)>) {}", vec![("t".into(), "Option<(u32, string)>".into())])]
     #[case("function g(m: Map<string, u64>) {}", vec![("m".into(), "Map<string, u64>".into())])]
     #[case(
-        "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
-        vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())]
+    "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
+    vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())]
     )]
     #[case("function array(a: [Vec<u32>]) {}", vec![("a".into(), "[Vec<u32>]".into())])]
     #[case("function nested_vec(v: Vec<Vec<u8>>) {}", vec![("v".into(), "Vec<Vec<u8>>".into())])]
