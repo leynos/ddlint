@@ -8,6 +8,79 @@ use rowan::{NodeOrToken, SyntaxElement};
 use super::skip_whitespace_and_comments;
 use crate::{DdlogLanguage, SyntaxKind};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Delim {
+    Paren,
+    Angle,
+    Bracket,
+    Brace,
+}
+
+/// Track delimiter nesting using a stack.
+///
+/// This structure allows the parser to support new delimiter pairs without
+/// additional counters and ensures they close in the correct order.
+#[derive(Default)]
+struct DelimStack(Vec<Delim>);
+
+impl DelimStack {
+    fn open(&mut self, delim: Delim, count: usize) {
+        for _ in 0..count {
+            self.0.push(delim);
+        }
+    }
+
+    /// Attempt to close `count` instances of `delim`.
+    ///
+    /// Returns the number of delimiters successfully closed so that callers
+    /// can detect mismatches.
+    fn close(&mut self, delim: Delim, count: usize) -> usize {
+        let mut closed = 0;
+        for _ in 0..count {
+            match self.0.pop() {
+                Some(d) if d == delim => closed += 1,
+                Some(d) => {
+                    self.0.push(d);
+                    break;
+                }
+                None => break,
+            }
+        }
+        closed
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+fn open_and_push(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    buf: &mut String,
+    stack: &mut DelimStack,
+    delim: Delim,
+    count: usize,
+) {
+    stack.open(delim, count);
+    buf.push_str(token.text());
+}
+
+fn close_and_push(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    buf: &mut String,
+    stack: &mut DelimStack,
+    delim: Delim,
+    count: usize,
+) -> usize {
+    let closed = stack.close(delim, count);
+    buf.push_str(token.text());
+    closed
+}
+
+fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
+    buf.push_str(token.text());
+}
+
 /// Consume `(name: type)` pairs from the provided iterator.
 ///
 /// The iterator should yield the tokens of a parameter or column list
@@ -28,12 +101,22 @@ where
     let mut pairs = Vec::new();
     let mut buf = String::new();
     let mut name: Option<String> = None;
-    let mut depth = 0usize;
+    let mut depth = DelimStack::default();
+    // Track the outer parameter list separately so that nested
+    // parentheses inside types do not terminate parsing.
+    let mut outer_parens = 1usize;
 
     for e in iter {
         match e {
             NodeOrToken::Token(t) => {
-                if handle_token(&t, &mut buf, &mut name, &mut pairs, &mut depth) {
+                if handle_token(
+                    &t,
+                    &mut buf,
+                    &mut name,
+                    &mut pairs,
+                    &mut depth,
+                    &mut outer_parens,
+                ) {
                     break;
                 }
             }
@@ -50,29 +133,46 @@ fn handle_token(
     buf: &mut String,
     name: &mut Option<String>,
     pairs: &mut Vec<(String, String)>,
-    depth: &mut usize,
+    depth: &mut DelimStack,
+    outer_parens: &mut usize,
 ) -> bool {
     match token.kind() {
-        SyntaxKind::T_LPAREN => {
-            *depth += 1;
-            buf.push_str(token.text());
-        }
+        SyntaxKind::T_LPAREN => open_and_push(token, buf, depth, Delim::Paren, 1),
         SyntaxKind::T_RPAREN => {
-            if *depth == 0 {
+            if depth.close(Delim::Paren, 1) == 0 {
+                *outer_parens = outer_parens.saturating_sub(1);
                 finalize_pair(name, buf, pairs);
-                return true; // end of list
+                return *outer_parens == 0;
             }
-            *depth -= 1;
-            buf.push_str(token.text());
+            push(token, buf);
         }
-        SyntaxKind::T_COMMA if *depth == 0 => {
+        SyntaxKind::T_LT => open_and_push(token, buf, depth, Delim::Angle, 1),
+        SyntaxKind::T_GT => {
+            close_and_push(token, buf, depth, Delim::Angle, 1);
+        }
+        SyntaxKind::T_SHL => open_and_push(token, buf, depth, Delim::Angle, 2),
+        SyntaxKind::T_SHR => {
+            let closed = close_and_push(token, buf, depth, Delim::Angle, 2);
+            if closed < 2 {
+                // TODO: report unmatched '>>' (See issue #54)
+            }
+        }
+        SyntaxKind::T_LBRACKET => open_and_push(token, buf, depth, Delim::Bracket, 1),
+        SyntaxKind::T_RBRACKET => {
+            close_and_push(token, buf, depth, Delim::Bracket, 1);
+        }
+        SyntaxKind::T_LBRACE => open_and_push(token, buf, depth, Delim::Brace, 1),
+        SyntaxKind::T_RBRACE => {
+            close_and_push(token, buf, depth, Delim::Brace, 1);
+        }
+        SyntaxKind::T_COMMA if depth.is_empty() && *outer_parens == 1 => {
             finalize_pair(name, buf, pairs);
         }
-        SyntaxKind::T_COLON if *depth == 0 => {
+        SyntaxKind::T_COLON if depth.is_empty() && *outer_parens == 1 => {
             *name = Some(buf.trim().to_string());
             buf.clear();
         }
-        _ => buf.push_str(token.text()),
+        _ => push(token, buf),
     }
     false
 }
@@ -178,6 +278,14 @@ mod tests {
         vec![("id".into(), "u32".into()), ("name".into(), "string".into())]
     )]
     #[case("function wrap(t: Option<(u32, string)>) {}", vec![("t".into(), "Option<(u32, string)>".into())])]
+    #[case("function g(m: Map<string, u64>) {}", vec![("m".into(), "Map<string, u64>".into())])]
+    #[case(
+        "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
+        vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())]
+    )]
+    #[case("function array(a: [Vec<u32>]) {}", vec![("a".into(), "[Vec<u32>]".into())])]
+    #[case("function nested_vec(v: Vec<Vec<u8>>) {}", vec![("v".into(), "Vec<Vec<u8>>".into())])]
+    #[case("function weird(x: Vec<<u8>>) {}", vec![("x".into(), "Vec<<u8>>".into())])]
     #[case("function empty() {}", Vec::new())]
     #[case("function missing(a u32, b: bool) {}", vec![("b".into(), "bool".into())])]
     fn name_type_pairs(
