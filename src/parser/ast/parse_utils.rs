@@ -3,7 +3,7 @@
 //! This module contains small functions reused by multiple AST nodes when
 //! extracting typed data from the CST.
 
-use rowan::{NodeOrToken, SyntaxElement, TextRange};
+use rowan::{NodeOrToken, SyntaxElement, TextRange, TextSize};
 
 use super::skip_whitespace_and_comments;
 use crate::{DdlogLanguage, SyntaxKind};
@@ -212,35 +212,52 @@ where
 
     let mut name_buf = String::new();
     let mut found_colon = false;
-    let mut span = None;
+    let mut start_pos: Option<TextSize> = None;
+    let mut end_pos: Option<TextSize> = None;
 
     while let Some(e) = iter.peek() {
         match e {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_COLON => {
-                    span = Some(t.text_range());
+                    if start_pos.is_none() {
+                        start_pos = Some(t.text_range().start());
+                    }
+                    end_pos = Some(t.text_range().start());
                     iter.next();
                     found_colon = true;
                     break;
                 }
                 SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => {
-                    span = Some(t.text_range());
+                    if start_pos.is_none() {
+                        start_pos = Some(t.text_range().start());
+                    }
+                    end_pos = Some(t.text_range().start());
                     break;
                 }
                 _ => {
-                    span = Some(t.text_range());
+                    if start_pos.is_none() {
+                        start_pos = Some(t.text_range().start());
+                    }
+                    end_pos = Some(t.text_range().end());
                     name_buf.push_str(t.text());
                     iter.next();
                 }
             },
             NodeOrToken::Node(n) => {
-                span = Some(n.text_range());
+                if start_pos.is_none() {
+                    start_pos = Some(n.text_range().start());
+                }
+                end_pos = Some(n.text_range().end());
                 name_buf.push_str(&n.text().to_string());
                 iter.next();
             }
         }
     }
 
+    let span = match (start_pos, end_pos) {
+        (Some(start), Some(end)) => Some(TextRange::new(start, end)),
+        _ => None,
+    };
     (name_buf.trim().to_string(), found_colon, span)
 }
 
@@ -283,6 +300,25 @@ where
     skip_whitespace_and_comments(iter);
     let (ty, mut errs) = parse_type_expr(iter);
     errors.append(&mut errs);
+
+    if name.is_empty()
+        && !ty.is_empty()
+        && let Some(s) = span
+    {
+        errors.push(ParseError::MissingColon {
+            message: "Parameter name is empty".to_string(),
+            span: s,
+        });
+    }
+    if !name.is_empty()
+        && ty.is_empty()
+        && let Some(s) = span
+    {
+        errors.push(ParseError::MissingColon {
+            message: "Parameter type is empty".to_string(),
+            span: s,
+        });
+    }
 
     if !name.is_empty() && !ty.is_empty() {
         Some((name, ty))
@@ -473,6 +509,20 @@ where
         }
     }
 
+    // Report any unclosed delimiters that remain on the stack.
+    while let Some(unclosed) = depth.0.pop() {
+        let delimiter_char = match unclosed {
+            Delim::Paren => ")",
+            Delim::Angle => ">",
+            Delim::Bracket => "]",
+            Delim::Brace => "}",
+        };
+        errors.push(ParseError::MissingColon {
+            message: format!("Unclosed delimiter: expected '{delimiter_char}'"),
+            span: TextRange::empty(0.into()),
+        });
+    }
+
     (buf.trim().to_string(), errors)
 }
 
@@ -655,6 +705,30 @@ mod tests {
     #[test]
     fn unmatched_brace_error() {
         let src = "function bad(x: u32}, y: bool) {}";
+        let elements = tokens_for(src);
+        let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn unclosed_angle_error() {
+        let src = "function bad(x: Vec<u32) {}";
+        let elements = tokens_for(src);
+        let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn empty_name_error() {
+        let src = "function bad(: u32) {}";
+        let elements = tokens_for(src);
+        let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn empty_type_error() {
+        let src = "function bad(x:) {}";
         let elements = tokens_for(src);
         let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
         assert_eq!(errors.len(), 1);

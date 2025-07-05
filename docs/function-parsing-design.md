@@ -38,3 +38,8 @@ parenthesis that ended the parameter, so diagnostics can highlight the exact
 location of the issue. Helper functions `collect_parameter_name` and
 `finalise_parameter` keep the main loop small by handling name collection and
 type parsing respectively.
+
+Empty names or types are reported using the same error variant so incomplete
+declarations do not pass silently. `parse_type_expr` filters out whitespace and
+comment nodes when assembling the type string and reports any delimiters left
+unclosed when parsing stops.
