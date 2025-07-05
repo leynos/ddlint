@@ -23,6 +23,14 @@ enum Delim {
 #[derive(Default)]
 struct DelimStack(Vec<Delim>);
 
+/// An error emitted when a closing token does not match the expected
+/// delimiter.
+///
+/// During parameter parsing the parser maintains a stack of opening
+/// delimiters as described in `docs/function-parsing-design.md`. If a
+/// closing token arrives before the matching delimiter, it is recorded as a
+/// `DelimiterError` so callers can report the unexpected character along with
+/// its span.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct DelimiterError {
     expected: Delim,
