@@ -1300,7 +1300,17 @@ pub mod ast {
                 .any(|e| e.kind() == SyntaxKind::K_INPUT)
         }
 
-        /// Whether the relation is declared as `output`.
+        /// Returns `true` if the relation is declared with the `output` keyword.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser::ast::{Relation, Root};
+        /// # let src = "output MyRel(x: u32)";
+        /// # let parsed = crate::parser::parse(src);
+        /// # let rel = parsed.root.relations().next().unwrap();
+        /// assert!(rel.is_output());
+        /// ```
         #[must_use]
         pub fn is_output(&self) -> bool {
             self.syntax
@@ -1308,10 +1318,22 @@ pub mod ast {
                 .any(|e| e.kind() == SyntaxKind::K_OUTPUT)
         }
 
-        /// Columns declared for the relation.
+        /// Returns the columns declared for the relation as name/type pairs.
         ///
-        /// Delimiter errors detected during parsing are ignored.
-        /// This may change in future to surface these diagnostics.
+        /// Delimiter errors encountered during parsing are currently ignored,
+        /// but this behaviour may change in future versions to surface such diagnostics.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use your_crate::parser::ast::{Relation, Root};
+        /// # let src = "relation Person(name: string, age: integer)";
+        /// # let parsed = your_crate::parser::parse(src);
+        /// # let root = parsed.root();
+        /// # let relation = root.relations().next().unwrap();
+        /// let columns = relation.columns();
+        /// assert_eq!(columns, vec![("name".to_string(), "string".to_string()), ("age".to_string(), "integer".to_string())]);
+        /// ```
         #[must_use]
         pub fn columns(&self) -> Vec<(String, String)> {
             let (pairs, errors) = parse_name_type_pairs(self.syntax.children_with_tokens());
@@ -1614,7 +1636,18 @@ pub mod ast {
                 })
         }
 
-        /// Whether the function is declared as `extern`.
+        /// Returns `true` if the function is declared with the `extern` keyword.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser::ast::{Function, Root};
+        /// # let src = "extern function foo(x: i32): i32;";
+        /// # let parsed = crate::parser::parse(src);
+        /// # let root = parsed.root();
+        /// # let func = root.functions().next().unwrap();
+        /// assert!(func.is_extern());
+        /// ```
         #[must_use]
         pub fn is_extern(&self) -> bool {
             self.syntax
@@ -1622,10 +1655,22 @@ pub mod ast {
                 .any(|e| e.kind() == SyntaxKind::K_EXTERN)
         }
 
-        /// Function parameters as name/type pairs.
+        /// Returns the function parameters as pairs of parameter name and type.
         ///
-        /// Delimiter errors detected during parsing are ignored.
-        /// This may change in future to surface these diagnostics.
+        /// Delimiter errors encountered during parsing are currently ignored,
+        /// but this behaviour may change in future versions to surface such diagnostics.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser::ast::{Function, Root};
+        /// # let src = "function foo(x: i32, y: string): bool { ... }";
+        /// # let parsed = crate::parser::parse(src);
+        /// # let root = parsed.root();
+        /// # let func = root.functions().next().unwrap();
+        /// let params = func.parameters();
+        /// assert_eq!(params, vec![("x".to_string(), "i32".to_string()), ("y".to_string(), "string".to_string())]);
+        /// ```
         #[must_use]
         pub fn parameters(&self) -> Vec<(String, String)> {
             let (pairs, errors) = parse_name_type_pairs(self.syntax.children_with_tokens());
