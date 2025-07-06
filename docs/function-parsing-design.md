@@ -11,10 +11,14 @@ classDiagram
     class parse_name_type_pairs {
         <<function>>
     }
+    class parse_type_expr {
+        <<function>>
+    }
     class parse_type_after_colon {
         <<function>>
     }
     Function ..> parse_name_type_pairs : uses
+    parse_name_type_pairs ..> parse_type_expr : uses
     Function ..> parse_type_after_colon : uses
     Relation ..> parse_name_type_pairs : uses
 ```
@@ -22,9 +26,20 @@ classDiagram
 ## Parameter list parsing
 
 `parse_name_type_pairs` walks the token stream produced for the parameter list.
-Commas end a parameter only when the parser is not inside any nested delimiters.
-A small stack tracks openings of `(`, `<`, `[` and `{`. Closing tokens remove
-entries from the stack, ensuring that nested generics like
-`Vec<Map<string, Vec<u8>>>` do not confuse the outer list terminator. The
-opening `(` of the list is accounted for separately so that the closing `)` can
-be recognised without scanning the stack.
+Each time a colon is encountered, the function delegates to `parse_type_expr` to
+capture the following type expression. That helper recursively parses nested
+delimiters, so constructs like `Vec<Map<string, Vec<u8>>>` are handled without
+maintaining a delimiter stack in `parse_name_type_pairs` itself. Parameters end
+when a comma or the closing `)` of the list is reached.
+
+Missing colons between a parameter name and type trigger a
+`ParseError::MissingColon`. The parser attaches the span of the comma or
+parenthesis that ended the parameter, so diagnostics can pinpoint the location.
+Helper functions `collect_parameter_name` and `finalise_parameter` keep the main
+loop small by handling name collection and type parsing, respectively.
+
+Empty names and empty types are reported with `ParseError::MissingName` and
+`ParseError::MissingType`. `parse_type_expr` filters out whitespace and comment
+nodes while recording `ParseError::Delimiter` for mismatched closing tokens, and
+`ParseError::UnclosedDelimiter` when the stack contains leftover openings after
+parsing stops.
