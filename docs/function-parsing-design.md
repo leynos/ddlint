@@ -34,12 +34,12 @@ when a comma or the closing `)` of the list is reached.
 
 Missing colons between a parameter name and type trigger a
 `ParseError::MissingColon`. The parser attaches the span of the comma or
-parenthesis that ended the parameter so diagnostics can pinpoint the location.
+parenthesis that ended the parameter, so diagnostics can pinpoint the location.
 Helper functions `collect_parameter_name` and `finalise_parameter` keep the main
-loop small by handling name collection and type parsing respectively.
+loop small by handling name collection and type parsing, respectively.
 
 Empty names and empty types are reported with `ParseError::MissingName` and
 `ParseError::MissingType`. `parse_type_expr` filters out whitespace and comment
-nodes while recording `ParseError::Delimiter` for mismatched closing tokens and
+nodes while recording `ParseError::Delimiter` for mismatched closing tokens, and
 `ParseError::UnclosedDelimiter` when the stack contains leftover openings after
 parsing stops.
