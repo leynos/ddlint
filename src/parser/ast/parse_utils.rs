@@ -1,7 +1,10 @@
-//! Shared parsing utilities for AST helpers.
+//! Parsing helpers shared across AST modules.
 //!
-//! This module contains small functions reused by multiple AST nodes when
-//! extracting typed data from the CST.
+//! This module provides small utilities for collecting parameter names and
+//! types from the CST and for recursively parsing type expressions. Both the
+//! `Function` and `Relation` nodes import these helpers so they can share the
+//! same logic when interpreting their declarations. See
+//! `docs/function-parsing-design.md` for an overview.
 
 use rowan::{NodeOrToken, SyntaxElement, TextRange, TextSize};
 
