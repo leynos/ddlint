@@ -26,20 +26,19 @@ classDiagram
 ## Parameter list parsing
 
 `parse_name_type_pairs` walks the token stream produced for the parameter list.
-Each time a colon is encountered, the function delegates to `parse_type_expr` to
-capture the following type expression. That helper recursively parses nested
-delimiters, so constructs like `Vec<Map<string, Vec<u8>>>` are handled without
-maintaining a delimiter stack in `parse_name_type_pairs` itself. Parameters end
-when a comma or the closing `)` of the list is reached.
+Whenever it encounters a colon it delegates to `parse_type_expr`. That helper is
+now fully recursive: on seeing `(`, `[`, `{` or `<` it calls itself to read the
+matching closing delimiter. This means nested types such as
+`Vec<Map<string, Vec<u8>>>` are parsed without any external delimiter stack.
+Parameters end when a comma or the closing `)` of the list is reached.
 
-Missing colons between a parameter name and type trigger a
-`ParseError::MissingColon`. The parser attaches the span of the comma or
-parenthesis that ended the parameter, so diagnostics can pinpoint the location.
-Helper functions `collect_parameter_name` and `finalise_parameter` keep the main
-loop small by handling name collection and type parsing, respectively.
+Missing colons between a parameter name and type trigger
+`ParseError::MissingColon`. The span of the terminating comma or parenthesis is
+attached so diagnostics point at the error. Helper functions
+`collect_parameter_name` and `finalise_parameter` keep the main loop small.
 
-Empty names and empty types are reported with `ParseError::MissingName` and
-`ParseError::MissingType`. `parse_type_expr` filters out whitespace and comment
-nodes while recording `ParseError::Delimiter` for mismatched closing tokens, and
-`ParseError::UnclosedDelimiter` when the stack contains leftover openings after
-parsing stops.
+Empty names and types are reported with `ParseError::MissingName` and
+`ParseError::MissingType`. `parse_type_expr` skips whitespace and comment nodes
+and reports mismatched delimiters with a `ParseError::Delimiter` that records
+the expected and actual tokens. Unclosed delimiters produce
+`ParseError::UnclosedDelimiter` once parsing stops.
