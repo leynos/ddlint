@@ -255,7 +255,7 @@ pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
     let (spans, errors) = parse_tokens(&tokens, src);
 
-    let green = build_green_tree(tokens, src, &spans);
+    let green = build_green_tree(&tokens, src, &spans);
     let root = ast::Root::from_green(green.clone());
 
     Parsed {
@@ -846,7 +846,7 @@ fn collect_rule_spans(
 /// `spans.imports` and `spans.typedefs` must be sorted and non-overlapping so
 /// that tokens are wrapped into well-formed nodes during tree construction.
 /// Spans are checked with debug assertions.
-fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, spans: &ParsedSpans) -> GreenNode {
+fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpans) -> GreenNode {
     spans.assert_sorted();
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
@@ -858,7 +858,7 @@ fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, spans: &ParsedSp
     let mut function_iter = spans.functions.iter().peekable();
     let mut rule_iter = spans.rules.iter().peekable();
 
-    for (kind, span) in tokens {
+    for &(kind, ref span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
         advance_span_iter(&mut typedef_iter, span.start);
         advance_span_iter(&mut relation_iter, span.start);
@@ -898,7 +898,7 @@ fn build_green_tree(tokens: Vec<(SyntaxKind, Span)>, src: &str, spans: &ParsedSp
         );
         maybe_start(&mut builder, &mut rule_iter, span.start, SyntaxKind::N_RULE);
 
-        push_token(&mut builder, kind, &span, src);
+        push_token(&mut builder, kind, span, src);
 
         maybe_finish(&mut builder, &mut import_iter, span.end);
         maybe_finish(&mut builder, &mut typedef_iter, span.end);
@@ -1846,7 +1846,7 @@ mod tests {
             ..Default::default()
         };
         let result = std::panic::catch_unwind(|| {
-            super::build_green_tree(tokens, src, &spans);
+            super::build_green_tree(&tokens, src, &spans);
         });
         let Err(msg) = result else {
             panic!("expected panic")
@@ -1874,7 +1874,7 @@ mod tests {
             ..Default::default()
         };
         let result = std::panic::catch_unwind(|| {
-            super::build_green_tree(tokens, src, &spans);
+            super::build_green_tree(&tokens, src, &spans);
         });
         let Err(msg) = result else {
             panic!("expected panic")
