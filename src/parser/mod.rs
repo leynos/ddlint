@@ -195,23 +195,87 @@ pub struct Parsed {
 }
 
 /// Spans for each parsed statement category.
+///
+/// Instances are constructed via [`ParsedSpans::new`] to guarantee the
+/// internal lists remain sorted and non-overlapping.
+#[non_exhaustive]
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedSpans {
     /// `import` statement spans.
-    pub imports: Vec<Span>,
+    imports: Vec<Span>,
     /// `typedef` statement spans.
-    pub typedefs: Vec<Span>,
+    typedefs: Vec<Span>,
     /// `relation` declaration spans.
-    pub relations: Vec<Span>,
+    relations: Vec<Span>,
     /// `index` declaration spans.
-    pub indexes: Vec<Span>,
+    indexes: Vec<Span>,
     /// `function` definition spans.
-    pub functions: Vec<Span>,
+    functions: Vec<Span>,
     /// Rule spans.
-    pub rules: Vec<Span>,
+    rules: Vec<Span>,
 }
 
 impl ParsedSpans {
+    /// Construct a new `ParsedSpans`.
+    ///
+    /// The caller must ensure each span list is sorted and does not overlap
+    /// with itself. The lists are not checked on construction but will be
+    /// validated when used by other parsing routines.
+    #[must_use]
+    pub fn new(
+        imports: Vec<Span>,
+        typedefs: Vec<Span>,
+        relations: Vec<Span>,
+        indexes: Vec<Span>,
+        functions: Vec<Span>,
+        rules: Vec<Span>,
+    ) -> Self {
+        Self {
+            imports,
+            typedefs,
+            relations,
+            indexes,
+            functions,
+            rules,
+        }
+    }
+
+    /// Access `import` statement spans.
+    #[must_use]
+    pub fn imports(&self) -> &[Span] {
+        &self.imports
+    }
+
+    /// Access `typedef` statement spans.
+    #[must_use]
+    pub fn typedefs(&self) -> &[Span] {
+        &self.typedefs
+    }
+
+    /// Access `relation` declaration spans.
+    #[must_use]
+    pub fn relations(&self) -> &[Span] {
+        &self.relations
+    }
+
+    /// Access `index` declaration spans.
+    #[must_use]
+    pub fn indexes(&self) -> &[Span] {
+        &self.indexes
+    }
+
+    /// Access `function` definition spans.
+    #[must_use]
+    pub fn functions(&self) -> &[Span] {
+        &self.functions
+    }
+
+    /// Access rule spans.
+    #[must_use]
+    pub fn rules(&self) -> &[Span] {
+        &self.rules
+    }
+
     /// Assert that every span list is sorted and non-overlapping.
     fn assert_sorted(&self) {
         ensure_span_lists_sorted(&[
@@ -275,7 +339,7 @@ pub fn parse(src: &str) -> Parsed {
 ///
 /// ```no_run
 /// let (spans, errors) = parse_tokens(&tokens, src);
-/// assert!(spans.imports.iter().all(|span| span.start < span.end));
+/// assert!(spans.imports().iter().all(|span| span.start < span.end));
 /// ```
 fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
@@ -294,14 +358,14 @@ fn parse_tokens(
     all_errors.extend(rule_errors);
 
     (
-        ParsedSpans {
-            imports: import_spans,
-            typedefs: typedef_spans,
-            relations: relation_spans,
-            indexes: index_spans,
-            functions: function_spans,
-            rules: rule_spans,
-        },
+        ParsedSpans::new(
+            import_spans,
+            typedef_spans,
+            relation_spans,
+            index_spans,
+            function_spans,
+            rule_spans,
+        ),
         all_errors,
     )
 }
@@ -843,7 +907,7 @@ fn collect_rule_spans(
 
 /// Construct the CST from the token stream and recorded statement spans.
 ///
-/// `spans.imports` and `spans.typedefs` must be sorted and non-overlapping so
+/// `spans.imports()` and `spans.typedefs()` must be sorted and non-overlapping so
 /// that tokens are wrapped into well-formed nodes during tree construction.
 /// Spans are checked with debug assertions.
 fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpans) -> GreenNode {
@@ -851,12 +915,12 @@ fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpan
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
-    let mut import_iter = spans.imports.iter().peekable();
-    let mut typedef_iter = spans.typedefs.iter().peekable();
-    let mut relation_iter = spans.relations.iter().peekable();
-    let mut index_iter = spans.indexes.iter().peekable();
-    let mut function_iter = spans.functions.iter().peekable();
-    let mut rule_iter = spans.rules.iter().peekable();
+    let mut import_iter = spans.imports().iter().peekable();
+    let mut typedef_iter = spans.typedefs().iter().peekable();
+    let mut relation_iter = spans.relations().iter().peekable();
+    let mut index_iter = spans.indexes().iter().peekable();
+    let mut function_iter = spans.functions().iter().peekable();
+    let mut rule_iter = spans.rules().iter().peekable();
 
     for &(kind, ref span) in tokens {
         advance_span_iter(&mut import_iter, span.start);
@@ -1841,10 +1905,14 @@ mod tests {
         let src = "import Foo";
         let tokens = tokenize(src);
         let unsorted = vec![1..2, 0..1];
-        let spans = super::ParsedSpans {
-            imports: unsorted,
-            ..Default::default()
-        };
+        let spans = super::ParsedSpans::new(
+            unsorted,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
         let result = std::panic::catch_unwind(|| {
             super::build_green_tree(&tokens, src, &spans);
         });
@@ -1868,11 +1936,14 @@ mod tests {
         let tokens = tokenize(src);
         let imports = vec![1..2, 0..1];
         let typedefs = vec![4..5, 3..4];
-        let spans = super::ParsedSpans {
+        let spans = super::ParsedSpans::new(
             imports,
             typedefs,
-            ..Default::default()
-        };
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
         let result = std::panic::catch_unwind(|| {
             super::build_green_tree(&tokens, src, &spans);
         });
