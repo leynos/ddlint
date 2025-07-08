@@ -26,15 +26,15 @@ classDiagram
 ## Parameter list parsing
 
 `parse_name_type_pairs` walks the token stream produced for the parameter list.
-Whenever it encounters a colon, it delegates to `parse_type_expr`.  
-That helper is now fully recursive: on seeing `(`, `[`, `{` or `<`, it calls  
-itself to read the matching closing delimiter. This means nested types such as  
-`Vec<Map<string, Vec<u8>>>` are parsed without any external delimiter stack.  
+Whenever it encounters a colon, it delegates to `parse_type_expr`.\
+That helper is now fully recursive: on seeing `(`, `[`, `{` or `<`, it calls\
+itself to read the matching closing delimiter. This means nested types such as\
+`Vec<Map<string, Vec<u8>>>` are parsed without any external delimiter stack.\
 Parameters end when a comma or the closing `)` of the list is reached.
 
 Missing colons between a parameter name and type trigger
-`ParseError::MissingColon`. The span of the terminating comma or parenthesis is  
-attached, so diagnostics point at the error. Helper functions  
+`ParseError::MissingColon`. The span of the terminating comma or parenthesis is\
+attached, so diagnostics point at the error. Helper functions\
 `collect_parameter_name` and `finalise_parameter` keep the main loop small.
 
 Empty names and types are reported with `ParseError::MissingName` and
