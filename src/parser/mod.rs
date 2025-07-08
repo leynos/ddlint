@@ -219,8 +219,8 @@ impl ParsedSpans {
     /// Construct a new `ParsedSpans`.
     ///
     /// The caller must ensure each span list is sorted and does not overlap
-    /// with itself. The lists are not checked on construction but will be
-    /// validated when used by other parsing routines.
+    /// with itself. Debug assertions verify the order in debug builds so
+    /// mistakes surface immediately during development.
     #[must_use]
     pub fn new(
         imports: Vec<Span>,
@@ -230,6 +230,17 @@ impl ParsedSpans {
         functions: Vec<Span>,
         rules: Vec<Span>,
     ) -> Self {
+        if cfg!(debug_assertions) {
+            ensure_span_lists_sorted(&[
+                ("imports", &imports),
+                ("typedefs", &typedefs),
+                ("relations", &relations),
+                ("indexes", &indexes),
+                ("functions", &functions),
+                ("rules", &rules),
+            ]);
+        }
+
         Self {
             imports,
             typedefs,
@@ -1905,14 +1916,14 @@ mod tests {
         let src = "import Foo";
         let tokens = tokenize(src);
         let unsorted = vec![1..2, 0..1];
-        let spans = super::ParsedSpans::new(
-            unsorted,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
+        let spans = super::ParsedSpans {
+            imports: unsorted,
+            typedefs: Vec::new(),
+            relations: Vec::new(),
+            indexes: Vec::new(),
+            functions: Vec::new(),
+            rules: Vec::new(),
+        };
         let result = std::panic::catch_unwind(|| {
             super::build_green_tree(&tokens, src, &spans);
         });
@@ -1936,14 +1947,14 @@ mod tests {
         let tokens = tokenize(src);
         let imports = vec![1..2, 0..1];
         let typedefs = vec![4..5, 3..4];
-        let spans = super::ParsedSpans::new(
+        let spans = super::ParsedSpans {
             imports,
             typedefs,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
+            relations: Vec::new(),
+            indexes: Vec::new(),
+            functions: Vec::new(),
+            rules: Vec::new(),
+        };
         let result = std::panic::catch_unwind(|| {
             super::build_green_tree(&tokens, src, &spans);
         });
