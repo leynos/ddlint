@@ -219,8 +219,12 @@ impl ParsedSpans {
     /// Construct a new `ParsedSpans`.
     ///
     /// The caller must ensure each span list is sorted and does not overlap
-    /// with itself. Debug assertions verify the order in debug builds so
-    /// mistakes surface immediately during development.
+    /// with itself.
+    ///
+    /// # Panics
+    ///
+    /// Panics in debug builds if any span list is unsorted or contains
+    /// overlapping spans.
     #[must_use]
     pub fn new(
         imports: Vec<Span>,
@@ -285,18 +289,6 @@ impl ParsedSpans {
     #[must_use]
     pub fn rules(&self) -> &[Span] {
         &self.rules
-    }
-
-    /// Assert that every span list is sorted and non-overlapping.
-    fn assert_sorted(&self) {
-        ensure_span_lists_sorted(&[
-            ("imports", &self.imports),
-            ("typedefs", &self.typedefs),
-            ("relations", &self.relations),
-            ("indexes", &self.indexes),
-            ("functions", &self.functions),
-            ("rules", &self.rules),
-        ]);
     }
 }
 
@@ -920,9 +912,8 @@ fn collect_rule_spans(
 ///
 /// `spans.imports()` and `spans.typedefs()` must be sorted and non-overlapping so
 /// that tokens are wrapped into well-formed nodes during tree construction.
-/// Spans are checked with debug assertions.
+/// Spans are validated in debug builds when [`ParsedSpans`] is constructed.
 fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpans) -> GreenNode {
-    spans.assert_sorted();
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
@@ -1913,19 +1904,16 @@ mod tests {
 
     #[test]
     fn build_green_tree_panics_on_misordered_spans() {
-        let src = "import Foo";
-        let tokens = tokenize(src);
         let unsorted = vec![1..2, 0..1];
-        let spans = super::ParsedSpans {
-            imports: unsorted,
-            typedefs: Vec::new(),
-            relations: Vec::new(),
-            indexes: Vec::new(),
-            functions: Vec::new(),
-            rules: Vec::new(),
-        };
         let result = std::panic::catch_unwind(|| {
-            super::build_green_tree(&tokens, src, &spans);
+            let _ = super::ParsedSpans::new(
+                unsorted,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            );
         });
         let Err(msg) = result else {
             panic!("expected panic")
@@ -1943,20 +1931,17 @@ mod tests {
 
     #[test]
     fn build_green_tree_reports_all_errors() {
-        let src = "import Foo; type T = string";
-        let tokens = tokenize(src);
         let imports = vec![1..2, 0..1];
         let typedefs = vec![4..5, 3..4];
-        let spans = super::ParsedSpans {
-            imports,
-            typedefs,
-            relations: Vec::new(),
-            indexes: Vec::new(),
-            functions: Vec::new(),
-            rules: Vec::new(),
-        };
         let result = std::panic::catch_unwind(|| {
-            super::build_green_tree(&tokens, src, &spans);
+            let _ = super::ParsedSpans::new(
+                imports,
+                typedefs,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            );
         });
         let Err(msg) = result else {
             panic!("expected panic")
