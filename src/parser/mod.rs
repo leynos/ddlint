@@ -212,8 +212,8 @@ pub struct ParsedSpans {
 }
 
 impl ParsedSpans {
-    /// Assert that every span list is sorted and non-overlapping.
-    fn assert_sorted(&self) {
+    /// Ensure every span list is sorted and non-overlapping.
+    fn ensure_sorted(&self) {
         ensure_span_lists_sorted(&[
             ("imports", &self.imports),
             ("typedefs", &self.typedefs),
@@ -847,7 +847,7 @@ fn collect_rule_spans(
 /// that tokens are wrapped into well-formed nodes during tree construction.
 /// Spans are checked with debug assertions.
 fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpans) -> GreenNode {
-    spans.assert_sorted();
+    spans.ensure_sorted();
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
