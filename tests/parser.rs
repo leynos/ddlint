@@ -887,3 +887,63 @@ fn function_unterminated_body_is_error(function_unterminated_body: &str) {
     assert!(!parsed.errors().is_empty());
     assert!(parsed.root().functions().is_empty());
 }
+
+#[fixture]
+fn transformer_single_io() -> &'static str {
+    "extern transformer normalize(input: UnnormalizedData): NormalizedData"
+}
+
+#[fixture]
+fn transformer_multi_io() -> &'static str {
+    "extern transformer correlate(users: User, sessions: UserSession): UserActivity, SessionAlerts"
+}
+
+#[fixture]
+fn transformer_invalid() -> &'static str {
+    "extern transformer incomplete_transformer(input: SomeData):"
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn transformer_single_parsed(transformer_single_io: &str) {
+    let parsed = parse(transformer_single_io);
+    assert!(parsed.errors().is_empty());
+    let transformers = parsed.root().transformers();
+    assert_eq!(transformers.len(), 1);
+    let t = transformers.first().expect("transformer missing");
+    assert_eq!(t.name(), Some("normalize".into()));
+    assert_eq!(
+        t.inputs(),
+        vec![("input".into(), "UnnormalizedData".into())]
+    );
+    assert_eq!(t.outputs(), vec![String::from("NormalizedData")]);
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn transformer_multi_parsed(transformer_multi_io: &str) {
+    let parsed = parse(transformer_multi_io);
+    assert!(parsed.errors().is_empty());
+    let transformers = parsed.root().transformers();
+    assert_eq!(transformers.len(), 1);
+    let t = transformers.first().expect("transformer missing");
+    assert_eq!(t.name(), Some("correlate".into()));
+    assert_eq!(
+        t.inputs(),
+        vec![
+            ("users".into(), "User".into()),
+            ("sessions".into(), "UserSession".into()),
+        ]
+    );
+    assert_eq!(
+        t.outputs(),
+        vec![String::from("UserActivity"), String::from("SessionAlerts")]
+    );
+}
+
+#[rstest]
+fn transformer_invalid_is_error(transformer_invalid: &str) {
+    let parsed = parse(transformer_invalid);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().transformers().is_empty());
+}
