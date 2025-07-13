@@ -466,6 +466,46 @@ fn collect_import_spans(
     st.into_parts()
 }
 
+/// Collect spans for `extern` declarations of a specific kind.
+fn collect_extern_declarations<P>(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    decl_kind: SyntaxKind,
+    decl_parser: P,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
+where
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone,
+{
+    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
+    use chumsky::prelude::*;
+
+    let mut st = State::new(tokens, src, Vec::new());
+
+    let handler = move |st: &mut State<'_>, span: Span| {
+        if st.stream.peek_after_ws_inline().map(|t| t.0) != Some(decl_kind) {
+            st.skip_line();
+            return;
+        }
+
+        let ws = inline_ws().repeated();
+        let parser = just(SyntaxKind::K_EXTERN)
+            .padded_by(ws.clone())
+            .ignore_then(decl_parser.clone());
+
+        let (res, err) = st.parse_span(parser, span.start);
+        if let Some(sp) = res {
+            st.spans.push(span.start..sp.end);
+            st.stream.skip_until(sp.end);
+        } else {
+            st.extra.extend(err);
+            st.skip_line();
+        }
+    };
+
+    token_dispatch!(st, { SyntaxKind::K_EXTERN => handler });
+    st.into_parts()
+}
+
 /// Collects the spans of `typedef` and `extern type` declarations in the token stream.
 ///
 /// Each span covers the entire line of the declaration, enabling grouping of tokens into
@@ -835,10 +875,9 @@ fn collect_transformer_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
-    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
     use chumsky::prelude::*;
 
-    fn transformer_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+    fn transformer_decl() -> BoxedParser<'static, SyntaxKind, Span, Simple<SyntaxKind>> {
         let ws = inline_ws().repeated();
         let ident_p = ident();
 
@@ -857,38 +896,10 @@ fn collect_transformer_spans(
             .then(outputs)
             .padded_by(ws)
             .map_with_span(|_, sp: Span| sp)
+            .boxed()
     }
 
-    fn handle_extern(st: &mut State<'_>, span: Span) {
-        if !matches!(
-            st.stream.peek_after_ws_inline().map(|t| t.0),
-            Some(SyntaxKind::K_TRANSFORMER)
-        ) {
-            st.skip_line();
-            return;
-        }
-
-        let parser = just(SyntaxKind::K_EXTERN)
-            .padded_by(inline_ws().repeated())
-            .ignore_then(transformer_decl());
-
-        let (res, err) = st.parse_span(parser, span.start);
-        if let Some(sp) = res {
-            st.spans.push(span.start..sp.end);
-            st.stream.skip_until(sp.end);
-        } else {
-            st.extra.extend(err);
-            st.skip_line();
-        }
-    }
-
-    let mut st = State::new(tokens, src, Vec::new());
-
-    token_dispatch!(st, {
-        SyntaxKind::K_EXTERN => handle_extern,
-    });
-
-    st.into_parts()
+    collect_extern_declarations(tokens, src, SyntaxKind::K_TRANSFORMER, transformer_decl())
 }
 
 /// Collects the spans of rule declarations in the token stream.
@@ -1878,16 +1889,27 @@ pub mod ast {
         /// Name of the transformer if present.
         #[must_use]
         pub fn name(&self) -> Option<String> {
-            self.syntax
-                .children_with_tokens()
-                .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_TRANSFORMER))
-                .skip(1)
-                .find_map(|e| match e {
-                    rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                        Some(t.text().to_string())
-                    }
-                    _ => None,
-                })
+            use rowan::NodeOrToken;
+            let mut iter = self.syntax.children_with_tokens();
+
+            for e in &mut iter {
+                if e.kind() == SyntaxKind::K_TRANSFORMER {
+                    break;
+                }
+            }
+
+            for e in iter {
+                match e {
+                    NodeOrToken::Token(t) => match t.kind() {
+                        SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {}
+                        SyntaxKind::T_IDENT => return Some(t.text().to_string()),
+                        _ => break,
+                    },
+                    NodeOrToken::Node(_) => break,
+                }
+            }
+
+            None
         }
 
         /// Input relations as pairs of name and type.
