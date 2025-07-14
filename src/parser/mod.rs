@@ -211,6 +211,8 @@ pub struct ParsedSpans {
     indexes: Vec<Span>,
     /// `function` definition spans.
     functions: Vec<Span>,
+    /// `transformer` declaration spans.
+    transformers: Vec<Span>,
     /// Rule spans.
     rules: Vec<Span>,
 }
@@ -232,6 +234,7 @@ impl ParsedSpans {
         relations: Vec<Span>,
         indexes: Vec<Span>,
         functions: Vec<Span>,
+        transformers: Vec<Span>,
         rules: Vec<Span>,
     ) -> Self {
         if cfg!(debug_assertions) {
@@ -241,6 +244,7 @@ impl ParsedSpans {
                 ("relations", &relations),
                 ("indexes", &indexes),
                 ("functions", &functions),
+                ("transformers", &transformers),
                 ("rules", &rules),
             ]);
         }
@@ -251,6 +255,7 @@ impl ParsedSpans {
             relations,
             indexes,
             functions,
+            transformers,
             rules,
         }
     }
@@ -283,6 +288,12 @@ impl ParsedSpans {
     #[must_use]
     pub fn functions(&self) -> &[Span] {
         &self.functions
+    }
+
+    /// Access `transformer` declaration spans.
+    #[must_use]
+    pub fn transformers(&self) -> &[Span] {
+        &self.transformers
     }
 
     /// Access rule spans.
@@ -353,11 +364,13 @@ fn parse_tokens(
     let relation_spans = collect_relation_spans(tokens, src);
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
+    let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
     let (rule_spans, rule_errors) = collect_rule_spans(tokens, src);
 
     let mut all_errors = errors;
     all_errors.extend(index_errors);
     all_errors.extend(function_errors);
+    all_errors.extend(transformer_errors);
     all_errors.extend(rule_errors);
 
     (
@@ -367,6 +380,7 @@ fn parse_tokens(
             relation_spans,
             index_spans,
             function_spans,
+            transformer_spans,
             rule_spans,
         ),
         all_errors,
@@ -449,6 +463,59 @@ fn collect_import_spans(
         SyntaxKind::K_IMPORT => handle_import,
     });
 
+    st.into_parts()
+}
+
+/// Collect spans for `extern` declarations of a specific kind.
+fn collect_extern_declarations<F, P>(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    decl_kind: SyntaxKind,
+    decl_parser: F,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
+where
+    F: Fn() -> P,
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+{
+    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
+    use chumsky::prelude::*;
+
+    let mut st = State::new(tokens, src, Vec::new());
+
+    let handler = move |st: &mut State<'_>, span: Span| {
+        // Skip inline whitespace and comments to find the keyword after `extern`.
+        let mut idx = st.stream.cursor() + 1;
+        while let Some(tok) = st.stream.tokens().get(idx) {
+            let text = st.stream.src().get(tok.1.clone()).unwrap_or("");
+            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+                && !text.contains('\n')
+            {
+                idx += 1;
+            } else {
+                break;
+            }
+        }
+        if st.stream.tokens().get(idx).map(|t| t.0) != Some(decl_kind) {
+            st.skip_line();
+            return;
+        }
+
+        let ws = inline_ws().repeated();
+        let parser = just(SyntaxKind::K_EXTERN)
+            .padded_by(ws.clone())
+            .ignore_then(decl_parser());
+
+        let (res, err) = st.parse_span(parser, span.start);
+        if let Some(sp) = res {
+            st.spans.push(span.start..sp.end);
+            st.stream.skip_until(sp.end);
+        } else {
+            st.extra.extend(err);
+            st.skip_line();
+        }
+    };
+
+    token_dispatch!(st, { SyntaxKind::K_EXTERN => handler });
     st.into_parts()
 }
 
@@ -816,6 +883,37 @@ fn collect_function_spans(
     st.into_parts()
 }
 
+/// Collects the spans of transformer declarations in the token stream.
+fn collect_transformer_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    use chumsky::prelude::*;
+
+    fn transformer_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+        let ws = inline_ws().repeated();
+        let ident_p = ident();
+
+        let args = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
+        let outputs = ident_p
+            .clone()
+            .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
+            .at_least(1)
+            .ignored();
+
+        just(SyntaxKind::K_TRANSFORMER)
+            .padded_by(ws.clone())
+            .ignore_then(ident_p)
+            .then(args)
+            .then_ignore(just(SyntaxKind::T_COLON).padded_by(ws.clone()))
+            .then(outputs)
+            .padded_by(ws)
+            .map_with_span(|_, sp: Span| sp)
+    }
+
+    collect_extern_declarations(tokens, src, SyntaxKind::K_TRANSFORMER, transformer_decl)
+}
+
 /// Collects the spans of rule declarations in the token stream.
 ///
 /// A rule has the form `Head :- Body.` where the body is optional. The parser
@@ -922,6 +1020,7 @@ fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpan
     let mut relation_iter = spans.relations().iter().peekable();
     let mut index_iter = spans.indexes().iter().peekable();
     let mut function_iter = spans.functions().iter().peekable();
+    let mut transformer_iter = spans.transformers().iter().peekable();
     let mut rule_iter = spans.rules().iter().peekable();
 
     for &(kind, ref span) in tokens {
@@ -930,48 +1029,38 @@ fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpan
         advance_span_iter(&mut relation_iter, span.start);
         advance_span_iter(&mut index_iter, span.start);
         advance_span_iter(&mut function_iter, span.start);
+        advance_span_iter(&mut transformer_iter, span.start);
         advance_span_iter(&mut rule_iter, span.start);
 
-        maybe_start(
+        start_nodes(
             &mut builder,
-            &mut import_iter,
+            &mut [
+                (&mut import_iter, SyntaxKind::N_IMPORT_STMT),
+                (&mut typedef_iter, SyntaxKind::N_TYPE_DEF),
+                (&mut relation_iter, SyntaxKind::N_RELATION_DECL),
+                (&mut index_iter, SyntaxKind::N_INDEX),
+                (&mut function_iter, SyntaxKind::N_FUNCTION),
+                (&mut transformer_iter, SyntaxKind::N_TRANSFORMER),
+                (&mut rule_iter, SyntaxKind::N_RULE),
+            ],
             span.start,
-            SyntaxKind::N_IMPORT_STMT,
         );
-        maybe_start(
-            &mut builder,
-            &mut typedef_iter,
-            span.start,
-            SyntaxKind::N_TYPE_DEF,
-        );
-        maybe_start(
-            &mut builder,
-            &mut relation_iter,
-            span.start,
-            SyntaxKind::N_RELATION_DECL,
-        );
-        maybe_start(
-            &mut builder,
-            &mut index_iter,
-            span.start,
-            SyntaxKind::N_INDEX,
-        );
-        maybe_start(
-            &mut builder,
-            &mut function_iter,
-            span.start,
-            SyntaxKind::N_FUNCTION,
-        );
-        maybe_start(&mut builder, &mut rule_iter, span.start, SyntaxKind::N_RULE);
 
         push_token(&mut builder, kind, span, src);
 
-        maybe_finish(&mut builder, &mut import_iter, span.end);
-        maybe_finish(&mut builder, &mut typedef_iter, span.end);
-        maybe_finish(&mut builder, &mut relation_iter, span.end);
-        maybe_finish(&mut builder, &mut index_iter, span.end);
-        maybe_finish(&mut builder, &mut function_iter, span.end);
-        maybe_finish(&mut builder, &mut rule_iter, span.end);
+        finish_nodes(
+            &mut builder,
+            &mut [
+                &mut import_iter,
+                &mut typedef_iter,
+                &mut relation_iter,
+                &mut index_iter,
+                &mut function_iter,
+                &mut transformer_iter,
+                &mut rule_iter,
+            ],
+            span.end,
+        );
     }
 
     builder.finish_node();
@@ -1012,6 +1101,24 @@ fn maybe_finish(
     if iter.peek().is_some_and(|current| pos >= current.end) {
         builder.finish_node();
         iter.next();
+    }
+}
+
+type SpanIter<'a> = std::iter::Peekable<std::slice::Iter<'a, Span>>;
+
+fn start_nodes(
+    builder: &mut GreenNodeBuilder,
+    pairs: &mut [(&mut SpanIter<'_>, SyntaxKind)],
+    pos: usize,
+) {
+    for (iter, kind) in pairs.iter_mut() {
+        maybe_start(builder, iter, pos, *kind);
+    }
+}
+
+fn finish_nodes(builder: &mut GreenNodeBuilder, iters: &mut [&mut SpanIter<'_>], pos: usize) {
+    for iter in iters.iter_mut() {
+        maybe_finish(builder, iter, pos);
     }
 }
 
@@ -1190,6 +1297,16 @@ pub mod ast {
                 .collect()
         }
 
+        /// Collect all transformer declarations under this root.
+        #[must_use]
+        pub fn transformers(&self) -> Vec<Transformer> {
+            self.syntax
+                .children()
+                .filter(|n| n.kind() == SyntaxKind::N_TRANSFORMER)
+                .map(|syntax| Transformer { syntax })
+                .collect()
+        }
+
         /// Collect all rule declarations under this root.
         #[must_use]
         pub fn rules(&self) -> Vec<Rule> {
@@ -1282,20 +1399,37 @@ pub mod ast {
         }
     }
 
-    /// Advance the iterator until `typedef` or `type` is encountered.
-    fn skip_to_typedef_keyword(
+    /// Advance the iterator until `predicate` returns `true` for a token kind.
+    fn skip_to_match(
         iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+        predicate: impl Fn(SyntaxKind) -> bool,
     ) -> bool {
         for e in iter.by_ref() {
             let kind = e.kind();
             if kind == SyntaxKind::K_EXTERN {
                 continue;
             }
-            if matches!(kind, SyntaxKind::K_TYPEDEF | SyntaxKind::K_TYPE) {
+            if predicate(kind) {
                 return true;
             }
         }
         false
+    }
+
+    /// Advance the iterator until `typedef` or `type` is encountered.
+    fn skip_to_typedef_keyword(
+        iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    ) -> bool {
+        skip_to_match(iter, |k| {
+            matches!(k, SyntaxKind::K_TYPEDEF | SyntaxKind::K_TYPE)
+        })
+    }
+
+    /// Advance the iterator until `transformer` is encountered.
+    fn skip_to_transformer_keyword(
+        iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    ) -> bool {
+        skip_to_match(iter, |k| k == SyntaxKind::K_TRANSFORMER)
     }
 
     fn take_first_ident(
@@ -1328,7 +1462,7 @@ pub mod ast {
     }
 
     mod parse_utils;
-    use parse_utils::{parse_name_type_pairs, parse_type_after_colon};
+    use parse_utils::{parse_name_type_pairs, parse_output_list, parse_type_after_colon};
 
     /// Typed wrapper for a relation declaration.
     #[derive(Debug, Clone)]
@@ -1767,6 +1901,43 @@ pub mod ast {
             parse_type_after_colon(&mut iter)
         }
     }
+
+    /// Typed wrapper for a transformer declaration.
+    #[derive(Debug, Clone)]
+    pub struct Transformer {
+        pub(crate) syntax: SyntaxNode<DdlogLanguage>,
+    }
+
+    impl Transformer {
+        /// Access the underlying syntax node.
+        #[must_use]
+        pub fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
+            &self.syntax
+        }
+
+        /// Name of the transformer if present.
+        #[must_use]
+        pub fn name(&self) -> Option<String> {
+            let mut iter = self.syntax.children_with_tokens();
+            if !skip_to_transformer_keyword(&mut iter) {
+                return None;
+            }
+            take_first_ident(iter)
+        }
+
+        /// Input relations as pairs of name and type.
+        #[must_use]
+        pub fn inputs(&self) -> Vec<(String, String)> {
+            let (pairs, _errors) = parse_name_type_pairs(self.syntax.children_with_tokens());
+            pairs
+        }
+
+        /// Output relation names.
+        #[must_use]
+        pub fn outputs(&self) -> Vec<String> {
+            parse_output_list(self.syntax.children_with_tokens())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1913,6 +2084,7 @@ mod tests {
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
+                Vec::new(),
             );
         });
         let Err(msg) = result else {
@@ -1937,6 +2109,7 @@ mod tests {
             let _ = super::ParsedSpans::new(
                 imports,
                 typedefs,
+                Vec::new(),
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
