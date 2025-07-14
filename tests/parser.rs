@@ -903,6 +903,86 @@ fn transformer_invalid() -> &'static str {
     "extern transformer incomplete_transformer(input: SomeData):"
 }
 
+#[fixture]
+fn transformer_no_inputs() -> &'static str {
+    "extern transformer no_inputs(): OutputType"
+}
+
+#[fixture]
+fn transformer_no_outputs() -> &'static str {
+    "extern transformer no_outputs(input: InputType):"
+}
+
+#[fixture]
+fn transformer_extra_ws() -> &'static str {
+    " extern   transformer   spaced  (  foo  :  Bar  ,  baz : Qux )  :  Out1 , Out2 "
+}
+
+#[fixture]
+fn transformer_dup_inputs() -> &'static str {
+    "extern transformer dup_inputs(foo: Bar, foo: Baz): Out"
+}
+
+#[fixture]
+fn transformer_reserved_names() -> &'static str {
+    "extern transformer reserved(transformer: Type, extern: Type): out"
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn transformer_no_inputs_parsed(transformer_no_inputs: &str) {
+    let parsed = parse(transformer_no_inputs);
+    assert!(parsed.errors().is_empty());
+    let transformers = parsed.root().transformers();
+    let t = transformers.first().expect("transformer missing");
+    assert_eq!(t.inputs(), Vec::<(String, String)>::new());
+    assert_eq!(t.outputs(), vec![String::from("OutputType")]);
+}
+
+#[rstest]
+fn transformer_no_outputs_is_error(transformer_no_outputs: &str) {
+    let parsed = parse(transformer_no_outputs);
+    assert!(!parsed.errors().is_empty());
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
+    let parsed = parse(transformer_extra_ws);
+    assert!(parsed.errors().is_empty());
+    let transformers = parsed.root().transformers();
+    let t = transformers.first().expect("transformer missing");
+    assert_eq!(t.name(), Some("spaced".into()));
+    assert_eq!(
+        t.inputs(),
+        vec![("foo".into(), "Bar".into()), ("baz".into(), "Qux".into())]
+    );
+    assert_eq!(t.outputs(), vec!["Out1".to_string(), "Out2".to_string()]);
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn transformer_duplicate_input_names(transformer_dup_inputs: &str) {
+    let parsed = parse(transformer_dup_inputs);
+    assert!(parsed.errors().is_empty());
+    let transformers = parsed.root().transformers();
+    let t = transformers.first().expect("transformer missing");
+    let inputs = t.inputs();
+    let foo_count = inputs.iter().filter(|(n, _)| n == "foo").count();
+    assert_eq!(foo_count, 2);
+}
+
+#[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+fn transformer_reserved_keyword_names(transformer_reserved_names: &str) {
+    let parsed = parse(transformer_reserved_names);
+    assert!(parsed.errors().is_empty());
+    let transformers = parsed.root().transformers();
+    let t = transformers.first().expect("transformer missing");
+    let names: Vec<_> = t.inputs().into_iter().map(|(n, _)| n).collect();
+    assert_eq!(names, vec!["transformer", "extern"]);
+}
+
 #[rstest]
 #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn transformer_single_parsed(transformer_single_io: &str) {

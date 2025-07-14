@@ -467,14 +467,15 @@ fn collect_import_spans(
 }
 
 /// Collect spans for `extern` declarations of a specific kind.
-fn collect_extern_declarations<P>(
+fn collect_extern_declarations<F, P>(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
     decl_kind: SyntaxKind,
-    decl_parser: P,
+    decl_parser: F,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
 where
-    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone,
+    F: Fn() -> P,
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
 {
     type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
     use chumsky::prelude::*;
@@ -490,7 +491,7 @@ where
         let ws = inline_ws().repeated();
         let parser = just(SyntaxKind::K_EXTERN)
             .padded_by(ws.clone())
-            .ignore_then(decl_parser.clone());
+            .ignore_then(decl_parser());
 
         let (res, err) = st.parse_span(parser, span.start);
         if let Some(sp) = res {
@@ -877,7 +878,7 @@ fn collect_transformer_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     use chumsky::prelude::*;
 
-    fn transformer_decl() -> BoxedParser<'static, SyntaxKind, Span, Simple<SyntaxKind>> {
+    fn transformer_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
         let ws = inline_ws().repeated();
         let ident_p = ident();
 
@@ -896,10 +897,9 @@ fn collect_transformer_spans(
             .then(outputs)
             .padded_by(ws)
             .map_with_span(|_, sp: Span| sp)
-            .boxed()
     }
 
-    collect_extern_declarations(tokens, src, SyntaxKind::K_TRANSFORMER, transformer_decl())
+    collect_extern_declarations(tokens, src, SyntaxKind::K_TRANSFORMER, transformer_decl)
 }
 
 /// Collects the spans of rule declarations in the token stream.
@@ -1403,6 +1403,22 @@ pub mod ast {
         false
     }
 
+    /// Advance the iterator until `transformer` is encountered.
+    fn skip_to_transformer_keyword(
+        iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    ) -> bool {
+        for e in iter.by_ref() {
+            let kind = e.kind();
+            if kind == SyntaxKind::K_EXTERN {
+                continue;
+            }
+            if kind == SyntaxKind::K_TRANSFORMER {
+                return true;
+            }
+        }
+        false
+    }
+
     fn take_first_ident(
         iter: impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     ) -> Option<String> {
@@ -1433,7 +1449,7 @@ pub mod ast {
     }
 
     mod parse_utils;
-    use parse_utils::{parse_name_type_pairs, parse_type_after_colon};
+    use parse_utils::{parse_ident_list, parse_name_type_pairs, parse_type_after_colon};
 
     /// Typed wrapper for a relation declaration.
     #[derive(Debug, Clone)]
@@ -1889,27 +1905,11 @@ pub mod ast {
         /// Name of the transformer if present.
         #[must_use]
         pub fn name(&self) -> Option<String> {
-            use rowan::NodeOrToken;
             let mut iter = self.syntax.children_with_tokens();
-
-            for e in &mut iter {
-                if e.kind() == SyntaxKind::K_TRANSFORMER {
-                    break;
-                }
+            if !skip_to_transformer_keyword(&mut iter) {
+                return None;
             }
-
-            for e in iter {
-                match e {
-                    NodeOrToken::Token(t) => match t.kind() {
-                        SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {}
-                        SyntaxKind::T_IDENT => return Some(t.text().to_string()),
-                        _ => break,
-                    },
-                    NodeOrToken::Node(_) => break,
-                }
-            }
-
-            None
+            take_first_ident(iter)
         }
 
         /// Input relations as pairs of name and type.
@@ -1922,33 +1922,7 @@ pub mod ast {
         /// Output relation names.
         #[must_use]
         pub fn outputs(&self) -> Vec<String> {
-            use rowan::NodeOrToken;
-
-            let mut iter = self.syntax.children_with_tokens().peekable();
-            // Skip to ':' after the parameter list
-            let mut depth = 0usize;
-            for e in &mut iter {
-                match e.kind() {
-                    SyntaxKind::T_LPAREN => depth += 1,
-                    SyntaxKind::T_RPAREN => {
-                        depth = depth.saturating_sub(1);
-                    }
-                    SyntaxKind::T_COLON if depth == 0 => break,
-                    _ => {}
-                }
-            }
-            let mut outs = Vec::new();
-            for e in iter {
-                match e {
-                    NodeOrToken::Token(t) => match t.kind() {
-                        SyntaxKind::T_IDENT => outs.push(t.text().to_string()),
-                        SyntaxKind::T_COMMA | SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {}
-                        _ => break,
-                    },
-                    NodeOrToken::Node(_) => break,
-                }
-            }
-            outs
+            parse_ident_list(self.syntax.children_with_tokens())
         }
     }
 }
