@@ -483,7 +483,19 @@ where
     let mut st = State::new(tokens, src, Vec::new());
 
     let handler = move |st: &mut State<'_>, span: Span| {
-        if st.stream.peek_after_ws_inline().map(|t| t.0) != Some(decl_kind) {
+        // Skip inline whitespace and comments to find the keyword after `extern`.
+        let mut idx = st.stream.cursor() + 1;
+        while let Some(tok) = st.stream.tokens().get(idx) {
+            let text = st.stream.src().get(tok.1.clone()).unwrap_or("");
+            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+                && !text.contains('\n')
+            {
+                idx += 1;
+            } else {
+                break;
+            }
+        }
+        if st.stream.tokens().get(idx).map(|t| t.0) != Some(decl_kind) {
             st.skip_line();
             return;
         }
@@ -1020,53 +1032,35 @@ fn build_green_tree(tokens: &[(SyntaxKind, Span)], src: &str, spans: &ParsedSpan
         advance_span_iter(&mut transformer_iter, span.start);
         advance_span_iter(&mut rule_iter, span.start);
 
-        maybe_start(
+        start_nodes(
             &mut builder,
-            &mut import_iter,
+            &mut [
+                (&mut import_iter, SyntaxKind::N_IMPORT_STMT),
+                (&mut typedef_iter, SyntaxKind::N_TYPE_DEF),
+                (&mut relation_iter, SyntaxKind::N_RELATION_DECL),
+                (&mut index_iter, SyntaxKind::N_INDEX),
+                (&mut function_iter, SyntaxKind::N_FUNCTION),
+                (&mut transformer_iter, SyntaxKind::N_TRANSFORMER),
+                (&mut rule_iter, SyntaxKind::N_RULE),
+            ],
             span.start,
-            SyntaxKind::N_IMPORT_STMT,
         );
-        maybe_start(
-            &mut builder,
-            &mut typedef_iter,
-            span.start,
-            SyntaxKind::N_TYPE_DEF,
-        );
-        maybe_start(
-            &mut builder,
-            &mut relation_iter,
-            span.start,
-            SyntaxKind::N_RELATION_DECL,
-        );
-        maybe_start(
-            &mut builder,
-            &mut index_iter,
-            span.start,
-            SyntaxKind::N_INDEX,
-        );
-        maybe_start(
-            &mut builder,
-            &mut function_iter,
-            span.start,
-            SyntaxKind::N_FUNCTION,
-        );
-        maybe_start(
-            &mut builder,
-            &mut transformer_iter,
-            span.start,
-            SyntaxKind::N_TRANSFORMER,
-        );
-        maybe_start(&mut builder, &mut rule_iter, span.start, SyntaxKind::N_RULE);
 
         push_token(&mut builder, kind, span, src);
 
-        maybe_finish(&mut builder, &mut import_iter, span.end);
-        maybe_finish(&mut builder, &mut typedef_iter, span.end);
-        maybe_finish(&mut builder, &mut relation_iter, span.end);
-        maybe_finish(&mut builder, &mut index_iter, span.end);
-        maybe_finish(&mut builder, &mut function_iter, span.end);
-        maybe_finish(&mut builder, &mut transformer_iter, span.end);
-        maybe_finish(&mut builder, &mut rule_iter, span.end);
+        finish_nodes(
+            &mut builder,
+            &mut [
+                &mut import_iter,
+                &mut typedef_iter,
+                &mut relation_iter,
+                &mut index_iter,
+                &mut function_iter,
+                &mut transformer_iter,
+                &mut rule_iter,
+            ],
+            span.end,
+        );
     }
 
     builder.finish_node();
@@ -1107,6 +1101,24 @@ fn maybe_finish(
     if iter.peek().is_some_and(|current| pos >= current.end) {
         builder.finish_node();
         iter.next();
+    }
+}
+
+type SpanIter<'a> = std::iter::Peekable<std::slice::Iter<'a, Span>>;
+
+fn start_nodes(
+    builder: &mut GreenNodeBuilder,
+    pairs: &mut [(&mut SpanIter<'_>, SyntaxKind)],
+    pos: usize,
+) {
+    for (iter, kind) in pairs.iter_mut() {
+        maybe_start(builder, iter, pos, *kind);
+    }
+}
+
+fn finish_nodes(builder: &mut GreenNodeBuilder, iters: &mut [&mut SpanIter<'_>], pos: usize) {
+    for iter in iters.iter_mut() {
+        maybe_finish(builder, iter, pos);
     }
 }
 
@@ -1387,36 +1399,37 @@ pub mod ast {
         }
     }
 
-    /// Advance the iterator until `typedef` or `type` is encountered.
-    fn skip_to_typedef_keyword(
+    /// Advance the iterator until `predicate` returns `true` for a token kind.
+    fn skip_to_match(
         iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+        predicate: impl Fn(SyntaxKind) -> bool,
     ) -> bool {
         for e in iter.by_ref() {
             let kind = e.kind();
             if kind == SyntaxKind::K_EXTERN {
                 continue;
             }
-            if matches!(kind, SyntaxKind::K_TYPEDEF | SyntaxKind::K_TYPE) {
+            if predicate(kind) {
                 return true;
             }
         }
         false
     }
 
+    /// Advance the iterator until `typedef` or `type` is encountered.
+    fn skip_to_typedef_keyword(
+        iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    ) -> bool {
+        skip_to_match(iter, |k| {
+            matches!(k, SyntaxKind::K_TYPEDEF | SyntaxKind::K_TYPE)
+        })
+    }
+
     /// Advance the iterator until `transformer` is encountered.
     fn skip_to_transformer_keyword(
         iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     ) -> bool {
-        for e in iter.by_ref() {
-            let kind = e.kind();
-            if kind == SyntaxKind::K_EXTERN {
-                continue;
-            }
-            if kind == SyntaxKind::K_TRANSFORMER {
-                return true;
-            }
-        }
-        false
+        skip_to_match(iter, |k| k == SyntaxKind::K_TRANSFORMER)
     }
 
     fn take_first_ident(
@@ -1449,7 +1462,7 @@ pub mod ast {
     }
 
     mod parse_utils;
-    use parse_utils::{parse_ident_list, parse_name_type_pairs, parse_type_after_colon};
+    use parse_utils::{parse_name_type_pairs, parse_output_list, parse_type_after_colon};
 
     /// Typed wrapper for a relation declaration.
     #[derive(Debug, Clone)]
@@ -1922,7 +1935,7 @@ pub mod ast {
         /// Output relation names.
         #[must_use]
         pub fn outputs(&self) -> Vec<String> {
-            parse_ident_list(self.syntax.children_with_tokens())
+            parse_output_list(self.syntax.children_with_tokens())
         }
     }
 }

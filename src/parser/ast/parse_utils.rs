@@ -427,19 +427,13 @@ where
     (pairs, errors)
 }
 
-/// Parse an identifier list following a colon.
-#[must_use]
-pub(super) fn parse_ident_list<I>(iter: I) -> Vec<String>
+/// Skip elements until a colon outside parentheses is reached.
+fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
-    let mut iter = iter.peekable();
-
-    // Skip tokens until the colon outside parentheses.
     let mut depth = 0usize;
-    for e in &mut iter {
+    for e in iter.by_ref() {
         match e.kind() {
             SyntaxKind::T_LPAREN => depth += 1,
             SyntaxKind::T_RPAREN => depth = depth.saturating_sub(1),
@@ -447,6 +441,31 @@ where
             _ => {}
         }
     }
+}
+
+/// Parse a comma separated list of identifiers after a colon.
+///
+/// This helper is tailored for transformer declarations where the outputs are
+/// specified after the input list and a colon.
+///
+/// # Examples
+///
+/// ```
+/// # use ddlint::parser::ast::parse_utils::parse_output_list;
+/// use ddlint::tokenize;
+/// let tokens = tokenize("foo(bar: Baz): Out1, Out2");
+/// let names = parse_output_list(tokens.into_iter());
+/// assert_eq!(names, vec!["Out1", "Out2"]);
+/// ```
+#[must_use]
+pub(super) fn parse_output_list<I>(iter: I) -> Vec<String>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    let mut iter = iter.peekable();
+    skip_to_top_level_colon(&mut iter);
 
     let mut names = Vec::new();
     loop {
