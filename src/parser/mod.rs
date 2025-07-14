@@ -1248,6 +1248,15 @@ pub mod ast {
         }
 
         /// Collect all `import` statements under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("import foo::bar as baz;");
+        /// let imports = parsed.root().imports();
+        /// assert_eq!(imports.len(), 1);
+        /// ```
         #[must_use]
         pub fn imports(&self) -> Vec<Import> {
             self.syntax
@@ -1258,6 +1267,15 @@ pub mod ast {
         }
 
         /// Collect all `typedef` declarations under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("typedef Foo = Bar;");
+        /// let defs = parsed.root().type_defs();
+        /// assert_eq!(defs.len(), 1);
+        /// ```
         #[must_use]
         pub fn type_defs(&self) -> Vec<TypeDef> {
             self.syntax
@@ -1268,6 +1286,15 @@ pub mod ast {
         }
 
         /// Collect all relation declarations under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("relation User(id: u32)");
+        /// let relations = parsed.root().relations();
+        /// assert_eq!(relations.len(), 1);
+        /// ```
         #[must_use]
         pub fn relations(&self) -> Vec<Relation> {
             self.syntax
@@ -1278,6 +1305,15 @@ pub mod ast {
         }
 
         /// Collect all index declarations under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("index Idx on User(id)");
+        /// let indexes = parsed.root().indexes();
+        /// assert_eq!(indexes.len(), 1);
+        /// ```
         #[must_use]
         pub fn indexes(&self) -> Vec<Index> {
             self.syntax
@@ -1288,6 +1324,15 @@ pub mod ast {
         }
 
         /// Collect all function declarations under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("function f() {}");
+        /// let funcs = parsed.root().functions();
+        /// assert_eq!(funcs.len(), 1);
+        /// ```
         #[must_use]
         pub fn functions(&self) -> Vec<Function> {
             self.syntax
@@ -1298,6 +1343,15 @@ pub mod ast {
         }
 
         /// Collect all transformer declarations under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("extern transformer t(i: In): Out");
+        /// let ts = parsed.root().transformers();
+        /// assert_eq!(ts.len(), 1);
+        /// ```
         #[must_use]
         pub fn transformers(&self) -> Vec<Transformer> {
             self.syntax
@@ -1308,6 +1362,15 @@ pub mod ast {
         }
 
         /// Collect all rule declarations under this root.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("A(x) :- B(x).");
+        /// let rules = parsed.root().rules();
+        /// assert_eq!(rules.len(), 1);
+        /// ```
         #[must_use]
         pub fn rules(&self) -> Vec<Rule> {
             self.syntax
@@ -1332,6 +1395,15 @@ pub mod ast {
         }
 
         /// The module path text as written in the source.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("import foo::bar as baz;");
+        /// let import = parsed.root().imports().first().unwrap();
+        /// assert_eq!(import.path(), "foo::bar");
+        /// ```
         #[must_use]
         pub fn path(&self) -> String {
             self.syntax
@@ -1352,6 +1424,15 @@ pub mod ast {
         }
 
         /// The alias assigned with `as`, if any.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("import foo as bar;");
+        /// let import = parsed.root().imports().first().unwrap();
+        /// assert_eq!(import.alias(), Some("bar".to_string()));
+        /// ```
         #[must_use]
         pub fn alias(&self) -> Option<String> {
             self.syntax
@@ -1381,6 +1462,15 @@ pub mod ast {
         }
 
         /// Name of the defined type.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("typedef Foo = Bar;");
+        /// let td = parsed.root().type_defs().first().unwrap();
+        /// assert_eq!(td.name(), Some("Foo".to_string()));
+        /// ```
         #[must_use]
         pub fn name(&self) -> Option<String> {
             let mut iter = self.syntax.children_with_tokens().peekable();
@@ -1391,6 +1481,15 @@ pub mod ast {
         }
 
         /// Whether this declaration is `extern`.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("extern type Baz;");
+        /// let td = parsed.root().type_defs().first().unwrap();
+        /// assert!(td.is_extern());
+        /// ```
         #[must_use]
         pub fn is_extern(&self) -> bool {
             self.syntax
@@ -1478,6 +1577,15 @@ pub mod ast {
         }
 
         /// Name of the relation if present.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("relation Person(name: string)");
+        /// let rel = parsed.root().relations().first().unwrap();
+        /// assert_eq!(rel.name(), Some("Person".to_string()));
+        /// ```
         #[must_use]
         pub fn name(&self) -> Option<String> {
             self.syntax
@@ -1493,6 +1601,15 @@ pub mod ast {
         }
 
         /// Whether the relation is declared as `input`.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("input relation Data(x: i32)");
+        /// let rel = parsed.root().relations().first().unwrap();
+        /// assert!(rel.is_input());
+        /// ```
         #[must_use]
         pub fn is_input(&self) -> bool {
             self.syntax
@@ -1543,6 +1660,15 @@ pub mod ast {
         }
 
         /// Primary key column names if specified.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let src = "relation Person(name: string, age: u32) primary key(name)";
+        /// let rel = parser::parse(src).root().relations().first().unwrap();
+        /// assert_eq!(rel.primary_key(), Some(vec!["name".to_string()]));
+        /// ```
         #[must_use]
         pub fn primary_key(&self) -> Option<Vec<String>> {
             use rowan::NodeOrToken;
@@ -1642,6 +1768,15 @@ pub mod ast {
         }
 
         /// Name of the index if present.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("index Idx on User(id)");
+        /// let idx = parsed.root().indexes().first().unwrap();
+        /// assert_eq!(idx.name(), Some("Idx".to_string()));
+        /// ```
         #[must_use]
         pub fn name(&self) -> Option<String> {
             self.syntax
@@ -1657,6 +1792,15 @@ pub mod ast {
         }
 
         /// Target relation name.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("index Idx on User(id)");
+        /// let idx = parsed.root().indexes().first().unwrap();
+        /// assert_eq!(idx.relation(), Some("User".to_string()));
+        /// ```
         #[must_use]
         pub fn relation(&self) -> Option<String> {
             self.syntax
@@ -1676,6 +1820,15 @@ pub mod ast {
         /// The method collects the text of each column expression, allowing for
         /// nested parentheses in cases like `lower(name)` or
         /// `func(col, other(col2))`.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("index Idx on User(lower(name))");
+        /// let idx = parsed.root().indexes().first().unwrap();
+        /// assert_eq!(idx.columns(), vec!["lower(name)".to_string()]);
+        /// ```
         #[must_use]
         pub fn columns(&self) -> Vec<String> {
             use rowan::NodeOrToken;
@@ -1742,6 +1895,15 @@ pub mod ast {
         }
 
         /// Text of the rule head atom.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("A(x) :- B(x).");
+        /// let rule = parsed.root().rules().first().unwrap();
+        /// assert_eq!(rule.head(), Some("A(x)".to_string()));
+        /// ```
         #[must_use]
         pub fn head(&self) -> Option<String> {
             use rowan::NodeOrToken;
@@ -1766,6 +1928,15 @@ pub mod ast {
         }
 
         /// Text of each body literal in order of appearance.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("A(x) :- B(x), C(y).");
+        /// let rule = parsed.root().rules().first().unwrap();
+        /// assert_eq!(rule.body_literals(), vec!["B(x)".to_string(), "C(y)".to_string()]);
+        /// ```
         #[must_use]
         pub fn body_literals(&self) -> Vec<String> {
             use rowan::NodeOrToken;
@@ -1822,6 +1993,15 @@ pub mod ast {
         }
 
         /// Name of the function if present.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("function foo() {}");
+        /// let func = parsed.root().functions().first().unwrap();
+        /// assert_eq!(func.name(), Some("foo".to_string()));
+        /// ```
         #[must_use]
         pub fn name(&self) -> Option<String> {
             self.syntax
@@ -1880,6 +2060,15 @@ pub mod ast {
         }
 
         /// Return type text if specified.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("function f(): bool {}");
+        /// let func = parsed.root().functions().first().unwrap();
+        /// assert_eq!(func.return_type(), Some("bool".to_string()));
+        /// ```
         #[must_use]
         pub fn return_type(&self) -> Option<String> {
             let mut iter = self.syntax.children_with_tokens().peekable();
@@ -1916,6 +2105,15 @@ pub mod ast {
         }
 
         /// Name of the transformer if present.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("extern transformer t(x: In): Out");
+        /// let tr = parsed.root().transformers().first().unwrap();
+        /// assert_eq!(tr.name(), Some("t".to_string()));
+        /// ```
         #[must_use]
         pub fn name(&self) -> Option<String> {
             let mut iter = self.syntax.children_with_tokens();
@@ -1926,6 +2124,15 @@ pub mod ast {
         }
 
         /// Input relations as pairs of name and type.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("extern transformer t(x: In): Out");
+        /// let tr = parsed.root().transformers().first().unwrap();
+        /// assert_eq!(tr.inputs(), vec![("x".to_string(), "In".to_string())]);
+        /// ```
         #[must_use]
         pub fn inputs(&self) -> Vec<(String, String)> {
             let (pairs, _errors) = parse_name_type_pairs(self.syntax.children_with_tokens());
@@ -1933,6 +2140,15 @@ pub mod ast {
         }
 
         /// Output relation names.
+        ///
+        /// # Examples
+        ///
+        /// ```no_run
+        /// # use crate::parser;
+        /// let parsed = parser::parse("extern transformer t(x: In): Out1, Out2");
+        /// let tr = parsed.root().transformers().first().unwrap();
+        /// assert_eq!(tr.outputs(), vec!["Out1".to_string(), "Out2".to_string()]);
+        /// ```
         #[must_use]
         pub fn outputs(&self) -> Vec<String> {
             parse_output_list(self.syntax.children_with_tokens())
