@@ -182,10 +182,8 @@ impl RowanLanguage for DdlogLanguage {
         SyntaxKind::from_u16(raw.0).unwrap_or(SyntaxKind::N_ERROR)
     }
 
+    #[expect(clippy::expect_used, reason = "all SyntaxKind variants map to u16")]
     fn kind_to_raw(kind: Self::Kind) -> RowanSyntaxKind {
-        RowanSyntaxKind(
-            kind.to_u16()
-                .unwrap_or_else(|| unreachable!("all SyntaxKind variants map to u16")),
-        )
+        RowanSyntaxKind(kind.to_u16().expect("all SyntaxKind variants map to u16"))
     }
 }
