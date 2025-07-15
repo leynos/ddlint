@@ -12,6 +12,22 @@ use rowan::{GreenNode, GreenNodeBuilder, Language};
 
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize};
 
+/// Convert a punctuation [`SyntaxKind`] to a printable character.
+///
+/// Diagnostic messages use symbolic token kinds which are not human
+/// readable. This helper maps those kinds to the punctuation displayed in
+/// errors.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use ddlint::{parser::token_display, SyntaxKind};
+/// use chumsky::error::Simple;
+///
+/// let err = Simple::custom(0..0, format!(
+///     "expected '{}'", token_display(SyntaxKind::T_RPAREN)
+/// ));
+/// ```
 fn token_display(kind: SyntaxKind) -> &'static str {
     match kind {
         SyntaxKind::T_LPAREN => "(",
