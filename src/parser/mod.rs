@@ -635,22 +635,10 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
             st.stream.advance();
         }
         st.stream.skip_ws_inline();
-        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
-            st.stream.advance();
-            let mut depth = 1usize;
-            while let Some((kind, _)) = st.stream.peek() {
-                match kind {
-                    SyntaxKind::T_LPAREN => depth += 1,
-                    SyntaxKind::T_RPAREN => {
-                        depth -= 1;
-                        if depth == 0 {
-                            st.stream.advance();
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-                st.stream.advance();
+        if let Some((SyntaxKind::T_LPAREN, span)) = st.stream.peek().cloned() {
+            let (res, _err) = st.parse_span(ast::parse_utils::paren_block_span(), span.start);
+            if let Some(sp) = res {
+                st.stream.skip_until(sp.end);
             }
         }
     }
@@ -667,22 +655,11 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
             {
                 st.stream.advance();
                 st.stream.skip_ws_inline();
-                if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_LPAREN)) {
-                    st.stream.advance();
-                    let mut depth = 1usize;
-                    while let Some((kind, _)) = st.stream.peek() {
-                        match kind {
-                            SyntaxKind::T_LPAREN => depth += 1,
-                            SyntaxKind::T_RPAREN => {
-                                depth -= 1;
-                                if depth == 0 {
-                                    st.stream.advance();
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                        st.stream.advance();
+                if let Some((SyntaxKind::T_LPAREN, pspan)) = st.stream.peek().cloned() {
+                    let (res, _err) =
+                        st.parse_span(ast::parse_utils::paren_block_span(), pspan.start);
+                    if let Some(sp) = res {
+                        st.stream.skip_until(sp.end);
                     }
                 }
             }
@@ -1586,7 +1563,7 @@ pub mod ast {
         }
     }
 
-    mod parse_utils;
+    pub(super) mod parse_utils;
     use parse_utils::{parse_name_type_pairs, parse_output_list, parse_type_after_colon};
 
     /// Typed wrapper for a relation declaration.

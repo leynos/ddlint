@@ -8,8 +8,16 @@
 
 use rowan::{NodeOrToken, SyntaxElement, TextRange, TextSize};
 
+use super::super::balanced_block;
 use super::skip_whitespace_and_comments;
-use crate::{DdlogLanguage, SyntaxKind};
+use crate::{DdlogLanguage, Span, SyntaxKind};
+use chumsky::prelude::*;
+
+/// Parser for a parenthesised block, returning its span.
+pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
+{
+    balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Delim {
