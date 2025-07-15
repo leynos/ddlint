@@ -187,6 +187,16 @@ fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
 }
 
 /// Tokenise the provided `DDlog` source.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use ddlint::{tokenize, SyntaxKind};
+///
+/// let tokens = tokenize("input relation R(x: u32);");
+/// assert_eq!(tokens.len(), 12);
+/// assert_eq!(tokens[0].0, SyntaxKind::K_INPUT);
+/// ```
 #[must_use]
 pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
     let mut lexer = Token::lexer(src);

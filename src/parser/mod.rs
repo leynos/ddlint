@@ -344,6 +344,16 @@ impl Parsed {
 /// The function tokenises the source using [`tokenize`], then uses a minimal
 /// `chumsky` parser to wrap those tokens into a CST. Syntactic error recovery
 /// will insert `N_ERROR` nodes when grammar rules fail once they exist.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use ddlint::parse;
+///
+/// let parsed = parse("input relation R(x: u32);");
+/// assert!(parsed.errors().is_empty());
+/// assert_eq!(parsed.root().relations().len(), 1);
+/// ```
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize(src);
