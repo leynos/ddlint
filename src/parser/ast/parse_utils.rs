@@ -8,7 +8,7 @@
 
 use rowan::{NodeOrToken, SyntaxElement, TextRange, TextSize};
 
-use super::super::balanced_block;
+use super::super::lexer_helpers::balanced_block;
 use super::skip_whitespace_and_comments;
 use crate::{DdlogLanguage, Span, SyntaxKind};
 use chumsky::prelude::*;
