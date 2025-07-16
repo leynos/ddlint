@@ -7,7 +7,7 @@
 //! `num_derive`.
 
 use num_derive::{FromPrimitive as FromPrimitiveDerive, ToPrimitive as ToPrimitiveDerive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 use rowan::Language as RowanLanguage;
 use rowan::SyntaxKind as RowanSyntaxKind;
 
@@ -183,9 +183,7 @@ impl RowanLanguage for DdlogLanguage {
     }
 
     fn kind_to_raw(kind: Self::Kind) -> RowanSyntaxKind {
-        RowanSyntaxKind(
-            kind.to_u16()
-                .unwrap_or_else(|| unreachable!("all SyntaxKind variants map to u16")),
-        )
+        // `SyntaxKind` uses `#[repr(u16)]`, so every variant is a valid `u16`.
+        RowanSyntaxKind(kind as u16)
     }
 }
