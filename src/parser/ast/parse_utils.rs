@@ -8,8 +8,36 @@
 
 use rowan::{NodeOrToken, SyntaxElement, TextRange, TextSize};
 
+use super::super::balanced_block;
 use super::skip_whitespace_and_comments;
-use crate::{DdlogLanguage, SyntaxKind};
+use crate::{DdlogLanguage, Span, SyntaxKind};
+use chumsky::prelude::*;
+
+/// Parser for a parenthesised block, returning its span.
+///
+/// This helper wraps [`balanced_block`] to provide the range covering the
+/// entire block. Nested parentheses are handled correctly so callers can skip
+/// or collect the text without building an AST node.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use crate::parser::ast::parse_utils::paren_block_span;
+/// use crate::tokenize;
+/// use chumsky::{Parser, Stream};
+///
+/// let src = "(foo(bar))";
+/// let tokens = tokenize(src);
+/// let span = paren_block_span()
+///     .parse(Stream::from_iter(0..src.len(), tokens.into_iter()))
+///     .unwrap();
+/// assert_eq!(span.start, 0);
+/// ```
+#[inline]
+pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
+{
+    balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Delim {
