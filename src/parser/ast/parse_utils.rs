@@ -22,8 +22,8 @@ use chumsky::prelude::*;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::parser::ast::parse_utils::paren_block_span;
-/// use ddlint::tokenize;
+/// use crate::parser::ast::parse_utils::paren_block_span;
+/// use crate::tokenize;
 /// use chumsky::{Parser, Stream};
 ///
 /// let src = "(foo(bar))";
@@ -33,6 +33,7 @@ use chumsky::prelude::*;
 ///     .unwrap();
 /// assert_eq!(span.start, 0);
 /// ```
+#[inline]
 pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
 {
     balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
