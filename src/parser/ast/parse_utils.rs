@@ -36,7 +36,7 @@ use chumsky::prelude::*;
 #[inline]
 pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
 {
-    balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|_, sp: Span| sp)
+    balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
