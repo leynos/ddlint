@@ -7,7 +7,7 @@
 //! `num_derive`.
 
 use num_derive::{FromPrimitive as FromPrimitiveDerive, ToPrimitive as ToPrimitiveDerive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 use rowan::Language as RowanLanguage;
 use rowan::SyntaxKind as RowanSyntaxKind;
 
@@ -182,9 +182,8 @@ impl RowanLanguage for DdlogLanguage {
         SyntaxKind::from_u16(raw.0).unwrap_or(SyntaxKind::N_ERROR)
     }
 
-    #[expect(clippy::expect_used, reason = "all SyntaxKind variants map to u16")]
     fn kind_to_raw(kind: Self::Kind) -> RowanSyntaxKind {
-        let msg = format!("all SyntaxKind variants map to u16; failed for SyntaxKind::{kind:?}");
-        RowanSyntaxKind(kind.to_u16().expect(&msg))
+        // `SyntaxKind` uses `#[repr(u16)]`, so every variant is a valid `u16`.
+        RowanSyntaxKind(kind as u16)
     }
 }
