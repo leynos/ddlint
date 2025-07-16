@@ -107,6 +107,11 @@ fn index_unbalanced_parentheses() -> &'static str {
 }
 
 #[fixture]
+fn relation_unbalanced_parentheses() -> &'static str {
+    "relation Foo(x: u32"
+}
+
+#[fixture]
 fn index_whitespace_variations() -> &'static str {
     "  index  Idx_User_ws \t on\n  User (\n    username  )  "
 }
@@ -529,6 +534,13 @@ fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
     let parsed = parse(index_unbalanced_parentheses);
     assert!(!parsed.errors().is_empty());
     assert!(parsed.root().indexes().is_empty());
+}
+
+#[rstest]
+fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &str) {
+    let parsed = parse(relation_unbalanced_parentheses);
+    assert!(!parsed.errors().is_empty());
+    assert!(parsed.root().relations().is_empty());
 }
 
 #[rstest]

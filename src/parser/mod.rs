@@ -387,13 +387,14 @@ fn parse_tokens(
 ) -> (ParsedSpans, Vec<Simple<SyntaxKind>>) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let typedef_spans = collect_typedef_spans(tokens, src);
-    let relation_spans = collect_relation_spans(tokens, src);
+    let (relation_spans, relation_errors) = collect_relation_spans(tokens, src);
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
     let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
     let (rule_spans, rule_errors) = collect_rule_spans(tokens, src);
 
     let mut all_errors = errors;
+    all_errors.extend(relation_errors);
     all_errors.extend(index_errors);
     all_errors.extend(function_errors);
     all_errors.extend(transformer_errors);
@@ -626,55 +627,74 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 /// `output` followed by `relation`. The span extends to the end of the line
 /// containing the declaration. No validation of the declaration contents is
 /// performed at this stage.
-fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> {
-    type State<'a> = SpanCollector<'a, &'a str>;
+fn collect_relation_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    #[derive(Debug)]
+    struct Extras<'a> {
+        src: &'a str,
+        errors: Vec<Simple<SyntaxKind>>,
+    }
 
-    fn skip_relation_columns(st: &mut State<'_>) {
+    type State<'a> = SpanCollector<'a, Extras<'a>>;
+
+    fn consume_paren_block(st: &mut State<'_>) -> bool {
+        if let Some((SyntaxKind::T_LPAREN, span)) = st.stream.peek().cloned() {
+            let (res, err) = st.parse_span(ast::parse_utils::paren_block_span(), span.start);
+            st.extra.errors.extend(err);
+            if let Some(sp) = res {
+                st.stream.skip_until(sp.end);
+                true
+            } else {
+                st.skip_line();
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fn skip_relation_columns(st: &mut State<'_>) -> bool {
         st.stream.skip_ws_inline();
         if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_IDENT)) {
             st.stream.advance();
         }
         st.stream.skip_ws_inline();
-        if let Some((SyntaxKind::T_LPAREN, span)) = st.stream.peek().cloned() {
-            let (res, _err) = st.parse_span(ast::parse_utils::paren_block_span(), span.start);
-            if let Some(sp) = res {
-                st.stream.skip_until(sp.end);
-            }
-        }
+        consume_paren_block(st)
     }
 
-    fn skip_primary_key_clause(st: &mut State<'_>) {
+    fn skip_primary_key_clause(st: &mut State<'_>) -> bool {
         st.stream.skip_ws_inline();
         if let Some((SyntaxKind::T_IDENT, span)) = st.stream.peek().cloned()
-            && st.extra.get(span.clone()) == Some("primary")
+            && st.extra.src.get(span.clone()) == Some("primary")
         {
             st.stream.advance();
             st.stream.skip_ws_inline();
             if let Some((SyntaxKind::T_IDENT, sp)) = st.stream.peek().cloned()
-                && st.extra.get(sp.clone()) == Some("key")
+                && st.extra.src.get(sp.clone()) == Some("key")
             {
                 st.stream.advance();
                 st.stream.skip_ws_inline();
-                if let Some((SyntaxKind::T_LPAREN, pspan)) = st.stream.peek().cloned() {
-                    let (res, _err) =
-                        st.parse_span(ast::parse_utils::paren_block_span(), pspan.start);
-                    if let Some(sp) = res {
-                        st.stream.skip_until(sp.end);
-                    }
-                }
+                return consume_paren_block(st);
             }
         }
+        true
     }
 
     fn record_relation(st: &mut State<'_>, start: usize) {
         // Consume columns and optional primary key clause so multi-line
         // declarations are captured fully.
-        skip_relation_columns(st);
-        skip_primary_key_clause(st);
+        let cols_ok = skip_relation_columns(st);
+        let pk_ok = skip_primary_key_clause(st);
 
-        let end = st.stream.line_end(st.stream.cursor());
-        st.stream.skip_until(end);
-        st.spans.push(start..end);
+        if cols_ok && pk_ok {
+            let end = st.stream.line_end(st.stream.cursor());
+            st.stream.skip_until(end);
+            st.spans.push(start..end);
+        } else {
+            st.skip_line();
+        }
     }
 
     fn handle_input(st: &mut State<'_>, span: Span) {
@@ -705,7 +725,14 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
         record_relation(st, start);
     }
 
-    let mut st = State::new(tokens, src, src);
+    let mut st = State::new(
+        tokens,
+        src,
+        Extras {
+            src,
+            errors: Vec::new(),
+        },
+    );
 
     token_dispatch!(st, {
         SyntaxKind::K_INPUT => handle_input,
@@ -713,7 +740,8 @@ fn collect_relation_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span>
         SyntaxKind::K_RELATION => handle_relation,
     });
 
-    st.spans
+    let (spans, extras) = st.into_parts();
+    (spans, extras.errors)
 }
 
 /// Collects the spans of index declarations in the token stream.
