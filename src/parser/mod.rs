@@ -401,8 +401,12 @@ pub mod ast {
     /// let import = parsed.root().imports().first().unwrap();
     /// assert_eq!(import.syntax().kind(), SyntaxKind::N_IMPORT_STMT);
     /// ```
-    #[cfg_attr(not(test), expect(dead_code, reason = "only used in tests"))]
-    // This trait is used exclusively in tests to inspect AST nodes.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "primarily exercised through test modules")
+    )]
+    // This trait enables inspection of AST nodes. It is mainly used in tests,
+    // but remains part of the crate interface for future tooling.
     pub(crate) trait AstNode {
         /// Access the underlying syntax node.
         fn syntax(&self) -> &SyntaxNode<DdlogLanguage>;
