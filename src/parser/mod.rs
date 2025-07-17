@@ -388,11 +388,32 @@ pub mod ast {
 
     use crate::{DdlogLanguage, SyntaxKind};
 
-    /// Internal trait implemented by all AST wrappers.
-    #[doc(hidden)]
+    /// Common interface for AST wrappers.
+    ///
+    /// The trait exposes the underlying [`rowan::SyntaxNode`] so callers can
+    /// navigate the CST without losing type information.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use ddlint::{ast::{AstNode, Import}, parse, SyntaxKind};
+    /// let parsed = parse("import foo::bar;");
+    /// let import = parsed.root().imports().first().unwrap();
+    /// assert_eq!(import.syntax().kind(), SyntaxKind::N_IMPORT_STMT);
+    /// ```
     pub trait AstNode {
         /// Access the underlying syntax node.
         fn syntax(&self) -> &SyntaxNode<DdlogLanguage>;
+    }
+
+    macro_rules! impl_ast_node {
+        ($ty:ty) => {
+            impl AstNode for $ty {
+                fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
+                    &self.syntax
+                }
+            }
+        };
     }
 
     /// The root of a parsed `DDlog` file.
@@ -632,11 +653,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for Import {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(Import);
 
     /// Typed wrapper for a `typedef` or `extern type` declaration.
     #[derive(Debug, Clone)]
@@ -682,11 +699,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for TypeDef {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(TypeDef);
 
     /// Advance the iterator until `predicate` returns `true` for a token kind.
     fn skip_to_match(
@@ -938,11 +951,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for Relation {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(Relation);
 
     /// Typed wrapper for an index declaration.
     #[derive(Debug, Clone)]
@@ -1065,11 +1074,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for Index {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(Index);
 
     /// Typed wrapper for a rule declaration.
     #[derive(Debug, Clone)]
@@ -1163,11 +1168,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for Rule {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(Rule);
 
     /// Typed wrapper for a function declaration or definition.
     #[derive(Debug, Clone)]
@@ -1275,11 +1276,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for Function {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(Function);
 
     /// Typed wrapper for a transformer declaration.
     #[derive(Debug, Clone)]
@@ -1339,11 +1336,7 @@ pub mod ast {
         }
     }
 
-    impl AstNode for Transformer {
-        fn syntax(&self) -> &SyntaxNode<DdlogLanguage> {
-            &self.syntax
-        }
-    }
+    impl_ast_node!(Transformer);
 }
 
 #[cfg(test)]
