@@ -401,7 +401,9 @@ pub mod ast {
     /// let import = parsed.root().imports().first().unwrap();
     /// assert_eq!(import.syntax().kind(), SyntaxKind::N_IMPORT_STMT);
     /// ```
-    pub trait AstNode {
+    #[cfg_attr(not(test), expect(dead_code, reason = "only used in tests"))]
+    // This trait is used exclusively in tests to inspect AST nodes.
+    pub(crate) trait AstNode {
         /// Access the underlying syntax node.
         fn syntax(&self) -> &SyntaxNode<DdlogLanguage>;
     }
@@ -1341,6 +1343,7 @@ pub mod ast {
 
 #[cfg(test)]
 mod tests {
+    mod parser;
     use super::token_stream::TokenStream;
     use super::*;
     use crate::tokenize;
