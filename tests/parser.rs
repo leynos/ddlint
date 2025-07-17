@@ -6,7 +6,7 @@
 
 use ddlint::{
     SyntaxKind,
-    ast::{Import, TypeDef},
+    ast::{AstNode, Import, TypeDef},
     parse,
 };
 use rstest::{fixture, rstest};

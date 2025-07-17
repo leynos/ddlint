@@ -661,6 +661,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::ast::AstNode;
     use crate::parser::parse;
     use rstest::{fixture, rstest};
 
