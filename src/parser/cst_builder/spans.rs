@@ -90,15 +90,7 @@ impl ParsedSpansBuilder {
     /// Build the [`ParsedSpans`].
     #[must_use]
     pub fn build(self) -> ParsedSpans {
-        ParsedSpans::new(
-            self.imports,
-            self.typedefs,
-            self.relations,
-            self.indexes,
-            self.functions,
-            self.transformers,
-            self.rules,
-        )
+        ParsedSpans::new(self)
     }
 }
 
@@ -109,15 +101,17 @@ impl ParsedSpans {
         ParsedSpansBuilder::default()
     }
 
-    pub(super) fn new(
-        imports: Vec<Span>,
-        typedefs: Vec<Span>,
-        relations: Vec<Span>,
-        indexes: Vec<Span>,
-        functions: Vec<Span>,
-        transformers: Vec<Span>,
-        rules: Vec<Span>,
-    ) -> Self {
+    pub(super) fn new(builder: ParsedSpansBuilder) -> Self {
+        let ParsedSpansBuilder {
+            imports,
+            typedefs,
+            relations,
+            indexes,
+            functions,
+            transformers,
+            rules,
+        } = builder;
+
         let result = validate_span_lists_sorted(&[
             ("imports", &imports),
             ("typedefs", &typedefs),

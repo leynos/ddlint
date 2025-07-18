@@ -40,6 +40,39 @@ impl<'a> SpanCursor<'a> {
     }
 }
 
+struct SpanCursors<'a> {
+    cursors: [SpanCursor<'a>; 7],
+}
+
+impl<'a> SpanCursors<'a> {
+    fn new(spans: &'a ParsedSpans) -> Self {
+        Self {
+            cursors: [
+                SpanCursor::new(spans.imports(), SyntaxKind::N_IMPORT_STMT),
+                SpanCursor::new(spans.typedefs(), SyntaxKind::N_TYPE_DEF),
+                SpanCursor::new(spans.relations(), SyntaxKind::N_RELATION_DECL),
+                SpanCursor::new(spans.indexes(), SyntaxKind::N_INDEX),
+                SpanCursor::new(spans.functions(), SyntaxKind::N_FUNCTION),
+                SpanCursor::new(spans.transformers(), SyntaxKind::N_TRANSFORMER),
+                SpanCursor::new(spans.rules(), SyntaxKind::N_RULE),
+            ],
+        }
+    }
+
+    fn advance_and_start(&mut self, builder: &mut GreenNodeBuilder, pos: usize) {
+        for cur in &mut self.cursors {
+            cur.advance_to(pos);
+            cur.start_if(builder, pos);
+        }
+    }
+
+    fn finish(&mut self, builder: &mut GreenNodeBuilder, pos: usize) {
+        for cur in &mut self.cursors {
+            cur.finish_if(builder, pos);
+        }
+    }
+}
+
 /// Construct the CST from the token stream and recorded statement spans.
 pub(crate) fn build_green_tree(
     tokens: &[(SyntaxKind, Span)],
@@ -49,27 +82,14 @@ pub(crate) fn build_green_tree(
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
-    let mut cursors = [
-        SpanCursor::new(spans.imports(), SyntaxKind::N_IMPORT_STMT),
-        SpanCursor::new(spans.typedefs(), SyntaxKind::N_TYPE_DEF),
-        SpanCursor::new(spans.relations(), SyntaxKind::N_RELATION_DECL),
-        SpanCursor::new(spans.indexes(), SyntaxKind::N_INDEX),
-        SpanCursor::new(spans.functions(), SyntaxKind::N_FUNCTION),
-        SpanCursor::new(spans.transformers(), SyntaxKind::N_TRANSFORMER),
-        SpanCursor::new(spans.rules(), SyntaxKind::N_RULE),
-    ];
+    let mut cursors = SpanCursors::new(spans);
 
     for &(kind, ref span) in tokens {
-        for cur in &mut cursors {
-            cur.advance_to(span.start);
-            cur.start_if(&mut builder, span.start);
-        }
+        cursors.advance_and_start(&mut builder, span.start);
 
         push_token(&mut builder, kind, span.clone(), src);
 
-        for cur in &mut cursors {
-            cur.finish_if(&mut builder, span.end);
-        }
+        cursors.finish(&mut builder, span.end);
     }
 
     builder.finish_node();
