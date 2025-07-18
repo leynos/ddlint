@@ -36,15 +36,15 @@ pub(super) fn parse_tokens(
     all_errors.extend(rule_errors);
 
     (
-        ParsedSpans::new(
-            import_spans,
-            typedef_spans,
-            relation_spans,
-            index_spans,
-            function_spans,
-            transformer_spans,
-            rule_spans,
-        ),
+        ParsedSpans::builder()
+            .imports(import_spans)
+            .typedefs(typedef_spans)
+            .relations(relation_spans)
+            .indexes(index_spans)
+            .functions(function_spans)
+            .transformers(transformer_spans)
+            .rules(rule_spans)
+            .build(),
         all_errors,
     )
 }

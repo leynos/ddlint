@@ -52,8 +52,8 @@ impl Parsed {
 
 /// Spans for each parsed statement category.
 ///
-/// Instances are constructed via [`ParsedSpans::new`] to ensure span lists are
-/// sorted and non-overlapping in debug builds.
+/// Instances are constructed via [`ParsedSpans::builder`] to ensure span lists
+/// are sorted and non-overlapping in debug builds.
 #[non_exhaustive]
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedSpans {
@@ -73,14 +73,100 @@ pub struct ParsedSpans {
     rules: Vec<Span>,
 }
 
-impl ParsedSpans {
-    /// Construct a new [`ParsedSpans`].
-    ///
-    /// The caller must provide span lists that are sorted and free from
-    /// overlaps. In debug builds every list is validated and the function will
-    /// panic if any ordering violation is detected.
+/// Builder for [`ParsedSpans`].
+#[derive(Default)]
+pub struct ParsedSpansBuilder {
+    imports: Vec<Span>,
+    typedefs: Vec<Span>,
+    relations: Vec<Span>,
+    indexes: Vec<Span>,
+    functions: Vec<Span>,
+    transformers: Vec<Span>,
+    rules: Vec<Span>,
+}
+
+impl ParsedSpansBuilder {
+    /// Set the `import` statement spans.
     #[must_use]
-    pub fn new(
+    pub fn imports(mut self, spans: Vec<Span>) -> Self {
+        self.imports = spans;
+        self
+    }
+
+    /// Set the `typedef` statement spans.
+    #[must_use]
+    pub fn typedefs(mut self, spans: Vec<Span>) -> Self {
+        self.typedefs = spans;
+        self
+    }
+
+    /// Set the `relation` declaration spans.
+    #[must_use]
+    pub fn relations(mut self, spans: Vec<Span>) -> Self {
+        self.relations = spans;
+        self
+    }
+
+    /// Set the `index` declaration spans.
+    #[must_use]
+    pub fn indexes(mut self, spans: Vec<Span>) -> Self {
+        self.indexes = spans;
+        self
+    }
+
+    /// Set the `function` definition spans.
+    #[must_use]
+    pub fn functions(mut self, spans: Vec<Span>) -> Self {
+        self.functions = spans;
+        self
+    }
+
+    /// Set the `transformer` declaration spans.
+    #[must_use]
+    pub fn transformers(mut self, spans: Vec<Span>) -> Self {
+        self.transformers = spans;
+        self
+    }
+
+    /// Set the rule spans.
+    #[must_use]
+    pub fn rules(mut self, spans: Vec<Span>) -> Self {
+        self.rules = spans;
+        self
+    }
+
+    /// Build the [`ParsedSpans`].
+    #[must_use]
+    pub fn build(self) -> ParsedSpans {
+        ParsedSpans::new(
+            self.imports,
+            self.typedefs,
+            self.relations,
+            self.indexes,
+            self.functions,
+            self.transformers,
+            self.rules,
+        )
+    }
+}
+
+impl ParsedSpans {
+    /// Start building a [`ParsedSpans`] instance.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use ddlint::parser::cst_builder::ParsedSpans;
+    ///
+    /// let spans = ParsedSpans::builder().build();
+    /// assert!(spans.imports().is_empty());
+    /// ```
+    #[must_use]
+    pub fn builder() -> ParsedSpansBuilder {
+        ParsedSpansBuilder::default()
+    }
+
+    fn new(
         imports: Vec<Span>,
         typedefs: Vec<Span>,
         relations: Vec<Span>,
@@ -230,15 +316,34 @@ fn advance_span_iter(iter: &mut std::iter::Peekable<std::slice::Iter<'_, Span>>,
     }
 }
 
+fn maybe_execute_on_span<C, F>(
+    builder: &mut GreenNodeBuilder,
+    iter: &mut std::iter::Peekable<std::slice::Iter<Span>>,
+    pos: usize,
+    condition: C,
+    mut action: F,
+) where
+    C: Fn(usize, &Span) -> bool,
+    F: FnMut(&mut GreenNodeBuilder, &mut std::iter::Peekable<std::slice::Iter<Span>>),
+{
+    if iter.peek().is_some_and(|current| condition(pos, current)) {
+        action(builder, iter);
+    }
+}
+
 fn maybe_start(
     builder: &mut GreenNodeBuilder,
     iter: &mut std::iter::Peekable<std::slice::Iter<Span>>,
     pos: usize,
     kind: SyntaxKind,
 ) {
-    if iter.peek().is_some_and(|current| pos == current.start) {
-        builder.start_node(DdlogLanguage::kind_to_raw(kind));
-    }
+    maybe_execute_on_span(
+        builder,
+        iter,
+        pos,
+        |p, current| p == current.start,
+        |b, _| b.start_node(DdlogLanguage::kind_to_raw(kind)),
+    );
 }
 
 fn maybe_finish(
@@ -246,10 +351,16 @@ fn maybe_finish(
     iter: &mut std::iter::Peekable<std::slice::Iter<Span>>,
     pos: usize,
 ) {
-    if iter.peek().is_some_and(|current| pos >= current.end) {
-        builder.finish_node();
-        iter.next();
-    }
+    maybe_execute_on_span(
+        builder,
+        iter,
+        pos,
+        |p, current| p >= current.end,
+        |b, it| {
+            b.finish_node();
+            it.next();
+        },
+    );
 }
 
 type SpanIter<'a> = std::iter::Peekable<std::slice::Iter<'a, Span>>;
@@ -340,6 +451,20 @@ mod tests {
     use crate::tokenize;
     use rstest::rstest;
 
+    fn assert_panic_with_message<F>(f: F) -> String
+    where
+        F: FnOnce() + std::panic::UnwindSafe,
+    {
+        let result = std::panic::catch_unwind(f);
+        let Err(err) = result else {
+            panic!("expected panic")
+        };
+        err.downcast_ref::<String>()
+            .cloned()
+            .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_string()))
+            .unwrap_or_default()
+    }
+
     #[test]
     fn validate_spans_sorted_err_on_overlap() {
         let spans = vec![0..5, 4..8];
@@ -375,27 +500,9 @@ mod tests {
     #[test]
     fn build_green_tree_panics_on_misordered_spans() {
         let unsorted = vec![1..2, 0..1];
-        let result = std::panic::catch_unwind(|| {
-            let _ = ParsedSpans::new(
-                unsorted,
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-            );
+        let text = assert_panic_with_message(|| {
+            let _ = ParsedSpans::builder().imports(unsorted).build();
         });
-        let Err(msg) = result else {
-            panic!("expected panic")
-        };
-        let text = msg.downcast_ref::<String>().map_or_else(
-            || {
-                msg.downcast_ref::<&str>()
-                    .map_or(String::new(), |s| (*s).to_string())
-            },
-            Clone::clone,
-        );
         assert!(text.contains("imports not sorted"));
         assert!(text.contains("0..1"));
     }
@@ -404,27 +511,12 @@ mod tests {
     fn build_green_tree_reports_all_errors() {
         let imports = vec![1..2, 0..1];
         let typedefs = vec![4..5, 3..4];
-        let result = std::panic::catch_unwind(|| {
-            let _ = ParsedSpans::new(
-                imports,
-                typedefs,
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-            );
+        let text = assert_panic_with_message(|| {
+            let _ = ParsedSpans::builder()
+                .imports(imports)
+                .typedefs(typedefs)
+                .build();
         });
-        let Err(msg) = result else {
-            panic!("expected panic")
-        };
-        let text = msg.downcast_ref::<String>().map_or_else(
-            || {
-                msg.downcast_ref::<&str>()
-                    .map_or(String::new(), |s| (*s).to_string())
-            },
-            Clone::clone,
-        );
         assert!(text.contains("imports not sorted"));
         assert!(text.contains("typedefs not sorted"));
     }
