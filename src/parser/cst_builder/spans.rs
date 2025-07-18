@@ -90,19 +90,7 @@ impl ParsedSpansBuilder {
     /// Build the [`ParsedSpans`].
     #[must_use]
     pub fn build(self) -> ParsedSpans {
-        ParsedSpans::new(self)
-    }
-}
-
-impl ParsedSpans {
-    /// Start building a [`ParsedSpans`] instance.
-    #[must_use]
-    pub fn builder() -> ParsedSpansBuilder {
-        ParsedSpansBuilder::default()
-    }
-
-    pub(super) fn new(builder: ParsedSpansBuilder) -> Self {
-        let ParsedSpansBuilder {
+        let Self {
             imports,
             typedefs,
             relations,
@@ -110,7 +98,7 @@ impl ParsedSpans {
             functions,
             transformers,
             rules,
-        } = builder;
+        } = self;
 
         let result = validate_span_lists_sorted(&[
             ("imports", &imports),
@@ -123,7 +111,7 @@ impl ParsedSpans {
         ]);
         debug_assert!(result.is_ok(), "{}", result.err().unwrap_or_default());
 
-        Self {
+        ParsedSpans {
             imports,
             typedefs,
             relations,
@@ -133,6 +121,16 @@ impl ParsedSpans {
             rules,
         }
     }
+}
+
+impl ParsedSpans {
+    /// Start building a [`ParsedSpans`] instance.
+    #[must_use]
+    pub fn builder() -> ParsedSpansBuilder {
+        ParsedSpansBuilder::default()
+    }
+
+    // constructor removed; instances are built via the builder
 
     /// Access `import` statement spans.
     #[must_use]
