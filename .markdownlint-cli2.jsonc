@@ -7,7 +7,7 @@
       "code_block_line_length": 120,
       "tables": false
     },
-    "MD029": false,
-    "MD039": false
+    "MD029": false, // allow consistent list numbering across docs
+    "MD039": false // permit padding inside code fences
   }
 }

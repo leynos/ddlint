@@ -11,22 +11,24 @@ use crate::{
 };
 use rstest::{fixture, rstest};
 
+type SyntaxNode = rowan::SyntaxNode<crate::DdlogLanguage>;
+type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
+
 /// Collect the text of a syntax subtree.
 ///
 /// This helper iteratively traverses the tree using an explicit stack so
 /// deeply nested inputs do not risk recursion overflow. It enables
 /// round-trip tests that assert the printed output matches the original
 /// source.
-fn pretty_print(node: &rowan::SyntaxNode<crate::DdlogLanguage>) -> String {
+fn pretty_print(node: &SyntaxNode) -> String {
     let mut out = String::new();
-    let mut stack = vec![rowan::SyntaxElement::Node(node.clone())];
+    let mut stack = vec![SyntaxElement::Node(node.clone())];
 
     while let Some(item) = stack.pop() {
         match item {
-            rowan::SyntaxElement::Token(t) => out.push_str(t.text()),
-            rowan::SyntaxElement::Node(n) => {
-                let children: Vec<rowan::SyntaxElement<crate::DdlogLanguage>> =
-                    n.children_with_tokens().collect();
+            SyntaxElement::Token(t) => out.push_str(t.text()),
+            SyntaxElement::Node(n) => {
+                let children: Vec<SyntaxElement> = n.children_with_tokens().collect();
                 for child in children.into_iter().rev() {
                     stack.push(child);
                 }
