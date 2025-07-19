@@ -30,6 +30,9 @@ macro_rules! impl_ast_node {
 }
 
 /// Advance the iterator until `predicate` returns `true` for a token kind.
+///
+/// `K_EXTERN` tokens are skipped as they are syntactic noise for most
+/// traversal contexts.
 fn skip_to_match(
     iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     predicate: impl Fn(SyntaxKind) -> bool,
@@ -62,6 +65,10 @@ fn skip_to_transformer_keyword(
     skip_to_match(iter, |k| k == SyntaxKind::K_TRANSFORMER)
 }
 
+/// Extract the first identifier token from the iterator, skipping whitespace and
+/// comments.
+///
+/// Returns `None` if the iterator hits a non-identifier token first.
 fn take_first_ident(
     iter: impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
 ) -> Option<String> {
@@ -91,7 +98,7 @@ where
     }
 }
 
-pub(super) mod parse_utils;
+pub mod parse_utils;
 
 mod function;
 mod import;

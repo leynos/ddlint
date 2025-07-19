@@ -1,5 +1,9 @@
 //!
 //! AST wrapper for transformer declarations.
+//!
+//! This module provides a typed wrapper around `DDlog` transformer syntax nodes,
+//! enabling structured access to transformer names, input relations with
+//! types and output relations.
 
 use super::AstNode;
 use crate::DdlogLanguage;
@@ -24,8 +28,11 @@ impl Transformer {
     /// Input relations as pairs of name and type.
     #[must_use]
     pub fn inputs(&self) -> Vec<(String, String)> {
-        let (pairs, _errors) =
+        let (pairs, errors) =
             super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
+        if !errors.is_empty() {
+            log::debug!("Parsing errors in transformer inputs: {errors:?}");
+        }
         pairs
     }
 

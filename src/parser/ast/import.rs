@@ -1,7 +1,9 @@
 //!
-//! AST wrapper for an `import` statement.
+//! AST wrapper for `import` statements in `DDlog`.
 //!
-//! Provides helpers to read the module path and optional alias.
+//! This module provides the `Import` struct for reading module paths such as
+//! `foo::bar` and optional aliases introduced with the `as` keyword. It allows
+//! consumers to navigate import statements without reimplementing token logic.
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
@@ -55,10 +57,10 @@ impl_ast_node!(Import);
 mod tests {
 
     use crate::parse;
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn parses_simple_import() {
         let parsed = parse("import foo");
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let first = parsed
             .root()
             .imports()
@@ -66,6 +68,34 @@ mod tests {
             .cloned()
             .expect("import missing");
         assert_eq!(first.path(), "foo");
+        assert!(first.alias().is_none());
+    }
+
+    #[test]
+    fn parses_import_with_alias() {
+        let parsed = parse("import foo::bar as baz");
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let first = parsed
+            .root()
+            .imports()
+            .first()
+            .cloned()
+            .expect("import missing");
+        assert_eq!(first.path(), "foo::bar");
+        assert_eq!(first.alias(), Some("baz".to_string()));
+    }
+
+    #[test]
+    fn parses_complex_path() {
+        let parsed = parse("import std::collections::HashMap");
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let first = parsed
+            .root()
+            .imports()
+            .first()
+            .cloned()
+            .expect("import missing");
+        assert_eq!(first.path(), "std::collections::HashMap");
         assert!(first.alias().is_none());
     }
 }

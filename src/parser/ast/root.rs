@@ -2,6 +2,17 @@
 //! Wrapper for the root `DATALOG_PROGRAM` node.
 //!
 //! Provides typed accessors for top-level items such as imports and relations.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use ddlint::parse;
+//!
+//! let parsed = parse("import foo; relation R(x: u32)");
+//! let root = parsed.root();
+//! assert_eq!(root.imports().len(), 1);
+//! assert_eq!(root.relations().len(), 1);
+//! ```
 
 use rowan::GreenNode;
 
@@ -47,74 +58,58 @@ impl Root {
         self.syntax.text().to_string()
     }
 
+    fn collect_children<T>(
+        &self,
+        kind: SyntaxKind,
+        map: impl Fn(rowan::SyntaxNode<DdlogLanguage>) -> T,
+    ) -> Vec<T> {
+        self.syntax
+            .children()
+            .filter(|n| n.kind() == kind)
+            .map(map)
+            .collect()
+    }
+
     /// Collect all `import` statements.
     #[must_use]
     pub fn imports(&self) -> Vec<Import> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_IMPORT_STMT)
-            .map(|syntax| Import { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_IMPORT_STMT, |syntax| Import { syntax })
     }
 
     /// Collect all `typedef` declarations.
     #[must_use]
     pub fn type_defs(&self) -> Vec<TypeDef> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_TYPE_DEF)
-            .map(|syntax| TypeDef { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_TYPE_DEF, |syntax| TypeDef { syntax })
     }
 
     /// Collect all relation declarations.
     #[must_use]
     pub fn relations(&self) -> Vec<Relation> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_RELATION_DECL)
-            .map(|syntax| Relation { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_RELATION_DECL, |syntax| Relation { syntax })
     }
 
     /// Collect all index declarations.
     #[must_use]
     pub fn indexes(&self) -> Vec<Index> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_INDEX)
-            .map(|syntax| Index { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_INDEX, |syntax| Index { syntax })
     }
 
     /// Collect all function declarations.
     #[must_use]
     pub fn functions(&self) -> Vec<Function> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_FUNCTION)
-            .map(|syntax| Function { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_FUNCTION, |syntax| Function { syntax })
     }
 
     /// Collect all transformer declarations.
     #[must_use]
     pub fn transformers(&self) -> Vec<Transformer> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_TRANSFORMER)
-            .map(|syntax| Transformer { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_TRANSFORMER, |syntax| Transformer { syntax })
     }
 
     /// Collect all rule declarations.
     #[must_use]
     pub fn rules(&self) -> Vec<Rule> {
-        self.syntax
-            .children()
-            .filter(|n| n.kind() == SyntaxKind::N_RULE)
-            .map(|syntax| Rule { syntax })
-            .collect()
+        self.collect_children(SyntaxKind::N_RULE, |syntax| Rule { syntax })
     }
 }
 
@@ -126,6 +121,13 @@ mod tests {
     #[test]
     fn round_trip_empty() {
         let parsed = parse("");
-        assert!(parsed.root().imports().is_empty());
+        let root = parsed.root();
+        assert!(root.imports().is_empty());
+        assert!(root.type_defs().is_empty());
+        assert!(root.relations().is_empty());
+        assert!(root.indexes().is_empty());
+        assert!(root.functions().is_empty());
+        assert!(root.transformers().is_empty());
+        assert!(root.rules().is_empty());
     }
 }

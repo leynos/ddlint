@@ -1,5 +1,8 @@
 //!
 //! AST wrapper for rule declarations.
+//!
+//! This module provides a typed wrapper around `DDlog` rule syntax nodes,
+//! enabling structured access to the rule head and body literals.
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};

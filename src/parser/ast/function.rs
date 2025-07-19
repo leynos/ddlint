@@ -1,5 +1,8 @@
 //!
 //! AST wrapper for function declarations and definitions.
+//!
+//! Provides access to function names, parameters, return types and whether the
+//! function is declared as `extern`.
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
@@ -39,7 +42,9 @@ impl Function {
     pub fn parameters(&self) -> Vec<(String, String)> {
         let (pairs, errors) =
             super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
-        let _ = errors;
+        if !errors.is_empty() {
+            log::debug!("Parsing errors in function parameters: {errors:?}");
+        }
         pairs
     }
 

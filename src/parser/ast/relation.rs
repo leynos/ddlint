@@ -1,5 +1,8 @@
 //!
 //! AST wrapper for relation declarations.
+//!
+//! Allows extraction of relation names, column lists and optional primary keys
+//! from `DDlog` code.
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
@@ -125,7 +128,11 @@ impl Relation {
             .filter(|s| !s.is_empty())
             .map(str::to_string)
             .collect::<Vec<_>>();
-        if keys.is_empty() { None } else { Some(keys) }
+        if keys.is_empty() {
+            None
+        } else {
+            Some(keys)
+        }
     }
 }
 
@@ -136,10 +143,10 @@ mod tests {
 
     use crate::parse;
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn relation_name() {
         let parsed = parse("input relation R(x: u32)");
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let rel = parsed
             .root()
             .relations()
