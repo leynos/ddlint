@@ -12,6 +12,7 @@ use super::super::lexer_helpers::balanced_block;
 use super::skip_whitespace_and_comments;
 use crate::{DdlogLanguage, Span, SyntaxKind};
 use chumsky::prelude::*;
+use std::iter::Peekable;
 
 /// Parser for a parenthesised block, returning its span.
 ///
@@ -37,6 +38,47 @@ use chumsky::prelude::*;
 pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
 {
     balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
+}
+
+/// Extract the text inside the first matching pair of delimiters.
+///
+/// The iterator advances until `open_kind` is encountered. Nested delimiters
+/// are balanced, and text up to the corresponding `close_kind` is returned.
+/// Returns `None` if the iterator ends before a matching closing delimiter.
+#[must_use]
+pub fn extract_parenthesized<I>(
+    iter: &mut Peekable<I>,
+    open_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+) -> Option<String>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    for e in iter.by_ref() {
+        if e.kind() == open_kind {
+            break;
+        }
+    }
+    let mut depth = 1usize;
+    let mut buf = String::new();
+    for e in iter {
+        match e {
+            SyntaxElement::Token(t) if t.kind() == open_kind => {
+                depth += 1;
+                buf.push_str(t.text());
+            }
+            SyntaxElement::Token(t) if t.kind() == close_kind => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(buf);
+                }
+                buf.push_str(t.text());
+            }
+            SyntaxElement::Token(t) => buf.push_str(t.text()),
+            SyntaxElement::Node(n) => buf.push_str(&n.text().to_string()),
+        }
+    }
+    None
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

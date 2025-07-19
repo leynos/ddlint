@@ -54,82 +54,44 @@ impl Relation {
     /// Primary key column names if specified.
     #[must_use]
     pub fn primary_key(&self) -> Option<Vec<String>> {
-        use rowan::NodeOrToken;
+        use rowan::NodeOrToken as E;
 
         let mut iter = self.syntax.children_with_tokens().peekable();
-        for e in &mut iter {
-            if e.kind() == SyntaxKind::T_LPAREN {
-                break;
-            }
-        }
-        let mut depth = 1usize;
-        for e in iter.by_ref() {
-            match e.kind() {
-                SyntaxKind::T_LPAREN => depth += 1,
-                SyntaxKind::T_RPAREN => {
-                    depth -= 1;
-                    if depth == 0 {
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
+
+        super::parse_utils::extract_parenthesized(
+            &mut iter,
+            SyntaxKind::T_LPAREN,
+            SyntaxKind::T_RPAREN,
+        )?;
 
         super::skip_whitespace_and_comments(&mut iter);
-
-        match iter.next() {
-            Some(NodeOrToken::Token(t))
-                if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary" => {}
-            _ => return None,
-        }
-
-        super::skip_whitespace_and_comments(&mut iter);
-
-        match iter.next() {
-            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "key" => {
-            }
-            _ => return None,
-        }
-
-        super::skip_whitespace_and_comments(&mut iter);
-
         if !matches!(
-            iter.peek().map(rowan::SyntaxElement::kind),
-            Some(SyntaxKind::T_LPAREN)
+            iter.next(),
+            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary"
         ) {
             return None;
         }
-        iter.next();
-        depth = 1;
-        let mut buf = String::new();
-        for e in iter.by_ref() {
-            match e {
-                NodeOrToken::Token(t) => match t.kind() {
-                    SyntaxKind::T_LPAREN => {
-                        depth += 1;
-                        buf.push_str(t.text());
-                    }
-                    SyntaxKind::T_RPAREN => {
-                        if depth == 1 {
-                            break;
-                        }
-                        depth -= 1;
-                        buf.push_str(t.text());
-                    }
-                    _ => buf.push_str(t.text()),
-                },
-                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-            }
-            if depth == 0 {
-                break;
-            }
+
+        super::skip_whitespace_and_comments(&mut iter);
+        if !matches!(
+            iter.next(),
+            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "key"
+        ) {
+            return None;
         }
 
-        let keys = buf
+        super::skip_whitespace_and_comments(&mut iter);
+        let content = super::parse_utils::extract_parenthesized(
+            &mut iter,
+            SyntaxKind::T_LPAREN,
+            SyntaxKind::T_RPAREN,
+        )?;
+
+        let keys = content
             .split(',')
-            .map(|s| s.trim().to_string())
+            .map(str::trim)
             .filter(|s| !s.is_empty())
+            .map(str::to_string)
             .collect::<Vec<_>>();
         if keys.is_empty() { None } else { Some(keys) }
     }

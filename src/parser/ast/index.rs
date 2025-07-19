@@ -44,51 +44,7 @@ impl Index {
     /// Column expressions included in the index.
     #[must_use]
     pub fn columns(&self) -> Vec<String> {
-        use rowan::NodeOrToken;
-
-        let mut iter = self.syntax.children_with_tokens().peekable();
-        for e in &mut iter {
-            if e.kind() == SyntaxKind::T_LPAREN {
-                break;
-            }
-        }
-
-        let mut cols = Vec::new();
-        let mut buf = String::new();
-        let mut depth = 0usize;
-
-        for e in iter {
-            match e {
-                NodeOrToken::Token(t) => match t.kind() {
-                    SyntaxKind::T_LPAREN => {
-                        depth += 1;
-                        buf.push_str(t.text());
-                    }
-                    SyntaxKind::T_RPAREN => {
-                        if depth == 0 {
-                            let col = buf.trim();
-                            if !col.is_empty() {
-                                cols.push(col.to_string());
-                            }
-                            break;
-                        }
-                        depth -= 1;
-                        buf.push_str(t.text());
-                    }
-                    SyntaxKind::T_COMMA if depth == 0 => {
-                        let col = buf.trim();
-                        if !col.is_empty() {
-                            cols.push(col.to_string());
-                        }
-                        buf.clear();
-                    }
-                    _ => buf.push_str(t.text()),
-                },
-                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-            }
-        }
-
-        cols
+        crate::syntax_utils::parse_parenthesized_list(self.syntax.children_with_tokens())
     }
 }
 
