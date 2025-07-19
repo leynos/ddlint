@@ -65,16 +65,14 @@ impl Relation {
     where
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     {
-        for e in iter.by_ref() {
-            if e.kind() == SyntaxKind::T_LPAREN {
-                break;
-            }
-        }
-        let mut depth = 1usize;
+        let mut depth = 0usize;
         for e in iter.by_ref() {
             match e.kind() {
                 SyntaxKind::T_LPAREN => depth += 1,
                 SyntaxKind::T_RPAREN => {
+                    if depth == 0 {
+                        return None;
+                    }
                     depth -= 1;
                     if depth == 0 {
                         return Some(());
@@ -91,18 +89,22 @@ impl Relation {
     where
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     {
-        use rowan::NodeOrToken as E;
         super::skip_whitespace_and_comments(iter);
-        match iter.next() {
-            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary" => {}
-            _ => return None,
-        }
+        Self::expect_keyword(iter, "primary")?;
         super::skip_whitespace_and_comments(iter);
-        match iter.next() {
-            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "key" => {}
-            _ => return None,
-        }
+        Self::expect_keyword(iter, "key")?;
         Some(())
+    }
+
+    fn expect_keyword<I>(iter: &mut std::iter::Peekable<I>, kw: &str) -> Option<()>
+    where
+        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    {
+        use rowan::NodeOrToken as E;
+        match iter.next() {
+            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == kw => Some(()),
+            _ => None,
+        }
     }
 
     /// Extract the comma separated key names from parentheses.

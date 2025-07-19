@@ -14,31 +14,21 @@ impl Index {
     /// Name of the index if present.
     #[must_use]
     pub fn name(&self) -> Option<String> {
-        self.syntax
-            .children_with_tokens()
-            .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_INDEX))
-            .skip(1)
-            .find_map(|e| match e {
-                rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                    Some(t.text().to_string())
-                }
-                _ => None,
-            })
+        self.find_identifier_after_keyword(SyntaxKind::K_INDEX)
     }
 
     /// Target relation name.
     #[must_use]
     pub fn relation(&self) -> Option<String> {
-        self.syntax
-            .children_with_tokens()
-            .skip_while(|e| !matches!(e.kind(), SyntaxKind::K_ON))
-            .skip(1)
-            .find_map(|e| match e {
-                rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                    Some(t.text().to_string())
-                }
-                _ => None,
-            })
+        self.find_identifier_after_keyword(SyntaxKind::K_ON)
+    }
+
+    fn find_identifier_after_keyword(&self, keyword: SyntaxKind) -> Option<String> {
+        let mut iter = self.syntax.children_with_tokens();
+        if !super::skip_to_match(&mut iter, |k| k == keyword) {
+            return None;
+        }
+        super::take_first_ident(iter)
     }
 
     /// Column expressions included in the index.
