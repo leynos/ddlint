@@ -1,4 +1,10 @@
-//! Span storage and validation helpers.
+//! Span storage and validation helpers used when building the CST.
+//!
+//! `ParsedSpans` groups the byte ranges for each statement category after
+//! scanning the token stream. During [`build_green_tree`](super::tree::build_green_tree)
+//! these spans determine where nodes start and end so the resulting tree
+//! mirrors the source layout. The builder enforces that every span list is
+//! sorted and free from overlaps in debug builds, catching mistakes early.
 
 use crate::Span;
 
