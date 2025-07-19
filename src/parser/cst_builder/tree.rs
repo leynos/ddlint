@@ -7,6 +7,9 @@ use crate::{DdlogLanguage, Span, SyntaxKind};
 
 use super::spans::ParsedSpans;
 
+/// Number of span cursor categories handled when building the CST.
+const CURSOR_COUNT: usize = 7;
+
 struct SpanCursor<'a> {
     iter: std::iter::Peekable<std::slice::Iter<'a, Span>>,
     kind: SyntaxKind,
@@ -41,7 +44,7 @@ impl<'a> SpanCursor<'a> {
 }
 
 struct SpanCursors<'a> {
-    cursors: [SpanCursor<'a>; 7],
+    cursors: [SpanCursor<'a>; CURSOR_COUNT],
 }
 
 impl<'a> SpanCursors<'a> {
@@ -74,6 +77,21 @@ impl<'a> SpanCursors<'a> {
 }
 
 /// Construct the CST from the token stream and recorded statement spans.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::tokenize;
+/// use ddlint::parser::{cst_builder::{build_green_tree, ParsedSpans}, span_scanner::parse_tokens, ast::Root};
+///
+/// let src = "import foo::bar;";
+/// let tokens = tokenize(src);
+/// let (spans, errors) = parse_tokens(&tokens, src);
+/// assert!(errors.is_empty());
+/// let green = build_green_tree(&tokens, src, &spans);
+/// let root = Root::from_green(green);
+/// assert_eq!(root.text(), src);
+/// ```
 pub(crate) fn build_green_tree(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -111,12 +129,16 @@ fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: Span, src:
 
     let raw = DdlogLanguage::kind_to_raw(kind);
     if kind == SyntaxKind::N_ERROR {
-        builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_ERROR));
+        push_error_wrapped(builder, raw, text);
+    } else {
+        builder.token(raw, text);
     }
+}
+
+fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, text: &str) {
+    builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_ERROR));
     builder.token(raw, text);
-    if kind == SyntaxKind::N_ERROR {
-        builder.finish_node();
-    }
+    builder.finish_node();
 }
 
 #[cfg(test)]
