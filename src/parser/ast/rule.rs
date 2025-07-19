@@ -38,41 +38,84 @@ impl Rule {
     /// Text of each body literal in order of appearance.
     #[must_use]
     pub fn body_literals(&self) -> Vec<String> {
-        use rowan::NodeOrToken;
-
         let mut iter = self
             .syntax
             .children_with_tokens()
             .skip_while(|e| e.kind() != SyntaxKind::T_IMPLIES);
 
         if matches!(iter.next().map(|e| e.kind()), Some(SyntaxKind::T_IMPLIES)) {
-            let mut buf = String::new();
-            let mut lits = Vec::new();
-            for e in iter {
-                match e {
-                    NodeOrToken::Token(t) => match t.kind() {
-                        SyntaxKind::T_COMMA => {
-                            let lit = buf.trim();
-                            if !lit.is_empty() {
-                                lits.push(lit.to_string());
-                            }
-                            buf.clear();
-                        }
-                        SyntaxKind::T_DOT => {
-                            let lit = buf.trim();
-                            if !lit.is_empty() {
-                                lits.push(lit.to_string());
-                            }
-                            break;
-                        }
-                        _ => buf.push_str(t.text()),
-                    },
-                    NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-                }
-            }
-            lits
+            Self::extract_literals_from_body(iter)
         } else {
             Vec::new()
+        }
+    }
+
+    /// Iterate over the body and collect literals.
+    fn extract_literals_from_body<I>(iter: I) -> Vec<String>
+    where
+        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    {
+        let mut buf = String::new();
+        let mut lits = Vec::new();
+
+        for e in iter {
+            if Self::process_body_element(e, &mut buf, &mut lits) {
+                break;
+            }
+        }
+
+        lits
+    }
+
+    /// Process a single syntax element of the rule body.
+    ///
+    /// Returns `true` if the body has ended.
+    fn process_body_element(
+        element: rowan::SyntaxElement<DdlogLanguage>,
+        buf: &mut String,
+        lits: &mut Vec<String>,
+    ) -> bool {
+        use rowan::NodeOrToken;
+
+        match element {
+            NodeOrToken::Token(t) => Self::process_token(&t, buf, lits),
+            NodeOrToken::Node(n) => {
+                buf.push_str(&n.text().to_string());
+                false
+            }
+        }
+    }
+
+    /// Handle a token in the rule body.
+    ///
+    /// Returns `true` when the terminating `.` is encountered.
+    fn process_token(
+        token: &rowan::SyntaxToken<DdlogLanguage>,
+        buf: &mut String,
+        lits: &mut Vec<String>,
+    ) -> bool {
+        match token.kind() {
+            SyntaxKind::T_COMMA => {
+                Self::add_literal_if_not_empty(buf, lits);
+                buf.clear();
+                false
+            }
+            SyntaxKind::T_DOT => {
+                Self::add_literal_if_not_empty(buf, lits);
+                true
+            }
+            _ => {
+                buf.push_str(token.text());
+                false
+            }
+        }
+    }
+
+    /// Add a literal to the list if it contains non-whitespace text.
+    fn add_literal_if_not_empty(buf: &str, lits: &mut Vec<String>) {
+        let lit = buf.trim();
+        if !lit.is_empty() {
+            lits.push(lit.to_string());
         }
     }
 }

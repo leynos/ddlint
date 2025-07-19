@@ -54,35 +54,65 @@ impl Relation {
     /// Primary key column names if specified.
     #[must_use]
     pub fn primary_key(&self) -> Option<Vec<String>> {
-        use rowan::NodeOrToken as E;
-
         let mut iter = self.syntax.children_with_tokens().peekable();
+        Self::skip_to_end_of_columns(&mut iter)?;
+        Self::parse_primary_key_keywords(&mut iter)?;
+        Self::extract_key_list(&mut iter)
+    }
 
-        super::parse_utils::extract_parenthesized(
-            &mut iter,
-            SyntaxKind::T_LPAREN,
-            SyntaxKind::T_RPAREN,
-        )?;
-
-        super::skip_whitespace_and_comments(&mut iter);
-        if !matches!(
-            iter.next(),
-            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary"
-        ) {
-            return None;
+    /// Skip over the column declaration list and stop on the closing `)`.
+    fn skip_to_end_of_columns<I>(iter: &mut std::iter::Peekable<I>) -> Option<()>
+    where
+        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    {
+        for e in iter.by_ref() {
+            if e.kind() == SyntaxKind::T_LPAREN {
+                break;
+            }
         }
-
-        super::skip_whitespace_and_comments(&mut iter);
-        if !matches!(
-            iter.next(),
-            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "key"
-        ) {
-            return None;
+        let mut depth = 1usize;
+        for e in iter.by_ref() {
+            match e.kind() {
+                SyntaxKind::T_LPAREN => depth += 1,
+                SyntaxKind::T_RPAREN => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(());
+                    }
+                }
+                _ => {}
+            }
         }
+        None
+    }
 
-        super::skip_whitespace_and_comments(&mut iter);
+    /// Parse the `primary key` keyword sequence.
+    fn parse_primary_key_keywords<I>(iter: &mut std::iter::Peekable<I>) -> Option<()>
+    where
+        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    {
+        use rowan::NodeOrToken as E;
+        super::skip_whitespace_and_comments(iter);
+        match iter.next() {
+            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "primary" => {}
+            _ => return None,
+        }
+        super::skip_whitespace_and_comments(iter);
+        match iter.next() {
+            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == "key" => {}
+            _ => return None,
+        }
+        Some(())
+    }
+
+    /// Extract the comma separated key names from parentheses.
+    fn extract_key_list<I>(iter: &mut std::iter::Peekable<I>) -> Option<Vec<String>>
+    where
+        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    {
+        super::skip_whitespace_and_comments(iter);
         let content = super::parse_utils::extract_parenthesized(
-            &mut iter,
+            iter,
             SyntaxKind::T_LPAREN,
             SyntaxKind::T_RPAREN,
         )?;

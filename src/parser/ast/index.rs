@@ -44,7 +44,100 @@ impl Index {
     /// Column expressions included in the index.
     #[must_use]
     pub fn columns(&self) -> Vec<String> {
-        crate::syntax_utils::parse_parenthesized_list(self.syntax.children_with_tokens())
+        use rowan::NodeOrToken;
+
+        let mut iter = self.syntax.children_with_tokens().peekable();
+        Self::skip_to_lparen(&mut iter);
+
+        let mut cols = Vec::new();
+        let mut buf = String::new();
+        let mut depth = 0usize;
+
+        for e in iter {
+            match e {
+                NodeOrToken::Token(t) => {
+                    if Self::process_token(&t, &mut buf, &mut cols, &mut depth) {
+                        break;
+                    }
+                }
+                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
+            }
+        }
+
+        cols
+    }
+
+    /// Skip tokens until the opening parenthesis of the column list.
+    fn skip_to_lparen<I>(iter: &mut std::iter::Peekable<I>)
+    where
+        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    {
+        for e in iter {
+            if e.kind() == SyntaxKind::T_LPAREN {
+                break;
+            }
+        }
+    }
+
+    /// Process one token while collecting column text.
+    ///
+    /// Returns `true` when the closing parenthesis for the list is reached.
+    fn process_token(
+        token: &rowan::SyntaxToken<DdlogLanguage>,
+        buf: &mut String,
+        cols: &mut Vec<String>,
+        depth: &mut usize,
+    ) -> bool {
+        match token.kind() {
+            SyntaxKind::T_LPAREN => {
+                *depth += 1;
+                buf.push_str(token.text());
+                false
+            }
+            SyntaxKind::T_RPAREN => Self::handle_rparen(token, buf, cols, depth),
+            SyntaxKind::T_COMMA if *depth == 0 => {
+                Self::handle_comma(buf, cols);
+                false
+            }
+            _ => {
+                buf.push_str(token.text());
+                false
+            }
+        }
+    }
+
+    /// Handle a right parenthesis token.
+    ///
+    /// When `depth` reaches zero the list is complete and `true` is returned to
+    /// signal termination.
+    fn handle_rparen(
+        token: &rowan::SyntaxToken<DdlogLanguage>,
+        buf: &mut String,
+        cols: &mut Vec<String>,
+        depth: &mut usize,
+    ) -> bool {
+        if *depth == 0 {
+            Self::add_column_if_non_empty(buf, cols);
+            true
+        } else {
+            *depth -= 1;
+            buf.push_str(token.text());
+            false
+        }
+    }
+
+    /// Handle a comma token separating top-level column expressions.
+    fn handle_comma(buf: &mut String, cols: &mut Vec<String>) {
+        Self::add_column_if_non_empty(buf, cols);
+        buf.clear();
+    }
+
+    /// Add a trimmed column string to the results if not empty.
+    fn add_column_if_non_empty(buf: &str, cols: &mut Vec<String>) {
+        let col = buf.trim();
+        if !col.is_empty() {
+            cols.push(col.to_string());
+        }
     }
 }
 
