@@ -1,8 +1,29 @@
 //!
 //! AST wrapper for relation declarations.
 //!
-//! Allows extraction of relation names, column lists and optional primary keys
-//! from `DDlog` code.
+//! This module exposes [`Relation`], a thin wrapper over a `rowan` syntax node
+//! representing a `relation` declaration in a `DDlog` program. The wrapper
+//! provides convenient accessors for the relation name, its `input`/`output`
+//! markers, declared columns and optional primary key.
+//!
+//! # Examples
+//!
+//! ```
+//! use ddlint::parse;
+//! use ddlint::parser::ast::Relation;
+//!
+//! let src = "input relation R(x: u32, y: string) primary key (x)";
+//! let parsed = parse(src);
+//! let rel = parsed.root().relations().first().unwrap();
+//!
+//! assert_eq!(rel.name(), Some("R".to_string()));
+//! assert!(rel.is_input());
+//! assert_eq!(rel.columns(), vec![
+//!     ("x".into(), "u32".into()),
+//!     ("y".into(), "string".into()),
+//! ]);
+//! assert_eq!(rel.primary_key(), Some(vec!["x".into()]));
+//! ```
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
@@ -50,7 +71,9 @@ impl Relation {
     pub fn columns(&self) -> Vec<(String, String)> {
         let (pairs, errors) =
             super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
-        let _ = errors;
+        if !errors.is_empty() {
+            log::debug!("Parsing errors in relation columns: {errors:?}");
+        }
         pairs
     }
 
@@ -128,11 +151,7 @@ impl Relation {
             .filter(|s| !s.is_empty())
             .map(str::to_string)
             .collect::<Vec<_>>();
-        if keys.is_empty() {
-            None
-        } else {
-            Some(keys)
-        }
+        if keys.is_empty() { None } else { Some(keys) }
     }
 }
 

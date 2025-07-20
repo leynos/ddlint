@@ -54,31 +54,56 @@ pub fn extract_parenthesized<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
+    advance_to_delimiter(iter, open_kind)?;
+    collect_balanced_content(iter, open_kind, close_kind)
+}
+
+fn advance_to_delimiter<I>(iter: &mut Peekable<I>, open_kind: SyntaxKind) -> Option<()>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
     for e in iter.by_ref() {
         if e.kind() == open_kind {
-            break;
+            return Some(());
         }
     }
+    None
+}
+
+fn collect_balanced_content<I>(
+    iter: &mut Peekable<I>,
+    open_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+) -> Option<String>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
     let mut depth = 1usize;
     let mut buf = String::new();
-    for e in iter {
-        match e {
-            SyntaxElement::Token(t) if t.kind() == open_kind => {
+    for e in iter.by_ref() {
+        match e.kind() {
+            k if k == open_kind => {
                 depth += 1;
-                buf.push_str(t.text());
+                buf.push_str(&extract_element_text(e));
             }
-            SyntaxElement::Token(t) if t.kind() == close_kind => {
+            k if k == close_kind => {
                 depth -= 1;
                 if depth == 0 {
                     return Some(buf);
                 }
-                buf.push_str(t.text());
+                buf.push_str(&extract_element_text(e));
             }
-            SyntaxElement::Token(t) => buf.push_str(t.text()),
-            SyntaxElement::Node(n) => buf.push_str(&n.text().to_string()),
+            _ => buf.push_str(&extract_element_text(e)),
         }
     }
     None
+}
+
+fn extract_element_text(e: SyntaxElement<DdlogLanguage>) -> String {
+    match e {
+        SyntaxElement::Token(t) => t.text().to_string(),
+        SyntaxElement::Node(n) => n.text().to_string(),
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

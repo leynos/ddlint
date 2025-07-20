@@ -1,8 +1,26 @@
 //!
 //! AST wrapper for rule declarations.
 //!
-//! This module provides a typed wrapper around `DDlog` rule syntax nodes,
-//! enabling structured access to the rule head and body literals.
+//! The [`Rule`] type is a lightweight view over a rule declaration in the
+//! syntax tree. It exposes helpers for reading the rule head and for iterating
+//! over the comma-separated body literals. This allows analyses to reason about
+//! the dependencies between relations without building a full semantic model.
+//!
+//! Rules are discovered via the [`Root`](super::root::Root) wrapper and then
+//! inspected using these methods.
+//!
+//! # Examples
+//!
+//! ```
+//! use ddlint::parse;
+//! use ddlint::parser::ast::Rule;
+//!
+//! let src = "R(x) :- S(x), T(x).";
+//! let parsed = parse(src);
+//! let rule = parsed.root().rules().first().unwrap();
+//! assert_eq!(rule.head(), Some("R(x)".into()));
+//! assert_eq!(rule.body_literals(), vec!["S(x)".into(), "T(x)".into()]);
+//! ```
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
