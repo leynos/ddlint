@@ -11,7 +11,7 @@ use crate::{DdlogLanguage, SyntaxKind};
 use super::super::skip_whitespace_and_comments;
 use super::{
     errors::{Delim, DelimStack, ParseError},
-    token_utils::{TokenParseContext, close_and_push, open_and_push, push, push_error},
+    token_utils::{TokenParseContext, close_delimiter, open_delimiter, push, push_error},
 };
 
 pub(crate) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<ParseError>)
@@ -138,7 +138,8 @@ where
         match e {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_LPAREN => {
-                    open_and_push(t, &mut ctx, Delim::Paren, 1);
+                    open_delimiter(&mut *ctx.stack, Delim::Paren, 1);
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_RPAREN => {
@@ -149,43 +150,51 @@ where
                     iter.next();
                 }
                 SyntaxKind::T_LT => {
-                    open_and_push(t, &mut ctx, Delim::Angle, 1);
+                    open_delimiter(&mut *ctx.stack, Delim::Angle, 1);
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_SHL => {
-                    open_and_push(t, &mut ctx, Delim::Angle, 2);
+                    open_delimiter(&mut *ctx.stack, Delim::Angle, 2);
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_GT => {
-                    if close_and_push(t, &mut ctx, Delim::Angle, 1) < 1 {
+                    if close_delimiter(&mut *ctx.stack, Delim::Angle, 1) < 1 {
                         push_error(&mut errors, Delim::Angle, t);
                     }
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_SHR => {
-                    if close_and_push(t, &mut ctx, Delim::Angle, 2) < 2 {
+                    if close_delimiter(&mut *ctx.stack, Delim::Angle, 2) < 2 {
                         push_error(&mut errors, Delim::Angle, t);
                     }
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_LBRACKET => {
-                    open_and_push(t, &mut ctx, Delim::Bracket, 1);
+                    open_delimiter(&mut *ctx.stack, Delim::Bracket, 1);
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_RBRACKET => {
-                    if close_and_push(t, &mut ctx, Delim::Bracket, 1) < 1 {
+                    if close_delimiter(&mut *ctx.stack, Delim::Bracket, 1) < 1 {
                         push_error(&mut errors, Delim::Bracket, t);
                     }
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_LBRACE => {
-                    open_and_push(t, &mut ctx, Delim::Brace, 1);
+                    open_delimiter(&mut *ctx.stack, Delim::Brace, 1);
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_RBRACE => {
-                    if close_and_push(t, &mut ctx, Delim::Brace, 1) < 1 {
+                    if close_delimiter(&mut *ctx.stack, Delim::Brace, 1) < 1 {
                         push_error(&mut errors, Delim::Brace, t);
                     }
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_COMMA if ctx.stack.is_empty() => break,

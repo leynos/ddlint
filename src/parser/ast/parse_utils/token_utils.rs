@@ -21,25 +21,11 @@ impl<'a> TokenParseContext<'a> {
     }
 }
 
-pub(crate) fn open_and_push(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    ctx: &mut TokenParseContext<'_>,
-    delim: Delim,
-    count: usize,
-) {
-    ctx.stack.open(delim, count);
-    ctx.buf.push_str(token.text());
+pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) {
+    stack.open(delim, count);
 }
-
-pub(crate) fn close_and_push(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    ctx: &mut TokenParseContext<'_>,
-    delim: Delim,
-    count: usize,
-) -> usize {
-    let closed = ctx.stack.close(delim, count);
-    ctx.buf.push_str(token.text());
-    closed
+pub(crate) fn close_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) -> usize {
+    stack.close(delim, count)
 }
 
 pub(crate) fn push(token: &rowan::SyntaxToken<DdlogLanguage>, ctx: &mut TokenParseContext<'_>) {
