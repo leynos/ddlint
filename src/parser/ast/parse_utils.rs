@@ -80,23 +80,37 @@ where
 {
     let mut depth = 1usize;
     let mut buf = String::new();
+
     for e in iter.by_ref() {
         match e.kind() {
-            k if k == open_kind => {
-                depth += 1;
-                buf.push_str(&extract_element_text(e));
-            }
+            k if k == open_kind => handle_opening_delimiter(e, &mut depth, &mut buf),
             k if k == close_kind => {
-                depth -= 1;
-                if depth == 0 {
+                if handle_closing_delimiter(e, &mut depth, &mut buf) {
                     return Some(buf);
                 }
-                buf.push_str(&extract_element_text(e));
             }
             _ => buf.push_str(&extract_element_text(e)),
         }
     }
     None
+}
+
+fn handle_opening_delimiter(e: SyntaxElement<DdlogLanguage>, depth: &mut usize, buf: &mut String) {
+    *depth += 1;
+    buf.push_str(&extract_element_text(e));
+}
+
+fn handle_closing_delimiter(
+    e: SyntaxElement<DdlogLanguage>,
+    depth: &mut usize,
+    buf: &mut String,
+) -> bool {
+    *depth -= 1;
+    if *depth == 0 {
+        return true;
+    }
+    buf.push_str(&extract_element_text(e));
+    false
 }
 
 fn extract_element_text(e: SyntaxElement<DdlogLanguage>) -> String {
