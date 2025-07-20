@@ -14,6 +14,14 @@ use super::{
     token_utils::{TokenParseContext, close_delimiter, open_delimiter, push, push_error},
 };
 
+macro_rules! delimiter_checker {
+    ($(#[$meta:meta])* $name:ident, [$($variant:path),+ $(,)?]) => {
+        $(#[$meta])* fn $name(kind: SyntaxKind) -> bool {
+            matches!(kind, $($variant)|+)
+        }
+    };
+}
+
 pub(crate) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -232,29 +240,29 @@ fn handle_closing_delimiter(
     true
 }
 
-/// Determines whether a syntax kind opens a delimiter pair.
-fn is_opening_delimiter(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::T_LPAREN
-            | SyntaxKind::T_LT
-            | SyntaxKind::T_SHL
-            | SyntaxKind::T_LBRACKET
-            | SyntaxKind::T_LBRACE
-    )
-}
+delimiter_checker!(
+    /// Determines whether a syntax kind opens a delimiter pair.
+    is_opening_delimiter,
+    [
+        SyntaxKind::T_LPAREN,
+        SyntaxKind::T_LT,
+        SyntaxKind::T_SHL,
+        SyntaxKind::T_LBRACKET,
+        SyntaxKind::T_LBRACE,
+    ]
+);
 
-/// Determines whether a syntax kind closes a delimiter pair.
-fn is_closing_delimiter(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::T_RPAREN
-            | SyntaxKind::T_GT
-            | SyntaxKind::T_SHR
-            | SyntaxKind::T_RBRACKET
-            | SyntaxKind::T_RBRACE
-    )
-}
+delimiter_checker!(
+    /// Determines whether a syntax kind closes a delimiter pair.
+    is_closing_delimiter,
+    [
+        SyntaxKind::T_RPAREN,
+        SyntaxKind::T_GT,
+        SyntaxKind::T_SHR,
+        SyntaxKind::T_RBRACKET,
+        SyntaxKind::T_RBRACE,
+    ]
+);
 
 /// Predicate for exiting the main parsing loop.
 fn should_break_parsing(kind: SyntaxKind, stack_empty: bool) -> bool {
