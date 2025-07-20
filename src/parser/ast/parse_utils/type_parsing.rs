@@ -131,73 +131,25 @@ where
 
     let mut buf = String::new();
     let mut errors = Vec::new();
-    let mut depth = DelimStack::default();
-    let mut ctx = TokenParseContext::new(&mut buf, &mut depth);
+    let mut stack = DelimStack::default();
+    let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
     while let Some(e) = iter.peek() {
         match e {
             NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_LPAREN => {
-                    open_delimiter(&mut *ctx.stack, Delim::Paren, 1);
-                    push(t, &mut ctx);
-                    iter.next();
+                kind if is_opening_delimiter(kind) => {
+                    if handle_opening_delimiter(t, &mut ctx) {
+                        iter.next();
+                    }
                 }
-                SyntaxKind::T_RPAREN => {
-                    if ctx.stack.close(Delim::Paren, 1) == 0 {
+                kind if is_closing_delimiter(kind) => {
+                    if handle_closing_delimiter(t, &mut ctx, &mut errors) {
+                        iter.next();
+                    } else {
                         break;
                     }
-                    push(t, &mut ctx);
-                    iter.next();
                 }
-                SyntaxKind::T_LT => {
-                    open_delimiter(&mut *ctx.stack, Delim::Angle, 1);
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_SHL => {
-                    open_delimiter(&mut *ctx.stack, Delim::Angle, 2);
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_GT => {
-                    if close_delimiter(&mut *ctx.stack, Delim::Angle, 1) < 1 {
-                        push_error(&mut errors, Delim::Angle, t);
-                    }
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_SHR => {
-                    if close_delimiter(&mut *ctx.stack, Delim::Angle, 2) < 2 {
-                        push_error(&mut errors, Delim::Angle, t);
-                    }
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_LBRACKET => {
-                    open_delimiter(&mut *ctx.stack, Delim::Bracket, 1);
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_RBRACKET => {
-                    if close_delimiter(&mut *ctx.stack, Delim::Bracket, 1) < 1 {
-                        push_error(&mut errors, Delim::Bracket, t);
-                    }
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_LBRACE => {
-                    open_delimiter(&mut *ctx.stack, Delim::Brace, 1);
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_RBRACE => {
-                    if close_delimiter(&mut *ctx.stack, Delim::Brace, 1) < 1 {
-                        push_error(&mut errors, Delim::Brace, t);
-                    }
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-                SyntaxKind::T_COMMA if ctx.stack.is_empty() => break,
+                kind if should_break_parsing(kind, ctx.stack.is_empty()) => break,
                 _ => {
                     push(t, &mut ctx);
                     iter.next();
@@ -205,9 +157,9 @@ where
             },
             NodeOrToken::Node(n) => {
                 let text = n.text().to_string();
-                let is_whitespace = text.chars().all(char::is_whitespace);
+                let is_ws = text.chars().all(char::is_whitespace);
                 let is_comment = n.kind() == SyntaxKind::T_COMMENT;
-                if !is_whitespace && !is_comment {
+                if !is_ws && !is_comment {
                     ctx.buf.push_str(&text);
                 }
                 iter.next();
@@ -215,7 +167,7 @@ where
         }
     }
 
-    for unclosed in depth.unclosed() {
+    for unclosed in stack.unclosed() {
         let ch = match unclosed {
             Delim::Paren => ')',
             Delim::Angle => '>',
@@ -229,6 +181,84 @@ where
     }
 
     (buf.trim().to_string(), errors)
+}
+
+/// Handles an opening delimiter token.
+fn handle_opening_delimiter(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    ctx: &mut TokenParseContext<'_>,
+) -> bool {
+    match token.kind() {
+        SyntaxKind::T_LPAREN => open_delimiter(&mut *ctx.stack, Delim::Paren, 1),
+        SyntaxKind::T_LT => open_delimiter(&mut *ctx.stack, Delim::Angle, 1),
+        SyntaxKind::T_SHL => open_delimiter(&mut *ctx.stack, Delim::Angle, 2),
+        SyntaxKind::T_LBRACKET => open_delimiter(&mut *ctx.stack, Delim::Bracket, 1),
+        SyntaxKind::T_LBRACE => open_delimiter(&mut *ctx.stack, Delim::Brace, 1),
+        _ => return false,
+    }
+    push(token, ctx);
+    true
+}
+
+/// Handles a closing delimiter token.
+///
+/// Returns `true` when the closing delimiter matches the top of the stack.
+/// When a mismatch occurs a [`ParseError::Delimiter`] is pushed to `errors`
+/// and `false` is returned if the token should terminate parsing.
+fn handle_closing_delimiter(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool {
+    let (delim, count, break_on_mismatch) = match token.kind() {
+        SyntaxKind::T_RPAREN => (Delim::Paren, 1, true),
+        SyntaxKind::T_GT => (Delim::Angle, 1, false),
+        SyntaxKind::T_SHR => (Delim::Angle, 2, false),
+        SyntaxKind::T_RBRACKET => (Delim::Bracket, 1, false),
+        SyntaxKind::T_RBRACE => (Delim::Brace, 1, false),
+        _ => return false,
+    };
+
+    if close_delimiter(&mut *ctx.stack, delim, count) < count {
+        if !break_on_mismatch {
+            push_error(errors, delim, token);
+        }
+        if break_on_mismatch {
+            return false;
+        }
+    }
+
+    push(token, ctx);
+    true
+}
+
+/// Determines whether a syntax kind opens a delimiter pair.
+fn is_opening_delimiter(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::T_LPAREN
+            | SyntaxKind::T_LT
+            | SyntaxKind::T_SHL
+            | SyntaxKind::T_LBRACKET
+            | SyntaxKind::T_LBRACE
+    )
+}
+
+/// Determines whether a syntax kind closes a delimiter pair.
+fn is_closing_delimiter(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::T_RPAREN
+            | SyntaxKind::T_GT
+            | SyntaxKind::T_SHR
+            | SyntaxKind::T_RBRACKET
+            | SyntaxKind::T_RBRACE
+    )
+}
+
+/// Predicate for exiting the main parsing loop.
+fn should_break_parsing(kind: SyntaxKind, stack_empty: bool) -> bool {
+    kind == SyntaxKind::T_COMMA && stack_empty
 }
 
 pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>

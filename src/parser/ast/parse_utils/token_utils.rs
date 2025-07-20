@@ -21,12 +21,42 @@ impl<'a> TokenParseContext<'a> {
     }
 }
 
-/// Opens one or more delimiters on the stack.
+/// Records an opening delimiter on the provided stack.
+///
+/// Pushes `count` instances of `delim` so that matching closing
+/// tokens can be validated later. The token text itself is not
+/// appended to the buffer by this helper.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::parser::ast::parse_utils::errors::{Delim, DelimStack};
+/// use ddlint::parser::ast::parse_utils::token_utils::open_delimiter;
+///
+/// let mut stack = DelimStack::default();
+/// open_delimiter(&mut stack, Delim::Paren, 2);
+/// assert_eq!(stack.unclosed().count(), 2);
+/// ```
 pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) {
     stack.open(delim, count);
 }
 
-/// Closes delimiters of the given type and returns how many were closed.
+/// Attempts to close `count` delimiters of the specified type.
+///
+/// Returns the number of delimiters actually removed from `stack`. A
+/// value less than `count` indicates a mismatch, allowing callers to
+/// emit an appropriate [`ParseError`].
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::parser::ast::parse_utils::errors::{Delim, DelimStack};
+/// use ddlint::parser::ast::parse_utils::token_utils::{open_delimiter, close_delimiter};
+///
+/// let mut stack = DelimStack::default();
+/// open_delimiter(&mut stack, Delim::Angle, 1);
+/// assert_eq!(close_delimiter(&mut stack, Delim::Angle, 1), 1);
+/// ```
 pub(crate) fn close_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) -> usize {
     stack.close(delim, count)
 }

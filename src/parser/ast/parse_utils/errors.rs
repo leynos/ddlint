@@ -95,7 +95,9 @@ impl DelimStack {
     /// Pushes `count` instances of `delim` onto the stack so they can be
     /// matched with closing tokens later.
     pub(super) fn open(&mut self, delim: Delim, count: usize) {
-        self.0.extend(std::iter::repeat_n(delim, count));
+        for _ in 0..count {
+            self.0.push(delim);
+        }
     }
 
     /// Attempts to close delimiters of the specified type.
