@@ -21,13 +21,17 @@ impl<'a> TokenParseContext<'a> {
     }
 }
 
+/// Opens one or more delimiters on the stack.
 pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) {
     stack.open(delim, count);
 }
+
+/// Closes delimiters of the given type and returns how many were closed.
 pub(crate) fn close_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) -> usize {
     stack.close(delim, count)
 }
 
+/// Appends token text to the buffer without modifying the stack.
 pub(crate) fn push(token: &rowan::SyntaxToken<DdlogLanguage>, ctx: &mut TokenParseContext<'_>) {
     ctx.buf.push_str(token.text());
 }

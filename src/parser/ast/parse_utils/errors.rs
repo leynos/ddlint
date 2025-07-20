@@ -17,7 +17,7 @@ pub(crate) enum Delim {
 }
 
 #[derive(Default, Debug)]
-pub(crate) struct DelimStack(pub(crate) Vec<Delim>);
+pub(crate) struct DelimStack(Vec<Delim>);
 
 /// An error emitted when a closing token does not match the expected delimiter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,25 +85,37 @@ impl std::fmt::Display for DelimiterError {
 impl std::error::Error for DelimiterError {}
 
 impl DelimStack {
+    /// Opens one or more delimiters of the same type.
+    ///
+    /// Pushes `count` instances of `delim` onto the stack so they can be
+    /// matched with closing tokens later.
     pub(super) fn open(&mut self, delim: Delim, count: usize) {
         for _ in 0..count {
             self.0.push(delim);
         }
     }
 
+    /// Attempts to close delimiters of the specified type.
+    ///
+    /// Pops up to `count` matching delimiters from the stack and returns the
+    /// number of delimiters actually closed. The operation stops if the stack is
+    /// empty or the top delimiter does not match `delim`.
     pub(super) fn close(&mut self, delim: Delim, count: usize) -> usize {
         let mut closed = 0;
         for _ in 0..count {
-            match self.0.pop() {
-                Some(d) if d == delim => closed += 1,
-                Some(d) => {
-                    self.0.push(d);
-                    break;
-                }
-                None => break,
+            if matches!(self.0.last(), Some(d) if *d == delim) {
+                self.0.pop();
+                closed += 1;
+            } else {
+                break;
             }
         }
         closed
+    }
+
+    /// Returns an iterator over any remaining unclosed delimiters.
+    pub(crate) fn unclosed(&mut self) -> impl Iterator<Item = Delim> + '_ {
+        self.0.drain(..)
     }
 
     /// Checks whether the delimiter stack contains no open delimiters.

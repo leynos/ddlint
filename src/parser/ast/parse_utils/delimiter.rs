@@ -56,31 +56,15 @@ pub fn extract_parenthesized<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    // Skip to the first opening delimiter.
-    for e in iter.by_ref() {
-        if e.kind() == open_kind {
-            break;
-        }
-    }
+    skip_to_opening_delimiter(iter, open_kind);
 
     let mut depth = 1usize;
     let mut buf = String::new();
 
     for e in iter.by_ref() {
-        let text = element_text(&e);
-        match e.kind() {
-            k if k == open_kind => {
-                depth += 1;
-                buf.push_str(&text);
-            }
-            k if k == close_kind => {
-                depth -= 1;
-                if depth == 0 {
-                    return Ok(buf);
-                }
-                buf.push_str(&text);
-            }
-            _ => buf.push_str(&text),
+        match process_element(&e, &mut depth, &mut buf, open_kind, close_kind) {
+            ElementResult::Continue => {}
+            ElementResult::Complete => return Ok(buf),
         }
     }
 
@@ -88,6 +72,52 @@ where
         collected: buf,
         expected: close_kind,
     })
+}
+
+enum ElementResult {
+    Continue,
+    Complete,
+}
+
+fn skip_to_opening_delimiter<I>(iter: &mut std::iter::Peekable<I>, open_kind: SyntaxKind)
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    for e in iter.by_ref() {
+        if e.kind() == open_kind {
+            break;
+        }
+    }
+}
+
+fn process_element(
+    e: &SyntaxElement<DdlogLanguage>,
+    depth: &mut usize,
+    buf: &mut String,
+    open_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+) -> ElementResult {
+    let text = element_text(e);
+    match e.kind() {
+        k if k == open_kind => {
+            *depth += 1;
+            buf.push_str(&text);
+            ElementResult::Continue
+        }
+        k if k == close_kind => {
+            *depth -= 1;
+            if *depth == 0 {
+                ElementResult::Complete
+            } else {
+                buf.push_str(&text);
+                ElementResult::Continue
+            }
+        }
+        _ => {
+            buf.push_str(&text);
+            ElementResult::Continue
+        }
+    }
 }
 
 fn element_text(e: &SyntaxElement<DdlogLanguage>) -> String {

@@ -215,7 +215,7 @@ where
         }
     }
 
-    while let Some(unclosed) = depth.0.pop() {
+    for unclosed in depth.unclosed() {
         let ch = match unclosed {
             Delim::Paren => ')',
             Delim::Angle => '>',
@@ -266,6 +266,22 @@ where
     }
 }
 
+/// Updates start and end positions for an element.
+///
+/// Records the beginning of the first element encountered and updates the end
+/// position on each call so the resulting span covers all processed tokens.
+fn track_span_for_element(
+    element: &SyntaxElement<DdlogLanguage>,
+    start_pos: &mut Option<TextSize>,
+    end_pos: &mut Option<TextSize>,
+) {
+    let range = element.text_range();
+    if start_pos.is_none() {
+        *start_pos = Some(range.start());
+    }
+    *end_pos = Some(range.end());
+}
+
 fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> (String, bool, Option<TextRange>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -281,36 +297,26 @@ where
         match e {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_COLON => {
-                    if start_pos.is_none() {
-                        start_pos = Some(t.text_range().start());
-                    }
-                    end_pos = Some(t.text_range().start());
+                    track_span_for_element(e, &mut start_pos, &mut end_pos);
                     iter.next();
                     found_colon = true;
                     break;
                 }
                 SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => {
-                    if start_pos.is_none() {
-                        start_pos = Some(t.text_range().start());
-                    }
-                    end_pos = Some(t.text_range().start());
+                    track_span_for_element(e, &mut start_pos, &mut end_pos);
                     break;
                 }
                 _ => {
-                    if start_pos.is_none() {
-                        start_pos = Some(t.text_range().start());
-                    }
-                    end_pos = Some(t.text_range().end());
+                    track_span_for_element(e, &mut start_pos, &mut end_pos);
                     name_buf.push_str(t.text());
                     iter.next();
                 }
             },
-            NodeOrToken::Node(n) => {
-                if start_pos.is_none() {
-                    start_pos = Some(n.text_range().start());
+            NodeOrToken::Node(_) => {
+                track_span_for_element(e, &mut start_pos, &mut end_pos);
+                if let NodeOrToken::Node(n) = e {
+                    name_buf.push_str(&n.text().to_string());
                 }
-                end_pos = Some(n.text_range().end());
-                name_buf.push_str(&n.text().to_string());
                 iter.next();
             }
         }
