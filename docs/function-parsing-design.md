@@ -42,3 +42,41 @@ Empty names and types are reported with `ParseError::MissingName` and
 and reports mismatched delimiters with a `ParseError::Delimiter` that records
 the expected and actual tokens. Unclosed delimiters produce
 `ParseError::UnclosedDelimiter` once parsing stops.
+
+A hierarchy of error types supports rich diagnostics when delimiters do not
+match or names and types are missing. The following diagram shows the
+relationships between these types.
+
+```mermaid
+classDiagram
+    class Delim {
+        <<enum>>
+        Paren
+        Angle
+        Bracket
+        Brace
+    }
+    class DelimStack {
+        +open()
+        +close()
+        +is_empty()
+        -Vec<Delim>
+    }
+    class DelimiterError {
+        +expected: Delim
+        +found: SyntaxKind
+        +span: TextRange
+    }
+    class ParseError {
+        <<enum>>
+        Delimiter(DelimiterError)
+        UnclosedDelimiter
+        MissingColon
+        MissingName
+        MissingType
+    }
+
+    DelimStack *-- Delim
+    DelimiterError *-- Delim
+    ParseError *-- DelimiterError
+```
