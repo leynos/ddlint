@@ -62,4 +62,22 @@ mod tests {
             .expect("transformer missing");
         assert_eq!(tr.name(), Some("t".into()));
     }
+
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    #[test]
+    fn multiple_inputs_outputs() {
+        let src = "extern transformer t(a: X, b: Y): Out1, Out2";
+        let parsed = parse(src);
+        let tr = parsed
+            .root()
+            .transformers()
+            .first()
+            .cloned()
+            .expect("transformer missing");
+        assert_eq!(
+            tr.inputs(),
+            vec![("a".into(), "X".into()), ("b".into(), "Y".into())]
+        );
+        assert_eq!(tr.outputs(), vec!["Out1".to_string(), "Out2".to_string()]);
+    }
 }
