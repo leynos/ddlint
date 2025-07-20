@@ -38,7 +38,7 @@ fn extract_parenthesized(tokens: impl Iterator<Item = SyntaxElement<DdlogLanguag
     use crate::parser::ast::parse_utils::extract_parenthesized as inner;
 
     let mut iter = tokens.peekable();
-    inner(&mut iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).unwrap_or_default()
+    inner(&mut iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).unwrap_or_else(|err| err.collected)
 }
 
 fn split_top_level(s: &str) -> Vec<&str> {
