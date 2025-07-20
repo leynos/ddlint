@@ -1,3 +1,9 @@
+//! Token manipulation utilities for delimiter parsing.
+//!
+//! These helpers maintain a `DelimStack` while building up a type expression
+//! string, ensuring delimiters are tracked consistently and any mismatches are
+//! reported via `ParseError`.
+
 use crate::DdlogLanguage;
 
 use super::errors::{Delim, DelimStack, DelimiterError, ParseError};

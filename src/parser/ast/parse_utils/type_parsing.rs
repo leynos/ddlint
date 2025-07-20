@@ -1,3 +1,9 @@
+//! Type expression parsing utilities for function and relation parameters.
+//!
+//! This module provides functions to parse parameter name-type pairs,
+//! output lists, and type expressions from syntax tokens. It handles
+//! balanced delimiters and generates detailed parse errors.
+
 use rowan::{SyntaxElement, TextRange, TextSize};
 
 use crate::{DdlogLanguage, SyntaxKind};

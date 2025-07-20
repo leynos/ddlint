@@ -1,3 +1,9 @@
+//! Utilities for parsing balanced delimiters and extracting enclosed content.
+//!
+//! This module provides functions to parse parenthesised blocks and extract
+//! text content from within balanced delimiters, handling nested structures
+//! correctly.
+
 use chumsky::prelude::*;
 use rowan::SyntaxElement;
 
@@ -48,17 +54,30 @@ where
     let mut buf = String::new();
 
     for e in iter.by_ref() {
-        match e.kind() {
-            k if k == open_kind => handle_opening_delimiter(e, &mut depth, &mut buf),
-            k if k == close_kind => {
-                if handle_closing_delimiter(e, &mut depth, &mut buf) {
-                    return Some(buf);
-                }
-            }
-            _ => buf.push_str(&extract_element_text(e)),
+        if process_token(e, open_kind, close_kind, &mut depth, &mut buf) {
+            return Some(buf);
         }
     }
     None
+}
+
+fn process_token(
+    e: SyntaxElement<DdlogLanguage>,
+    open_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+    depth: &mut usize,
+    buf: &mut String,
+) -> bool {
+    match e.kind() {
+        k if k == open_kind => handle_opening_delimiter(e, depth, buf),
+        k if k == close_kind => {
+            if handle_closing_delimiter(e, depth, buf) {
+                return true;
+            }
+        }
+        _ => buf.push_str(&extract_element_text(e)),
+    }
+    false
 }
 
 fn handle_opening_delimiter(e: SyntaxElement<DdlogLanguage>, depth: &mut usize, buf: &mut String) {

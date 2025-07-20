@@ -1,3 +1,9 @@
+//! Error types and helpers for delimiter tracking during type parsing.
+//!
+//! The functions in `type_parsing` rely on these structures to report
+//! mismatched or unclosed delimiters when reading parameter lists and type
+//! expressions.
+
 use rowan::TextRange;
 
 use crate::SyntaxKind;
@@ -100,6 +106,7 @@ impl DelimStack {
         closed
     }
 
+    /// Checks whether the delimiter stack contains no open delimiters.
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
