@@ -41,9 +41,27 @@ pub struct UnclosedDelimiterError {
 
 /// Extract the text inside the first matching pair of delimiters.
 ///
-/// The iterator advances until `open_kind` is encountered. Nested delimiters
-/// are balanced. If the closing delimiter is missing the partially collected
-/// text is returned in [`UnclosedDelimiterError`].
+/// The iterator advances until `open_kind` is encountered and then collects all
+/// elements until the matching `close_kind`. Nested delimiters are balanced so
+/// nested structures are handled correctly. If the closing delimiter is not
+/// found the partially collected text is returned in
+/// [`UnclosedDelimiterError`].
+///
+/// # Example
+///
+/// ```
+/// use ddlint::{parse, SyntaxKind};
+/// use ddlint::parser::ast::parse_utils::extract_parenthesized;
+///
+/// let parsed = parse("function f() { (nested (content)) }");
+/// let mut elems = parsed.root().syntax().children_with_tokens().peekable();
+/// let text = extract_parenthesized(
+///     &mut elems,
+///     SyntaxKind::T_LPAREN,
+///     SyntaxKind::T_RPAREN,
+/// ).unwrap();
+/// assert_eq!(text, "nested (content)");
+/// ```
 ///
 /// # Errors
 ///
@@ -60,9 +78,10 @@ where
 
     let mut depth = 1usize;
     let mut buf = String::new();
+    let mut ctx = DelimiterParseContext::new(&mut depth, &mut buf, open_kind, close_kind);
 
     for e in iter.by_ref() {
-        match process_element(&e, &mut depth, &mut buf, open_kind, close_kind) {
+        match process_element(&e, &mut ctx) {
             ElementResult::Continue => {}
             ElementResult::Complete => return Ok(buf),
         }
@@ -79,6 +98,29 @@ enum ElementResult {
     Complete,
 }
 
+struct DelimiterParseContext<'a> {
+    depth: &'a mut usize,
+    buf: &'a mut String,
+    open_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+}
+
+impl<'a> DelimiterParseContext<'a> {
+    fn new(
+        depth: &'a mut usize,
+        buf: &'a mut String,
+        open_kind: SyntaxKind,
+        close_kind: SyntaxKind,
+    ) -> Self {
+        Self {
+            depth,
+            buf,
+            open_kind,
+            close_kind,
+        }
+    }
+}
+
 fn skip_to_opening_delimiter<I>(iter: &mut std::iter::Peekable<I>, open_kind: SyntaxKind)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -92,31 +134,30 @@ where
 
 fn process_element(
     e: &SyntaxElement<DdlogLanguage>,
-    depth: &mut usize,
-    buf: &mut String,
-    open_kind: SyntaxKind,
-    close_kind: SyntaxKind,
+    ctx: &mut DelimiterParseContext<'_>,
 ) -> ElementResult {
     let text = element_text(e);
     match e.kind() {
-        k if k == open_kind => {
-            *depth += 1;
-            buf.push_str(&text);
+        k if k == ctx.open_kind => {
+            *ctx.depth += 1;
+            ctx.buf.push_str(&text);
             ElementResult::Continue
         }
-        k if k == close_kind => {
-            *depth -= 1;
-            if *depth == 0 {
-                ElementResult::Complete
-            } else {
-                buf.push_str(&text);
-                ElementResult::Continue
-            }
-        }
+        k if k == ctx.close_kind => handle_close_delimiter(ctx, &text),
         _ => {
-            buf.push_str(&text);
+            ctx.buf.push_str(&text);
             ElementResult::Continue
         }
+    }
+}
+
+fn handle_close_delimiter(ctx: &mut DelimiterParseContext<'_>, text: &str) -> ElementResult {
+    *ctx.depth -= 1;
+    if *ctx.depth == 0 {
+        ElementResult::Complete
+    } else {
+        ctx.buf.push_str(text);
+        ElementResult::Continue
     }
 }
 

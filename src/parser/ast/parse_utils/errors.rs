@@ -8,6 +8,10 @@ use rowan::TextRange;
 
 use crate::SyntaxKind;
 
+/// Represents the four types of delimiters tracked during parsing.
+///
+/// `DelimStack` records these variants as delimiters are opened so
+/// mismatches and unclosed delimiters can be reported precisely.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Delim {
     Paren,
@@ -72,6 +76,7 @@ impl std::fmt::Display for DelimiterError {
             SyntaxKind::T_SHR => ">>",
             SyntaxKind::T_RBRACKET => "]",
             SyntaxKind::T_RBRACE => "}",
+            // Any unexpected token kind is represented as "?"
             _ => "?",
         };
         write!(
@@ -90,9 +95,7 @@ impl DelimStack {
     /// Pushes `count` instances of `delim` onto the stack so they can be
     /// matched with closing tokens later.
     pub(super) fn open(&mut self, delim: Delim, count: usize) {
-        for _ in 0..count {
-            self.0.push(delim);
-        }
+        self.0.extend(std::iter::repeat_n(delim, count));
     }
 
     /// Attempts to close delimiters of the specified type.
