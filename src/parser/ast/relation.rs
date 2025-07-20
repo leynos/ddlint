@@ -143,7 +143,8 @@ impl Relation {
             iter,
             SyntaxKind::T_LPAREN,
             SyntaxKind::T_RPAREN,
-        )?;
+        )
+        .ok()?;
 
         let keys = content
             .split(',')

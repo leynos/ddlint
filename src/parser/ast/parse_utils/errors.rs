@@ -16,7 +16,7 @@ pub(crate) enum Delim {
     Brace,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct DelimStack(pub(crate) Vec<Delim>);
 
 /// An error emitted when a closing token does not match the expected delimiter.

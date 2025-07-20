@@ -11,7 +11,7 @@ use crate::{DdlogLanguage, SyntaxKind};
 use super::super::skip_whitespace_and_comments;
 use super::{
     errors::{Delim, DelimStack, ParseError},
-    token_utils::{close_and_push, open_and_push, push, push_error},
+    token_utils::{TokenParseContext, close_and_push, open_and_push, push, push_error},
 };
 
 pub(crate) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<ParseError>)
@@ -132,64 +132,65 @@ where
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut depth = DelimStack::default();
+    let mut ctx = TokenParseContext::new(&mut buf, &mut depth);
 
     while let Some(e) = iter.peek() {
         match e {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_LPAREN => {
-                    open_and_push(t, &mut buf, &mut depth, Delim::Paren, 1);
+                    open_and_push(t, &mut ctx, Delim::Paren, 1);
                     iter.next();
                 }
                 SyntaxKind::T_RPAREN => {
-                    if depth.close(Delim::Paren, 1) == 0 {
+                    if ctx.stack.close(Delim::Paren, 1) == 0 {
                         break;
                     }
-                    push(t, &mut buf);
+                    push(t, &mut ctx);
                     iter.next();
                 }
                 SyntaxKind::T_LT => {
-                    open_and_push(t, &mut buf, &mut depth, Delim::Angle, 1);
+                    open_and_push(t, &mut ctx, Delim::Angle, 1);
                     iter.next();
                 }
                 SyntaxKind::T_SHL => {
-                    open_and_push(t, &mut buf, &mut depth, Delim::Angle, 2);
+                    open_and_push(t, &mut ctx, Delim::Angle, 2);
                     iter.next();
                 }
                 SyntaxKind::T_GT => {
-                    if close_and_push(t, &mut buf, &mut depth, Delim::Angle, 1) < 1 {
+                    if close_and_push(t, &mut ctx, Delim::Angle, 1) < 1 {
                         push_error(&mut errors, Delim::Angle, t);
                     }
                     iter.next();
                 }
                 SyntaxKind::T_SHR => {
-                    if close_and_push(t, &mut buf, &mut depth, Delim::Angle, 2) < 2 {
+                    if close_and_push(t, &mut ctx, Delim::Angle, 2) < 2 {
                         push_error(&mut errors, Delim::Angle, t);
                     }
                     iter.next();
                 }
                 SyntaxKind::T_LBRACKET => {
-                    open_and_push(t, &mut buf, &mut depth, Delim::Bracket, 1);
+                    open_and_push(t, &mut ctx, Delim::Bracket, 1);
                     iter.next();
                 }
                 SyntaxKind::T_RBRACKET => {
-                    if close_and_push(t, &mut buf, &mut depth, Delim::Bracket, 1) < 1 {
+                    if close_and_push(t, &mut ctx, Delim::Bracket, 1) < 1 {
                         push_error(&mut errors, Delim::Bracket, t);
                     }
                     iter.next();
                 }
                 SyntaxKind::T_LBRACE => {
-                    open_and_push(t, &mut buf, &mut depth, Delim::Brace, 1);
+                    open_and_push(t, &mut ctx, Delim::Brace, 1);
                     iter.next();
                 }
                 SyntaxKind::T_RBRACE => {
-                    if close_and_push(t, &mut buf, &mut depth, Delim::Brace, 1) < 1 {
+                    if close_and_push(t, &mut ctx, Delim::Brace, 1) < 1 {
                         push_error(&mut errors, Delim::Brace, t);
                     }
                     iter.next();
                 }
-                SyntaxKind::T_COMMA if depth.is_empty() => break,
+                SyntaxKind::T_COMMA if ctx.stack.is_empty() => break,
                 _ => {
-                    push(t, &mut buf);
+                    push(t, &mut ctx);
                     iter.next();
                 }
             },
@@ -198,7 +199,7 @@ where
                 let is_whitespace = text.chars().all(char::is_whitespace);
                 let is_comment = n.kind() == SyntaxKind::T_COMMENT;
                 if !is_whitespace && !is_comment {
-                    buf.push_str(&text);
+                    ctx.buf.push_str(&text);
                 }
                 iter.next();
             }

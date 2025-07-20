@@ -8,33 +8,48 @@ use crate::DdlogLanguage;
 
 use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
 
+/// Shared context for token parsing utilities.
+#[derive(Debug)]
+pub(crate) struct TokenParseContext<'a> {
+    pub(crate) buf: &'a mut String,
+    pub(crate) stack: &'a mut DelimStack,
+}
+
+impl<'a> TokenParseContext<'a> {
+    pub(crate) fn new(buf: &'a mut String, stack: &'a mut DelimStack) -> Self {
+        Self { buf, stack }
+    }
+}
+
 pub(crate) fn open_and_push(
     token: &rowan::SyntaxToken<DdlogLanguage>,
-    buf: &mut String,
-    stack: &mut DelimStack,
+    ctx: &mut TokenParseContext<'_>,
     delim: Delim,
     count: usize,
 ) {
-    stack.open(delim, count);
-    buf.push_str(token.text());
+    ctx.stack.open(delim, count);
+    ctx.buf.push_str(token.text());
 }
 
 pub(crate) fn close_and_push(
     token: &rowan::SyntaxToken<DdlogLanguage>,
-    buf: &mut String,
-    stack: &mut DelimStack,
+    ctx: &mut TokenParseContext<'_>,
     delim: Delim,
     count: usize,
 ) -> usize {
-    let closed = stack.close(delim, count);
-    buf.push_str(token.text());
+    let closed = ctx.stack.close(delim, count);
+    ctx.buf.push_str(token.text());
     closed
 }
 
-pub(crate) fn push(token: &rowan::SyntaxToken<DdlogLanguage>, buf: &mut String) {
-    buf.push_str(token.text());
+pub(crate) fn push(token: &rowan::SyntaxToken<DdlogLanguage>, ctx: &mut TokenParseContext<'_>) {
+    ctx.buf.push_str(token.text());
 }
 
+/// Record an unexpected delimiter in the provided error list.
+///
+/// A [`ParseError::Delimiter`] is appended with the expected delimiter
+/// type and the span of the found token.
 pub(crate) fn push_error(
     errors: &mut Vec<ParseError>,
     expected: Delim,
