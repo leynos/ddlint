@@ -100,6 +100,7 @@ where
 
 pub mod parse_utils;
 
+pub(crate) mod expr;
 mod function;
 mod import;
 mod index;
@@ -109,6 +110,7 @@ mod rule;
 mod transformer;
 mod type_def;
 
+pub use expr::{BinaryOp, Expr, Literal, UnaryOp};
 pub use function::Function;
 pub use import::Import;
 pub use index::Index;
