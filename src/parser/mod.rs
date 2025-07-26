@@ -53,6 +53,7 @@ pub mod ast;
 #[cfg(test)]
 mod tests {
     mod expression;
+    mod expression_integration;
     mod parser;
     use super::token_stream::TokenStream;
     use crate::{SyntaxKind, tokenize};

@@ -29,6 +29,8 @@ pub struct ParsedSpans {
     transformers: Vec<Span>,
     /// Rule spans.
     rules: Vec<Span>,
+    /// Expression spans.
+    expressions: Vec<Span>,
 }
 
 /// Builder for [`ParsedSpans`].
@@ -41,6 +43,7 @@ pub struct ParsedSpansBuilder {
     functions: Vec<Span>,
     transformers: Vec<Span>,
     rules: Vec<Span>,
+    expressions: Vec<Span>,
 }
 
 impl ParsedSpansBuilder {
@@ -93,6 +96,13 @@ impl ParsedSpansBuilder {
         self
     }
 
+    /// Set expression spans.
+    #[must_use]
+    pub fn expressions(mut self, spans: Vec<Span>) -> Self {
+        self.expressions = spans;
+        self
+    }
+
     /// Build the [`ParsedSpans`].
     #[must_use]
     pub fn build(self) -> ParsedSpans {
@@ -104,6 +114,7 @@ impl ParsedSpansBuilder {
             functions,
             transformers,
             rules,
+            expressions,
         } = self;
 
         let result = validate_span_lists_sorted(&[
@@ -114,6 +125,7 @@ impl ParsedSpansBuilder {
             ("functions", &functions),
             ("transformers", &transformers),
             ("rules", &rules),
+            ("expressions", &expressions),
         ]);
         debug_assert!(result.is_ok(), "{}", result.err().unwrap_or_default());
 
@@ -125,6 +137,7 @@ impl ParsedSpansBuilder {
             functions,
             transformers,
             rules,
+            expressions,
         }
     }
 }
@@ -178,6 +191,12 @@ impl ParsedSpans {
     #[must_use]
     pub fn rules(&self) -> &[Span] {
         &self.rules
+    }
+
+    /// Access expression spans.
+    #[must_use]
+    pub fn expressions(&self) -> &[Span] {
+        &self.expressions
     }
 }
 

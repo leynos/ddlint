@@ -342,5 +342,6 @@ the unit tests. Although the design assumed the availability of
 `chumsky::pratt`, the version pinned in the manifest does not yet include that
 module. To keep progress unblocked, the implementation uses a small bespoke
 Pratt parser that walks the token stream directly. Binding powers match the
-operator table analysed from the Haskell parser. The parser will integrate with
-the CST builder in later milestones.
+operator table analysed from the Haskell parser. Expression spans are now
+recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
+the CST.
