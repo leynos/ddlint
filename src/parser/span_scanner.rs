@@ -569,8 +569,9 @@ fn collect_rule_spans(
         {
             let span = start..end_pos;
             let text = st.stream.src().get(span.clone()).unwrap_or("");
-            let (_, mut errs) = parse_expression(text);
-            st.extra.append(&mut errs);
+            if let Err(mut errs) = parse_expression(text) {
+                st.extra.append(&mut errs);
+            }
             exprs.push(span);
         }
 

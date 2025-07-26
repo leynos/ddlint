@@ -8,8 +8,7 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::expr::infix_binding_power;
-use crate::parser::ast::{Expr, Literal, UnaryOp};
+use crate::parser::ast::{Expr, Literal, infix_binding_power, prefix_binding_power};
 use crate::{Span, SyntaxKind, tokenize};
 
 /// Parse a source string into an [`Expr`].
@@ -23,24 +22,30 @@ use crate::{Span, SyntaxKind, tokenize};
 /// - `src`: The snippet of `DDlog` code containing an expression.
 ///
 /// # Returns
-/// A tuple of the parsed expression, if successful, and any syntax errors
-/// encountered.
+/// `Ok(expr)` when parsing succeeds without errors or `Err(errors)` when the
+/// source contains syntax issues.
 ///
 /// # Examples
 ///
 /// ```rust,no_run
 /// use ddlint::parser::expression::parse_expression;
 ///
-/// let (expr, errs) = parse_expression("1 + 2 * 3");
-/// assert!(errs.is_empty());
-/// assert_eq!(expr.unwrap().to_sexpr(), "(+ 1 (* 2 3))");
+/// let expr = parse_expression("1 + 2 * 3").expect("valid expression");
+/// assert_eq!(expr.to_sexpr(), "(+ 1 (* 2 3))");
 /// ```
-#[must_use]
-pub fn parse_expression(src: &str) -> (Option<Expr>, Vec<Simple<SyntaxKind>>) {
+///
+/// # Errors
+/// Returns a vector of [`Simple`] syntax errors if the expression contains
+/// invalid tokens or unbalanced constructs.
+#[must_use = "discarding the Result will ignore parse errors"]
+pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let tokens = tokenize(src);
     let mut parser = Pratt::new(&tokens, src);
     let expr = parser.parse_expr(0);
-    (expr, parser.errors)
+    match expr {
+        Some(expr) if parser.errors.is_empty() => Ok(expr),
+        _ => Err(parser.errors),
+    }
 }
 
 struct Pratt<'a> {
@@ -207,22 +212,5 @@ impl<'a> Pratt<'a> {
     /// The corresponding substring, or an empty string if the span is invalid.
     fn slice(&self, span: Span) -> String {
         self.src.get(span).unwrap_or("").to_string()
-    }
-}
-
-/// Determine the binding power and operator variant for a prefix token.
-///
-/// # Parameters
-/// - `kind`: The token kind representing a potential unary operator.
-///
-/// # Returns
-/// A tuple containing the binding power and the corresponding [`UnaryOp`], or
-/// `None` if the token is not a recognised prefix operator.
-fn prefix_binding_power(kind: SyntaxKind) -> Option<(u8, UnaryOp)> {
-    use UnaryOp::{Neg, Not};
-    match kind {
-        SyntaxKind::T_MINUS => Some((60, Neg)),
-        SyntaxKind::K_NOT => Some((60, Not)),
-        _ => None,
     }
 }

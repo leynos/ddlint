@@ -14,10 +14,6 @@ fn lit_num(n: &str) -> Expr {
 #[case("-5 + 2", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Unary { op: UnaryOp::Neg, expr: Box::new(lit_num("5")) }), rhs: Box::new(lit_num("2")) })]
 #[case("-(5 + 2)", Expr::Unary { op: UnaryOp::Neg, expr: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(lit_num("5")), rhs: Box::new(lit_num("2")) }))) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
-    let (expr, errs) = parse_expression(src);
-    assert!(errs.is_empty(), "errors: {errs:?}");
-    let Some(expr) = expr else {
-        panic!("expression not parsed")
-    };
+    let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
 }

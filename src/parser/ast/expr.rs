@@ -4,7 +4,6 @@
 //! This is used by the Pratt parser to build a tree that higher layers
 //! can inspect without re-parsing tokens.
 
-use crate::SyntaxKind;
 
 /// Literal values that can appear in expressions.
 #[derive(Debug, Clone, PartialEq)]
@@ -89,23 +88,5 @@ impl Expr {
             }
             Self::Group(e) => format!("(group {})", e.to_sexpr()),
         }
-    }
-}
-
-/// Map a binary operator token to its binding power and variant.
-pub(crate) fn infix_binding_power(kind: SyntaxKind) -> Option<(u8, u8, BinaryOp)> {
-    use BinaryOp::{Add, And, Div, Eq, Mod, Mul, Neq, Or, Sub};
-    match kind {
-        SyntaxKind::T_STAR => Some((50, 51, Mul)),
-        SyntaxKind::T_SLASH => Some((50, 51, Div)),
-        SyntaxKind::T_PERCENT => Some((50, 51, Mod)),
-        SyntaxKind::T_PLUS | SyntaxKind::T_MINUS => {
-            Some((40, 41, if kind == SyntaxKind::T_PLUS { Add } else { Sub }))
-        }
-        SyntaxKind::T_EQEQ => Some((30, 31, Eq)),
-        SyntaxKind::T_NEQ => Some((30, 31, Neq)),
-        SyntaxKind::K_AND => Some((20, 21, And)),
-        SyntaxKind::K_OR => Some((10, 11, Or)),
-        _ => None,
     }
 }
