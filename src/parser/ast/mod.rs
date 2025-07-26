@@ -29,10 +29,18 @@ macro_rules! impl_ast_node {
     };
 }
 
-/// Advance the iterator until `predicate` returns `true` for a token kind.
+/// Advance the iterator until `predicate` matches a token kind.
 ///
-/// `K_EXTERN` tokens are skipped as they are syntactic noise for most
-/// traversal contexts.
+/// `K_EXTERN` tokens are ignored because they are generally irrelevant for
+/// AST navigation. The iterator is advanced until `predicate` returns `true`
+/// for a token, in which case the function returns `true`.
+///
+/// # Parameters
+/// - `iter`: Iterator over syntax elements.
+/// - `predicate`: Test function identifying the desired token kind.
+///
+/// # Returns
+/// `true` if a matching token was found before the iterator was exhausted.
 fn skip_to_match(
     iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     predicate: impl Fn(SyntaxKind) -> bool,
@@ -50,6 +58,12 @@ fn skip_to_match(
 }
 
 /// Advance the iterator until `typedef` or `type` is encountered.
+///
+/// # Parameters
+/// - `iter`: Iterator yielding tokens from the syntax tree.
+///
+/// # Returns
+/// `true` if one of the keywords was found before exhaustion.
 fn skip_to_typedef_keyword(
     iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
 ) -> bool {
@@ -59,16 +73,28 @@ fn skip_to_typedef_keyword(
 }
 
 /// Advance the iterator until `transformer` is encountered.
+///
+/// # Parameters
+/// - `iter`: Iterator yielding tokens from the syntax tree.
+///
+/// # Returns
+/// `true` if the keyword was found before exhaustion.
 fn skip_to_transformer_keyword(
     iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
 ) -> bool {
     skip_to_match(iter, |k| k == SyntaxKind::K_TRANSFORMER)
 }
 
-/// Extract the first identifier token from the iterator, skipping whitespace and
-/// comments.
+/// Extract the first identifier token from the iterator.
 ///
-/// Returns `None` if the iterator hits a non-identifier token first.
+/// Whitespace and comments are skipped. If a non-identifier token is
+/// encountered before an identifier, `None` is returned.
+///
+/// # Parameters
+/// - `iter`: Iterator over syntax elements.
+///
+/// # Returns
+/// The identifier text if one is found.
 fn take_first_ident(
     iter: impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
 ) -> Option<String> {
@@ -86,6 +112,10 @@ fn take_first_ident(
     None
 }
 
+/// Consume consecutive whitespace and comment tokens from the iterator.
+///
+/// # Parameters
+/// - `iter`: Peekable iterator over syntax elements.
 pub(super) fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
