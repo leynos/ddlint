@@ -46,10 +46,7 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
         .cloned();
     let mut parser = Pratt::new(iter, src);
     let expr = parser.parse_expr(0);
-    if expr.is_some()
-        && parser.peek().is_some()
-        && let Some((_, sp)) = parser.next()
-    {
+    if let (Some(_), Some(sp)) = (&expr, parser.check_unexpected_token()) {
         parser.push_error(sp, "unexpected token");
     }
     match expr {
@@ -121,6 +118,22 @@ where
     /// exhausted.
     fn peek(&mut self) -> Option<SyntaxKind> {
         self.tokens.peek().map(|(k, _)| *k)
+    }
+
+    /// Consume the next token if any remain and return its span.
+    ///
+    /// Used after parsing an expression to detect trailing tokens. When a
+    /// token is present it is consumed so the caller can report an
+    /// "unexpected token" error using the returned span.
+    ///
+    /// # Returns
+    /// `Some(span)` if a token was consumed, `None` otherwise.
+    fn check_unexpected_token(&mut self) -> Option<Span> {
+        if self.peek().is_some() {
+            self.next().map(|(_, sp)| sp)
+        } else {
+            None
+        }
     }
 
     /// Parse an expression with the given minimum binding power.
