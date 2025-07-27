@@ -4,7 +4,6 @@
 //! This is used by the Pratt parser to build a tree that higher layers
 //! can inspect without re-parsing tokens.
 
-
 /// Literal values that can appear in expressions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
