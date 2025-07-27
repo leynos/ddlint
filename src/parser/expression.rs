@@ -169,11 +169,11 @@ where
                 expr.map(|e| Expr::Group(Box::new(e)))
             }
             k => {
-                let Some((_, op)) = prefix_binding_power(k) else {
+                let Some((bp, op)) = prefix_binding_power(k) else {
                     self.push_error(span, "unexpected token");
                     return None;
                 };
-                let rhs = self.parse_expr(60)?;
+                let rhs = self.parse_expr(bp)?;
                 Some(Expr::Unary {
                     op,
                     expr: Box::new(rhs),

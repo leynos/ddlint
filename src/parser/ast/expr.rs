@@ -27,31 +27,42 @@ pub enum UnaryOp {
 /// Binary operators in expressions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
+    /// Addition operator.
     Add,
+    /// Subtraction operator.
     Sub,
+    /// Multiplication operator.
     Mul,
+    /// Division operator.
     Div,
+    /// Modulo operator.
     Mod,
+    /// Equality operator.
     Eq,
+    /// Inequality operator.
     Neq,
+    /// Logical AND operator.
     And,
+    /// Logical OR operator.
     Or,
 }
 
 /// Parsed expression tree.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
+    /// Literal value expression.
     Literal(Literal),
+    /// Variable reference expression.
     Variable(String),
-    Unary {
-        op: UnaryOp,
-        expr: Box<Expr>,
-    },
+    /// Unary operation expression.
+    Unary { op: UnaryOp, expr: Box<Expr> },
+    /// Binary operation expression.
     Binary {
         op: BinaryOp,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    /// Grouped expression (parenthesised).
     Group(Box<Expr>),
 }
 
