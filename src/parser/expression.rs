@@ -40,22 +40,44 @@ use crate::{Span, SyntaxKind, tokenize};
 #[must_use = "discarding the Result will ignore parse errors"]
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let tokens = tokenize(src);
-    let mut parser = Pratt::new(&tokens, src);
+    let iter = tokens
+        .iter()
+        .filter(|(k, _)| !matches!(k, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .cloned();
+    let mut parser = Pratt::new(iter, src);
     let expr = parser.parse_expr(0);
+    if expr.is_some()
+        && parser.peek().is_some()
+        && let Some((_, sp)) = parser.next()
+    {
+        parser.push_error(sp, "unexpected token");
+    }
     match expr {
         Some(expr) if parser.errors.is_empty() => Ok(expr),
-        _ => Err(parser.errors),
+        _ => {
+            if parser.errors.is_empty() {
+                parser.push_error(src.len()..src.len(), "invalid expression");
+            }
+            Err(parser.errors)
+        }
     }
 }
 
-struct Pratt<'a> {
-    tokens: &'a [(SyntaxKind, Span)],
+use std::iter::Peekable;
+
+struct Pratt<'a, I>
+where
+    I: Iterator<Item = (SyntaxKind, Span)>,
+{
+    tokens: Peekable<I>,
     src: &'a str,
-    pos: usize,
     errors: Vec<Simple<SyntaxKind>>,
 }
 
-impl<'a> Pratt<'a> {
+impl<'a, I> Pratt<'a, I>
+where
+    I: Iterator<Item = (SyntaxKind, Span)>,
+{
     /// Construct a new Pratt parser over a pre-tokenised input.
     ///
     /// The parser keeps a reference to the token slice and original source so
@@ -67,13 +89,17 @@ impl<'a> Pratt<'a> {
     ///   lexer.
     /// - `src`: The original source text used when slicing spans.
     #[must_use]
-    fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
+    fn new(tokens: I, src: &'a str) -> Self {
+        let tokens = tokens.peekable();
         Self {
             tokens,
             src,
-            pos: 0,
             errors: Vec::new(),
         }
+    }
+
+    fn push_error(&mut self, span: Span, msg: impl Into<String>) {
+        self.errors.push(Simple::custom(span, msg.into()));
     }
 
     /// Consume the next non-trivia token from the stream.
@@ -85,18 +111,7 @@ impl<'a> Pratt<'a> {
     /// `Some((kind, span))` if a token was found, or `None` when the end of the
     /// stream is reached.
     fn next(&mut self) -> Option<(SyntaxKind, Span)> {
-        while let Some((kind, _)) = self.tokens.get(self.pos) {
-            if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
-                self.pos += 1;
-            } else {
-                break;
-            }
-        }
-        let tok = self.tokens.get(self.pos).cloned();
-        if tok.is_some() {
-            self.pos += 1;
-        }
-        tok
+        self.tokens.next()
     }
 
     /// Look ahead to the next non-trivia token without consuming it.
@@ -104,16 +119,8 @@ impl<'a> Pratt<'a> {
     /// # Returns
     /// The [`SyntaxKind`] of the next token or `None` if the stream is
     /// exhausted.
-    fn peek(&self) -> Option<SyntaxKind> {
-        let mut idx = self.pos;
-        while let Some((kind, _)) = self.tokens.get(idx) {
-            if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
-                idx += 1;
-            } else {
-                return Some(*kind);
-            }
-        }
-        None
+    fn peek(&mut self) -> Option<SyntaxKind> {
+        self.tokens.peek().map(|(k, _)| *k)
     }
 
     /// Parse an expression with the given minimum binding power.
@@ -129,13 +136,18 @@ impl<'a> Pratt<'a> {
     /// # Returns
     /// The parsed [`Expr`] or `None` if a fatal error was encountered.
     fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        let (lhs_kind, lhs_span) = self.next()?;
-        let mut lhs = match lhs_kind {
-            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.slice(lhs_span)))),
-            SyntaxKind::T_STRING => Some(Expr::Literal(Literal::String(self.slice(lhs_span)))),
+        let lhs = self.parse_prefix()?;
+        self.parse_infix(lhs, min_bp)
+    }
+
+    fn parse_prefix(&mut self) -> Option<Expr> {
+        let (kind, span) = self.next()?;
+        match kind {
+            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.slice(span)))),
+            SyntaxKind::T_STRING => Some(Expr::Literal(Literal::String(self.slice(span)))),
             SyntaxKind::K_TRUE => Some(Expr::Literal(Literal::Bool(true))),
             SyntaxKind::K_FALSE => Some(Expr::Literal(Literal::Bool(false))),
-            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(lhs_span))),
+            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(span))),
             SyntaxKind::T_LPAREN => {
                 let expr = self.parse_expr(0);
                 if !self.expect(SyntaxKind::T_RPAREN) {
@@ -144,20 +156,20 @@ impl<'a> Pratt<'a> {
                 expr.map(|e| Expr::Group(Box::new(e)))
             }
             k => {
-                if let Some((_, op)) = prefix_binding_power(k) {
-                    let rhs = self.parse_expr(60)?;
-                    Some(Expr::Unary {
-                        op,
-                        expr: Box::new(rhs),
-                    })
-                } else {
-                    self.errors
-                        .push(Simple::custom(lhs_span.clone(), "unexpected token"));
-                    None
-                }
+                let Some((_, op)) = prefix_binding_power(k) else {
+                    self.push_error(span, "unexpected token");
+                    return None;
+                };
+                let rhs = self.parse_expr(60)?;
+                Some(Expr::Unary {
+                    op,
+                    expr: Box::new(rhs),
+                })
             }
-        }?;
+        }
+    }
 
+    fn parse_infix(&mut self, mut lhs: Expr, min_bp: u8) -> Option<Expr> {
         while let Some(op_kind) = self.peek() {
             let Some((l_bp, r_bp, op)) = infix_binding_power(op_kind) else {
                 break;
@@ -194,11 +206,10 @@ impl<'a> Pratt<'a> {
         } else {
             let span = self
                 .tokens
-                .get(self.pos)
+                .peek()
                 .map(|t| t.1.clone())
                 .unwrap_or(self.src.len()..self.src.len());
-            self.errors
-                .push(Simple::custom(span, format!("expected {kind:?}")));
+            self.push_error(span, format!("expected {kind:?}"));
             false
         }
     }

@@ -345,3 +345,7 @@ Pratt parser that walks the token stream directly. Binding powers match the
 operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
+
+Operator precedence is centralised in `src/parser/ast/precedence.rs`. Both the
+Pratt parser and any future grammar extensions reference this table, ensuring
+consistent binding power definitions across the codebase.

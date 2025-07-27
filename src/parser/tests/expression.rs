@@ -17,3 +17,15 @@ fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
 }
+
+#[rstest]
+#[case("1 +", 1)]
+#[case("(1 + 2", 1)]
+#[case("1 ? 2", 1)]
+#[case("", 1)]
+fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
+    match parse_expression(src) {
+        Ok(_) => panic!("expected parse error"),
+        Err(errs) => assert!(errs.len() >= min_errs),
+    }
+}
