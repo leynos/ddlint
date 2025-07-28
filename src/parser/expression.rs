@@ -49,15 +49,13 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     if let (Some(_), Some(sp)) = (&expr, parser.check_unexpected_token()) {
         parser.push_error(sp, "unexpected token");
     }
-    match expr {
-        Some(expr) if parser.errors.is_empty() => Ok(expr),
-        _ => {
-            if parser.errors.is_empty() {
-                parser.push_error(src.len()..src.len(), "invalid expression");
-            }
-            Err(parser.errors)
+    if parser.errors.is_empty() {
+        if let Some(expr) = expr {
+            return Ok(expr);
         }
+        parser.push_error(src.len()..src.len(), "invalid expression");
     }
+    Err(parser.errors)
 }
 
 use std::iter::Peekable;

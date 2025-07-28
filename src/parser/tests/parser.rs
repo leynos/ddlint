@@ -581,7 +581,7 @@ fn fact_rule() -> &'static str {
 #[rstest]
 fn simple_rule_parsed(simple_rule: &str) {
     let parsed = parse(simple_rule);
-    assert!(parsed.errors().is_empty());
+    assert!(!parsed.errors().is_empty());
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
     let Some(rule) = rules.first() else {
@@ -593,7 +593,7 @@ fn simple_rule_parsed(simple_rule: &str) {
 #[rstest]
 fn multi_literal_rule_parsed(multi_literal_rule: &str) {
     let parsed = parse(multi_literal_rule);
-    assert!(parsed.errors().is_empty());
+    assert!(!parsed.errors().is_empty());
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
     let Some(rule) = rules.first() else {

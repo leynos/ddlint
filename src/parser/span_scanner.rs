@@ -576,8 +576,10 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     let end = parse_and_handle_rule(st, span);
 
     if let Some(span) = extract_expression_span(st, start_idx, end) {
-        if let Some(text) = st.stream.src().get(span.clone()) {
-            let _ = parse_expression(text); // errors ignored until parser complete
+        if let Some(text) = st.stream.src().get(span.clone())
+            && let Err(errs) = parse_expression(text)
+        {
+            st.extra.extend(errs);
         }
         exprs.push(span);
     }
