@@ -7,7 +7,7 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::expression::parse_expression;
+use crate::parser::expression_span::{rule_body_span, validate_expression};
 use crate::{Span, SyntaxKind};
 
 use super::{
@@ -541,30 +541,6 @@ fn parse_and_handle_rule(st: &mut State<'_>, span: Span) -> usize {
     }
 }
 
-/// Extract the body expression span from the parsed rule tokens.
-fn extract_expression_span(st: &State<'_>, start_idx: usize, end: usize) -> Option<Span> {
-    let tokens = st.stream.tokens();
-    let mut expr_start = None;
-    let mut expr_end = None;
-    let mut idx = start_idx;
-    while let Some(tok) = tokens.get(idx) {
-        if tok.1.start >= end {
-            break;
-        }
-        if tok.0 == SyntaxKind::T_IMPLIES {
-            expr_start = tokens.get(idx + 1).map(|t| t.1.start);
-        } else if tok.0 == SyntaxKind::T_DOT {
-            expr_end = Some(tok.1.start);
-            break;
-        }
-        idx += 1;
-    }
-    match (expr_start, expr_end) {
-        (Some(s), Some(e)) if s < e => Some(s..e),
-        _ => None,
-    }
-}
-
 /// Orchestrate rule parsing and expression collection when at line start.
 fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
     if !is_at_line_start(st, span.clone()) {
@@ -575,10 +551,8 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     let start_idx = st.stream.cursor();
     let end = parse_and_handle_rule(st, span);
 
-    if let Some(span) = extract_expression_span(st, start_idx, end) {
-        if let Some(text) = st.stream.src().get(span.clone())
-            && let Err(errs) = parse_expression(text)
-        {
+    if let Some(span) = rule_body_span(st.stream.tokens(), start_idx, end) {
+        if let Err(errs) = validate_expression(st.stream.src(), span.clone()) {
             st.extra.extend(errs);
         }
         exprs.push(span);

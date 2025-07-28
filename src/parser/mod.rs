@@ -20,6 +20,7 @@ use span_scanner::parse_tokens;
 mod cst_builder;
 use cst_builder::build_green_tree;
 pub mod expression;
+mod expression_span;
 pub use cst_builder::{Parsed, ParsedSpans};
 
 /// Parse the provided source string.
