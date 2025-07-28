@@ -95,6 +95,11 @@ where
         }
     }
 
+    /// Record a parsing error at the given span.
+    ///
+    /// The error message is wrapped into a [`Simple`] so that callers can
+    /// aggregate detailed diagnostics. Errors do not abort parsing; instead the
+    /// parser attempts to recover and continue.
     fn push_error(&mut self, span: Span, msg: impl Into<String>) {
         self.errors.push(Simple::custom(span, msg.into()));
     }
@@ -153,6 +158,11 @@ where
         self.parse_infix(lhs, min_bp)
     }
 
+    /// Parse the next prefix expression from the token stream.
+    ///
+    /// This handles literals, variable references, grouped sub-expressions and
+    /// unary operators defined in the precedence table. Errors are recorded
+    /// when tokens do not match any prefix production.
     fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.next()?;
         match kind {
@@ -182,6 +192,12 @@ where
         }
     }
 
+    /// Parse a chain of infix operations with respect to `min_bp`.
+    ///
+    /// The function repeatedly folds operators whose left binding power is at
+    /// least `min_bp`, descending recursively with the corresponding right
+    /// binding power. It returns the fully constructed expression once no
+    /// further operators can be consumed.
     fn parse_infix(&mut self, mut lhs: Expr, min_bp: u8) -> Option<Expr> {
         while let Some(op_kind) = self.peek() {
             let Some((l_bp, r_bp, op)) = infix_binding_power(op_kind) else {

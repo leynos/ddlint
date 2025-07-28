@@ -124,7 +124,7 @@ control flow. This phase aims to build a complete grammar.
 
   - [ ] Refactor the current `rule.rs` and `span_scanner.rs` to use the new
     expression and control-flow parsers, replacing the simple `atom` parser.
-    This will allow for detailed analysis of rule bodies.
+    This allows for detailed analysis of rule bodies.
 
   - [ ] Add support for parsing aggregations and `FlatMap` constructs within
     rules.
@@ -239,7 +239,7 @@ from the design document can be implemented.
   - [ ] `no-magic-numbers`:
 
     - Logic: Identify numeric literals (`T_NUMBER`) that appear in rule bodies
-      outside of a `const` definition. Allow a configurable list of exceptions
+      outside a `const` definition. Allow a configurable list of exceptions
       (e.g., 0, 1).
 
 ______________________________________________________________________
