@@ -19,6 +19,7 @@ mod span_scanner;
 use span_scanner::parse_tokens;
 mod cst_builder;
 use cst_builder::build_green_tree;
+pub mod expression;
 pub use cst_builder::{Parsed, ParsedSpans};
 
 /// Parse the provided source string.
@@ -51,6 +52,8 @@ pub mod ast;
 
 #[cfg(test)]
 mod tests {
+    mod expression;
+    mod expression_integration;
     mod parser;
     use super::token_stream::TokenStream;
     use crate::{SyntaxKind, tokenize};

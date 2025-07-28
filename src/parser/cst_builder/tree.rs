@@ -8,7 +8,7 @@ use crate::{DdlogLanguage, Span, SyntaxKind};
 use super::spans::ParsedSpans;
 
 /// Number of cursor categories managed during CST construction.
-const SPAN_CURSOR_COUNT: usize = 7;
+const SPAN_CURSOR_COUNT: usize = 8;
 
 struct SpanCursor<'a> {
     iter: std::iter::Peekable<std::slice::Iter<'a, Span>>,
@@ -58,6 +58,7 @@ impl<'a> SpanCursors<'a> {
                 SpanCursor::new(spans.functions(), SyntaxKind::N_FUNCTION),
                 SpanCursor::new(spans.transformers(), SyntaxKind::N_TRANSFORMER),
                 SpanCursor::new(spans.rules(), SyntaxKind::N_RULE),
+                SpanCursor::new(spans.expressions(), SyntaxKind::N_EXPR_NODE),
             ],
         }
     }

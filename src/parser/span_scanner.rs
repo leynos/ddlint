@@ -7,6 +7,7 @@
 
 use chumsky::prelude::*;
 
+use crate::parser::expression::parse_expression;
 use crate::{Span, SyntaxKind};
 
 use super::{
@@ -26,7 +27,7 @@ pub(super) fn parse_tokens(
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
     let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
-    let (rule_spans, rule_errors) = collect_rule_spans(tokens, src);
+    let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src);
 
     let mut all_errors = errors;
     all_errors.extend(relation_errors);
@@ -44,6 +45,7 @@ pub(super) fn parse_tokens(
             .functions(function_spans)
             .transformers(transformer_spans)
             .rules(rule_spans)
+            .expressions(expr_spans)
             .build(),
         all_errors,
     )
@@ -481,87 +483,134 @@ fn collect_transformer_spans(
     collect_extern_declarations(tokens, src, SyntaxKind::K_TRANSFORMER, transformer_decl)
 }
 
+type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
+
+fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+    let ws = inline_ws().repeated();
+
+    let atom_p = atom();
+
+    let literal = atom_p.clone();
+
+    let body = literal
+        .clone()
+        .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
+        .allow_trailing()
+        .at_least(1);
+
+    atom_p
+        .then(
+            just(SyntaxKind::T_IMPLIES)
+                .padded_by(ws.clone())
+                .ignore_then(body)
+                .or_not(),
+        )
+        .padded_by(ws.clone())
+        .then_ignore(just(SyntaxKind::T_DOT))
+        .padded_by(ws)
+        .map_with_span(|_, sp: Span| sp)
+}
+
+/// Return `true` if `span` begins a new line in the source.
+fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
+    if st.stream.cursor() == 0 {
+        return true;
+    }
+    let prev_end = st
+        .stream
+        .tokens()
+        .get(st.stream.cursor() - 1)
+        .map_or(0, |t| t.1.end);
+    st.stream
+        .src()
+        .get(prev_end..span.start)
+        .is_some_and(|text| text.contains('\n'))
+}
+
+/// Parse a rule starting at `span` and return the end position.
+fn parse_and_handle_rule(st: &mut State<'_>, span: Span) -> usize {
+    let parser = rule_decl();
+    let (res, err) = st.parse_span(parser, span.start);
+    if let Some(sp) = res {
+        let end = sp.end;
+        st.spans.push(sp);
+        end
+    } else {
+        st.extra.extend(err);
+        st.stream.line_end(st.stream.cursor())
+    }
+}
+
+/// Extract the body expression span from the parsed rule tokens.
+fn extract_expression_span(st: &State<'_>, start_idx: usize, end: usize) -> Option<Span> {
+    let tokens = st.stream.tokens();
+    let mut expr_start = None;
+    let mut expr_end = None;
+    let mut idx = start_idx;
+    while let Some(tok) = tokens.get(idx) {
+        if tok.1.start >= end {
+            break;
+        }
+        if tok.0 == SyntaxKind::T_IMPLIES {
+            expr_start = tokens.get(idx + 1).map(|t| t.1.start);
+        } else if tok.0 == SyntaxKind::T_DOT {
+            expr_end = Some(tok.1.start);
+            break;
+        }
+        idx += 1;
+    }
+    match (expr_start, expr_end) {
+        (Some(s), Some(e)) if s < e => Some(s..e),
+        _ => None,
+    }
+}
+
+/// Orchestrate rule parsing and expression collection when at line start.
+fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
+    if !is_at_line_start(st, span.clone()) {
+        st.stream.advance();
+        return;
+    }
+
+    let start_idx = st.stream.cursor();
+    let end = parse_and_handle_rule(st, span);
+
+    if let Some(span) = extract_expression_span(st, start_idx, end) {
+        if let Some(text) = st.stream.src().get(span.clone())
+            && let Err(errs) = parse_expression(text)
+        {
+            st.extra.extend(errs);
+        }
+        exprs.push(span);
+    }
+
+    st.stream.skip_until(end);
+}
+
+fn handle_ident(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
+    parse_rule_at_line_start(st, span, exprs);
+}
+
+fn handle_implies(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
+    parse_rule_at_line_start(st, span, exprs);
+}
+
 fn collect_rule_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
-    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
-
-    fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-        let ws = inline_ws().repeated();
-
-        let atom_p = atom();
-
-        let literal = atom_p.clone();
-
-        let body = literal
-            .clone()
-            .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
-            .allow_trailing()
-            .at_least(1);
-
-        atom_p
-            .then(
-                just(SyntaxKind::T_IMPLIES)
-                    .padded_by(ws.clone())
-                    .ignore_then(body)
-                    .or_not(),
-            )
-            .padded_by(ws.clone())
-            .then_ignore(just(SyntaxKind::T_DOT))
-            .padded_by(ws)
-            .map_with_span(|_, sp: Span| sp)
-    }
-
-    fn parse_rule_at_line_start(st: &mut State<'_>, span: Span) {
-        let prev_end = if st.stream.cursor() == 0 {
-            0
-        } else {
-            st.stream
-                .tokens()
-                .get(st.stream.cursor() - 1)
-                .map_or(0, |t| t.1.end)
-        };
-        let is_new_line = if st.stream.cursor() == 0 {
-            true
-        } else {
-            st.stream
-                .src()
-                .get(prev_end..span.start)
-                .is_some_and(|text| text.contains('\n'))
-        };
-        if !is_new_line {
-            st.stream.advance();
-            return;
-        }
-
-        let parser = rule_decl();
-        let (res, err) = st.parse_span(parser, span.start);
-        if let Some(sp) = res {
-            let end = sp.end;
-            st.spans.push(sp);
-            st.stream.skip_until(end);
-        } else {
-            st.extra.extend(err);
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-        }
-    }
-
-    fn handle_ident(st: &mut State<'_>, span: Span) {
-        parse_rule_at_line_start(st, span);
-    }
-
-    fn handle_implies(st: &mut State<'_>, span: Span) {
-        parse_rule_at_line_start(st, span);
-    }
-
+) -> (Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st = State::new(tokens, src, Vec::new());
+    let mut expr_spans = Vec::new();
 
-    token_dispatch!(st, {
-        SyntaxKind::T_IDENT => handle_ident,
-        SyntaxKind::T_IMPLIES => handle_implies,
-    });
+    while let Some(&(kind, ref span_ref)) = st.stream.peek() {
+        let span = span_ref.clone();
+        match kind {
+            SyntaxKind::T_IDENT => handle_ident(&mut st, span, &mut expr_spans),
+            SyntaxKind::T_IMPLIES => handle_implies(&mut st, span, &mut expr_spans),
+            _ => st.stream.advance(),
+        }
+    }
 
-    st.into_parts()
+    let (spans, errors) = st.into_parts();
+    (spans, expr_spans, errors)
 }
