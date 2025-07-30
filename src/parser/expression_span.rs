@@ -52,6 +52,6 @@ pub(crate) fn rule_body_span(
 /// Any syntax errors reported by the parser are returned for the caller to
 /// aggregate. A successful parse yields `()`.
 pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Vec<Simple<SyntaxKind>>> {
-    src.get(span.clone())
+    src.get(span)
         .map_or_else(|| Ok(()), |text| parse_expression(text).map(|_| ()))
 }
