@@ -55,6 +55,7 @@ pub mod ast;
 mod tests {
     mod expression;
     mod expression_integration;
+    mod expression_span;
     mod parser;
     use super::token_stream::TokenStream;
     use crate::{SyntaxKind, tokenize};

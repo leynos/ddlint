@@ -552,8 +552,16 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     let end = parse_and_handle_rule(st, span);
 
     if let Some(span) = rule_body_span(st.stream.tokens(), start_idx, end) {
-        if let Err(errs) = validate_expression(st.stream.src(), span.clone()) {
-            st.extra.extend(errs);
+        if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
+            match err {
+                crate::parser::expression_span::ExpressionError::Parse(errs) => {
+                    st.extra.extend(errs);
+                }
+                crate::parser::expression_span::ExpressionError::OutOfBounds { span: sp } => {
+                    st.extra
+                        .push(Simple::custom(sp, "expression span out of bounds"));
+                }
+            }
         }
         exprs.push(span);
     }
