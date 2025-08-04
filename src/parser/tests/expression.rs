@@ -1,20 +1,9 @@
 //! Tests for the Pratt expression parser.
 
-use crate::parser::ast::{BinaryOp, Expr, Literal, UnaryOp};
+use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
+use crate::test_util::{lit_bool, lit_num, lit_str};
 use rstest::rstest;
-
-fn lit_num(n: &str) -> Expr {
-    Expr::Literal(Literal::Number(n.into()))
-}
-
-fn lit_str(s: &str) -> Expr {
-    Expr::Literal(Literal::String(s.into()))
-}
-
-fn lit_bool(b: bool) -> Expr {
-    Expr::Literal(Literal::Bool(b))
-}
 
 #[rstest]
 #[case("1 + 2 * 3", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(lit_num("1")), rhs: Box::new(Expr::Binary { op: BinaryOp::Mul, lhs: Box::new(lit_num("2")), rhs: Box::new(lit_num("3")) }) })]

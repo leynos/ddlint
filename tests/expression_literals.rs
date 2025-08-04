@@ -3,21 +3,10 @@
 //! These tests exercise the public `parse_expression` API by feeding it
 //! standalone literals and verifying the resulting AST nodes.
 
-use ddlint::parser::ast::{Expr, Literal};
+use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
+use ddlint::test_util::{lit_bool, lit_num, lit_str};
 use rstest::rstest;
-
-fn lit_num(n: &str) -> Expr {
-    Expr::Literal(Literal::Number(n.into()))
-}
-
-fn lit_str(s: &str) -> Expr {
-    Expr::Literal(Literal::String(s.into()))
-}
-
-fn lit_bool(b: bool) -> Expr {
-    Expr::Literal(Literal::Bool(b))
-}
 
 #[rstest]
 #[case("42", lit_num("42"))]

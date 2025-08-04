@@ -7,6 +7,7 @@
 pub mod language;
 pub mod parser;
 pub mod syntax_utils;
+pub mod test_util;
 pub mod tokenizer;
 
 pub use language::{DdlogLanguage, SyntaxKind};
