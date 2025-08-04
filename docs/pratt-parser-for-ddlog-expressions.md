@@ -346,6 +346,11 @@ operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
+Literal tokens are normalised in a dedicated helper so prefix parsing remains
+readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE` and `K_FALSE` to
+`ast::Literal` variants, ensuring numbers, strings and booleans appear directly
+in the resulting AST.
+
 Operator precedence is centralised in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.

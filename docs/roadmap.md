@@ -99,7 +99,7 @@ control flow. This phase aims to build a complete grammar.
     handle operator precedence and associativity, as outlined in the Haskell
     parser analysis (`docs/haskell-parser-analysis.md`).
 
-  - [ ] Add support for parsing all literal types within expressions (e.g.,
+  - [x] Add support for parsing all literal types within expressions (e.g.,
     strings, numbers, booleans). The `SyntaxKind` enum already defines these.
 
   - [ ] Implement parsers for variable references (`e_var`) and function calls
