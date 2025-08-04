@@ -1,12 +1,9 @@
 //! Tests for the Pratt expression parser.
 
-use crate::parser::ast::{BinaryOp, Expr, Literal, UnaryOp};
+use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
+use crate::test_util::{lit_bool, lit_num, lit_str};
 use rstest::rstest;
-
-fn lit_num(n: &str) -> Expr {
-    Expr::Literal(Literal::Number(n.into()))
-}
 
 #[rstest]
 #[case("1 + 2 * 3", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(lit_num("1")), rhs: Box::new(Expr::Binary { op: BinaryOp::Mul, lhs: Box::new(lit_num("2")), rhs: Box::new(lit_num("3")) }) })]
@@ -14,6 +11,16 @@ fn lit_num(n: &str) -> Expr {
 #[case("-5 + 2", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Unary { op: UnaryOp::Neg, expr: Box::new(lit_num("5")) }), rhs: Box::new(lit_num("2")) })]
 #[case("-(5 + 2)", Expr::Unary { op: UnaryOp::Neg, expr: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(lit_num("5")), rhs: Box::new(lit_num("2")) }))) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
+    let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case("\"hi\"", lit_str("hi"))]
+#[case("true", lit_bool(true))]
+#[case("false", lit_bool(false))]
+#[case("42", lit_num("42"))]
+fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
 }

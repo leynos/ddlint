@@ -163,12 +163,11 @@ where
     /// when tokens do not match any prefix production.
     fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.next()?;
+        if let Some(lit) = self.parse_literal(kind, &span) {
+            return Some(lit);
+        }
         match kind {
-            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.slice(span)))),
-            SyntaxKind::T_STRING => Some(Expr::Literal(Literal::String(self.slice(span)))),
-            SyntaxKind::K_TRUE => Some(Expr::Literal(Literal::Bool(true))),
-            SyntaxKind::K_FALSE => Some(Expr::Literal(Literal::Bool(false))),
-            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(span))),
+            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(&span))),
             SyntaxKind::T_LPAREN => {
                 let expr = self.parse_expr(0);
                 if !self.expect(SyntaxKind::T_RPAREN) {
@@ -187,6 +186,33 @@ where
                     expr: Box::new(rhs),
                 })
             }
+        }
+    }
+
+    /// Parse a literal token into an [`Expr`].
+    ///
+    /// # Parameters
+    /// - `kind`: The token kind to interpret as a literal.
+    /// - `span`: The source span to slice when constructing literal values.
+    ///
+    /// # Returns
+    /// `Some(expr)` if the token represents a recognised literal, or `None`
+    /// otherwise.
+    fn parse_literal(&self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
+        match kind {
+            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.slice(span)))),
+            SyntaxKind::T_STRING => {
+                let raw = self.slice(span);
+                let value = raw
+                    .strip_prefix('"')
+                    .and_then(|s| s.strip_suffix('"'))
+                    .unwrap_or(&raw)
+                    .to_string();
+                Some(Expr::Literal(Literal::String(value)))
+            }
+            SyntaxKind::K_TRUE => Some(Expr::Literal(Literal::Bool(true))),
+            SyntaxKind::K_FALSE => Some(Expr::Literal(Literal::Bool(false))),
+            _ => None,
         }
     }
 
@@ -248,7 +274,7 @@ where
     ///
     /// # Returns
     /// The corresponding substring, or an empty string if the span is invalid.
-    fn slice(&self, span: Span) -> String {
-        self.src.get(span).unwrap_or("").to_string()
+    fn slice(&self, span: &Span) -> String {
+        self.src.get(span.clone()).unwrap_or("").to_string()
     }
 }
