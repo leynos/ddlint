@@ -54,6 +54,13 @@ pub enum Expr {
     Literal(Literal),
     /// Variable reference expression.
     Variable(String),
+    /// Function call expression.
+    Call {
+        /// Name of the function being invoked.
+        name: String,
+        /// Argument expressions supplied to the function.
+        args: Vec<Expr>,
+    },
     /// Unary operation expression.
     Unary { op: UnaryOp, expr: Box<Expr> },
     /// Binary operation expression.
@@ -75,6 +82,14 @@ impl Expr {
             Self::Literal(Literal::String(s)) => format!("\"{s}\""),
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
+            Self::Call { name, args } => {
+                if args.is_empty() {
+                    format!("({name})")
+                } else {
+                    let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
+                    format!("({} {})", name, args.join(" "))
+                }
+            }
             Self::Unary { op, expr } => {
                 let op_str = match op {
                     UnaryOp::Not => "not",

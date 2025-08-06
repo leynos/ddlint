@@ -102,7 +102,7 @@ control flow. This phase aims to build a complete grammar.
   - [x] Add support for parsing all literal types within expressions (e.g.,
     strings, numbers, booleans). The `SyntaxKind` enum already defines these.
 
-  - [ ] Implement parsers for variable references (`e_var`) and function calls
+  - [x] Implement parsers for variable references (`e_var`) and function calls
     (`e_func`).
 
   - [ ] Implement parsers for compound data structures: struct literals

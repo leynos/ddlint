@@ -167,7 +167,19 @@ where
             return Some(lit);
         }
         match kind {
-            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(&span))),
+            SyntaxKind::T_IDENT => {
+                let name = self.slice(&span);
+                if matches!(self.peek(), Some(SyntaxKind::T_LPAREN)) {
+                    self.next(); // consume '('
+                    let args = self.parse_args()?;
+                    if !self.expect(SyntaxKind::T_RPAREN) {
+                        return None;
+                    }
+                    Some(Expr::Call { name, args })
+                } else {
+                    Some(Expr::Variable(name))
+                }
+            }
             SyntaxKind::T_LPAREN => {
                 let expr = self.parse_expr(0);
                 if !self.expect(SyntaxKind::T_RPAREN) {
@@ -187,6 +199,26 @@ where
                 })
             }
         }
+    }
+
+    /// Parse a comma-separated list of function arguments.
+    ///
+    /// Returns `None` if any argument fails to parse.
+    fn parse_args(&mut self) -> Option<Vec<Expr>> {
+        let mut args = Vec::new();
+        if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+            return Some(args);
+        }
+        loop {
+            let expr = self.parse_expr(0)?;
+            args.push(expr);
+            if matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                self.next();
+                continue;
+            }
+            break;
+        }
+        Some(args)
     }
 
     /// Parse a literal token into an [`Expr`].
