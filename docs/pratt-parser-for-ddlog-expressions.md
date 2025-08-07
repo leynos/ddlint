@@ -357,7 +357,7 @@ consistent binding power definitions across the codebase.
 
 Variable references are parsed by interpreting identifier tokens as
 `Expr::Variable`. When an identifier is immediately followed by a left
-parenthesis the parser treats it as a function call, parsing a comma-separated
+parenthesis, the parser treats it as a function call, parsing a comma-separated
 list of argument expressions and producing `Expr::Call { name, args }`. This
 postfix form naturally binds tighter than infix operators, so no additional
 precedence entries are required.

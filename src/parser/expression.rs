@@ -152,7 +152,24 @@ where
     /// # Returns
     /// The parsed [`Expr`] or `None` if a fatal error was encountered.
     fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        let lhs = self.parse_prefix()?;
+        let mut lhs = self.parse_prefix()?;
+
+        // peel off any call suffixes before handling infix operators
+        while matches!(self.peek(), Some(SyntaxKind::T_LPAREN)) {
+            let Some((_, lparen_span)) = self.next() else {
+                break;
+            };
+            let args = self.parse_args()?;
+            if !self.expect(SyntaxKind::T_RPAREN) {
+                return None;
+            }
+            let Expr::Variable(name) = lhs else {
+                self.push_error(lparen_span, "call target must be identifier");
+                return None;
+            };
+            lhs = Expr::Call { name, args };
+        }
+
         self.parse_infix(lhs, min_bp)
     }
 
@@ -167,19 +184,7 @@ where
             return Some(lit);
         }
         match kind {
-            SyntaxKind::T_IDENT => {
-                let name = self.slice(&span);
-                if matches!(self.peek(), Some(SyntaxKind::T_LPAREN)) {
-                    self.next(); // consume '('
-                    let args = self.parse_args()?;
-                    if !self.expect(SyntaxKind::T_RPAREN) {
-                        return None;
-                    }
-                    Some(Expr::Call { name, args })
-                } else {
-                    Some(Expr::Variable(name))
-                }
-            }
+            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(&span))),
             SyntaxKind::T_LPAREN => {
                 let expr = self.parse_expr(0);
                 if !self.expect(SyntaxKind::T_RPAREN) {
