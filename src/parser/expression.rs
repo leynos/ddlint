@@ -157,7 +157,7 @@ where
         // peel off any call suffixes before handling infix operators
         while matches!(self.peek(), Some(SyntaxKind::T_LPAREN)) {
             let Some((_, lparen_span)) = self.next() else {
-                break;
+                unreachable!("T_LPAREN was peeked");
             };
             let args = self.parse_args()?;
             if !self.expect(SyntaxKind::T_RPAREN) {
@@ -217,11 +217,10 @@ where
         loop {
             let expr = self.parse_expr(0)?;
             args.push(expr);
-            if matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
-                self.next();
-                continue;
+            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                break;
             }
-            break;
+            self.next();
         }
         Some(args)
     }
