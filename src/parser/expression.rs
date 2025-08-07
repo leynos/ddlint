@@ -152,7 +152,24 @@ where
     /// # Returns
     /// The parsed [`Expr`] or `None` if a fatal error was encountered.
     fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        let lhs = self.parse_prefix()?;
+        let mut lhs = self.parse_prefix()?;
+
+        // peel off any call suffixes before handling infix operators
+        while matches!(self.peek(), Some(SyntaxKind::T_LPAREN)) {
+            let Some((_, lparen_span)) = self.next() else {
+                unreachable!("T_LPAREN was peeked");
+            };
+            let args = self.parse_args()?;
+            if !self.expect(SyntaxKind::T_RPAREN) {
+                return None;
+            }
+            let Expr::Variable(name) = lhs else {
+                self.push_error(lparen_span, "call target must be identifier");
+                return None;
+            };
+            lhs = Expr::Call { name, args };
+        }
+
         self.parse_infix(lhs, min_bp)
     }
 
@@ -187,6 +204,25 @@ where
                 })
             }
         }
+    }
+
+    /// Parse a comma-separated list of function arguments.
+    ///
+    /// Returns `None` if any argument fails to parse.
+    fn parse_args(&mut self) -> Option<Vec<Expr>> {
+        let mut args = Vec::new();
+        if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+            return Some(args);
+        }
+        loop {
+            let expr = self.parse_expr(0)?;
+            args.push(expr);
+            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                break;
+            }
+            self.next();
+        }
+        Some(args)
     }
 
     /// Parse a literal token into an [`Expr`].

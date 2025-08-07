@@ -1,4 +1,4 @@
-//! Helpers for constructing literal expressions in tests.
+//! Helpers for constructing expression nodes in tests.
 //!
 //! These functions reduce boilerplate when asserting over [`Expr`] nodes.
 
@@ -20,4 +20,19 @@ pub fn lit_str(s: &str) -> Expr {
 #[must_use]
 pub fn lit_bool(b: bool) -> Expr {
     Expr::Literal(Literal::Bool(b))
+}
+
+/// Construct a variable [`Expr::Variable`].
+#[must_use]
+pub fn var(name: &str) -> Expr {
+    Expr::Variable(name.into())
+}
+
+/// Construct a function call [`Expr::Call`].
+#[must_use]
+pub fn call(name: &str, args: Vec<Expr>) -> Expr {
+    Expr::Call {
+        name: name.into(),
+        args,
+    }
 }
