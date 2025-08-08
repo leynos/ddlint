@@ -175,7 +175,7 @@ where
         }
     }
 
-    for unclosed in stack.unclosed() {
+    for (unclosed, span) in stack.unclosed() {
         let ch = match unclosed {
             Delim::Paren => ')',
             Delim::Angle => '>',
@@ -184,7 +184,7 @@ where
         };
         errors.push(ParseError::UnclosedDelimiter {
             delimiter: ch,
-            span: TextRange::empty(0.into()),
+            span,
         });
     }
 
@@ -197,11 +197,21 @@ fn handle_opening_delimiter(
     ctx: &mut TokenParseContext<'_>,
 ) -> bool {
     match token.kind() {
-        SyntaxKind::T_LPAREN => open_delimiter(&mut *ctx.stack, Delim::Paren, 1),
-        SyntaxKind::T_LT => open_delimiter(&mut *ctx.stack, Delim::Angle, 1),
-        SyntaxKind::T_SHL => open_delimiter(&mut *ctx.stack, Delim::Angle, 2),
-        SyntaxKind::T_LBRACKET => open_delimiter(&mut *ctx.stack, Delim::Bracket, 1),
-        SyntaxKind::T_LBRACE => open_delimiter(&mut *ctx.stack, Delim::Brace, 1),
+        SyntaxKind::T_LPAREN => {
+            open_delimiter(&mut *ctx.stack, Delim::Paren, token.text_range(), 1);
+        }
+        SyntaxKind::T_LT => {
+            open_delimiter(&mut *ctx.stack, Delim::Angle, token.text_range(), 1);
+        }
+        SyntaxKind::T_SHL => {
+            open_delimiter(&mut *ctx.stack, Delim::Angle, token.text_range(), 2);
+        }
+        SyntaxKind::T_LBRACKET => {
+            open_delimiter(&mut *ctx.stack, Delim::Bracket, token.text_range(), 1);
+        }
+        SyntaxKind::T_LBRACE => {
+            open_delimiter(&mut *ctx.stack, Delim::Brace, token.text_range(), 1);
+        }
         _ => return false,
     }
     push(token, ctx);
@@ -564,8 +574,27 @@ mod tests {
     fn unclosed_angle_error() {
         let src = "function bad(x: Vec<u32) {}";
         let elements = tokens_for(src);
-        let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+        let (_pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
         assert_eq!(errors.len(), 1);
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let angle_span = elements
+            .iter()
+            .find_map(|e| match e {
+                SyntaxElement::Token(t) if t.text() == "<" => Some(t.text_range()),
+                _ => None,
+            })
+            .expect("angle token missing");
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let err = errors.first().expect("no error");
+        match err {
+            ParseError::UnclosedDelimiter {
+                delimiter: '>',
+                span,
+            } => {
+                assert_eq!(*span, angle_span);
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 
     #[test]
