@@ -1,10 +1,11 @@
-# Function Parsing Design
+# Function parsing design
 
 This document outlines the strategy for parsing `function` definitions and
 declarations within `ddlint`. The parser relies on small helpers to interpret
 parameter lists and optional return types. These helpers now live in the
 `parser::ast::parse_utils` module so that both `Function` and `Relation` AST
-nodes can reuse them.
+nodes can reuse them. The following diagram shows how helper functions compose
+during parsing.
 
 ```mermaid
 classDiagram
@@ -27,7 +28,7 @@ classDiagram
 
 `parse_name_type_pairs` walks the token stream produced for the parameter list.
 Whenever it encounters a colon, it delegates to `parse_type_expr`.\
-That helper is now fully recursive: on seeing `(`, `[`, `{` or `<`, it calls\
+That helper is now fully recursive: on seeing `(`, `[`, `{`, or `<`, it calls\
 itself to read the matching closing delimiter. This means nested types such as\
 `Vec<Map<string, Vec<u8>>>` are parsed without any external delimiter stack.\
 Parameters end when a comma or the closing `)` of the list is reached.
@@ -45,8 +46,8 @@ the expected and actual tokens. Unclosed delimiters produce
 of the opening delimiter.
 
 A hierarchy of error types supports rich diagnostics when delimiters do not
-match or names and types are missing. The following diagram shows the
-relationships between these types.
+match or names and types are missing. The following diagram shows delimiter
+tracking and error types during parsing.
 
 ```mermaid
 classDiagram
@@ -57,11 +58,15 @@ classDiagram
         Bracket
         Brace
     }
+    class OpenDelimiter {
+        kind: Delim
+        span: TextRange
+    }
     class DelimStack {
-        +open()
-        +close()
-        +is_empty()
-        -Vec<Delim>
+        +open(delim: Delim, span: TextRange, count: usize)
+        +close(delim: Delim, count: usize)
+        +is_empty(): bool
+        -Vec<OpenDelimiter>
     }
     class DelimiterError {
         +expected: Delim
@@ -71,13 +76,14 @@ classDiagram
     class ParseError {
         <<enum>>
         Delimiter(DelimiterError)
-        UnclosedDelimiter
+        UnclosedDelimiter { delimiter: char, span: TextRange }
         MissingColon
         MissingName
         MissingType
     }
 
-    DelimStack *-- Delim
+    DelimStack *-- OpenDelimiter
+    OpenDelimiter *-- Delim
     DelimiterError *-- Delim
     ParseError *-- DelimiterError
 ```
