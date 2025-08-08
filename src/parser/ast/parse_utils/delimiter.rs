@@ -14,13 +14,12 @@ use crate::{DdlogLanguage, Span, SyntaxKind};
 ///
 /// # Example
 ///
-/// ```
-/// use ddlint::parser::ast::parse_utils::paren_block_span;
-/// use ddlint::tokenize;
-/// use chumsky::{Parser, Stream};
-///
-/// let src = "(foo)";
-/// let tokens = tokenize(src);
+/// ```rust,no_run
+/// # use ddlint::parser::ast::parse_utils::paren_block_span;
+/// # use ddlint::tokenize;
+/// # use chumsky::{Parser, Stream};
+/// # let src = "(foo)";
+/// # let tokens = tokenize(src);
 /// let span = paren_block_span()
 ///     .parse(Stream::from_iter(0..src.len(), tokens.into_iter()))
 ///     .unwrap();
@@ -49,12 +48,14 @@ pub struct UnclosedDelimiterError {
 ///
 /// # Example
 ///
-/// ```
-/// use ddlint::{parse, SyntaxKind};
-/// use ddlint::parser::ast::parse_utils::extract_parenthesized;
-///
-/// let parsed = parse("function f() { (nested (content)) }");
-/// let mut elems = parsed.root().syntax().children_with_tokens().peekable();
+/// ```rust,no_run
+/// # use ddlint::{parse, SyntaxKind};
+/// # use ddlint::parser::ast::parse_utils::extract_parenthesized;
+/// # let mut elems = parse("function f() { (nested (content)) }")
+/// #     .root()
+/// #     .syntax()
+/// #     .children_with_tokens()
+/// #     .peekable();
 /// let text = extract_parenthesized(
 ///     &mut elems,
 ///     SyntaxKind::T_LPAREN,

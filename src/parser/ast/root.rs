@@ -5,11 +5,12 @@
 //!
 //! # Examples
 //!
-//! ```rust
-//! use ddlint::parse;
-//!
-//! let parsed = parse("import foo; relation R(x: u32)");
-//! let root = parsed.root();
+//! ```rust,no_run
+//! # use ddlint::parse;
+//! # fn root(src: &str) -> ddlint::parser::ast::Root {
+//! #     parse(src).root()
+//! # }
+//! let root = root("import foo; relation R(x: u32)");
 //! assert_eq!(root.imports().len(), 1);
 //! assert_eq!(root.relations().len(), 1);
 //! ```

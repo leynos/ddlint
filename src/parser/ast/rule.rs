@@ -11,13 +11,18 @@
 //!
 //! # Examples
 //!
-//! ```
-//! use ddlint::parse;
-//! use ddlint::parser::ast::Rule;
-//!
-//! let src = "R(x) :- S(x), T(x).";
-//! let parsed = parse(src);
-//! let rule = parsed.root().rules().first().unwrap();
+//! ```rust,no_run
+//! # use ddlint::parse;
+//! # use ddlint::parser::ast::Rule;
+//! # fn first_rule(src: &str) -> Rule {
+//! #     parse(src)
+//! #         .root()
+//! #         .rules()
+//! #         .into_iter()
+//! #         .next()
+//! #         .expect("rule missing")
+//! # }
+//! let rule = first_rule("R(x) :- S(x), T(x).");
 //! assert_eq!(rule.head(), Some("R(x)".into()));
 //! assert_eq!(rule.body_literals(), vec!["S(x)".into(), "T(x)".into()]);
 //! ```

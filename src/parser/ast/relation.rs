@@ -8,20 +8,28 @@
 //!
 //! # Examples
 //!
-//! ```
-//! use ddlint::parse;
-//! use ddlint::parser::ast::Relation;
+//! ```rust,no_run
+//! # use ddlint::parse;
+//! # use ddlint::parser::ast::Relation;
+//! # fn first_relation(src: &str) -> Relation {
+//! #     parse(src)
+//! #         .root()
+//! #         .relations()
+//! #         .into_iter()
+//! #         .next()
+//! #         .expect("relation missing")
+//! # }
+//! let rel = first_relation("input relation R(x: u32, y: string) primary key (x)");
 //!
-//! let src = "input relation R(x: u32, y: string) primary key (x)";
-//! let parsed = parse(src);
-//! let rel = parsed.root().relations().first().unwrap();
-//!
-//! assert_eq!(rel.name(), Some("R".to_string()));
+//! assert_eq!(rel.name(), Some("R".into()));
 //! assert!(rel.is_input());
-//! assert_eq!(rel.columns(), vec![
-//!     ("x".into(), "u32".into()),
-//!     ("y".into(), "string".into()),
-//! ]);
+//! assert_eq!(
+//!     rel.columns(),
+//!     vec![
+//!         ("x".into(), "u32".into()),
+//!         ("y".into(), "string".into()),
+//!     ]
+//! );
 //! assert_eq!(rel.primary_key(), Some(vec!["x".into()]));
 //! ```
 

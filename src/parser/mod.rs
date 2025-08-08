@@ -32,8 +32,7 @@ pub use cst_builder::{Parsed, ParsedSpans};
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::parse;
-///
+/// # use ddlint::parse;
 /// let parsed = parse("input relation R(x: u32);");
 /// assert!(parsed.errors().is_empty());
 /// assert_eq!(parsed.root().relations().len(), 1);
