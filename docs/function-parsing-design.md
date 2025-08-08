@@ -41,7 +41,8 @@ Empty names and types are reported with `ParseError::MissingName` and
 `ParseError::MissingType`. `parse_type_expr` skips whitespace and comment nodes
 and reports mismatched delimiters with a `ParseError::Delimiter` that records
 the expected and actual tokens. Unclosed delimiters produce
-`ParseError::UnclosedDelimiter` once parsing stops.
+`ParseError::UnclosedDelimiter` once parsing stops, highlighting the position
+of the opening delimiter.
 
 A hierarchy of error types supports rich diagnostics when delimiters do not
 match or names and types are missing. The following diagram shows the

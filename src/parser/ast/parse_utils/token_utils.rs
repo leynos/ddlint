@@ -5,6 +5,7 @@
 //! reported via `ParseError`.
 
 use crate::DdlogLanguage;
+use rowan::TextRange;
 
 use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
 
@@ -23,22 +24,24 @@ impl<'a> TokenParseContext<'a> {
 
 /// Records an opening delimiter on the provided stack.
 ///
-/// Pushes `count` instances of `delim` so that matching closing
-/// tokens can be validated later. The token text itself is not
-/// appended to the buffer by this helper.
+/// Pushes `count` instances of `delim`, each tagged with the provided `span`, so
+/// that matching closing tokens can be validated later. The token text itself is
+/// not appended to the buffer by this helper.
 ///
 /// # Examples
 ///
 /// ```
 /// use ddlint::parser::ast::parse_utils::errors::{Delim, DelimStack};
 /// use ddlint::parser::ast::parse_utils::token_utils::open_delimiter;
+/// use rowan::{TextRange, TextSize};
 ///
 /// let mut stack = DelimStack::default();
-/// open_delimiter(&mut stack, Delim::Paren, 2);
+/// let span = TextRange::empty(TextSize::from(0));
+/// open_delimiter(&mut stack, Delim::Paren, span, 2);
 /// assert_eq!(stack.unclosed().count(), 2);
 /// ```
-pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) {
-    stack.open(delim, count);
+pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, span: TextRange, count: usize) {
+    stack.open(delim, span, count);
 }
 
 /// Attempts to close `count` delimiters of the specified type.
@@ -52,9 +55,11 @@ pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, count: usize)
 /// ```
 /// use ddlint::parser::ast::parse_utils::errors::{Delim, DelimStack};
 /// use ddlint::parser::ast::parse_utils::token_utils::{open_delimiter, close_delimiter};
+/// use rowan::{TextRange, TextSize};
 ///
 /// let mut stack = DelimStack::default();
-/// open_delimiter(&mut stack, Delim::Angle, 1);
+/// let span = TextRange::empty(TextSize::from(0));
+/// open_delimiter(&mut stack, Delim::Angle, span, 1);
 /// assert_eq!(close_delimiter(&mut stack, Delim::Angle, 1), 1);
 /// ```
 pub(crate) fn close_delimiter(stack: &mut DelimStack, delim: Delim, count: usize) -> usize {
