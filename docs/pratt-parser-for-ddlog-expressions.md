@@ -8,7 +8,7 @@ the current parsing pipeline.
 
 ______________________________________________________________________
 
-## **1. Core Concepts and Integration Strategy**
+## 1. Core concepts and integration strategy
 
 The parser will be implemented as a `chumsky` parser combinator that consumes
 the token stream produced by the existing `logos`-based tokenizer. It will
@@ -33,7 +33,7 @@ The key steps are:
 
 ______________________________________________________________________
 
-## **2. Expression AST Definition**
+## 2. Expression AST definition
 
 First, we need a data structure to represent the parsed expressions. This will
 live alongside the other AST definitions in `src/parser/ast/`.
@@ -94,7 +94,7 @@ pub enum BinaryOp {
 
 ______________________________________________________________________
 
-## **3. Pratt Parser Implementation with `chumsky`**
+## 3. Pratt parser implementation with `chumsky`
 
 The heart of the implementation uses `chumsky::pratt`. This requires defining
 the atoms (the simplest parts of an expression, like literals or variables) and
@@ -267,7 +267,7 @@ parser analysis (`docs/haskell-parser-analysis.md`).
 
 ______________________________________________________________________
 
-## **4. CST Integration**
+## 4. CST integration
 
 The `chumsky` expression parser produces a structured `ast::Expr`. However, the
 core of `ddlint` is the `rowan` CST, which must remain lossless. The expression
@@ -335,7 +335,7 @@ project roadmap.
 
 ______________________________________________________________________
 
-## 5. Implementation Notes
+## 5. Implementation notes
 
 The first working parser lives in `src/parser/expression.rs` and is invoked by
 the unit tests. Although the design assumed the availability of

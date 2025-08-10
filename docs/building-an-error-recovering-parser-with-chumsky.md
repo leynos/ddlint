@@ -4,7 +4,7 @@
 > most successful book ever to come out of the great publishing corporations of
 > Ursa Minor.*
 
-## 1 Know Where Your Towel (and Grammar) Is
+## 1 Know where your towel (and grammar) is
 
 Before you even think about summoning Chumsky’s combinators, write your grammar
 down — preferably in EBNF, biro on a napkin, or etched into the side of a Vogon
@@ -18,7 +18,7 @@ later and you’ll be spelunking inside recursive lambdas at 2 a.m.
   statements, tea before Arthur, etc.”)
 - Examples of legal *and* illegal programmes.
 
-### 2 Feed It Tokens, Not Breadcrumbs
+### 2 Feed it tokens, not breadcrumbs
 
 Chumsky is much happier when it’s nibbling on a neat `Vec<TokenSpan>` than on
 raw characters. Use the `logos` crate (or your favourite lexical life-form) to
@@ -29,7 +29,7 @@ slice the source first. You’ll get:
 - The freedom to invent helpful token kinds (e.g. “Indent”, “Dedent”, “Unified
   Field Theory Symbol”)
 
-### 3 Dealing with Left-Recursion, Infinite Loops and Other Things That Ate Betelgeuse
+### 3 Dealing with left-recursion, infinite loops and other things that ate Betelgeuse
 
 Left-recursive rules make top-down parsers seize up like Marvin’s shoulder
 joints. Rewrite them with repetition combinators (`many()`, `foldl()`), or use
@@ -41,7 +41,7 @@ round corners.
 Ambiguity? Break overlapping prefixes into separate branches *first* and only
 then hand the survivors to `choice()`.
 
-### 4 Panic? No. Recovery? Yes
+### 4 Panic? no. Recovery? yes
 
 Error recovery is what turns your parser from Vogon poetry into a Babel fish.
 
@@ -55,7 +55,7 @@ Error recovery is what turns your parser from Vogon poetry into a Babel fish.
 In practice you’ll compose the built-ins (`NestedDelimiters`, `SkipUntil`) with
 a couple of bespoke closures and quickly look like you own the place.
 
-### 5 Getting Codex to Behave (or: How to Babysit a 2-Metre Tall Neural Net)
+### 5 Getting Codex to behave (or: how to babysit a 2-metre tall neural net)
 
 Codex is a marvellous companion so long as you:
 
@@ -67,7 +67,7 @@ Codex is a marvellous companion so long as you:
   assert equality. Failures mean Codex (or you) has mis-remembered the
   Restaurant at the End of the File.
 
-### 6 Linting: The First Sip of the Differential Logic Engine
+### 6 Linting: the first sip of the differential logic engine
 
 Treat the linter as the pre-solver phase of your differential logic engine:
 
@@ -79,7 +79,7 @@ Treat the linter as the pre-solver phase of your differential logic engine:
 Because differential logic supports incremental re-checking, you can deliver
 IDE feedback faster than a hyperspace bypass.
 
-### 7 Keeping the Whole Show Flying
+### 7 Keeping the whole show flying
 
 - **CI Pipeline:** `cargo insta test`, `cargo clippy --deny warnings`, and your
   round-trip parser tests on every push.

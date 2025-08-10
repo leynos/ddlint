@@ -124,11 +124,11 @@ preserving associativity.
 
 To catch regressions, add micro-benchmarks that parse representative DDlog
 files and measure throughput and memory allocations. Compare these results with
-the existing Haskell parser using similar inputs. Benchmarks should run in CI
+the existing Haskell parser using similar inputs. Benchmarks should run in CI,
 so performance changes are visible in pull requests.
 
 ## 10. Modelling Trivia Tokens
 
 Whitespace and comments are tokenised as `T_WHITESPACE` and `T_COMMENT`
-variants so the CST preserves them. AST wrappers skip over these trivia nodes,
+variants, so the CST preserves them. AST wrappers skip over these trivia nodes,
 ensuring that semantic analyses operate on significant tokens only.

@@ -6,7 +6,7 @@ built-in testing framework provides a solid foundation, managing test
 dependencies and creating parameterized tests can become verbose. The `rstest`
 crate (`github.com/la10736/rstest`) emerges as a powerful solution, offering a
 sophisticated fixture-based and parameterized testing framework that
-significantly simplifies these tasks through the use of procedural macros.1
+significantly simplifies these tasks through the use of procedural macros.[^1]
 This document provides a comprehensive exploration of `rstest`, from
 fundamental concepts to advanced techniques, enabling Rust developers to write
 cleaner, more expressive, and robust tests.
@@ -26,7 +26,7 @@ considerable boilerplate code and repetition, making tests harder to read and
 maintain.
 
 Fixtures address this by encapsulating these dependencies and their setup
-logic.1 For instance, if multiple tests require a logged-in user object or a
+logic.[^2] For instance, if multiple tests require a logged-in user object or a
 pre-populated database, instead of creating these in every test, a fixture can
 provide them. This approach allows developers to focus on the specific logic
 being tested rather than the auxiliary utilities.
@@ -1327,3 +1327,6 @@ provided by `rstest`:
 By mastering `rstest`, Rust developers can significantly elevate the quality
 and efficiency of their testing practices, leading to more reliable and
 maintainable software.
+
+[^1]: [`rstest` crate](https://github.com/la10736/rstest)
+[^2]: [Test fixture](https://en.wikipedia.org/wiki/Test_fixture)
