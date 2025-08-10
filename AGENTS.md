@@ -1,4 +1,4 @@
-# Assistant Instructions
+# Assistant instructions
 
 ## Code Style and Structure
 

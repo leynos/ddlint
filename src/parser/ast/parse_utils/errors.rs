@@ -20,6 +20,11 @@ pub(crate) enum Delim {
     Brace,
 }
 
+/// Records an opened delimiter and the span of its token.
+///
+/// Persisting the span lets the parser report `UnclosedDelimiter`
+/// errors at the original opening site rather than at the end of
+/// input, which makes diagnostics actionable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct OpenDelimiter {
     kind: Delim,
@@ -124,7 +129,13 @@ impl DelimStack {
         closed
     }
 
-    /// Returns an iterator over any remaining unclosed delimiters.
+    /// Returns an iterator over remaining unclosed delimiters, draining the stack.
+    ///
+    /// # Side effects
+    ///
+    /// The internal stack is cleared, preventing the same delimiters from
+    /// being reported twice. Subsequent calls yield no items unless new
+    /// delimiters are opened.
     pub(crate) fn unclosed(&mut self) -> impl Iterator<Item = (Delim, TextRange)> + '_ {
         self.0.drain(..).map(|d| (d.kind, d.span))
     }

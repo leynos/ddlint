@@ -1,4 +1,4 @@
-# Differential Datalog Linter (ddlint)
+# Differential datalog linter (ddlint)
 
 This is a generated project using [Copier](https://copier.readthedocs.io/).
 
@@ -16,5 +16,5 @@ fn main() {
 }
 ```
 
-Control the verbosity with the `RUST_LOG` environment variable. For example, you
-can set `RUST_LOG=warn` to display warnings.
+Control the verbosity with the `RUST_LOG` environment variable. For example,
+you can set `RUST_LOG=warn` to display warnings.

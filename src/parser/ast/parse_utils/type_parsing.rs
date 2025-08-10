@@ -451,13 +451,10 @@ mod tests {
         functions.first().map_or_else(
             || {
                 let relations = parsed.root().relations();
-                #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-                relations
-                    .first()
-                    .expect("relation missing in test")
-                    .syntax()
-                    .children_with_tokens()
-                    .collect()
+                relations.first().map_or_else(
+                    || parsed.root().syntax().children_with_tokens().collect(),
+                    |rel| rel.syntax().children_with_tokens().collect(),
+                )
             },
             |func| func.syntax().children_with_tokens().collect(),
         )
@@ -594,6 +591,50 @@ mod tests {
                 assert_eq!(*span, angle_span);
             }
             other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[rstest]
+    #[case("function bad(x: (u32 {}", ')', "(")]
+    #[case("function bad(x: [u32 {}", ']', "[")]
+    #[case("function bad(x: {u32 {}", '}', "{")]
+    fn unclosed_other_delims(
+        #[case] src: &str,
+        #[case] expected_delim: char,
+        #[case] opener: &str,
+    ) {
+        let elements = tokens_for(src);
+        let (_pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
+        let spans: Vec<TextRange> = elements
+            .iter()
+            .filter_map(|e| match e {
+                SyntaxElement::Token(t) if t.text() == opener => Some(t.text_range()),
+                SyntaxElement::Token(_) | SyntaxElement::Node(_) => None,
+            })
+            .collect();
+        let open_span = if opener == "(" {
+            #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+            spans.last().copied().expect("opening token missing")
+        } else {
+            #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+            spans.first().copied().expect("opening token missing")
+        };
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let err = errors
+            .iter()
+            .find(|e| {
+                matches!(
+                    e,
+                    ParseError::UnclosedDelimiter { delimiter, .. }
+                        if *delimiter == expected_delim
+                )
+            })
+            .expect("expected unclosed delimiter missing");
+        match err {
+            ParseError::UnclosedDelimiter { span, .. } => {
+                assert_eq!(*span, open_span);
+            }
+            _ => unreachable!(),
         }
     }
 

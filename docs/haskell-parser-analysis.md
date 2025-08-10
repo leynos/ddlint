@@ -1,4 +1,4 @@
-# Haskell Parser Analysis
+# Haskell parser analysis
 
 This document summarizes the design of the parser implemented in
 `Language.DifferentialDatalog.Parse`. The original code is written in Haskell
@@ -109,8 +109,8 @@ exprGrammar    = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 isolated expression. Both delegate to individual rules described below.
 
 `parseDatalogString` wraps the Parsec `parse` function in `ExceptT`. This
-ensures the caller receives a clear error message when parsing fails and that IO
-exceptions remain separated from parse errors.
+ensures the caller receives a clear error message when parsing fails and that
+IO exceptions remain separated from parse errors.
 
 ## Grammar Productions and AST Mapping
 
@@ -145,10 +145,10 @@ spec = do
 
 ### Declarations
 
-`decl` recognizes one of several declaration forms, each constructing a specific
-AST node (`Import`, `TypeDef`, `Relation`, `Index`, `Function`, `Transformer`,
-`Rule` or `Apply`). Attributes encountered before the item are attached to the
-resulting node when applicable.
+`decl` recognizes one of several declaration forms, each constructing a
+specific AST node (`Import`, `TypeDef`, `Relation`, `Index`, `Function`,
+`Transformer`, `Rule` or `Apply`). Attributes encountered before the item are
+attached to the resulting node when applicable.
 
 ```haskell
 decl =  do attrs <- attributes
@@ -250,9 +250,9 @@ term' = withPos $
 
 【F:Parse.hs†L566-L611】
 
-The table `etable` defines operator precedence, including assignment and logical
-connectives. Complex features such as group-by extraction are handled in helper
-functions like `extractGroupBy`.
+The table `etable` defines operator precedence, including assignment and
+logical connectives. Complex features such as group-by extraction are handled
+in helper functions like `extractGroupBy`.
 
 ### Supporting Utilities
 
@@ -305,9 +305,9 @@ in the Rust implementation.
 When porting to Rust, the constructs above can be expressed with `chumsky`
 combinators and a `rowan` CST. The `expr` grammar maps well to
 `chumsky::recursive`, while the statement parsers become small combinators that
-emit both AST nodes and CST events. Group-by extraction can be implemented using
-a post-processing step mirroring `extractGroupBy`. Patterns for `match` and
-`for` loops translate to nested `chumsky` parsers building structured nodes.
+emit both AST nodes and CST events. Group-by extraction can be implemented
+using a post-processing step mirroring `extractGroupBy`. Patterns for `match`
+and `for` loops translate to nested `chumsky` parsers building structured nodes.
 
 Keep this file in lockstep with `Parse.hs` when changes land so that the Rust
 implementation remains accurate.

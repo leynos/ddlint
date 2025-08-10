@@ -1,4 +1,4 @@
-# Project Roadmap: `ddlint`
+# Project roadmap: `ddlint`
 
 This roadmap breaks down the work into logical phases, from the foundational
 parsing layer to the implementation of the linter engine and user-facing

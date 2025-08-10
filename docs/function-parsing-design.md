@@ -4,8 +4,9 @@ This document outlines the strategy for parsing `function` definitions and
 declarations within `ddlint`. The parser relies on small helpers to interpret
 parameter lists and optional return types. These helpers now live in the
 `parser::ast::parse_utils` module so that both `Function` and `Relation` AST
-nodes can reuse them. The following diagram shows how helper functions compose
-during parsing.
+nodes can reuse them. A span-aware helper, `open_delimiter`, pushes the
+delimiter kind and token span onto `DelimStack`. The following diagram shows
+how helper functions compose during parsing.
 
 ```mermaid
 classDiagram
@@ -18,10 +19,14 @@ classDiagram
     class parse_type_after_colon {
         <<function>>
     }
+    class open_delimiter {
+        <<function>>
+    }
     Function ..> parse_name_type_pairs : uses
     parse_name_type_pairs ..> parse_type_expr : uses
     Function ..> parse_type_after_colon : uses
     Relation ..> parse_name_type_pairs : uses
+    parse_type_expr ..> open_delimiter : uses
 ```
 
 ## Parameter list parsing
@@ -87,3 +92,7 @@ classDiagram
     DelimiterError *-- Delim
     ParseError *-- DelimiterError
 ```
+
+The `count` argument on `open` and `close` represents how many delimiter units
+are encoded in a single token. When the lexer emits combined delimiters such as
+`<<`, it calls `open` with `count` set to two so nesting remains accurate.

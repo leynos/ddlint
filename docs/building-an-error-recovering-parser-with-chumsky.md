@@ -1,4 +1,4 @@
-# DON’T PANIC: A Hitchhiker’s Guide to Building an Error-Recovering Parser with **Chumsky**
+# DON’T panic: a hitchhiker’s guide to building an error-recovering parser with **Chumsky**
 
 > *A completely remarkable book. Probably the most remarkable, certainly the
 > most successful book ever to come out of the great publishing corporations of
@@ -8,8 +8,8 @@
 
 Before you even think about summoning Chumsky’s combinators, write your grammar
 down — preferably in EBNF, biro on a napkin, or etched into the side of a Vogon
-constructor fleet. Chumsky mirrors whatever you hand it; change the napkin later
-and you’ll be spelunking inside recursive lambdas at 2 a.m.
+constructor fleet. Chumsky mirrors whatever you hand it; change the napkin
+later and you’ll be spelunking inside recursive lambdas at 2 a.m.
 
 ### Checklist
 
@@ -32,8 +32,8 @@ slice the source first. You’ll get:
 ### 3 Dealing with Left-Recursion, Infinite Loops and Other Things That Ate Betelgeuse
 
 Left-recursive rules make top-down parsers seize up like Marvin’s shoulder
-joints. Rewrite them with repetition combinators (`many()`, `foldl()`), or use a
-precedence-climbing expression parser.
+joints. Rewrite them with repetition combinators (`many()`, `foldl()`), or use
+a precedence-climbing expression parser.
 
 Forward references? Wrap them in `recursive(|expr| { … })` so Chumsky can see
 round corners.
@@ -76,8 +76,8 @@ Treat the linter as the pre-solver phase of your differential logic engine:
 3. Emit a constraint set and immediately feed it to the solver; conflicts become
    diagnostics.
 
-Because differential logic supports incremental re-checking, you can deliver IDE
-feedback faster than a hyperspace bypass.
+Because differential logic supports incremental re-checking, you can deliver
+IDE feedback faster than a hyperspace bypass.
 
 ### 7 Keeping the Whole Show Flying
 
@@ -92,9 +92,9 @@ ______________________________________________________________________
 
 ### TL;DR (because life is short and full of Thursdays)
 
-Write the grammar first, lex separately, tame left-recursion, anchor recovery on
-hard delimiters, keep Codex on a tight leash, and let your linter double as the
-logic engine’s warm-up act.
+Write the grammar first, lex separately, tame left-recursion, anchor recovery
+on hard delimiters, keep Codex on a tight leash, and let your linter double as
+the logic engine’s warm-up act.
 
 And always keep your towel handy. It’s the most massively useful thing an
 interstellar parser hacker can carry.
