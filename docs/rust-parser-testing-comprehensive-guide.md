@@ -664,10 +664,8 @@ losing formatting, such as IDEs, formatters, and refactoring engines.29
 The core design of `rowan` separates the tree's structure (the "green tree,"
 which is immutable and untyped) from the view or cursor into it (the "red
 tree," which provides a typed, parent-aware API).21 The library itself provides
-the generic tree data structures (
-
-`GreenNode`, `SyntaxNode`); the user's parser is responsible for correctly
-constructing the tree using a `GreenNodeBuilder`.31
+the generic tree data structures (`GreenNode`, `SyntaxNode`); the user's parser
+is responsible for correctly constructing the tree using a `GreenNodeBuilder`.31
 
 This architecture has a profound implication for testing: a bug found in a
 `rowan` CST is almost never a bug in the `rowan` library itself. Rather, it is
@@ -858,7 +856,7 @@ The core workflow of property-based testing is:
    failing input to find a minimal counterexample.
 
 For parsers, this approach is invaluable for uncovering obscure bugs that would
-be nearly impossible to find with hand-written tests.
+be nearly impossible to find with handwritten tests.
 
 ### 5.2 Fuzzing the Lexer and Parser for Panics
 

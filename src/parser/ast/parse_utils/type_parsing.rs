@@ -196,26 +196,21 @@ fn handle_opening_delimiter(
     token: &rowan::SyntaxToken<DdlogLanguage>,
     ctx: &mut TokenParseContext<'_>,
 ) -> bool {
-    match token.kind() {
-        SyntaxKind::T_LPAREN => {
-            open_delimiter(&mut *ctx.stack, Delim::Paren, token.text_range(), 1);
-        }
-        SyntaxKind::T_LT => {
-            open_delimiter(&mut *ctx.stack, Delim::Angle, token.text_range(), 1);
-        }
-        SyntaxKind::T_SHL => {
-            open_delimiter(&mut *ctx.stack, Delim::Angle, token.text_range(), 2);
-        }
-        SyntaxKind::T_LBRACKET => {
-            open_delimiter(&mut *ctx.stack, Delim::Bracket, token.text_range(), 1);
-        }
-        SyntaxKind::T_LBRACE => {
-            open_delimiter(&mut *ctx.stack, Delim::Brace, token.text_range(), 1);
-        }
-        _ => return false,
+    let mapping = match token.kind() {
+        SyntaxKind::T_LPAREN => Some((Delim::Paren, 1)),
+        SyntaxKind::T_LT => Some((Delim::Angle, 1)),
+        SyntaxKind::T_SHL => Some((Delim::Angle, 2)),
+        SyntaxKind::T_LBRACKET => Some((Delim::Bracket, 1)),
+        SyntaxKind::T_LBRACE => Some((Delim::Brace, 1)),
+        _ => None,
+    };
+    if let Some((delim, count)) = mapping {
+        open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
+        push(token, ctx);
+        true
+    } else {
+        false
     }
-    push(token, ctx);
-    true
 }
 
 /// Handles a closing delimiter token.
