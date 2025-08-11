@@ -545,7 +545,7 @@ and method structure.
   - Break large methods into smaller, cohesive units
   - Benefit: shorter methods and clearer intent
   - Solves spaghetti code and Bumpy Road issues
-- **Structural Pattern Matching**
+- **Structural pattern matching**
   - Replace complex if/else or switch constructs with pattern matching
   - Benefit: simpler conditional logic and data extraction
   - Solves deeply nested conditionals
@@ -558,12 +558,12 @@ and method structure.
   - Benefit: removes large conditional blocks
   - Solves complex switch statements
 
-1\. Structural Pattern Matching
+1. Structural pattern matching
 
 Structural pattern matching, available in languages like Python (since 3.10
 with match-case) and C#, offers a declarative and expressive way to handle
 complex conditional logic, often replacing verbose if-elif-else chains or
-switch statements.31
+switch statements.31.
 
 It works by allowing code to match against the *structure* of data—such as its
 type, shape, or specific values within sequences (lists, tuples) or mappings
@@ -573,7 +573,7 @@ comes from the direct mapping of data shapes to code blocks, making it easier
 to understand the conditions under which a piece of code executes.31 For
 instance, instead of multiple
 
-`isinstance` checks followed by key lookups and value comparisons in a nested
+`isinstance` checks followed by key lookups and value comparisons in a nested.
 `if` structure to parse a JSON object, a single `case` statement with a mapping
 pattern can define the expected structure and extract the necessary values
 concisely.32 This shifts the focus from an imperative sequence of checks to a
@@ -753,7 +753,7 @@ By thoughtfully applying these refactoring strategies, developers can
 significantly reduce cognitive complexity, making codebases more
 understandable, maintainable, and adaptable to future changes.
 
-## VI. Conclusion: Towards a More Maintainable and Understandable Codebase
+## VI. Conclusion: towards a more maintainable and understandable codebase
 
 Managing software complexity, particularly the cognitive load it imposes on
 developers, is not a one-time task but a continuous discipline crucial for the
@@ -763,7 +763,7 @@ different aspects of this challenge, with Cognitive Complexity offering a more
 nuanced view of human understandability. The Bumpy Road antipattern serves as a
 clear indicator of localized, excessive complexity, often stemming from
 violations of the Single Responsibility Principle and a lack of timely
-refactoring.
+refactorings.
 
 The journey towards a more maintainable codebase involves recognizing such
 antipatterns and understanding their connection to fundamental principles like

@@ -33,9 +33,11 @@ classDiagram
 
 `parse_name_type_pairs` walks the token stream produced for the parameter list.
 Whenever it encounters a colon, it delegates to `parse_type_expr`.\
-That helper is now fully recursive: on seeing `(`, `[`, `{`, or `<`, it calls\
-itself to read the matching closing delimiter. This means nested types such as\
-`Vec<Map<string, Vec<u8>>>` are parsed without any external delimiter stack.\
+That helper is now fully recursive: on seeing `(`, `[`, `{`, or `<`, it pushes\
+the opening delimiter (with span) onto `DelimStack`, recurses to parse the\
+inner expression, and then expects the matching closer. Nested types such as\
+`Vec<Map<string, Vec<u8>>>` are handled by this recursion in tandem with the\
+delimiter stack.\
 Parameters end when a comma or the closing `)` of the list is reached.
 
 Missing colons between a parameter name and type trigger
@@ -48,7 +50,10 @@ Empty names and types are reported with `ParseError::MissingName` and
 and reports mismatched delimiters with a `ParseError::Delimiter` that records
 the expected and actual tokens. Unclosed delimiters produce
 `ParseError::UnclosedDelimiter` once parsing stops, highlighting the position
-of the opening delimiter.
+of the opening delimiter. In addition to the stack-driven path, utilities that
+balance delimiters (e.g., `extract_parenthesized` in
+`parse_utils/delimiter.rs`) can also surface unclosed-delimiter errors, which
+likewise report the opening token’s span.
 
 A hierarchy of error types supports rich diagnostics when delimiters do not
 match or names and types are missing. The following diagram shows delimiter
