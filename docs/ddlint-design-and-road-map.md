@@ -1,12 +1,13 @@
-# A Design Document and Implementation Roadmap for the Differential Datalog Linter
+# A design document and implementation roadmap for the Differential Datalog linter
 
 ## Introduction
 
-This document presents the comprehensive architectural design and implementation
-roadmap for a new static analysis tool for the Differential Datalog (DDlog)
-language, hereafter referred to as `ddlint`. The primary mission of this project
-is to enhance developer productivity and code quality within the DDlog ecosystem
-by providing a performant, configurable, and user-friendly linter.
+This document presents the comprehensive architectural design and
+implementation roadmap for a new static analysis tool for the Differential
+Datalog (DDlog) language, hereafter referred to as `ddlint`. The primary
+mission of this project is to enhance developer productivity and code quality
+within the DDlog ecosystem by providing a performant, configurable, and
+user-friendly linter.
 
 The design philosophy is centered on delivering a superior Developer Experience
 (DX), not only for the end-users who will consume the linter's diagnostics but
@@ -18,16 +19,16 @@ goal of creating a tool that is both powerful in its analysis and intuitive in
 its use. This document serves as the definitive technical blueprint for the
 implementation team.
 
-## I. Architectural Blueprint: A CST-First Linter Engine
+## I. Architectural blueprint: a CST-first linter engine
 
-The foundation of any modern static analysis tool is its internal representation
-of source code. The choice of this representation dictates the scope of possible
-features, influences performance, and defines the developer experience for those
-building rules. For `ddlint`, the architecture will be built upon a Concrete
-Syntax Tree (CST), a decision that enables a new class of powerful, user-centric
-features.
+The foundation of any modern static analysis tool is its internal
+representation of source code. The choice of this representation dictates the
+scope of possible features, influences performance, and defines the developer
+experience for those building rules. For `ddlint`, the architecture will be
+built upon a Concrete Syntax Tree (CST), a decision that enables a new class of
+powerful, user-centric features.
 
-### 1.1. The Rationale for a Concrete Syntax Tree (CST) Architecture
+### 1.1. The rationale for a concrete syntax tree (CST) architecture
 
 The core of the linter will be a lossless Concrete Syntax Tree. Unlike a
 traditional Abstract Syntax Tree (AST), which represents the semantic structure
@@ -40,9 +41,9 @@ features expected of a modern linter.
 The primary benefits of this CST-first approach are twofold. First, it enables
 highly accurate and context-rich diagnostics. When an issue is detected, the
 linter has access to the exact byte offsets of the problematic code within the
-original source file. This allows for precise highlighting, annotations, and the
-rendering of source snippets that are faithful to what the user wrote. Second,
-and critically, a CST is essential for reliable automated code fixing
+original source file. This allows for precise highlighting, annotations, and
+the rendering of source snippets that are faithful to what the user wrote.
+Second, and critically, a CST is essential for reliable automated code fixing
 (`autofix`). To rewrite a piece of code—for example, to correct a casing style
 or remove a redundant clause—the tool must understand the source text
 completely, including the whitespace and comments surrounding the code to be
@@ -60,29 +61,31 @@ composed of `GreenNode`s and `GreenToken`s and is cheap to clone and share
 across threads. Layered on top of this is the "Red Tree," a typed, parent-aware
 API that provides ergonomic, safe access to the syntax tree for analysis.3 This
 separation provides the best of both worlds: the performance and memory
-efficiency of a compact, immutable data structure and the safety and convenience
-of a strongly-typed API.
+efficiency of a compact, immutable data structure and the safety and
+convenience of a strongly typed API.
 
-### 1.2. The Linter Core: Adapting the `rslint_core` Model
+### 1.2. The linter core: adapting the `rslint_core` model
 
 Rather than designing a linter engine from first principles, this project will
 adapt the mature and performant model pioneered by `rslint_core`.4 The
 
 `rslint` project demonstrates a highly effective architecture for a CST-based
-linter, featuring parallelized rule execution and a clean separation of concerns
-that makes it both fast and maintainable.6 Adopting this model allows the team
-to leverage proven patterns and focus on implementing DDlog-specific logic.
+linter, featuring parallelised rule execution and a clean separation of
+concerns that makes it both fast and maintainable.6 Adopting this model allows
+the team to leverage proven patterns and focus on implementing DDlog-specific
+logic.
 
 The heart of this adapted engine will be a set of core traits that define the
-structure and behavior of every lint rule:
+structure and behaviour of every lint rule:
 
 - `trait Rule`: This will be the base trait for all rules, containing shared
   metadata. It will expose methods such as `name()`, which returns a unique,
   kebab-case identifier (e.g., "unused-relation"); `group()`, which categorizes
-  the rule (e.g., "correctness", "style"); and `docs()`, which provides detailed
-  documentation for the rule.7 This metadata is not merely informational; it is
-  functional, used by the CLI to generate help messages, by configuration
-  systems to validate rule names, and by documentation generators.
+  the rule (e.g., "correctness", "style"); and `docs()`, which provides
+  detailed documentation for the rule.7 This metadata is not merely
+  informational; it is functional, used by the CLI to generate help messages,
+  by configuration systems to validate rule names, and by documentation
+  generators.
 
 - `trait CstRule`: This is the primary trait for the linter's logic. It is
   designed to operate directly on the `rowan` CST. It will define methods that
@@ -94,36 +97,36 @@ structure and behavior of every lint rule:
 
 - `struct RuleCtx`: To avoid global state and provide rules with the information
   they need, a `RuleCtx` (Rule Context) object will be passed to every rule
-  invocation. This struct will act as a transient container for data relevant to
-  the current linting operation, including a reference to the root of the CST,
-  the full source text of the file, a unique identifier for the file being
+  invocation. This struct will act as a transient container for data relevant
+  to the current linting operation, including a reference to the root of the
+  CST, the full source text of the file, a unique identifier for the file being
   processed, and the user-provided configuration for the specific rule being
   executed.
 
 The linter's engine, or **Rule Runner**, will be a visitor-based traversal
-engine responsible for orchestrating the entire analysis. Its process will be as
-follows:
+engine responsible for orchestrating the entire analysis. Its process will be
+as follows:
 
 1. Upon receiving a `rowan` CST for a file, the runner begins a traversal of the
    tree, visiting every node and token.
 
 2. For each element, it queries a `CstRuleStore`—a central registry of all
-   enabled lint rules—to identify which rules have registered an interest in the
-   current element's `SyntaxKind`.
+   enabled lint rules—to identify which rules have registered an interest in
+   the current element's `SyntaxKind`.
 
 3. For each matching rule, the runner invokes the appropriate method (e.g.,
    `check_node`), passing it the node itself and the `RuleCtx`.
 
 4. To maximize performance, these invocations will be dispatched to a thread
    pool (such as one managed by the `rayon` crate), allowing multiple rules to
-   be checked against multiple nodes concurrently, a pattern proven effective by
-   `rslint`.6
+   be checked against multiple nodes concurrently, a pattern proven effective
+   by `rslint`.6
 
-### 1.3. The CST-Centric Toolchain
+### 1.3. The CST-centric toolchain
 
 The selection of `rowan` and a CST-based architecture is not an isolated
-decision but the cornerstone of a cohesive and deeply interconnected development
-toolchain. This single choice creates a cascade of dependencies and
+decision but the cornerstone of a cohesive and deeply interconnected
+development toolchain. This single choice creates a cascade of dependencies and
 opportunities, shaping the selection of nearly every other major component in
 the system.
 
@@ -132,14 +135,14 @@ goals: to provide developers with rich, actionable diagnostics and powerful,
 automated fixing capabilities. This immediately makes a lossless representation
 of the source code a non-negotiable requirement. A traditional AST, by its
 nature, discards the very information (comments, whitespace, exact formatting)
-needed for these features, rendering it insufficient. This leads directly to the
-necessity of a CST. Within the Rust ecosystem, `rowan` is the industry-standard,
-production-grade solution for this problem.1
+needed for these features, rendering it insufficient. This leads directly to
+the necessity of a CST. Within the Rust ecosystem, `rowan` is the
+industry-standard, production-grade solution for this problem.1
 
-Once `rowan` is chosen, the next logical step is to select a linter engine model
-that is designed to work with it. The `rslint_core` architecture, which is
-explicitly built to run rules over a CST, becomes the ideal candidate, providing
-a proven template for a performant, parallelized engine.4
+Once `rowan` is chosen, the next logical step is to select a linter engine
+model that is designed to work with it. The `rslint_core` architecture, which
+is explicitly built to run rules over a CST, becomes the ideal candidate,
+providing a proven template for a performant, parallelised engine.4
 
 The choice of a CST has further downstream effects, particularly on diagnostics
 and testing. To display the kind of rich, annotated error messages seen in
@@ -154,8 +157,8 @@ powerful synergy:
 Finally, this chain extends to the testing strategy. How can one reliably test
 the complex, multi-line, colored textual output generated by `miette`? Simple
 string comparisons with `assert_eq!` are brittle and difficult to maintain. The
-solution is snapshot testing, and the `insta` crate is the premier tool for this
-in Rust.10
+solution is snapshot testing, and the `insta` crate is the premier tool for
+this in Rust.10
 
 `insta` allows the test suite to capture the exact textual output of a
 diagnostic and save it as a "snapshot." On subsequent test runs, any change to
@@ -164,19 +167,22 @@ regression. This allows developers to review and approve changes to diagnostic
 output with confidence using the `cargo insta review` tool.11
 
 This creates a virtuous cycle: the need for advanced features mandates a CST
-(`rowan`), which enables a specific engine design (`rslint_core`-style) and rich
-diagnostics (`miette`), which in turn requires a specific testing methodology
-(`insta`). This transforms the component list from a simple "shopping list" of
-libraries into a coherent, interdependent architectural strategy where each part
-reinforces the others.
+(`rowan`), which enables a specific engine design (`rslint_core`-style) and
+rich diagnostics (`miette`), which in turn requires a specific testing
+methodology (`insta`). This transforms the component list from a simple
+"shopping list" of libraries into a coherent, interdependent architectural
+strategy where each part reinforces the others.
 
-## II. The Parsing Pipeline: From Source Text to Syntax Tree
+## II. The parsing pipeline: from source text to syntax tree
 
-The first and most critical step in the linting process is the transformation of
-raw DDlog source text into the structured `rowan` CST that the rest of the
+The first and most critical step in the linting process is the transformation
+of raw DDlog source text into the structured `rowan` CST that the rest of the
 system consumes. The quality and resilience of this parsing stage directly
 determine the linter's ability to provide value, especially when analysing
 real‑world code that is often in a syntactically incomplete or incorrect state.
+
+Short description: the following sequence diagram outlines the parsing pipeline
+from source to syntax tree.
 
 ```mermaid
 sequenceDiagram
@@ -204,21 +210,21 @@ abstraction avoids manual index arithmetic and reduces boundary errors.
 
 Following the established `rowan` pattern, the grammar of the DDlog language
 must be encoded into a `SyntaxKind` enum.3 This enum serves as the set of type
-tags for every possible element in the syntax tree. It will include variants for
-all terminals (tokens like identifiers, keywords, and punctuation) and
-non-terminals (nodes representing language constructs like relations, rules, and
-expressions).
+tags for every possible element in the syntax tree. It will include variants
+for all terminals (tokens like identifiers, keywords, and punctuation) and
+non-terminals (nodes representing language constructs like relations, rules,
+and expressions).
 
 A crucial aspect of this enum is its machine representation. It must be defined
-with `#[repr(u16)]` and derive the `FromPrimitive` and `ToPrimitive` traits from
-the `num-derive` crate. This is because `rowan`'s internal `GreenNode`s are
-untyped and use a `rowan::SyntaxKind`, which is a newtype wrapper around a
+with `#[repr(u16)]` and derive the `FromPrimitive` and `ToPrimitive` traits
+from the `num-derive` crate. This is because `rowan`'s internal `GreenNode`s
+are untyped and use a `rowan::SyntaxKind`, which is a newtype wrapper around a
 `u16`, for their type tags. These derivations provide a safe and efficient
-mechanism to convert between our strongly-typed `SyntaxKind` enum and `rowan`'s
+mechanism to convert between our strongly typed `SyntaxKind` enum and `rowan`'s
 generic `u16` representation.3 A special
 
-`N_ERROR` variant will also be included to represent locations in the tree where
-the parser encountered a syntax error but was able to recover.
+`N_ERROR` variant will also be included to represent locations in the tree
+where the parser encountered a syntax error but was able to recover.
 
 An example of this enum's definition would be:
 
@@ -268,7 +274,7 @@ bridge, with its `kind_from_raw` and `kind_to_raw` methods using the
 `FromPrimitive` and `ToPrimitive` implementations to connect our specific DDlog
 grammar to the generic `rowan` machinery.3
 
-### 2.2. Parser Implementation Strategy: Leveraging `chumsky`
+### 2.2. Parser implementation strategy: leveraging `chumsky`
 
 Assuming a pre-existing, lossless, error-recovering DDlog parser is not readily
 available, one will be implemented using the `chumsky` parser-combinator
@@ -308,15 +314,16 @@ is the precise input required by the linter's core engine. This direct-to-CST
 parsing avoids an intermediate allocation and translation step, further
 improving performance.
 
-### 2.3. The Symbiotic Relationship Between Parser and Linter
+### 2.3. The symbiotic relationship between parser and linter
 
 The utility of a linter is directly proportional to the quality of its parser's
 error recovery. This creates a powerful, symbiotic relationship between the
-parsing pipeline and the end-user's experience. A parser that halts on the first
-syntax error relegates the linter to a batch-mode tool, useful only on complete,
-correct programs. In contrast, a parser with robust error recovery transforms
-the linter into an interactive assistant, providing continuous value in the most
-common use case: analyzing code as a developer is actively writing it.
+parsing pipeline and the end-user's experience. A parser that halts on the
+first syntax error relegates the linter to a batch-mode tool, useful only on
+complete, correct programs. In contrast, a parser with robust error recovery
+transforms the linter into an interactive assistant, providing continuous value
+in the most common use case: analyzing code as a developer is actively writing
+it.
 
 Consider the typical workflow of a developer using an IDE with an integrated
 linter. The code is in a constant state of flux and is syntactically invalid
@@ -350,21 +357,21 @@ and simply skipping over the `N_ERROR` nodes.
 This elevates the user experience from frustrating to empowering. The developer
 receives immediate feedback not only on the syntax error they just introduced
 but also on all the correct code in the rest of the file. A typo in one rule no
-longer blinds the linter to a logical error in another. This makes the choice of
-`chumsky` not merely an implementation detail of the parser, but a strategic
+longer blinds the linter to a logical error in another. This makes the choice
+of `chumsky` not merely an implementation detail of the parser, but a strategic
 investment in the core usability and value proposition of the entire linting
 tool. It enables the linter to function as a helpful "co-pilot" during
 development, rather than a rigid "gatekeeper" that only runs after the fact.
 
-## III. The Rule Ecosystem: Definition, Configuration, and Management
+## III. The rule ecosystem: definition, configuration, and management
 
 The true power and utility of a linter are derived from its set of rules. A
 well-designed rule ecosystem is one that is easy for contributors to extend,
-simple for users to configure, and logically organized. This section details the
-anatomy of a lint rule, the tools for its creation, and the initial catalog of
-rules to be implemented.
+simple for users to configure, and logically organized. This section details
+the anatomy of a lint rule, the tools for its creation, and the initial catalog
+of rules to be implemented.
 
-### 3.1. Anatomy of a Lint Rule
+### 3.1. Anatomy of a lint rule
 
 Each lint rule in `ddlint` will be a self-contained unit, implemented as a Rust
 `struct`. This `struct` will be responsible for its own logic and metadata by
@@ -374,23 +381,23 @@ The `Rule` trait serves as the metadata provider. Every rule must implement it
 to provide essential, self-describing information that the linter engine uses
 for organization, configuration, and documentation. The required methods are
 `name()`, `group()`, and `docs()`.7 This ensures that every rule is
-programmatically identifiable and its purpose is discoverable without needing to
-read its source code.
+programmatically identifiable, and its purpose is discoverable without needing
+to read its source code.
 
 The `CstRule` trait contains the analytical logic. Its methods, such as
 `check_node(&self, node: &SyntaxNode, ctx: &RuleCtx)`, will be called by the
-runner during the CST traversal. Inside these methods, the rule will inspect the
-provided `SyntaxNode`, use the `RuleCtx` to access file-level information or
-configuration, and report any discovered issues by creating and returning
-`Diagnostic` objects. This design keeps the logic for each rule encapsulated and
-testable in isolation.
+runner during the CST traversal. Inside these methods, the rule will inspect
+the provided `SyntaxNode`, use the `RuleCtx` to access file-level information
+or configuration, and report any discovered issues by creating and returning
+`Diagnostic` objects. This design keeps the logic for each rule encapsulated
+and testable in isolation.
 
-### 3.2. A Declarative Macro for Rule Creation (`declare_lint!`)
+### 3.2. A declarative macro for rule creation (`declare_lint!`)
 
 To streamline the development of new rules, reduce boilerplate, and improve the
-overall developer experience for linter contributors, the project will implement
-a declarative macro named `declare_lint!`. This approach is heavily inspired by
-the successful use of a similar macro in `rslint_core`.4
+overall developer experience for linter contributors, the project will
+implement a declarative macro named `declare_lint!`. This approach is heavily
+inspired by the successful use of a similar macro in `rslint_core`.4
 
 The `declare_lint!` macro will abstract away the repetitive parts of rule
 definition. A developer will provide the core information: the rule's
@@ -441,7 +448,7 @@ It allows developers to focus on the interesting part—the analysis logic—rat
 than the ceremony of trait implementations. This encourages community
 involvement and accelerates the growth of the linter's rule set.
 
-### 3.3. Initial Lint Rule Catalog
+### 3.3. Initial lint rule catalog
 
 To provide clear scope for the initial implementation phases and to deliver
 immediate value to users, the following catalog of rules is proposed. This list
@@ -463,25 +470,25 @@ This table serves as a concrete work breakdown for the engineering team and
 clearly communicates the linter's initial capabilities and priorities to early
 adopters.
 
-## IV. User Interface and Configuration Layer
+## IV. User interface and configuration layer
 
 The success of a developer tool depends heavily on its user interface. A
-powerful analysis engine is of little use if it is difficult to configure or its
-output is hard to understand. This section defines the command-line interface
-(CLI) and configuration system for `ddlint`, designed to be intuitive for new
-users while remaining powerful for advanced use cases.
+powerful analysis engine is of little use if it is difficult to configure or
+its output is hard to understand. This section defines the command-line
+interface (CLI) and configuration system for `ddlint`, designed to be intuitive
+for new users while remaining powerful for advanced use cases.
 
-### 4.1. CLI Design
+### 4.1. CLI design
 
 The primary user interaction with the linter will be through its command-line
-binary, `ddlint`. The CLI will be built using the `clap` crate, the standard for
-robust argument parsing in the Rust ecosystem.
+binary, `ddlint`. The CLI will be built using the `clap` crate, the standard
+for robust argument parsing in the Rust ecosystem.
 
 The core commands will be:
 
 - `ddlint <FILES...>`: This is the default invocation. It will lint a list of
-  specified files or directories, recursively searching for `.dl` files. It will
-  respect ignore patterns and output diagnostics to standard error.
+  specified files or directories, recursively searching for `.dl` files. It
+  will respect ignore patterns and output diagnostics to standard error.
 
 - `ddlint --fix <FILES...>`: This command performs the same linting process but
   will also apply any safe, automatic fixes suggested by the rules.
@@ -508,16 +515,16 @@ Key command-line arguments and flags will include:
 - `--no-ignore`: Disables the default ignore patterns (e.g., for `.git` or
   `target` directories), allowing all files to be processed.
 
-The behavior of this CLI—including its arguments, exit codes, `stdout`, and
-`stderr`—will be subject to rigorous integration testing. The `assert_cmd` crate
-is purpose-built for this task, providing a fluent API to run the compiled
-binary as a child process and assert on its results.15 Tests will cover
-successful runs, failure on
+The behaviour of this CLI—including its arguments, exit codes, `stdout`, and
+`stderr`—will be subject to rigorous integration testing. The `assert_cmd`
+crate is purpose-built for this task, providing a fluent API to run the
+compiled binary as a child process and assert on its results.15 Tests will
+cover successful runs, failure on
 
 `error`-level diagnostics, and the exact content of the output for various
 scenarios.17
 
-### 4.2. The Configuration File (`ddlint.toml`)
+### 4.2. The configuration file (`ddlint.toml`)
 
 To provide persistent and project-specific configuration, `ddlint` will support
 a configuration file named `ddlint.toml`. The `config-rs` crate will be used to
@@ -536,7 +543,7 @@ working directory and then traverse up through parent directories, allowing for
 a single configuration file at the root of a project to apply to all its
 subdirectories.
 
-### 4.3. Configuration File Schema (`ddlint.toml`)
+### 4.3. Configuration file schema (`ddlint.toml`)
 
 A clearly defined schema is essential for user documentation and for enabling
 features like IDE autocompletion. The `ddlint.toml` file will be structured to
@@ -551,13 +558,13 @@ be simple and extensible. The following table specifies the initial schema.
 | [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The level is set alongside rule-specific configuration keys.                                                                     |
 
 This schema provides a clear and powerful way for users to tailor the linter's
-behavior to their project's specific needs, from disabling entire classes of
+behaviour to their project's specific needs, from disabling entire classes of
 rules to fine-tuning the parameters of stylistic checks.
 
 ### 4.4. Logging
 
 The parser emits warnings using the [`log`](https://docs.rs/log/) crate. No
-logger is initialised by default. A consuming binary should call a logger setup
+logger is initialized by default. A consuming binary should call a logger setup
 routine early in `main` to surface these messages. One convenient option is
 [`env_logger`](https://docs.rs/env_logger/):
 
@@ -572,7 +579,7 @@ fn main() {
 Set the `RUST_LOG` environment variable to control verbosity. For example, you
 can set `RUST_LOG=warn` to display warnings while suppressing debug output.
 
-## V. Advanced Features: Diagnostics and Automated Fixes
+## V. Advanced features: diagnostics and automated fixes
 
 The core value of a linter is delivered through its diagnostics and its ability
 to help the user fix the identified problems. This section details the
@@ -580,7 +587,7 @@ implementation of a state-of-the-art diagnostic system and a safe, reliable
 autofixing mechanism, which together form the linter's primary user-facing
 features.
 
-### 5.1. Implementing Rich Diagnostics with `miette`
+### 5.1. Implementing rich diagnostics with `miette`
 
 All user-facing diagnostic output will be generated using the `miette` library.9
 
@@ -600,40 +607,40 @@ The implementation will leverage several key `miette` features:
 
 - **Labels and Hints**: A single diagnostic can have multiple labels. This will
   be used to provide richer context. For example, a `shadowed-variable` warning
-  can have one label on the new, shadowing variable and a second "note" label on
-  the original variable's definition, showing the user exactly what is being
+  can have one label on the new, shadowing variable and a second "note" label
+  on the original variable's definition, showing the user exactly what is being
   shadowed and where it came from.
 
 - **Error Codes and URLs**: Every rule will have a unique code (e.g.,
   `correctness::unused-relation`). This code will be included in the diagnostic
   output. Furthermore, `miette` supports embedding URLs in diagnostics, which
-  become clickable links in modern terminals.9 This feature will be used to link
-  each diagnostic directly to the rule's online documentation page, allowing a
-  user to go from a warning in their terminal to a detailed explanation with a
-  single click.
+  become clickable links in modern terminals.9 This feature will be used to
+  link each diagnostic directly to the rule's online documentation page,
+  allowing a user to go from a warning in their terminal to a detailed
+  explanation with a single click.
 
 - **Custom Theming**: `miette`'s appearance is customizable via themes.9 This
   allows the linter's output to be styled with a unique color scheme,
   potentially matching the branding of DDlog or allowing users to select themes
   for accessibility.
 
-To integrate this, the linter's internal `Diagnostic` struct will be designed to
-be easily and losslessly convertible into a `miette::Diagnostic`. The `RuleCtx`
-will provide the rule logic with all the necessary components: the `SourceCode`
-(the full text of the file) and the `SourceSpan` for any node or token in the
-CST.
+To integrate this, the linter's internal `Diagnostic` struct will be designed
+to be easily and losslessly convertible into a `miette::Diagnostic`. The
+`RuleCtx` will provide the rule logic with all the necessary components: the
+`SourceCode` (the full text of the file) and the `SourceSpan` for any node or
+token in the CST.
 
-### 5.2. The Autofixing Mechanism
+### 5.2. The autofixing mechanism
 
 For rules that are marked as `Autofixable` in the rule catalog, the linter will
 be able to not only report the problem but also apply a suggested fix
 automatically when run with the `--fix` flag.
 
 The implementation of this feature must be carefully designed to work with the
-immutable `rowan` tree and the parallelized rule runner. The core data structure
-for a fix will be a "suggestion," which consists of a `TextRange` (the slice of
-the original source text to be replaced) and a `String` (the new text to
-insert).
+immutable `rowan` tree and the parallelised rule runner. The core data
+structure for a fix will be a "suggestion," which consists of a `TextRange`
+(the slice of the original source text to be replaced) and a `String` (the new
+text to insert).
 
 The autofixing workflow will proceed as follows:
 
@@ -655,14 +662,14 @@ The autofixing workflow will proceed as follows:
    conflicting range.
 
 5. The runner then applies the safe, non-overlapping suggestions to the source
-   text buffer. To ensure that applying one fix does not invalidate the position
-   of the next, the fixes are applied in reverse order, from the end of the file
-   to the beginning.
+   text buffer. To ensure that applying one fix does not invalidate the
+   position of the next, the fixes are applied in reverse order, from the end
+   of the file to the beginning.
 
 6. Finally, the modified text buffer is written back to the original file on
    disk.
 
-### 5.3. The "Trust but Verify" Principle of Autofixing
+### 5.3. The "trust but verify" principle of autofixing
 
 Autofixing is an immensely powerful feature, but it is also inherently
 dangerous. A bug in the fixing logic can silently corrupt a user's source code,
@@ -672,10 +679,10 @@ simply testing the diagnostic output. It must validate the correctness of the
 code transformation itself.
 
 This leads to a "dual snapshot" testing approach. For any autofixable rule, two
-distinct types of tests are required. The first is the standard diagnostic test:
-run the linter on a piece of incorrect code and use `insta` to create a snapshot
-of the `miette` diagnostic message that is produced. This verifies that the
-problem is reported correctly.
+distinct types of tests are required. The first is the standard diagnostic
+test: run the linter on a piece of incorrect code and use `insta` to create a
+snapshot of the `miette` diagnostic message that is produced. This verifies
+that the problem is reported correctly.
 
 The second, more critical test verifies the fix itself. This test will be
 structured as follows:
@@ -696,10 +703,10 @@ they run this new test, it will fail because no snapshot exists. `insta` will
 save the transformed code into a `.snap.new` file.10 The developer then uses
 
 `cargo insta review` to examine the proposed change. If the code transformation
-is correct, they accept it, and it becomes the new, approved snapshot. From that
-point forward, any future refactoring of the autofix logic that accidentally
-changes the output of the transformation will cause the snapshot test to fail,
-immediately catching the regression.
+is correct, they accept it, and it becomes the new, approved snapshot. From
+that point forward, any future refactoring of the autofix logic that
+accidentally changes the output of the transformation will cause the snapshot
+test to fail, immediately catching the regression.
 
 This dual-snapshot strategy—one for the diagnostic message and one for the
 resulting code—creates a robust safety net. It allows developers to implement
@@ -707,7 +714,7 @@ and refactor complex code transformations with a high degree of confidence,
 knowing that any deviation from the verified, correct output will be caught
 automatically by the CI system.
 
-## VI. A Comprehensive Testing and Validation Strategy
+## VI. A comprehensive testing and validation strategy
 
 A linter is a compiler-like tool, and its correctness, reliability, and
 performance are paramount. A bug in a linter can lead to incorrect warnings,
@@ -716,11 +723,11 @@ autofixes. To ensure the highest level of quality, a multi-layered testing
 strategy will be employed, covering every component of the system from
 individual rule logic to the final command-line binary.
 
-### 6.1. Unit Testing Individual Rules
+### 6.1. Unit testing individual rules
 
 The foundation of the testing pyramid is the unit test. Each lint rule's logic
-will be tested in isolation to verify its correctness. A testing harness will be
-developed to facilitate this. This harness will consist of a helper function
+will be tested in isolation to verify its correctness. A testing harness will
+be developed to facilitate this. This harness will consist of a helper function
 that takes a string of DDlog code and the specific rule to be tested as input.
 It will then execute the full parsing and linting pipeline but *only* for that
 single rule, returning the list of diagnostics it produced.
@@ -733,7 +740,7 @@ relations are used, which asserts that no diagnostics are produced. This
 granular level of testing ensures that the core logic of each rule is sound
 before it is integrated into the larger system.
 
-### 6.2. Snapshot Testing Diagnostic Output with `insta`
+### 6.2. Snapshot testing diagnostic output with `insta`
 
 To ensure that the user-facing output of the linter is correct, consistent, and
 does not degrade over time, snapshot testing will be used extensively. This is
@@ -744,8 +751,8 @@ traditional string assertions.
 The `insta` crate is the de-facto standard for snapshot testing in the Rust
 ecosystem and will be the primary tool for this purpose.10 The testing workflow
 will involve creating a suite of small DDlog code snippets, each designed to
-trigger one or more specific diagnostics. A test function will run the linter on
-a snippet and capture the resulting diagnostic string. This string is then
+trigger one or more specific diagnostics. A test function will run the linter
+on a snippet and capture the resulting diagnostic string. This string is then
 asserted against a stored reference value (the "snapshot") using a macro like
 
 `insta::assert_snapshot!` or `insta::assert_debug_snapshot!`.11
@@ -755,13 +762,13 @@ the corresponding snapshot test will fail. The developer can then use the
 `cargo insta review` command-line tool to interactively inspect the difference
 between the old and new output. If the change is intentional and correct, they
 can approve it with a single keystroke, updating the snapshot file for future
-test runs.10 This workflow makes maintaining a large suite of complex diagnostic
-tests manageable and robust.
+test runs.10 This workflow makes maintaining a large suite of complex
+diagnostic tests manageable and robust.
 
-### 6.3. Integration Testing the CLI with `assert_cmd`
+### 6.3. Integration testing the CLI with `assert_cmd`
 
 The final layer of testing involves treating the compiled `ddlint` binary as a
-black box and testing its end-to-end behavior from the command line. This
+black box and testing its end-to-end behaviour from the command line. This
 ensures that all components—argument parsing, configuration file loading, file
 discovery, linting, and output formatting—work together correctly.
 
@@ -789,22 +796,22 @@ These integration tests will cover a wide range of scenarios:
 - Verifying that configuration files (`ddlint.toml`) are correctly located and
   that their settings properly override the defaults.
 
-- Testing file system interactions, such as the behavior of the `--fix` flag,
+- Testing file system interactions, such as the behaviour of the `--fix` flag,
   likely in combination with a crate like `assert_fs` for creating temporary
   file fixtures.15
 
 This comprehensive, three-tiered testing strategy ensures that every aspect of
 the linter is validated, from the micro-level logic of a single rule to the
-macro-level behavior of the final executable.
+macro-level behaviour of the final executable.
 
-## VII. Phased Implementation Roadmap and Future Work
+## VII. Phased implementation roadmap and future work
 
 This design is translated into an actionable, multi-phase project plan. Each
 phase is designed to deliver concrete, demonstrable value and build upon the
-foundations laid by the previous one. This iterative approach mitigates risk and
-allows for feedback to be incorporated throughout the development cycle.
+foundations laid by the previous one. This iterative approach mitigates risk
+and allows for feedback to be incorporated throughout the development cycle.
 
-### Phase 1: The Foundation (Target: 1-2 Sprints)
+### Phase 1: The foundation (target: 1–2 sprints)
 
 The goal of this initial phase is to establish the core project structure and
 validate the fundamental architectural choices. It is a proof-of-concept phase
@@ -833,7 +840,7 @@ focused on getting a minimal end-to-end pipeline working.
   DDlog file and print a basic warning message to the console. This deliverable
   validates the `chumsky`-to-`rowan` pipeline.
 
-### Phase 2: The Engine (Target: 3-4 Sprints)
+### Phase 2: The engine (target: 3–4 sprints)
 
 With the foundation in place, this phase focuses on building out the robust,
 scalable linter engine, the rule management system, and the user-facing CLI.
@@ -842,7 +849,7 @@ scalable linter engine, the rule management system, and the user-facing CLI.
 
   1. Implement the full linter engine inspired by `rslint_core`, including the
      `Rule` and `CstRule` traits, the `RuleCtx` struct, the `CstRuleStore`, and
-     the parallelized rule runner.4
+     the parallelised rule runner.4
 
   2. Implement the `declare_lint!` macro to streamline rule creation.6
 
@@ -861,14 +868,15 @@ scalable linter engine, the rule management system, and the user-facing CLI.
      `assert_cmd`.15
 
 - **Deliverable:** A functional, configurable CLI linter. It can be installed
-  and run on real DDlog projects, it respects configuration from a `ddlint.toml`
-  file, and it reports a useful set of correctness-related diagnostics.
+  and run on real DDlog projects, it respects configuration from a
+  `ddlint.toml` file, and it reports a useful set of correctness-related
+  diagnostics.
 
-### Phase 3: Polish and Expansion (Target: 3-4 Sprints)
+### Phase 3: Polish and expansion (target: 3–4 sprints)
 
 This phase is dedicated to enhancing the user experience and expanding the
-linter's analytical capabilities to cover the full language and a wider range of
-issues.
+linter's analytical capabilities to cover the full language and a wider range
+of issues.
 
 - **Tasks:**
 
@@ -892,11 +900,11 @@ issues.
 - **Deliverable:** A feature-complete, polished, and well-documented linter
   ready for a stable 1.0 release.
 
-### Phase 4 (Future): IDE Integration via LSP
+### Phase 4 (future): IDE integration via LSP
 
 The architecture designed in the preceding phases explicitly paves the way for
-future extension into an IDE language server. The decoupling of the core linting
-logic into a reusable library is the key enabler for this.
+future extension into an IDE language server. The decoupling of the core
+linting logic into a reusable library is the key enabler for this.
 
 - **High-Level Plan:**
 
@@ -915,8 +923,8 @@ logic into a reusable library is the key enabler for this.
      `PublishDiagnosticsParams` and `Diagnostic`.27
 
   4. The core work will be to implement the LSP notification handlers, such as
-     textDocument/didOpen and textDocument/didChange. When the server receives a
-     notification that a document has changed, it will:
+     textDocument/didOpen and textDocument/didChange. When the server receives
+     a notification that a document has changed, it will:
 
      a. Retrieve the updated document text.
 

@@ -20,8 +20,19 @@ pub(crate) enum Delim {
     Brace,
 }
 
+/// Records an opened delimiter and the span of its token.
+///
+/// Persisting the span lets the parser report `UnclosedDelimiter`
+/// errors at the original opening site rather than at the end of
+/// input, which makes diagnostics actionable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct OpenDelimiter {
+    kind: Delim,
+    span: TextRange,
+}
+
 #[derive(Default, Debug)]
-pub(crate) struct DelimStack(Vec<Delim>);
+pub(crate) struct DelimStack(Vec<OpenDelimiter>);
 
 /// An error emitted when a closing token does not match the expected delimiter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,11 +103,11 @@ impl std::error::Error for DelimiterError {}
 impl DelimStack {
     /// Opens one or more delimiters of the same type.
     ///
-    /// Pushes `count` instances of `delim` onto the stack so they can be
-    /// matched with closing tokens later.
-    pub(super) fn open(&mut self, delim: Delim, count: usize) {
+    /// Pushes `count` instances of `delim` onto the stack, each recording the
+    /// `span` of the opening token so it can be reported if left unclosed.
+    pub(super) fn open(&mut self, delim: Delim, span: TextRange, count: usize) {
         for _ in 0..count {
-            self.0.push(delim);
+            self.0.push(OpenDelimiter { kind: delim, span });
         }
     }
 
@@ -108,7 +119,7 @@ impl DelimStack {
     pub(super) fn close(&mut self, delim: Delim, count: usize) -> usize {
         let mut closed = 0;
         for _ in 0..count {
-            if matches!(self.0.last(), Some(d) if *d == delim) {
+            if matches!(self.0.last(), Some(d) if d.kind == delim) {
                 self.0.pop();
                 closed += 1;
             } else {
@@ -118,9 +129,15 @@ impl DelimStack {
         closed
     }
 
-    /// Returns an iterator over any remaining unclosed delimiters.
-    pub(crate) fn unclosed(&mut self) -> impl Iterator<Item = Delim> + '_ {
-        self.0.drain(..)
+    /// Returns an iterator over remaining unclosed delimiters, draining the stack.
+    ///
+    /// # Side effects
+    ///
+    /// The internal stack is cleared, preventing the same delimiters from
+    /// being reported twice. Subsequent calls yield no items unless new
+    /// delimiters are opened.
+    pub(crate) fn unclosed(&mut self) -> impl Iterator<Item = (Delim, TextRange)> + '_ {
+        self.0.drain(..).map(|d| (d.kind, d.span))
     }
 
     /// Checks whether the delimiter stack contains no open delimiters.
