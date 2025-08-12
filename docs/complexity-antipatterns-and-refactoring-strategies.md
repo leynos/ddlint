@@ -28,8 +28,8 @@ robust, maintainable, and understandable for the long haul.
 
 To effectively manage complexity, it is essential to measure it. Two prominent
 metrics in software engineering are Cyclomatic Complexity and Cognitive
-Complexity, each offering a distinct perspective on the challenges inherent in
-a codebase.
+Complexity, each offering a distinct perspective on codebase complexity
+challenges.
 
 ### A. Cyclomatic Complexity: Measuring Testability
 
@@ -74,7 +74,7 @@ risk categorization based on CC scores 3:
 Cognitive Complexity, a metric notably championed by SonarSource, addresses a
 different facet of code complexity: how difficult a piece of code is to
 intuitively read and understand by a human.1 Unlike Cyclomatic Complexity,
-which is rooted in mathematical graph theory, Cognitive Complexity aims to more
+which relies on mathematical graph theory, Cognitive Complexity aims to more
 accurately reflect the mental effort required to comprehend the control flow of
 a unit of code.7 It acknowledges that developers spend more time reading and
 understanding code than writing it.8
@@ -95,9 +95,9 @@ Cognitive Complexity is incremented based on three main rules 8:
 3. **Shorthand Discount:** Structures that allow multiple statements to be read
    as a single unit (e.g., a well-named method call) do not incur the same
    penalties as the raw statements they encapsulate. Method calls are generally
-   "free" in terms of cognitive complexity, as a well-chosen name summarizes
+   "free" in terms of cognitive complexity, as a well-chosen name summarises
    the underlying logic, allowing readers to grasp the high-level view before
-   diving into details. Recursive calls, however, do increment the score.8
+   diving into details. However, recursive calls do increment the score.8
 
 For instance, a `switch` statement with multiple cases might have a high
 Cyclomatic Complexity because each case represents a distinct path for testing.
@@ -749,9 +749,9 @@ effective for refactoring state machines implemented with complex
 
 `if/else` or `switch` statements.45
 
-By thoughtfully applying these refactoring strategies, developers can
-significantly reduce cognitive complexity, making codebases more
-understandable, maintainable, and adaptable to future changes.
+Thoughtfully apply these refactoring strategies to significantly reduce
+cognitive complexity and create codebases that are more understandable,
+maintainable, and adaptable to future changes.
 
 ## VI. Conclusion: towards a more maintainable and understandable codebase
 

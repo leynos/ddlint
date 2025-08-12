@@ -19,11 +19,11 @@ language engineering. The methodologies detailed herein treat testing not as a
 post-development chore but as an integral part of the design and implementation
 process, essential for ensuring correctness, enabling confident refactoring,
 and delivering a high-quality experience for the language's users. The
-strategies progress from foundational unit tests to advanced generative
-techniques, providing a complete roadmap for implementers. The intended
-audience is the experienced Rust developer, already conversant with the
-language's idioms and the `rstest` testing framework, who seeks to build a
-truly resilient and maintainable parsing pipeline.
+strategies are organised progressively, from foundational unit tests to
+advanced generative techniques, providing a complete roadmap for implementers.
+The intended audience is the experienced Rust developer, already conversant
+with the language's idioms and the `rstest` testing framework, who seeks to
+build a truly resilient and maintainable parsing pipeline.
 
 ## Section 1: Foundational testing paradigms for Rust parsers
 

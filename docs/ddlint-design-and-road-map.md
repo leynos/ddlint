@@ -76,7 +76,7 @@ the team to leverage proven patterns and focus on implementing DDlog-specific
 logic.
 
 The heart of this adapted engine will be a set of core traits that define the
-structure and behavior of every lint rule:
+structure and behaviour of every lint rule:
 
 - `trait Rule`: This will be the base trait for all rules, containing shared
   metadata. It will expose methods such as `name()`, which returns a unique,
@@ -515,7 +515,7 @@ Key command-line arguments and flags will include:
 - `--no-ignore`: Disables the default ignore patterns (e.g., for `.git` or
   `target` directories), allowing all files to be processed.
 
-The behavior of this CLI—including its arguments, exit codes, `stdout`, and
+The behaviour of this CLI—including its arguments, exit codes, `stdout`, and
 `stderr`—will be subject to rigorous integration testing. The `assert_cmd`
 crate is purpose-built for this task, providing a fluent API to run the
 compiled binary as a child process and assert on its results.15 Tests will
@@ -558,7 +558,7 @@ be simple and extensible. The following table specifies the initial schema.
 | [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The level is set alongside rule-specific configuration keys.                                                                     |
 
 This schema provides a clear and powerful way for users to tailor the linter's
-behavior to their project's specific needs, from disabling entire classes of
+behaviour to their project's specific needs, from disabling entire classes of
 rules to fine-tuning the parameters of stylistic checks.
 
 ### 4.4. Logging
@@ -768,7 +768,7 @@ diagnostic tests manageable and robust.
 ### 6.3. Integration testing the CLI with `assert_cmd`
 
 The final layer of testing involves treating the compiled `ddlint` binary as a
-black box and testing its end-to-end behavior from the command line. This
+black box and testing its end-to-end behaviour from the command line. This
 ensures that all components—argument parsing, configuration file loading, file
 discovery, linting, and output formatting—work together correctly.
 
@@ -796,13 +796,13 @@ These integration tests will cover a wide range of scenarios:
 - Verifying that configuration files (`ddlint.toml`) are correctly located and
   that their settings properly override the defaults.
 
-- Testing file system interactions, such as the behavior of the `--fix` flag,
+- Testing file system interactions, such as the behaviour of the `--fix` flag,
   likely in combination with a crate like `assert_fs` for creating temporary
   file fixtures.15
 
 This comprehensive, three-tiered testing strategy ensures that every aspect of
 the linter is validated, from the micro-level logic of a single rule to the
-macro-level behavior of the final executable.
+macro-level behaviour of the final executable.
 
 ## VII. Phased implementation roadmap and future work
 
