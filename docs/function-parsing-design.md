@@ -56,8 +56,8 @@ balance delimiters (e.g., `extract_parenthesized` in
 likewise report the opening token’s span.
 
 A hierarchy of error types supports rich diagnostics when delimiters do not
-match or names and types are missing. The following diagram shows delimiter
-tracking and error types during parsing.
+match or names and types are missing. Short description: the following diagram
+shows delimiter tracking and related error types.
 
 ```mermaid
 classDiagram

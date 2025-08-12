@@ -46,8 +46,8 @@ the number of edges, N is the number of nodes, and P is the number of connected
 components (typically 1 for a single program or method).3 A simpler formulation
 for a single subroutine is
 
-M=number of decision points+1, where decision points include constructs like
-`if` statements and conditional loops.3
+M = number of decision points + 1, where decision points include constructs
+like `if` statements and conditional loops.3
 
 Thresholds and Implications:
 
@@ -338,8 +338,8 @@ perform auto-refactoring for certain languages.6
 
 ### C. Red Flags Portending the Bumpy Road
 
-Being vigilant for early warning signs can help prevent a minor complexity
-issue from escalating into a full-blown Bumpy Road.
+Recognising early warning signs can prevent minor complexity issues from
+escalating into full-blown Bumpy Roads.
 
 1. **Increasing Cognitive Complexity Scores:** A rising Cognitive Complexity
    score for a method in static analysis tools is a direct indicator.8
@@ -370,15 +370,15 @@ issue from escalating into a full-blown Bumpy Road.
 7. **Declining Code Health Metrics:** Tools like CodeScene provide "Code Health"
    metrics which can degrade if Bumpy Roads are introduced.6
 
-By proactively addressing these red flags through disciplined refactoring,
-teams can maintain a smoother, more navigable codebase.
+Address these red flags through disciplined refactoring to maintain a smoother,
+more navigable codebase.
 
 ## V. Broader Implications and Clean Refactoring Approaches
 
-The challenges posed by high complexity and antipatterns like the Bumpy Road
-are deeply intertwined with fundamental software design principles.
-Understanding these connections and employing sophisticated refactoring
-techniques are key to building truly maintainable systems.
+High complexity and antipatterns like the Bumpy Road stem from violations of
+fundamental software design principles. Understanding these connections and
+applying sophisticated refactoring techniques are essential for building
+maintainable systems.
 
 ### A. Relation to Separation of Concerns and CQRS
 
@@ -466,12 +466,12 @@ discourages methods from accumulating diverse responsibilities.18
 
 When refactoring complex, tangled code (often called "Spaghetti Code" 2), a
 common approach is to break it down into smaller pieces, such as functions or
-classes. However, if this is done without careful consideration for cohesion
-and appropriate levels of abstraction, it can lead to "Ravioli Code".24 Ravioli
-Code is characterized by a multitude of small, often overly granular classes or
-functions, where understanding the overall program flow requires navigating
-through numerous tiny, disconnected pieces, making it as hard to follow as the
-original spaghetti.24
+classes. However, without careful consideration for cohesion and appropriate
+abstraction levels, this approach can create "Ravioli Code".24 Ravioli Code
+consists of numerous small, overly granular classes or functions where
+understanding the overall programme flow requires navigating through many tiny,
+disconnected pieces—making it as difficult to follow as the original
+spaghetti.24
 
 **Strategies to Avoid Ravioli Code:**
 
@@ -783,11 +783,10 @@ applied judiciously, always prioritizing genuine improvements in clarity and
 maintainability over adherence to a pattern for its own sake, to avoid pitfalls
 like Ravioli Code.
 
-A proactive and disciplined approach, where these principles and techniques are
-integrated into daily development practices, is essential. This includes
-regular code reviews, monitoring complexity metrics, and fostering a team
-culture that values code quality and continuous improvement. The oft-quoted
-wisdom, "Good programmers write code that humans can understand" 1, remains the
-guiding principle. By striving for this ideal, development teams can build
-systems that are not only powerful and efficient but also a pleasure to evolve
-and maintain.
+Integrate these principles and techniques into daily development practices
+through a proactive and disciplined approach. This includes regular code
+reviews, monitoring complexity metrics, and fostering a team culture that
+values code quality and continuous improvement. The oft-quoted wisdom, "Good
+programmers write code that humans can understand"1, remains the guiding
+principle. Strive for this ideal to build systems that are not only powerful
+and efficient, but also a pleasure to evolve and maintain.

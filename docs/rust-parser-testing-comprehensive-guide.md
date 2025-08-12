@@ -19,11 +19,11 @@ language engineering. The methodologies detailed herein treat testing not as a
 post-development chore but as an integral part of the design and implementation
 process, essential for ensuring correctness, enabling confident refactoring,
 and delivering a high-quality experience for the language's users. The
-strategies are organized in a progressive manner, from foundational unit tests
-to advanced generative techniques, providing a complete roadmap for
-implementers. The intended audience is the experienced Rust developer, already
-conversant with the language's idioms and the `rstest` testing framework, who
-seeks to build a truly resilient and maintainable parsing pipeline.
+strategies progress from foundational unit tests to advanced generative
+techniques, providing a complete roadmap for implementers. The intended
+audience is the experienced Rust developer, already conversant with the
+language's idioms and the `rstest` testing framework, who seeks to build a
+truly resilient and maintainable parsing pipeline.
 
 ## Section 1: Foundational testing paradigms for Rust parsers
 
@@ -632,7 +632,7 @@ fn pretty_print_expr(expr: &Expr) -> String {
 #[rstest]
 // input, expected s-expression
 #[case("1 + 2 * 3", "(+ 1 (* 2 3))")] // Precedence
-#[case("1 * 2 + 3", "(+ (* 1 2) 3))")] // Precedence
+#[case("1 * 2 + 3", "(+ (* 1 2) 3)")] // Precedence
 #[case("8 - 4 - 2", "(- (- 8 4) 2)")] // Left-associativity
 #[case("-5 + 2", "(+ (- 5) 2)")]      // Unary operator
 #[case("-(5 + 2)", "(- (+ 5 2))")]    // Parentheses
@@ -668,11 +668,10 @@ the generic tree data structures (`GreenNode`, `SyntaxNode`); the user's parser
 is responsible for correctly constructing the tree using a `GreenNodeBuilder`.31
 
 This architecture has a profound implication for testing: a bug found in a
-`rowan` CST is almost never a bug in the `rowan` library itself. Rather, it is
-a bug in the parser logic that called `builder.start_node()`,
-`builder.token()`, or `builder.finish_node()` in the wrong sequence. `rowan` is
-extensively tested within its primary use case, `rust-analyzer`.29 Therefore,
-testing a
+`rowan` CST is rarely a bug in the `rowan` library itself. Rather, it is a bug
+in the parser logic that called `builder.start_node()`, `builder.token()`, or
+`builder.finish_node()` in the wrong sequence. `rowan` is extensively tested
+within its primary use case, `rust-analyzer`.29 Therefore, testing a
 
 `rowan` tree is the ultimate end-to-end integration test of the entire parsing
 pipeline. The CST represents the final, complete, and observable output of the
@@ -861,9 +860,9 @@ be nearly impossible to find with handwritten tests.
 ### 5.2 Fuzzing the lexer and parser for panics
 
 The simplest and most fundamental property of any robust program is "it does
-not crash." Applying this to a parser means that no matter what garbage input
-it receives, it should never panic. It should either parse successfully or
-return a structured error.
+not crash." Applying this to a parser means that, regardless of the input
+quality, it should never panic. It should either parse successfully or return a
+structured error.
 
 A `proptest` test can be written to generate arbitrary strings and feed them
 into the full lexer-parser pipeline. This acts as a "fuzz test," probing the

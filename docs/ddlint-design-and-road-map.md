@@ -181,6 +181,9 @@ system consumes. The quality and resilience of this parsing stage directly
 determine the linter's ability to provide value, especially when analysing
 real‑world code that is often in a syntactically incomplete or incorrect state.
 
+Short description: the following sequence diagram outlines the parsing pipeline
+from source to syntax tree.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -561,7 +564,7 @@ rules to fine-tuning the parameters of stylistic checks.
 ### 4.4. Logging
 
 The parser emits warnings using the [`log`](https://docs.rs/log/) crate. No
-logger is initialised by default. A consuming binary should call a logger setup
+logger is initialized by default. A consuming binary should call a logger setup
 routine early in `main` to surface these messages. One convenient option is
 [`env_logger`](https://docs.rs/env_logger/):
 
