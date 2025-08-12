@@ -19,7 +19,7 @@ language engineering. The methodologies detailed herein treat testing not as a
 post-development chore but as an integral part of the design and implementation
 process, essential for ensuring correctness, enabling confident refactoring,
 and delivering a high-quality experience for the language's users. The
-strategies are organised progressively, from foundational unit tests to
+strategies are organized progressively, from foundational unit tests to
 advanced generative techniques, providing a complete roadmap for implementers.
 The intended audience is the experienced Rust developer, already conversant
 with the language's idioms and the `rstest` testing framework, who seeks to
@@ -111,7 +111,7 @@ This structured approach, combining conventional file organization with a clear
 understanding of each testing paradigm's purpose, lays the groundwork for the
 robust and maintainable test suite detailed in the following sections.
 
-## Section 2: Rigorous testing of the `logos` lexer
+## Section 2: rigorous testing of the `logos` lexer
 
 The lexer, or tokenizer, is the first stage of the parsing pipeline. Its
 responsibility is to transform a raw stream of characters into a structured
@@ -423,7 +423,7 @@ This harness provides a robust foundation for the lexer test suite, ensuring
 that every aspect of the token—its kind, its text, and its position—is
 validated with every test run.
 
-## Section 3: Comprehensive validation of `chumsky` parsers
+## Section 3: comprehensive validation of `chumsky` parsers
 
 With a correctly tokenized stream from `logos`, the next stage is the `chumsky`
 parser. `chumsky` is a parser combinator library designed for expressiveness,
@@ -517,12 +517,12 @@ test code is tedious, error-prone, and makes refactoring the grammar a
 nightmare. This is where snapshot testing with the `insta` crate becomes
 indispensable.11
 
-`insta` allows you to assert that a complex value matches a "snapshot"—a
-reference representation stored in a separate file. On the first run, the
-snapshot is created. On subsequent runs, the test output is compared against
-the stored snapshot. If they differ, the test fails, and a rich diff is
-presented. The developer can then either fix the code or, if the change was
-intentional, update the snapshot with a simple command (`cargo insta review`).11
+`insta` enables asserting that a complex value matches a “snapshot”—a reference
+representation stored in a separate file. On the first run, the snapshot is
+created. On subsequent runs, the test output is compared against the stored
+snapshot. If they differ, the test fails, and a rich diff is presented. The
+developer can then either fix the code or, if the change was intentional,
+update the snapshot with `cargo insta review`.11
 
 This workflow is transformative for parser development. When the language
 syntax evolves, the AST structure necessarily changes. Instead of manually
@@ -823,7 +823,7 @@ fn test_typed_ast_navigation_on_malformed_input() {
 These tests ensure that the "view" into the syntax tree is as robust as the
 tree itself, providing a safe and ergonomic API for later compiler stages.
 
-## Section 5: Advanced strategies with property-based testing (`proptest`)
+## Section 5: advanced strategies with property-based testing (`proptest`)
 
 The testing strategies discussed so far—example-based and snapshot—are
 excellent for verifying known behaviors and preventing regressions. However,
@@ -1023,7 +1023,7 @@ quality and correctness of the language implementation. This symbiotic
 relationship elevates the pretty-printer from a simple utility to a critical
 component of the testing infrastructure.
 
-## Section 6: Conclusion: a holistic testing philosophy for language engineering
+## Section 6: conclusion: a holistic testing philosophy for language engineering
 
 The development of a robust parser is a complex endeavor that demands a testing
 strategy as sophisticated as the parser itself. This guide has detailed a

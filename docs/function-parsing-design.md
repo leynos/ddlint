@@ -5,8 +5,10 @@ declarations within `ddlint`. The parser relies on small helpers to interpret
 parameter lists and optional return types. These helpers now live in the
 `parser::ast::parse_utils` module so that both `Function` and `Relation` AST
 nodes can reuse them. A span-aware helper, `open_delimiter`, pushes the
-delimiter kind and token span onto `DelimStack`. The following diagram shows
-how helper functions compose during parsing.
+delimiter kind and token span onto `DelimStack`.
+
+Short description: the following diagram shows how helper functions compose
+during parsing.
 
 ```mermaid
 classDiagram
@@ -32,13 +34,13 @@ classDiagram
 ## Parameter list parsing
 
 `parse_name_type_pairs` walks the token stream produced for the parameter list.
-Whenever it encounters a colon, it delegates to `parse_type_expr`.\
-That helper is now fully recursive: on seeing `(`, `[`, `{`, or `<`, it pushes\
-the opening delimiter (with span) onto `DelimStack`, recurses to parse the\
-inner expression, and then expects the matching closer. Nested types such as\
-`Vec<Map<string, Vec<u8>>>` are handled by this recursion in tandem with the\
-delimiter stack.\
-Parameters end when a comma or the closing `)` of the list is reached.
+Whenever it encounters a colon, it delegates to `parse_type_expr`. That helper
+is now fully recursive: on seeing `(`, `[`, `{`, or `<`, it pushes the opening
+delimiter (with span) onto `DelimStack`, recurses to parse the inner
+expression, and then expects the matching closer. Nested types such as
+`Vec<Map<string, Vec<u8>>>` are handled by this recursion in tandem with the
+delimiter stack. Parameters end when a comma or the closing `)` of the list is
+reached.
 
 Missing colons between a parameter name and type trigger
 `ParseError::MissingColon`. The span of the terminating comma or parenthesis is
@@ -83,10 +85,14 @@ classDiagram
         +found: SyntaxKind
         +span: TextRange
     }
+    class UnclosedDelimiterError {
+        +delimiter: char
+        +span: TextRange
+    }
     class ParseError {
         <<enum>>
         Delimiter(DelimiterError)
-        UnclosedDelimiter { delimiter: char, span: TextRange }
+        UnclosedDelimiter(UnclosedDelimiterError)
         MissingColon
         MissingName
         MissingType
@@ -96,6 +102,7 @@ classDiagram
     OpenDelimiter *-- Delim
     DelimiterError *-- Delim
     ParseError *-- DelimiterError
+    ParseError *-- UnclosedDelimiterError
 ```
 
 The `count` argument on `open` and `close` represents how many delimiter units

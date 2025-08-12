@@ -1,4 +1,4 @@
-# A design document and implementation roadmap for the Differential datalog linter
+# A design document and implementation roadmap for the Differential Datalog linter
 
 ## Introduction
 
@@ -70,7 +70,7 @@ Rather than designing a linter engine from first principles, this project will
 adapt the mature and performant model pioneered by `rslint_core`.4 The
 
 `rslint` project demonstrates a highly effective architecture for a CST-based
-linter, featuring parallelized rule execution and a clean separation of
+linter, featuring parallelised rule execution and a clean separation of
 concerns that makes it both fast and maintainable.6 Adopting this model allows
 the team to leverage proven patterns and focus on implementing DDlog-specific
 logic.
@@ -142,7 +142,7 @@ industry-standard, production-grade solution for this problem.1
 Once `rowan` is chosen, the next logical step is to select a linter engine
 model that is designed to work with it. The `rslint_core` architecture, which
 is explicitly built to run rules over a CST, becomes the ideal candidate,
-providing a proven template for a performant, parallelized engine.4
+providing a proven template for a performant, parallelised engine.4
 
 The choice of a CST has further downstream effects, particularly on diagnostics
 and testing. To display the kind of rich, annotated error messages seen in
@@ -637,7 +637,7 @@ be able to not only report the problem but also apply a suggested fix
 automatically when run with the `--fix` flag.
 
 The implementation of this feature must be carefully designed to work with the
-immutable `rowan` tree and the parallelized rule runner. The core data
+immutable `rowan` tree and the parallelised rule runner. The core data
 structure for a fix will be a "suggestion," which consists of a `TextRange`
 (the slice of the original source text to be replaced) and a `String` (the new
 text to insert).
@@ -849,7 +849,7 @@ scalable linter engine, the rule management system, and the user-facing CLI.
 
   1. Implement the full linter engine inspired by `rslint_core`, including the
      `Rule` and `CstRule` traits, the `RuleCtx` struct, the `CstRuleStore`, and
-     the parallelized rule runner.4
+     the parallelised rule runner.4
 
   2. Implement the `declare_lint!` macro to streamline rule creation.6
 

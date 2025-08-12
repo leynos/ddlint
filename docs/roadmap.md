@@ -146,7 +146,7 @@ envisioned in `ddlint-design-and-road-map.md`.
   - [ ] Create the `CstRuleStore` to register and manage all available lint
     rules.
 
-  - [ ] Build the visitor-based, parallelized Rule Runner (using `rayon`) that
+  - [ ] Build the visitor-based, parallelised Rule Runner (using `rayon`) that
     traverses the CST and invokes the appropriate rules for each node.
 
   - [ ] Implement the `declare_lint!` macro to simplify rule creation.

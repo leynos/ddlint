@@ -243,9 +243,8 @@ Preventing the Bumpy Road begins with a commitment to sound software
 engineering principles from the outset.
 
 1. **Adherence to Single Responsibility Principle (SRP):** Ensure that each
-   function or method has one clear, well-defined responsibility.8 If a
-   function starts handling multiple distinct logical blocks, it's a sign that
-   it needs to be decomposed.
+   function or method has one clear, well-defined responsibility.8 When a
+   function handles multiple distinct logical blocks, decompose it immediately.
 
 2. **Incremental Refactoring:** Don't wait for complexity to accumulate.
    Refactor code regularly as part of the development process, not as a
@@ -370,8 +369,8 @@ escalating into full-blown Bumpy Roads.
 7. **Declining Code Health Metrics:** Tools like CodeScene provide "Code Health"
    metrics which can degrade if Bumpy Roads are introduced.6
 
-Address these red flags through disciplined refactoring to maintain a smoother,
-more navigable codebase.
+By proactively addressing these red flags through disciplined refactoring,
+teams can maintain a smoother, more navigable codebase.
 
 ## V. Broader Implications and Clean Refactoring Approaches
 
@@ -417,9 +416,9 @@ CQRS is an architectural pattern that segregates operations that modify state
 (Commands) from operations that read state (Queries).18 Commands are task-based
 and should represent specific business intentions (e.g.,
 
-`BookHotelRoomCommand` rather than `SetReservationStatusCommand`).18 Queries,
-on the other hand, never alter data and return Data Transfer Objects (DTOs)
-optimized for display needs.18
+`BookHotelRoomCommand` rather than `SetReservationStatusCommand`).18 Queries
+never alter data and return Data Transfer Objects (DTOs) optimised for display
+needs.18
 
 While CQRS operates at a higher architectural level than a single Bumpy Road
 method, the principles are related. Complex methods often arise when read and

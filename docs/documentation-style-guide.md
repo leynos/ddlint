@@ -95,9 +95,11 @@ pub fn add(a: i32, b: i32) -> i32 {
 ## Diagrams and images
 
 Where it adds clarity, include [Mermaid](https://mermaid.js.org/) diagrams.
-When embedding figures, use `![alt text](path/to/image)` and provide concise
-alt text describing the content. Add a short description before each Mermaid
-diagram, so screen readers can understand it.
+When embedding figures, use `![alt text](path/to/image)` and provide brief alt
+text describing the content. Add a short description before each Mermaid
+diagram so screen readers can understand it.
+
+For screen readers: The following flowchart outlines the documentation workflow.
 
 ```mermaid
 flowchart TD
