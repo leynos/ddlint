@@ -349,17 +349,23 @@ where
                     track_span_for_element(e, &mut start_pos, &mut end_pos);
                     break;
                 }
+                SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {
+                    iter.next();
+                }
                 _ => {
                     track_span_for_element(e, &mut start_pos, &mut end_pos);
                     name_buf.push_str(t.text());
                     iter.next();
                 }
             },
-            NodeOrToken::Node(_) => {
-                track_span_for_element(e, &mut start_pos, &mut end_pos);
-                if let NodeOrToken::Node(n) = e {
-                    name_buf.push_str(&n.text().to_string());
+            NodeOrToken::Node(n) => {
+                let text = n.text().to_string();
+                if n.kind() == SyntaxKind::T_COMMENT || text.chars().all(char::is_whitespace) {
+                    iter.next();
+                    continue;
                 }
+                track_span_for_element(e, &mut start_pos, &mut end_pos);
+                name_buf.push_str(&text);
                 iter.next();
             }
         }
@@ -518,6 +524,16 @@ mod tests {
         "function weird(x: Vec<<u8>>) {}",
         vec![("x".into(), "Vec<<u8>>".into())],
         0
+    )]
+    #[case(
+        "function with_comment(a /* c */: u32) {}",
+        vec![("a".into(), "u32".into())],
+        0,
+    )]
+    #[case(
+        "function with_space(a   : u32) {}",
+        vec![("a".into(), "u32".into())],
+        0,
     )]
     #[case("function empty() {}", Vec::new(), 0)]
     #[case(
