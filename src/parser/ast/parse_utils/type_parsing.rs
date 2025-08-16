@@ -344,8 +344,6 @@ fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> (String, bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
     let mut name_buf = String::new();
     let mut found_colon = false;
     let mut start_pos: Option<TextSize> = None;
@@ -357,37 +355,85 @@ where
             continue;
         }
 
-        match peeked {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_COLON => {
-                    track_span_for_element(peeked, &mut start_pos, &mut end_pos);
-                    iter.next();
-                    found_colon = true;
-                    break;
-                }
-                SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => {
-                    track_span_for_element(peeked, &mut start_pos, &mut end_pos);
-                    break;
-                }
-                _ => {
-                    track_span_for_element(peeked, &mut start_pos, &mut end_pos);
-                    name_buf.push_str(t.text());
-                    iter.next();
-                }
-            },
-            NodeOrToken::Node(n) => {
-                track_span_for_element(peeked, &mut start_pos, &mut end_pos);
-                name_buf.push_str(&n.text().to_string());
-                iter.next();
-            }
+        if process_parameter_token(
+            iter,
+            &mut name_buf,
+            &mut found_colon,
+            &mut start_pos,
+            &mut end_pos,
+        ) {
+            break;
         }
     }
 
-    let span = match (start_pos, end_pos) {
+    let span = create_text_span(start_pos, end_pos);
+    (name_buf.trim().to_string(), found_colon, span)
+}
+
+fn process_parameter_token<I>(
+    iter: &mut std::iter::Peekable<I>,
+    name_buf: &mut String,
+    found_colon: &mut bool,
+    start_pos: &mut Option<TextSize>,
+    end_pos: &mut Option<TextSize>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    let Some(element) = iter.peek().cloned() else {
+        return false;
+    };
+    track_span_for_element(&element, start_pos, end_pos);
+    match element {
+        NodeOrToken::Token(t) => process_token(&t, iter, name_buf, found_colon),
+        NodeOrToken::Node(n) => process_node(&n, iter, name_buf),
+    }
+}
+
+fn process_token<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    name_buf: &mut String,
+    found_colon: &mut bool,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    match token.kind() {
+        SyntaxKind::T_COLON => {
+            iter.next();
+            *found_colon = true;
+            true
+        }
+        SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => true,
+        _ => {
+            name_buf.push_str(token.text());
+            iter.next();
+            false
+        }
+    }
+}
+
+fn process_node<I>(
+    node: &rowan::SyntaxNode<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    name_buf: &mut String,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    name_buf.push_str(&node.text().to_string());
+    iter.next();
+    false
+}
+
+fn create_text_span(start_pos: Option<TextSize>, end_pos: Option<TextSize>) -> Option<TextRange> {
+    match (start_pos, end_pos) {
         (Some(start), Some(end)) => Some(TextRange::new(start, end)),
         _ => None,
-    };
-    (name_buf.trim().to_string(), found_colon, span)
+    }
 }
 
 fn finalise_parameter<I>(
