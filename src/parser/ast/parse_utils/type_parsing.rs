@@ -633,19 +633,19 @@ mod tests {
         }
     }
 
-    #[test]
-    fn type_expr_unclosed_delimiter_span() {
-        let src = "function bad(x: Vec<u32) {}";
-        let elements = tokens_for(src);
+    #[rstest]
+    fn type_expr_unclosed_delimiter_span(
+        #[with("function bad(x: Vec<u32) {}")] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
+    ) {
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let lt_span = elements
+        let lt_span = tokens_for
             .iter()
             .find_map(|e| match e {
                 SyntaxElement::Token(t) if t.text() == "<" => Some(t.text_range()),
                 _ => None,
             })
             .expect("angle token missing");
-        let mut iter = elements.into_iter().peekable();
+        let mut iter = tokens_for.into_iter().peekable();
         for e in iter.by_ref() {
             if e.kind() == SyntaxKind::T_COLON {
                 break;
