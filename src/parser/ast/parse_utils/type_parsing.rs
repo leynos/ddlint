@@ -633,6 +633,37 @@ mod tests {
         }
     }
 
+    #[rstest]
+    fn type_expr_unclosed_delimiter_span(
+        #[with("function bad(x: Vec<u32) {}")] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
+    ) {
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let lt_span = tokens_for
+            .iter()
+            .find_map(|e| match e {
+                SyntaxElement::Token(t) if t.text() == "<" => Some(t.text_range()),
+                _ => None,
+            })
+            .expect("angle token missing");
+        let mut iter = tokens_for.into_iter().peekable();
+        for e in iter.by_ref() {
+            if e.kind() == SyntaxKind::T_COLON {
+                break;
+            }
+        }
+        let (_ty, errors) = parse_type_expr(&mut iter);
+        assert_eq!(errors.len(), 1);
+        match errors.first() {
+            Some(ParseError::UnclosedDelimiter {
+                delimiter: '>',
+                span,
+            }) => {
+                assert_eq!(*span, lt_span);
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
     #[test]
     fn empty_name_error() {
         let src = "function bad(: u32) {}";
