@@ -1,8 +1,8 @@
 //! Error types and helpers for delimiter tracking during type parsing.
 //!
-//! The functions in `type_parsing` rely on these structures to report
-//! mismatched or unclosed delimiters when reading parameter lists and type
-//! expressions.
+//! The functions in `params` and `type_expr` rely on these structures to
+//! report mismatched or unclosed delimiters when reading parameter lists and
+//! type expressions.
 
 use rowan::TextRange;
 
