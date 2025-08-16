@@ -48,14 +48,14 @@ attached, so diagnostics point at the error. Helper functions
 `collect_parameter_name` and `finalise_parameter` keep the main loop small.
 
 Empty names and types are reported with `ParseError::MissingName` and
-`ParseError::MissingType`. `parse_type_expr` skips whitespace and comment nodes
-and reports mismatched delimiters with a `ParseError::Delimiter` that records
-the expected and actual tokens. Unclosed delimiters produce
-`ParseError::UnclosedDelimiter` once parsing stops, highlighting the position
-of the opening delimiter. In addition to the stack-driven path, utilities that
-balance delimiters (e.g., `extract_parenthesized` in
-`parse_utils/delimiter.rs`) can also surface unclosed-delimiter errors, which
-likewise report the opening token’s span.
+`ParseError::MissingType`. Both `collect_parameter_name` and `parse_type_expr`
+skip whitespace and comment nodes. `parse_type_expr` reports mismatched
+delimiters with a `ParseError::Delimiter` that records the expected and actual
+tokens. Unclosed delimiters produce `ParseError::UnclosedDelimiter` once
+parsing stops, highlighting the position of the opening delimiter. In addition
+to the stack-driven path, utilities that balance delimiters (e.g.,
+`extract_parenthesized` in `parse_utils/delimiter.rs`) can also surface
+unclosed-delimiter errors, which likewise report the opening token’s span.
 
 A hierarchy of error types supports rich diagnostics when delimiters do not
 match or names and types are missing. Short description: the following diagram
