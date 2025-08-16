@@ -325,6 +325,21 @@ fn track_span_for_element(
     *end_pos = Some(range.end());
 }
 
+/// Determines whether the element is whitespace or a comment.
+fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
+    use rowan::NodeOrToken;
+
+    match e {
+        NodeOrToken::Token(t) => {
+            matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+        }
+        NodeOrToken::Node(n) => {
+            let text = n.text().to_string();
+            n.kind() == SyntaxKind::T_COMMENT || text.chars().all(char::is_whitespace)
+        }
+    }
+}
+
 fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> (String, bool, Option<TextRange>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -336,36 +351,33 @@ where
     let mut start_pos: Option<TextSize> = None;
     let mut end_pos: Option<TextSize> = None;
 
-    while let Some(e) = iter.peek() {
-        match e {
+    while let Some(peeked) = iter.peek() {
+        if is_trivia(peeked) {
+            iter.next();
+            continue;
+        }
+
+        match peeked {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_COLON => {
-                    track_span_for_element(e, &mut start_pos, &mut end_pos);
+                    track_span_for_element(peeked, &mut start_pos, &mut end_pos);
                     iter.next();
                     found_colon = true;
                     break;
                 }
                 SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => {
-                    track_span_for_element(e, &mut start_pos, &mut end_pos);
+                    track_span_for_element(peeked, &mut start_pos, &mut end_pos);
                     break;
                 }
-                SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {
-                    iter.next();
-                }
                 _ => {
-                    track_span_for_element(e, &mut start_pos, &mut end_pos);
+                    track_span_for_element(peeked, &mut start_pos, &mut end_pos);
                     name_buf.push_str(t.text());
                     iter.next();
                 }
             },
             NodeOrToken::Node(n) => {
-                let text = n.text().to_string();
-                if n.kind() == SyntaxKind::T_COMMENT || text.chars().all(char::is_whitespace) {
-                    iter.next();
-                    continue;
-                }
-                track_span_for_element(e, &mut start_pos, &mut end_pos);
-                name_buf.push_str(&text);
+                track_span_for_element(peeked, &mut start_pos, &mut end_pos);
+                name_buf.push_str(&n.text().to_string());
                 iter.next();
             }
         }
