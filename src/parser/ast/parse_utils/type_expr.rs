@@ -32,38 +32,98 @@ where
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
     while let Some(e) = iter.peek() {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                kind if is_opening_delimiter(kind) => {
-                    if handle_opening_delimiter(t, &mut ctx) {
-                        iter.next();
-                    }
-                }
-                kind if is_closing_delimiter(kind) => {
-                    if handle_closing_delimiter(t, &mut ctx, &mut errors) {
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                kind if should_break_parsing(kind, ctx.stack.is_empty()) => break,
-                _ => {
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-            },
+        let continue_parsing = match e {
+            NodeOrToken::Token(t) => process_token(t, iter, &mut ctx, &mut errors),
             NodeOrToken::Node(n) => {
-                let text = n.text().to_string();
-                let is_ws = text.chars().all(char::is_whitespace);
-                let is_comment = n.kind() == SyntaxKind::T_COMMENT;
-                if !is_ws && !is_comment {
-                    ctx.buf.push_str(&text);
-                }
-                iter.next();
+                process_node(n, iter, &mut ctx);
+                true
             }
+        };
+        if !continue_parsing {
+            break;
         }
     }
 
+    add_unclosed_delimiter_errors(&stack, &mut errors);
+
+    (buf.trim().to_string(), errors)
+}
+
+/// Handles a single token in the main parsing loop.
+fn process_token<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let kind = token.kind();
+    if is_opening_delimiter(kind) {
+        process_opening_delimiter(token, iter, ctx);
+        true
+    } else if is_closing_delimiter(kind) {
+        process_closing_delimiter(token, iter, ctx, errors)
+    } else if should_break_parsing(kind, ctx.stack.is_empty()) {
+        false
+    } else {
+        push(token, ctx);
+        iter.next();
+        true
+    }
+}
+
+/// Handles an opening delimiter encountered during parsing.
+fn process_opening_delimiter<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+) where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if handle_opening_delimiter(token, ctx) {
+        iter.next();
+    }
+}
+
+/// Handles a closing delimiter and determines whether parsing should continue.
+fn process_closing_delimiter<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if handle_closing_delimiter(token, ctx, errors) {
+        iter.next();
+        true
+    } else {
+        false
+    }
+}
+
+/// Processes a syntax node, appending its text when appropriate.
+fn process_node<I>(
+    node: &rowan::SyntaxNode<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+) where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let text = node.text().to_string();
+    let is_ws = text.chars().all(char::is_whitespace);
+    let is_comment = node.kind() == SyntaxKind::T_COMMENT;
+    if !is_ws && !is_comment {
+        ctx.buf.push_str(&text);
+    }
+    iter.next();
+}
+
+/// Adds errors for any unclosed delimiters remaining on the stack.
+fn add_unclosed_delimiter_errors(stack: &DelimStack, errors: &mut Vec<ParseError>) {
     for (unclosed, span) in stack.unclosed() {
         let ch = match unclosed {
             Delim::Paren => ')',
@@ -76,8 +136,6 @@ where
             span,
         });
     }
-
-    (buf.trim().to_string(), errors)
 }
 
 /// Handles an opening delimiter token.
