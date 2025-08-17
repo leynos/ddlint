@@ -14,11 +14,17 @@ fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let mut depth = 0usize;
+    let mut depth = 0isize;
     for e in iter.by_ref() {
         match e.kind() {
             SyntaxKind::T_LPAREN => depth += 1,
-            SyntaxKind::T_RPAREN => depth = depth.saturating_sub(1),
+            SyntaxKind::T_RPAREN => {
+                depth -= 1;
+                if depth < 0 {
+                    log::warn!("excess closing parenthesis detected in skip_to_top_level_colon",);
+                    depth = 0;
+                }
+            }
             SyntaxKind::T_COLON if depth == 0 => break,
             _ => {}
         }

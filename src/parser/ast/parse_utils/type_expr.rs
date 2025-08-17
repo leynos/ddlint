@@ -11,15 +11,10 @@ use crate::{DdlogLanguage, SyntaxKind};
 use super::super::skip_whitespace_and_comments;
 use super::{
     errors::{Delim, DelimStack, ParseError},
-    token_utils::{TokenParseContext, close_delimiter, open_delimiter, push, push_error},
+    token_utils::{
+        TokenParseContext, close_delimiter, delimiter_checker, open_delimiter, push, push_error,
+    },
 };
-
-macro_rules! delimiter_checker {
-    ($(#[$meta:meta])* $name:ident, [$($variant:path),+ $(,)?]) => {
-        $(#[$meta])* fn $name(kind: SyntaxKind) -> bool {
-            matches!(kind, $($variant)|+)
-        }
-    }; }
 
 /// Parse a type expression from the provided iterator.
 ///

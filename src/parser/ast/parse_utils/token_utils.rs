@@ -9,6 +9,16 @@ use rowan::TextRange;
 
 use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
 
+macro_rules! delimiter_checker {
+    ($(#[$meta:meta])* $name:ident, [$($variant:path),+ $(,)?]) => {
+        $(#[$meta])* fn $name(kind: SyntaxKind) -> bool {
+            matches!(kind, $($variant)|+)
+        }
+    };
+}
+
+pub(crate) use delimiter_checker;
+
 /// Shared context for token parsing utilities.
 #[derive(Debug)]
 pub(crate) struct TokenParseContext<'a> {
