@@ -1,4 +1,5 @@
 use super::*;
+use crate::SyntaxKind;
 use crate::parser::ast::AstNode;
 use crate::parser::parse;
 use rowan::SyntaxElement;
@@ -178,13 +179,8 @@ impl ErrorExpectation {
                 assert_eq!(delim.expected, *expected);
                 assert_eq!(delim.found, *found);
             }
-            (
-                Self::MissingName,
-                ParseError::MissingName { .. },
-            ) | (
-                Self::MissingType,
-                ParseError::MissingType { .. },
-            ) => {}
+            (Self::MissingName, ParseError::MissingName { .. })
+            | (Self::MissingType, ParseError::MissingType { .. }) => {}
             (_, other) => panic!("unexpected error: {other:?}"),
         }
     }
@@ -232,4 +228,38 @@ fn parse_error_cases(
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let err = errors.first().expect("missing error");
     expectation.assert_matches(err);
+}
+
+#[test]
+fn reports_multiple_missing_types() {
+    let src = "function f(x:, y:) {}";
+    let elements = tokens_for(src);
+    let (pairs, errors) = parse_name_type_pairs(elements.into_iter());
+    assert!(pairs.is_empty());
+    assert_eq!(errors.len(), 2);
+    assert!(
+        errors
+            .iter()
+            .all(|e| matches!(e, ParseError::MissingType { .. }))
+    );
+}
+
+#[test]
+fn missing_colon_does_not_consume_closing_paren() {
+    let src = "function f(x y) {}";
+    let elements = tokens_for(src);
+    let (pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
+    assert!(pairs.is_empty());
+    assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    let err = errors.first().expect("missing error");
+    assert!(matches!(err, ParseError::MissingColon { .. }));
+
+    let paren_index = elements
+        .iter()
+        .position(|e| matches!(e, SyntaxElement::Token(t) if t.kind() == SyntaxKind::T_RPAREN));
+    let brace_index = elements
+        .iter()
+        .position(|e| matches!(e, SyntaxElement::Token(t) if t.kind() == SyntaxKind::T_LBRACE));
+    assert!(paren_index.is_some() && brace_index.is_some() && paren_index < brace_index);
 }

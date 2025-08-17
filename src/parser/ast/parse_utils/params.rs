@@ -34,15 +34,16 @@ impl ParameterParsingState {
     }
 }
 
-fn find_opening_paren<I>(iter: &mut std::iter::Peekable<I>)
+fn find_opening_paren<I>(iter: &mut std::iter::Peekable<I>) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     for e in iter {
         if e.kind() == SyntaxKind::T_LPAREN {
-            break;
+            return true;
         }
     }
+    false
 }
 
 fn should_stop_parsing<I>(iter: &mut std::iter::Peekable<I>) -> bool
@@ -145,7 +146,9 @@ where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     let mut iter = iter.peekable();
-    find_opening_paren(&mut iter);
+    if !find_opening_paren(&mut iter) {
+        return (Vec::new(), Vec::new());
+    }
     let mut errors = Vec::new();
     let pairs = parse_parameter_list(&mut iter, &mut errors);
     collect_trailing_delimiter_errors(iter, &mut errors);
@@ -312,14 +315,16 @@ where
         while let Some(e) = self.iter.peek() {
             match e.kind() {
                 SyntaxKind::T_COMMA => {
+                    // Consume ',' so the caller proceeds to the next parameter.
                     self.iter.next();
                     break;
                 }
                 SyntaxKind::T_RPAREN => {
-                    self.iter.next();
+                    // Do NOT consume ')'; leave it for the outer loop to terminate cleanly.
                     return true;
                 }
                 _ => {
+                    // Consume junk until reaching a delimiter.
                     self.iter.next();
                 }
             }
@@ -329,9 +334,16 @@ where
 
     fn parse_type(&mut self) -> String {
         skip_whitespace_and_comments(self.iter);
-        let (ty, mut errs) = parse_type_expr(self.iter);
-        self.errors.append(&mut errs);
-        ty
+        if matches!(
+            self.iter.peek().map(SyntaxElement::kind),
+            Some(SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN)
+        ) {
+            String::new()
+        } else {
+            let (ty, mut errs) = parse_type_expr(self.iter);
+            self.errors.append(&mut errs);
+            ty
+        }
     }
 
     fn validate_parameter(&mut self, ty: &str) {
