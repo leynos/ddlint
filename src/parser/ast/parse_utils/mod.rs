@@ -8,10 +8,14 @@
 
 mod delimiter;
 pub(crate) mod errors;
+mod outputs;
+mod params;
 mod token_utils;
-mod type_parsing;
+mod type_expr;
 
 pub use delimiter::extract_parenthesized;
 pub(crate) use delimiter::paren_block_span;
 
-pub(crate) use type_parsing::{parse_name_type_pairs, parse_output_list, parse_type_after_colon};
+pub(crate) use outputs::parse_output_list;
+pub(crate) use params::parse_name_type_pairs;
+pub(crate) use type_expr::parse_type_after_colon;

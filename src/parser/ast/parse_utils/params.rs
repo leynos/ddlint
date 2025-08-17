@@ -1,8 +1,9 @@
-//! Type expression parsing utilities for function and relation parameters.
+//! Utilities for parsing parameter name and type pairs.
 //!
-//! This module provides functions to parse parameter name-type pairs,
-//! output lists, and type expressions from syntax tokens. It handles
-//! balanced delimiters and generates detailed parse errors.
+//! Functions in this module walk the CST tokens for a parameter list and
+//! return any `(name, type)` pairs alongside parsing errors. Delimiter checking
+//! is delegated to `token_utils` so that delimiter handling remains
+//! consistent across modules.
 
 use rowan::{SyntaxElement, TextRange, TextSize};
 
@@ -10,18 +11,15 @@ use crate::{DdlogLanguage, SyntaxKind};
 
 use super::super::skip_whitespace_and_comments;
 use super::{
-    errors::{Delim, DelimStack, ParseError},
-    token_utils::{TokenParseContext, close_delimiter, open_delimiter, push, push_error},
+    errors::{Delim, ParseError},
+    token_utils::push_error,
+    type_expr::parse_type_expr,
 };
 
-macro_rules! delimiter_checker {
-    ($(#[$meta:meta])* $name:ident, [$($variant:path),+ $(,)?]) => {
-        $(#[$meta])* fn $name(kind: SyntaxKind) -> bool {
-            matches!(kind, $($variant)|+)
-        }
-    };
-}
-
+/// Parse comma separated `name: type` pairs enclosed in parentheses.
+///
+/// The iterator may contain leading tokens before the opening `(`. Any
+/// unmatched closing delimiters following the list are reported as errors.
 pub(crate) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -86,233 +84,6 @@ where
     (pairs, errors)
 }
 
-fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    let mut depth = 0usize;
-    for e in iter.by_ref() {
-        match e.kind() {
-            SyntaxKind::T_LPAREN => depth += 1,
-            SyntaxKind::T_RPAREN => depth = depth.saturating_sub(1),
-            SyntaxKind::T_COLON if depth == 0 => break,
-            _ => {}
-        }
-    }
-}
-
-pub(crate) fn parse_output_list<I>(iter: I) -> Vec<String>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    use rowan::NodeOrToken;
-
-    let mut iter = iter.peekable();
-    skip_to_top_level_colon(&mut iter);
-
-    let mut names = Vec::new();
-    loop {
-        skip_whitespace_and_comments(&mut iter);
-        match iter.next() {
-            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => {
-                names.push(t.text().to_string());
-            }
-            _ => break,
-        }
-        skip_whitespace_and_comments(&mut iter);
-        match iter.peek() {
-            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_COMMA => {
-                iter.next();
-            }
-            _ => break,
-        }
-    }
-
-    names
-}
-
-pub(crate) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<ParseError>)
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    use rowan::NodeOrToken;
-
-    let mut buf = String::new();
-    let mut errors = Vec::new();
-    let mut stack = DelimStack::default();
-    let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
-
-    while let Some(e) = iter.peek() {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                kind if is_opening_delimiter(kind) => {
-                    if handle_opening_delimiter(t, &mut ctx) {
-                        iter.next();
-                    }
-                }
-                kind if is_closing_delimiter(kind) => {
-                    if handle_closing_delimiter(t, &mut ctx, &mut errors) {
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                kind if should_break_parsing(kind, ctx.stack.is_empty()) => break,
-                _ => {
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-            },
-            NodeOrToken::Node(n) => {
-                let text = n.text().to_string();
-                let is_ws = text.chars().all(char::is_whitespace);
-                let is_comment = n.kind() == SyntaxKind::T_COMMENT;
-                if !is_ws && !is_comment {
-                    ctx.buf.push_str(&text);
-                }
-                iter.next();
-            }
-        }
-    }
-
-    for (unclosed, span) in stack.unclosed() {
-        let ch = match unclosed {
-            Delim::Paren => ')',
-            Delim::Angle => '>',
-            Delim::Bracket => ']',
-            Delim::Brace => '}',
-        };
-        errors.push(ParseError::UnclosedDelimiter {
-            delimiter: ch,
-            span,
-        });
-    }
-
-    (buf.trim().to_string(), errors)
-}
-
-/// Handles an opening delimiter token.
-fn handle_opening_delimiter(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    ctx: &mut TokenParseContext<'_>,
-) -> bool {
-    let mapping = match token.kind() {
-        SyntaxKind::T_LPAREN => Some((Delim::Paren, 1)),
-        SyntaxKind::T_LT => Some((Delim::Angle, 1)),
-        SyntaxKind::T_SHL => Some((Delim::Angle, 2)),
-        SyntaxKind::T_LBRACKET => Some((Delim::Bracket, 1)),
-        SyntaxKind::T_LBRACE => Some((Delim::Brace, 1)),
-        _ => None,
-    };
-    if let Some((delim, count)) = mapping {
-        open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
-        push(token, ctx);
-        true
-    } else {
-        false
-    }
-}
-
-/// Handles a closing delimiter token.
-///
-/// Returns `true` when the closing delimiter matches the top of the stack.
-/// When a mismatch occurs a [`ParseError::Delimiter`] is pushed to `errors`
-/// and `false` is returned if the token should terminate parsing.
-fn handle_closing_delimiter(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    ctx: &mut TokenParseContext<'_>,
-    errors: &mut Vec<ParseError>,
-) -> bool {
-    let (delim, count, break_on_mismatch) = match token.kind() {
-        SyntaxKind::T_RPAREN => (Delim::Paren, 1, true),
-        SyntaxKind::T_GT => (Delim::Angle, 1, false),
-        SyntaxKind::T_SHR => (Delim::Angle, 2, false),
-        SyntaxKind::T_RBRACKET => (Delim::Bracket, 1, false),
-        SyntaxKind::T_RBRACE => (Delim::Brace, 1, false),
-        _ => return false,
-    };
-
-    if close_delimiter(&mut *ctx.stack, delim, count) < count {
-        if !break_on_mismatch {
-            push_error(errors, delim, token);
-        }
-        if break_on_mismatch {
-            return false;
-        }
-    }
-
-    push(token, ctx);
-    true
-}
-
-delimiter_checker!(
-    /// Determines whether a syntax kind opens a delimiter pair.
-    is_opening_delimiter,
-    [
-        SyntaxKind::T_LPAREN,
-        SyntaxKind::T_LT,
-        SyntaxKind::T_SHL,
-        SyntaxKind::T_LBRACKET,
-        SyntaxKind::T_LBRACE,
-    ]
-);
-
-delimiter_checker!(
-    /// Determines whether a syntax kind closes a delimiter pair.
-    is_closing_delimiter,
-    [
-        SyntaxKind::T_RPAREN,
-        SyntaxKind::T_GT,
-        SyntaxKind::T_SHR,
-        SyntaxKind::T_RBRACKET,
-        SyntaxKind::T_RBRACE,
-    ]
-);
-
-/// Predicate for exiting the main parsing loop.
-fn should_break_parsing(kind: SyntaxKind, stack_empty: bool) -> bool {
-    kind == SyntaxKind::T_COMMA && stack_empty
-}
-
-pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    use rowan::NodeOrToken;
-
-    skip_whitespace_and_comments(iter);
-    if !matches!(
-        iter.peek().map(SyntaxElement::kind),
-        Some(SyntaxKind::T_COLON)
-    ) {
-        return None;
-    }
-    iter.next();
-
-    let mut buf = String::new();
-    for e in iter {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI => break,
-                SyntaxKind::T_WHITESPACE if t.text().contains('\n') => break,
-                _ => buf.push_str(t.text()),
-            },
-            NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-        }
-    }
-
-    let text = buf.trim();
-    if text.is_empty() {
-        None
-    } else {
-        Some(text.to_string())
-    }
-}
-
-/// Updates start and end positions for an element.
-///
-/// Records the beginning of the first element encountered and updates the end
-/// position on each call so the resulting span covers all processed tokens.
 fn track_span_for_element(
     element: &SyntaxElement<DdlogLanguage>,
     start_pos: &mut Option<TextSize>,
@@ -434,6 +205,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::super::outputs::skip_to_top_level_colon;
     use super::*;
     use crate::parser::ast::AstNode;
     use crate::parser::parse;
@@ -453,29 +225,6 @@ mod tests {
             },
             |func| func.syntax().children_with_tokens().collect(),
         )
-    }
-
-    #[fixture]
-    fn return_type_for(#[default("function t() {}")] src: &str) -> Option<String> {
-        let parsed = parse(src);
-        let functions = parsed.root().functions();
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let func = functions.first().expect("function missing");
-        let mut iter = func.syntax().children_with_tokens().peekable();
-        let mut depth = 0usize;
-        for e in &mut iter {
-            match e.kind() {
-                SyntaxKind::T_LPAREN => depth += 1,
-                SyntaxKind::T_RPAREN => {
-                    depth -= 1;
-                    if depth == 0 {
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-        parse_type_after_colon(&mut iter)
     }
 
     #[rstest]
@@ -525,17 +274,16 @@ mod tests {
         vec![("b".into(), "bool".into())],
         1
     )]
-    fn name_type_pairs(
+    fn parse_pairs(
         #[case] src: &str,
         #[case] expected: Vec<(String, String)>,
-        #[case] err_count: usize,
+        #[case] error_count: usize,
         #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
     ) {
         let _ = src;
-        let elements = tokens_for;
-        let (result, errors) = parse_name_type_pairs(elements.into_iter());
-        assert_eq!(errors.len(), err_count);
-        assert_eq!(result, expected);
+        let (pairs, errors) = parse_name_type_pairs(tokens_for.into_iter());
+        assert_eq!(pairs, expected);
+        assert_eq!(errors.len(), error_count);
     }
 
     #[test]
@@ -628,8 +376,7 @@ mod tests {
             .find(|e| {
                 matches!(
                     e,
-                    ParseError::UnclosedDelimiter { delimiter, .. }
-                        if *delimiter == expected_delim
+                    ParseError::UnclosedDelimiter { delimiter, .. } if *delimiter == expected_delim
                 )
             })
             .expect("expected unclosed delimiter missing");
@@ -670,20 +417,5 @@ mod tests {
         let elements = tokens_for(src);
         let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
         assert_eq!(errors.len(), 1);
-    }
-
-    #[rstest]
-    #[case("function f(): u32 {}", Some("u32".to_string()))]
-    #[case("extern function f(): bool;", Some("bool".to_string()))]
-    #[case("function f() {}", None)]
-    #[case("function f():\n    u32 {}", None)]
-    #[case("function f(): {}", None)]
-    fn trailing_type(
-        #[case] src: &str,
-        #[case] expected: Option<String>,
-        #[with(src)] return_type_for: Option<String>,
-    ) {
-        let _ = src;
-        assert_eq!(return_type_for, expected);
     }
 }
