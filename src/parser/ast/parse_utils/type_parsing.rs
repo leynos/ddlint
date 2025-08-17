@@ -562,11 +562,12 @@ mod tests {
         assert_eq!(errors.len(), 1);
     }
 
-    #[test]
-    fn unclosed_angle_error() {
-        let src = "function bad(x: Vec<u32) {}";
+    fn assert_unclosed_angle_span<F, T>(src: &str, parser: F)
+    where
+        F: Fn(Vec<SyntaxElement<DdlogLanguage>>) -> (T, Vec<ParseError>),
+    {
         let elements = tokens_for(src);
-        let (_pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
+        let (_result, errors) = parser(elements.clone());
         assert_eq!(errors.len(), 1);
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let angle_span = elements
@@ -587,6 +588,13 @@ mod tests {
             }
             other => panic!("unexpected error: {other:?}"),
         }
+    }
+
+    #[test]
+    fn unclosed_angle_error() {
+        assert_unclosed_angle_span("function bad(x: Vec<u32) {}", |elements| {
+            parse_name_type_pairs(elements.into_iter())
+        });
     }
 
     #[rstest]
@@ -631,6 +639,21 @@ mod tests {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn type_expr_unclosed_delimiter_span() {
+        assert_unclosed_angle_span("function bad(x: Vec<u32) {}", |elements| {
+            let mut iter = elements.into_iter().peekable();
+            for e in iter.by_ref() {
+                if e.kind() == SyntaxKind::T_LPAREN {
+                    break;
+                }
+            }
+            // Advance to the parameter type position.
+            skip_to_top_level_colon(&mut iter);
+            parse_type_expr(&mut iter)
+        });
     }
 
     #[test]
