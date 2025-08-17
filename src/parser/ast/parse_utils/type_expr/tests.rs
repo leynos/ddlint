@@ -33,7 +33,7 @@ fn return_type_for(#[default("function t() {}")] src: &str) -> Option<String> {
         match e.kind() {
             SyntaxKind::T_LPAREN => depth += 1,
             SyntaxKind::T_RPAREN => {
-                depth -= 1;
+                depth = depth.saturating_sub(1);
                 if depth == 0 {
                     break;
                 }
@@ -61,7 +61,7 @@ fn type_expr_unclosed_delimiter_span() {
     let angle_span = elements
         .iter()
         .find_map(|e| match e {
-            SyntaxElement::Token(t) if t.text() == "<" => Some(t.text_range()),
+            SyntaxElement::Token(t) if t.kind() == SyntaxKind::T_LT => Some(t.text_range()),
             _ => None,
         })
         .expect("angle token missing");

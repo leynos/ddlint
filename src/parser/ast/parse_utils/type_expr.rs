@@ -40,6 +40,11 @@ where
     }
 }
 
+/// Parses a type expression from a token stream, returning the textual
+/// representation and any parse errors. Stops when:
+/// - A top-level separator is reached (`,` / `{` / `;`) after emitting some
+///   text, or
+/// - A closing-delimiter mismatch requires termination (e.g., `)`).
 pub(crate) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -242,6 +247,10 @@ fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) ->
         )
 }
 
+/// Parses an optional type following a colon. Returns:
+/// - `Some(type_text)` when a colon is present and a non-empty type is parsed
+/// - `None` when no colon is present or the next token is a terminator (`{` or
+///   `;`)
 pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
