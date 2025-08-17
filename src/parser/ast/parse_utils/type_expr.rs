@@ -23,6 +23,23 @@ macro_rules! delimiter_checker {
     };
 }
 
+/// Skips the next element if it's trivia and advances the iterator.
+///
+/// Returns `true` if trivia was skipped, `false` otherwise.
+fn skip_next_trivia_element<I>(iter: &mut std::iter::Peekable<I>) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if let Some(peeked) = iter.peek()
+        && is_trivia(peeked)
+    {
+        iter.next();
+        true
+    } else {
+        false
+    }
+}
+
 pub(crate) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -33,10 +50,7 @@ where
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
     while iter.peek().is_some() {
-        if let Some(peeked) = iter.peek()
-            && is_trivia(peeked)
-        {
-            iter.next();
+        if skip_next_trivia_element(iter) {
             continue;
         }
 

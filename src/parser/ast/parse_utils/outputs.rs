@@ -24,30 +24,50 @@ where
     }
 }
 
-pub(crate) fn parse_output_list<I>(iter: I) -> Vec<String>
+fn try_parse_identifier<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     use rowan::NodeOrToken;
 
+    skip_whitespace_and_comments(iter);
+    match iter.next() {
+        Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => {
+            Some(t.text().to_string())
+        }
+        _ => None,
+    }
+}
+
+fn has_comma_separator<I>(iter: &mut std::iter::Peekable<I>) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    skip_whitespace_and_comments(iter);
+    if let Some(NodeOrToken::Token(t)) = iter.peek()
+        && t.kind() == SyntaxKind::T_COMMA
+    {
+        iter.next();
+        true
+    } else {
+        false
+    }
+}
+
+pub(crate) fn parse_output_list<I>(iter: I) -> Vec<String>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
     let mut iter = iter.peekable();
     skip_to_top_level_colon(&mut iter);
 
     let mut names = Vec::new();
-    loop {
-        skip_whitespace_and_comments(&mut iter);
-        match iter.next() {
-            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => {
-                names.push(t.text().to_string());
-            }
-            _ => break,
-        }
-        skip_whitespace_and_comments(&mut iter);
-        match iter.peek() {
-            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_COMMA => {
-                iter.next();
-            }
-            _ => break,
+    while let Some(name) = try_parse_identifier(&mut iter) {
+        names.push(name);
+        if !has_comma_separator(&mut iter) {
+            break;
         }
     }
 
