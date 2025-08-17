@@ -207,23 +207,46 @@ where
     }
 
     if is_opening_delimiter(kind) {
-        if handle_opening_delimiter(token, ctx) {
-            iter.next();
-        }
+        handle_opening_delimiter_and_advance(token, iter, ctx);
         return false;
     }
 
     if is_closing_delimiter(kind) {
-        if handle_closing_delimiter(token, ctx, errors) {
-            iter.next();
-            return false;
-        }
-        return true;
+        return handle_closing_delimiter_and_advance(token, iter, ctx, errors);
     }
 
     push(token, ctx);
     iter.next();
     false
+}
+
+fn handle_opening_delimiter_and_advance<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+) where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if handle_opening_delimiter(token, ctx) {
+        iter.next();
+    }
+}
+
+fn handle_closing_delimiter_and_advance<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if handle_closing_delimiter(token, ctx, errors) {
+        iter.next();
+        false
+    } else {
+        true
+    }
 }
 
 /// Handles an opening delimiter token.
