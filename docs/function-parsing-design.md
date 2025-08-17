@@ -27,9 +27,14 @@ classDiagram
     Function ..> parse_name_type_pairs : uses
     parse_name_type_pairs ..> parse_type_expr : uses
     Function ..> parse_type_after_colon : uses
+    parse_type_after_colon ..> parse_type_expr : uses
     Relation ..> parse_name_type_pairs : uses
     parse_type_expr ..> open_delimiter : uses
 ```
+
+`parse_type_after_colon` handles optional return types. It skips trivia,
+verifies the presence of a colon and then delegates to `parse_type_expr` so
+return types benefit from the same delimiter tracking and trivia skipping.
 
 ## Parameter list parsing
 
@@ -48,9 +53,10 @@ attached, so diagnostics point at the error. Helper functions
 `collect_parameter_name` and `finalise_parameter` keep the main loop small.
 
 Empty names and types are reported with `ParseError::MissingName` and
-`ParseError::MissingType`. `parse_type_expr` skips whitespace and comment nodes
-and reports mismatched delimiters with a `ParseError::Delimiter` that records
-the expected and actual tokens. Unclosed delimiters produce
+`ParseError::MissingType`. Both `collect_parameter_name` and `parse_type_expr`
+skip whitespace and comment tokens, so no trivia appears in the extracted text.
+`parse_type_expr` reports mismatched delimiters with a `ParseError::Delimiter`
+that records the expected and actual tokens. Unclosed delimiters produce
 `ParseError::UnclosedDelimiter` once parsing stops, highlighting the position
 of the opening delimiter. In addition to the stack-driven path, utilities that
 balance delimiters (e.g., `extract_parenthesized` in

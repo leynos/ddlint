@@ -135,43 +135,21 @@ pub(crate) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, 
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut stack = DelimStack::default();
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
-    while let Some(e) = iter.peek() {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                kind if is_opening_delimiter(kind) => {
-                    if handle_opening_delimiter(t, &mut ctx) {
-                        iter.next();
-                    }
-                }
-                kind if is_closing_delimiter(kind) => {
-                    if handle_closing_delimiter(t, &mut ctx, &mut errors) {
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                kind if should_break_parsing(kind, ctx.stack.is_empty()) => break,
-                _ => {
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-            },
-            NodeOrToken::Node(n) => {
-                let text = n.text().to_string();
-                let is_ws = text.chars().all(char::is_whitespace);
-                let is_comment = n.kind() == SyntaxKind::T_COMMENT;
-                if !is_ws && !is_comment {
-                    ctx.buf.push_str(&text);
-                }
-                iter.next();
-            }
+    while iter.peek().is_some() {
+        if let Some(peeked) = iter.peek()
+            && is_trivia(peeked)
+        {
+            iter.next();
+            continue;
+        }
+
+        if process_type_element(iter, &mut ctx, &mut errors) {
+            break;
         }
     }
 
@@ -189,6 +167,86 @@ where
     }
 
     (buf.trim().to_string(), errors)
+}
+
+fn process_type_element<I>(
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    let Some(element) = iter.peek().cloned() else {
+        return false;
+    };
+    match element {
+        NodeOrToken::Token(t) => process_type_token(&t, iter, ctx, errors),
+        NodeOrToken::Node(n) => {
+            ctx.buf.push_str(&n.text().to_string());
+            iter.next();
+            false
+        }
+    }
+}
+
+fn process_type_token<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let kind = token.kind();
+    if should_break_parsing(kind, ctx.stack.is_empty(), ctx.buf.is_empty()) {
+        return true;
+    }
+
+    if is_opening_delimiter(kind) {
+        handle_opening_delimiter_and_advance(token, iter, ctx);
+        return false;
+    }
+
+    if is_closing_delimiter(kind) {
+        return handle_closing_delimiter_and_advance(token, iter, ctx, errors);
+    }
+
+    push(token, ctx);
+    iter.next();
+    false
+}
+
+fn handle_opening_delimiter_and_advance<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+) where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if handle_opening_delimiter(token, ctx) {
+        iter.next();
+    }
+}
+
+fn handle_closing_delimiter_and_advance<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if handle_closing_delimiter(token, ctx, errors) {
+        iter.next();
+        false
+    } else {
+        true
+    }
 }
 
 /// Handles an opening delimiter token.
@@ -270,16 +328,19 @@ delimiter_checker!(
 );
 
 /// Predicate for exiting the main parsing loop.
-fn should_break_parsing(kind: SyntaxKind, stack_empty: bool) -> bool {
-    kind == SyntaxKind::T_COMMA && stack_empty
+fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
+    stack_empty
+        && !buf_empty
+        && matches!(
+            kind,
+            SyntaxKind::T_COMMA | SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI
+        )
 }
 
 pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
     skip_whitespace_and_comments(iter);
     if !matches!(
         iter.peek().map(SyntaxElement::kind),
@@ -289,19 +350,16 @@ where
     }
     iter.next();
 
-    let mut buf = String::new();
-    for e in iter {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI => break,
-                SyntaxKind::T_WHITESPACE if t.text().contains('\n') => break,
-                _ => buf.push_str(t.text()),
-            },
-            NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-        }
+    skip_whitespace_and_comments(iter);
+    if matches!(
+        iter.peek().map(SyntaxElement::kind),
+        Some(SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI)
+    ) {
+        return None;
     }
 
-    let text = buf.trim();
+    let (ty, _errs) = parse_type_expr(iter);
+    let text = ty.trim();
     if text.is_empty() {
         None
     } else {
@@ -325,51 +383,126 @@ fn track_span_for_element(
     *end_pos = Some(range.end());
 }
 
+/// Determines whether the element is whitespace or a comment.
+fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
+    use rowan::NodeOrToken;
+
+    match e {
+        NodeOrToken::Token(t) => {
+            matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+        }
+        NodeOrToken::Node(n) => {
+            if n.kind() == SyntaxKind::T_COMMENT {
+                true
+            } else {
+                n.text()
+                    .try_for_each_chunk(|chunk| {
+                        if chunk.chars().all(char::is_whitespace) {
+                            Ok(())
+                        } else {
+                            Err(())
+                        }
+                    })
+                    .is_ok()
+            }
+        }
+    }
+}
+
 fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> (String, bool, Option<TextRange>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
     let mut name_buf = String::new();
     let mut found_colon = false;
     let mut start_pos: Option<TextSize> = None;
     let mut end_pos: Option<TextSize> = None;
 
-    while let Some(e) = iter.peek() {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_COLON => {
-                    track_span_for_element(e, &mut start_pos, &mut end_pos);
-                    iter.next();
-                    found_colon = true;
-                    break;
-                }
-                SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => {
-                    track_span_for_element(e, &mut start_pos, &mut end_pos);
-                    break;
-                }
-                _ => {
-                    track_span_for_element(e, &mut start_pos, &mut end_pos);
-                    name_buf.push_str(t.text());
-                    iter.next();
-                }
-            },
-            NodeOrToken::Node(_) => {
-                track_span_for_element(e, &mut start_pos, &mut end_pos);
-                if let NodeOrToken::Node(n) = e {
-                    name_buf.push_str(&n.text().to_string());
-                }
-                iter.next();
-            }
+    while let Some(peeked) = iter.peek() {
+        if is_trivia(peeked) {
+            iter.next();
+            continue;
+        }
+
+        if process_parameter_token(
+            iter,
+            &mut name_buf,
+            &mut found_colon,
+            &mut start_pos,
+            &mut end_pos,
+        ) {
+            break;
         }
     }
 
-    let span = match (start_pos, end_pos) {
+    let span = create_text_span(start_pos, end_pos);
+    (name_buf.trim().to_string(), found_colon, span)
+}
+
+fn process_parameter_token<I>(
+    iter: &mut std::iter::Peekable<I>,
+    name_buf: &mut String,
+    found_colon: &mut bool,
+    start_pos: &mut Option<TextSize>,
+    end_pos: &mut Option<TextSize>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    let Some(element) = iter.peek().cloned() else {
+        return false;
+    };
+    track_span_for_element(&element, start_pos, end_pos);
+    match element {
+        NodeOrToken::Token(t) => process_token(&t, iter, name_buf, found_colon),
+        NodeOrToken::Node(n) => process_node(&n, iter, name_buf),
+    }
+}
+
+fn process_token<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    name_buf: &mut String,
+    found_colon: &mut bool,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    match token.kind() {
+        SyntaxKind::T_COLON => {
+            iter.next();
+            *found_colon = true;
+            true
+        }
+        SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => true,
+        _ => {
+            name_buf.push_str(token.text());
+            iter.next();
+            false
+        }
+    }
+}
+
+fn process_node<I>(
+    node: &rowan::SyntaxNode<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    name_buf: &mut String,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    name_buf.push_str(&node.text().to_string());
+    iter.next();
+    false
+}
+
+fn create_text_span(start_pos: Option<TextSize>, end_pos: Option<TextSize>) -> Option<TextRange> {
+    match (start_pos, end_pos) {
         (Some(start), Some(end)) => Some(TextRange::new(start, end)),
         _ => None,
-    };
-    (name_buf.trim().to_string(), found_colon, span)
+    }
 }
 
 fn finalise_parameter<I>(
@@ -491,17 +624,17 @@ mod tests {
     )]
     #[case(
         "function wrap(t: Option<(u32, string)>) {}",
-        vec![("t".into(), "Option<(u32, string)>".into())],
+        vec![("t".into(), "Option<(u32,string)>".into())],
         0
     )]
     #[case(
         "function g(m: Map<string, u64>) {}",
-        vec![("m".into(), "Map<string, u64>".into())],
+        vec![("m".into(), "Map<string,u64>".into())],
         0
     )]
     #[case(
         "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
-        vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())],
+        vec![("p".into(), "Vec<Map<string,Vec<u8>>>".into())],
         0
     )]
     #[case(
@@ -518,6 +651,16 @@ mod tests {
         "function weird(x: Vec<<u8>>) {}",
         vec![("x".into(), "Vec<<u8>>".into())],
         0
+    )]
+    #[case(
+        "function with_comment(a /* c */: u32) {}",
+        vec![("a".into(), "u32".into())],
+        0,
+    )]
+    #[case(
+        "function with_space(a   : u32) {}",
+        vec![("a".into(), "u32".into())],
+        0,
     )]
     #[case("function empty() {}", Vec::new(), 0)]
     #[case(
@@ -676,7 +819,8 @@ mod tests {
     #[case("function f(): u32 {}", Some("u32".to_string()))]
     #[case("extern function f(): bool;", Some("bool".to_string()))]
     #[case("function f() {}", None)]
-    #[case("function f():\n    u32 {}", None)]
+    #[case("function f():\n    u32 {}", Some("u32".to_string()))]
+    #[case("function f(): /* c */ u32 {}", Some("u32".to_string()))]
     #[case("function f(): {}", None)]
     fn trailing_type(
         #[case] src: &str,
