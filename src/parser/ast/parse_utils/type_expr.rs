@@ -31,11 +31,11 @@ where
     let mut stack = DelimStack::default();
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
-    while let Some(e) = iter.peek() {
+    while let Some(e) = iter.peek().cloned() {
         let continue_parsing = match e {
-            NodeOrToken::Token(t) => process_token(t, iter, &mut ctx, &mut errors),
+            NodeOrToken::Token(t) => process_token(&t, iter, &mut ctx, &mut errors),
             NodeOrToken::Node(n) => {
-                process_node(n, iter, &mut ctx);
+                process_node(&n, iter, &mut ctx);
                 true
             }
         };
@@ -44,7 +44,7 @@ where
         }
     }
 
-    add_unclosed_delimiter_errors(&stack, &mut errors);
+    add_unclosed_delimiter_errors(&mut stack, &mut errors);
 
     (buf.trim().to_string(), errors)
 }
@@ -123,7 +123,7 @@ fn process_node<I>(
 }
 
 /// Adds errors for any unclosed delimiters remaining on the stack.
-fn add_unclosed_delimiter_errors(stack: &DelimStack, errors: &mut Vec<ParseError>) {
+fn add_unclosed_delimiter_errors(stack: &mut DelimStack, errors: &mut Vec<ParseError>) {
     for (unclosed, span) in stack.unclosed() {
         let ch = match unclosed {
             Delim::Paren => ')',
