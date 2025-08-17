@@ -701,7 +701,7 @@ fn function_multi_params() -> &'static str {
 
 #[fixture]
 fn function_complex_params() -> &'static str {
-    "function complex(p: (u32, (u8, string))): bool {\n}\n"
+    "function complex(p: (u32,(u8,string))): bool {\n}\n"
 }
 
 #[fixture]
@@ -797,7 +797,7 @@ fn function_complex_params_parsed(function_complex_params: &str) {
     let func = funcs.first().expect("function missing");
     assert_eq!(
         func.parameters(),
-        vec![("p".into(), "(u32, (u8, string))".into()),]
+        vec![("p".into(), "(u32,(u8,string))".into()),]
     );
     assert_eq!(func.return_type(), Some("bool".into()));
 }
@@ -817,7 +817,7 @@ fn function_ws_comments_parsed(function_ws_comments: &str) {
 
 #[fixture]
 fn function_generic_params() -> &'static str {
-    "function example(arg: Vec<(u32, string)>, map: Map<string, u64>): bool {\n}\n"
+    "function example(arg: Vec<(u32,string)>, map: Map<string,u64>): bool {\n}\n"
 }
 
 #[rstest]
@@ -832,8 +832,8 @@ fn function_generic_params_parsed(function_generic_params: &str) {
     assert_eq!(
         func.parameters(),
         vec![
-            ("arg".into(), "Vec<(u32, string)>".into()),
-            ("map".into(), "Map<string, u64>".into()),
+            ("arg".into(), "Vec<(u32,string)>".into()),
+            ("map".into(), "Map<string,u64>".into()),
         ]
     );
     assert_eq!(func.return_type(), Some("bool".into()));
@@ -841,7 +841,7 @@ fn function_generic_params_parsed(function_generic_params: &str) {
 
 #[fixture]
 fn function_nested_generics() -> &'static str {
-    "function test(p: Vec<Map<string, Vec<u8>>>, arr: [Vec<u32>]): bool {}\n"
+    "function test(p: Vec<Map<string,Vec<u8>>>, arr: [Vec<u32>]): bool {}\n"
 }
 
 #[rstest]
@@ -856,7 +856,7 @@ fn function_nested_generics_parsed(function_nested_generics: &str) {
     assert_eq!(
         func.parameters(),
         vec![
-            ("p".into(), "Vec<Map<string, Vec<u8>>>".into()),
+            ("p".into(), "Vec<Map<string,Vec<u8>>>".into()),
             ("arr".into(), "[Vec<u32>]".into()),
         ]
     );

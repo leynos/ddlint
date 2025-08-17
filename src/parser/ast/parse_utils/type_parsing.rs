@@ -143,8 +143,15 @@ where
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
     while let Some(e) = iter.peek() {
+        if is_trivia(e) {
+            iter.next();
+            continue;
+        }
         match e {
             NodeOrToken::Token(t) => match t.kind() {
+                kind if should_break_parsing(kind, ctx.stack.is_empty(), ctx.buf.is_empty()) => {
+                    break;
+                }
                 kind if is_opening_delimiter(kind) => {
                     if handle_opening_delimiter(t, &mut ctx) {
                         iter.next();
@@ -157,19 +164,13 @@ where
                         break;
                     }
                 }
-                kind if should_break_parsing(kind, ctx.stack.is_empty()) => break,
                 _ => {
                     push(t, &mut ctx);
                     iter.next();
                 }
             },
             NodeOrToken::Node(n) => {
-                let text = n.text().to_string();
-                let is_ws = text.chars().all(char::is_whitespace);
-                let is_comment = n.kind() == SyntaxKind::T_COMMENT;
-                if !is_ws && !is_comment {
-                    ctx.buf.push_str(&text);
-                }
+                ctx.buf.push_str(&n.text().to_string());
                 iter.next();
             }
         }
@@ -270,16 +271,19 @@ delimiter_checker!(
 );
 
 /// Predicate for exiting the main parsing loop.
-fn should_break_parsing(kind: SyntaxKind, stack_empty: bool) -> bool {
-    kind == SyntaxKind::T_COMMA && stack_empty
+fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
+    stack_empty
+        && !buf_empty
+        && matches!(
+            kind,
+            SyntaxKind::T_COMMA | SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI
+        )
 }
 
 pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
     skip_whitespace_and_comments(iter);
     if !matches!(
         iter.peek().map(SyntaxElement::kind),
@@ -289,19 +293,16 @@ where
     }
     iter.next();
 
-    let mut buf = String::new();
-    for e in iter {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI => break,
-                SyntaxKind::T_WHITESPACE if t.text().contains('\n') => break,
-                _ => buf.push_str(t.text()),
-            },
-            NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-        }
+    skip_whitespace_and_comments(iter);
+    if matches!(
+        iter.peek().map(SyntaxElement::kind),
+        Some(SyntaxKind::T_LBRACE | SyntaxKind::T_SEMI)
+    ) {
+        return None;
     }
 
-    let text = buf.trim();
+    let (ty, _errs) = parse_type_expr(iter);
+    let text = ty.trim();
     if text.is_empty() {
         None
     } else {
@@ -334,8 +335,19 @@ fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
             matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
         }
         NodeOrToken::Node(n) => {
-            let text = n.text().to_string();
-            n.kind() == SyntaxKind::T_COMMENT || text.chars().all(char::is_whitespace)
+            if n.kind() == SyntaxKind::T_COMMENT {
+                true
+            } else {
+                n.text()
+                    .try_for_each_chunk(|chunk| {
+                        if chunk.chars().all(char::is_whitespace) {
+                            Ok(())
+                        } else {
+                            Err(())
+                        }
+                    })
+                    .is_ok()
+            }
         }
     }
 }
@@ -555,17 +567,17 @@ mod tests {
     )]
     #[case(
         "function wrap(t: Option<(u32, string)>) {}",
-        vec![("t".into(), "Option<(u32, string)>".into())],
+        vec![("t".into(), "Option<(u32,string)>".into())],
         0
     )]
     #[case(
         "function g(m: Map<string, u64>) {}",
-        vec![("m".into(), "Map<string, u64>".into())],
+        vec![("m".into(), "Map<string,u64>".into())],
         0
     )]
     #[case(
         "function nested(p: Vec<Map<string, Vec<u8>>>) {}",
-        vec![("p".into(), "Vec<Map<string, Vec<u8>>>".into())],
+        vec![("p".into(), "Vec<Map<string,Vec<u8>>>".into())],
         0
     )]
     #[case(
@@ -727,7 +739,8 @@ mod tests {
     #[case("function f(): u32 {}", Some("u32".to_string()))]
     #[case("extern function f(): bool;", Some("bool".to_string()))]
     #[case("function f() {}", None)]
-    #[case("function f():\n    u32 {}", None)]
+    #[case("function f():\n    u32 {}", Some("u32".to_string()))]
+    #[case("function f(): /* c */ u32 {}", Some("u32".to_string()))]
     #[case("function f(): {}", None)]
     fn trailing_type(
         #[case] src: &str,
