@@ -95,20 +95,7 @@ pub(crate) fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
         NodeOrToken::Token(t) => {
             matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
         }
-        NodeOrToken::Node(n) => {
-            if n.kind() == SyntaxKind::T_COMMENT {
-                true
-            } else {
-                n.text()
-                    .try_for_each_chunk(|chunk| {
-                        if chunk.chars().all(char::is_whitespace) {
-                            Ok(())
-                        } else {
-                            Err(())
-                        }
-                    })
-                    .is_ok()
-            }
-        }
+        // If comments can be nodes in the CST, this cheap kind check suffices.
+        NodeOrToken::Node(n) => n.kind() == SyntaxKind::T_COMMENT,
     }
 }

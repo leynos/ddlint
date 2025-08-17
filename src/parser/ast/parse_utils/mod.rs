@@ -18,4 +18,5 @@ pub(crate) use delimiter::paren_block_span;
 
 pub(crate) use outputs::parse_output_list;
 pub(crate) use params::parse_name_type_pairs;
+pub(crate) use token_utils::is_trivia;
 pub(crate) use type_expr::parse_type_after_colon;

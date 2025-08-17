@@ -96,6 +96,15 @@ fn unmatched_shift_errors() {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
     assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    let err = errors.first().expect("missing error");
+    match err {
+        ParseError::Delimiter(err) => {
+            assert_eq!(err.expected, Delim::Angle);
+            assert_eq!(err.found, SyntaxKind::T_SHR);
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]
@@ -104,6 +113,15 @@ fn unmatched_bracket_error() {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
     assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    let err = errors.first().expect("missing error");
+    match err {
+        ParseError::Delimiter(err) => {
+            assert_eq!(err.expected, Delim::Bracket);
+            assert_eq!(err.found, SyntaxKind::T_RBRACKET);
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]
@@ -112,6 +130,15 @@ fn unmatched_brace_error() {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
     assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    let err = errors.first().expect("missing error");
+    match err {
+        ParseError::Delimiter(err) => {
+            assert_eq!(err.expected, Delim::Brace);
+            assert_eq!(err.found, SyntaxKind::T_RBRACE);
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]
@@ -120,6 +147,15 @@ fn trailing_closer_after_trivia() {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
     assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    let err = errors.first().expect("missing error");
+    match err {
+        ParseError::Delimiter(err) => {
+            assert_eq!(err.expected, Delim::Paren);
+            assert_eq!(err.found, SyntaxKind::T_RPAREN);
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 fn assert_unclosed_angle_span<F, T>(src: &str, parser: F)
@@ -203,6 +239,11 @@ fn empty_name_error() {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
     assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    match errors.first().expect("missing error") {
+        ParseError::MissingName { .. } => {}
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]
@@ -211,4 +252,9 @@ fn empty_type_error() {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
     assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    match errors.first().expect("missing error") {
+        ParseError::MissingType { .. } => {}
+        other => panic!("unexpected error: {other:?}"),
+    }
 }

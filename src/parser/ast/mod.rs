@@ -7,6 +7,7 @@
 
 use rowan::SyntaxElement;
 
+use self::parse_utils::is_trivia;
 use crate::{DdlogLanguage, SyntaxKind};
 
 #[cfg_attr(
@@ -120,10 +121,7 @@ pub(super) fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    while matches!(
-        iter.peek().map(SyntaxElement::kind),
-        Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-    ) {
+    while matches!(iter.peek(), Some(e) if is_trivia(e)) {
         iter.next();
     }
 }
