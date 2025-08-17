@@ -65,8 +65,8 @@ fn parse_single_parameter<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let (name, found_colon, span) = collect_parameter_name(iter);
-    finalise_parameter(name, found_colon, span, iter, errors)
+    let state = collect_parameter_name(iter);
+    ParameterBuilder::new(state, ProcessingContext::new(iter, errors)).build()
 }
 
 fn handle_parameter_separator<I>(iter: &mut std::iter::Peekable<I>) -> bool
@@ -147,7 +147,7 @@ where
     (pairs, errors)
 }
 
-fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> (String, bool, Option<TextRange>)
+fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> ParameterParsingState
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
@@ -164,8 +164,7 @@ where
         }
     }
 
-    let span = create_text_span(state.start_pos, state.end_pos);
-    (state.name_buf.trim().to_string(), state.found_colon, span)
+    state
 }
 
 fn process_parameter_token<I>(
@@ -230,6 +229,24 @@ fn create_text_span(start_pos: Option<TextSize>, end_pos: Option<TextSize>) -> O
     }
 }
 
+/// Shared parsing context for parameter processing.
+struct ProcessingContext<'a, I>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    iter: &'a mut std::iter::Peekable<I>,
+    errors: &'a mut Vec<ParseError>,
+}
+
+impl<'a, I> ProcessingContext<'a, I>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    fn new(iter: &'a mut std::iter::Peekable<I>, errors: &'a mut Vec<ParseError>) -> Self {
+        Self { iter, errors }
+    }
+}
+
 struct ParameterBuilder<'a, I>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -245,13 +262,16 @@ impl<'a, I> ParameterBuilder<'a, I>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    fn new(
-        name: String,
-        found_colon: bool,
-        span: Option<TextRange>,
-        iter: &'a mut std::iter::Peekable<I>,
-        errors: &'a mut Vec<ParseError>,
-    ) -> Self {
+    fn new(state: ParameterParsingState, ctx: ProcessingContext<'a, I>) -> Self {
+        let ParameterParsingState {
+            name_buf,
+            found_colon,
+            start_pos,
+            end_pos,
+        } = state;
+        let span = create_text_span(start_pos, end_pos);
+        let name = name_buf.trim().to_string();
+        let ProcessingContext { iter, errors } = ctx;
         Self {
             name,
             found_colon,
@@ -310,32 +330,25 @@ where
     }
 
     fn validate_parameter(&mut self, ty: &str) {
-        if self.name.is_empty()
-            && !ty.is_empty()
+        if self.should_report_missing_name(ty)
             && let Some(s) = self.span
         {
             self.errors.push(ParseError::MissingName { span: s });
         }
-        if !self.name.is_empty()
-            && ty.is_empty()
+        if self.should_report_missing_type(ty)
             && let Some(s) = self.span
         {
             self.errors.push(ParseError::MissingType { span: s });
         }
     }
-}
 
-fn finalise_parameter<I>(
-    name: String,
-    found_colon: bool,
-    span: Option<TextRange>,
-    iter: &mut std::iter::Peekable<I>,
-    errors: &mut Vec<ParseError>,
-) -> Option<(String, String)>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    ParameterBuilder::new(name, found_colon, span, iter, errors).build()
+    fn should_report_missing_name(&self, ty: &str) -> bool {
+        self.name.is_empty() && !ty.is_empty()
+    }
+
+    fn should_report_missing_type(&self, ty: &str) -> bool {
+        !self.name.is_empty() && ty.is_empty()
+    }
 }
 
 fn track_span_for_element(

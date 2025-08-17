@@ -50,7 +50,7 @@ reached.
 Missing colons between a parameter name and type trigger
 `ParseError::MissingColon`. The span of the terminating comma or parenthesis is
 attached, so diagnostics point at the error. Helper functions
-`collect_parameter_name` and `finalise_parameter` keep the main loop small.
+`collect_parameter_name` and `ParameterBuilder` keep the main loop small.
 
 Empty names and types are reported with `ParseError::MissingName` and
 `ParseError::MissingType`. Both `collect_parameter_name` and `parse_type_expr`
