@@ -90,74 +90,6 @@ fn name_type_pairs(
     assert_eq!(result, expected);
 }
 
-#[test]
-fn unmatched_shift_errors() {
-    let src = "function bad(x: Vec<u8>>): bool {}";
-    let elements = tokens_for(src);
-    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let err = errors.first().expect("missing error");
-    match err {
-        ParseError::Delimiter(err) => {
-            assert_eq!(err.expected, Delim::Angle);
-            assert_eq!(err.found, SyntaxKind::T_SHR);
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-}
-
-#[test]
-fn unmatched_bracket_error() {
-    let src = "function bad(x: Vec<u8>], y: u32) {}";
-    let elements = tokens_for(src);
-    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let err = errors.first().expect("missing error");
-    match err {
-        ParseError::Delimiter(err) => {
-            assert_eq!(err.expected, Delim::Bracket);
-            assert_eq!(err.found, SyntaxKind::T_RBRACKET);
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-}
-
-#[test]
-fn unmatched_brace_error() {
-    let src = "function bad(x: u32}, y: bool) {}";
-    let elements = tokens_for(src);
-    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let err = errors.first().expect("missing error");
-    match err {
-        ParseError::Delimiter(err) => {
-            assert_eq!(err.expected, Delim::Brace);
-            assert_eq!(err.found, SyntaxKind::T_RBRACE);
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-}
-
-#[test]
-fn trailing_closer_after_trivia() {
-    let src = "function bad(x: u32)   ) {}";
-    let elements = tokens_for(src);
-    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let err = errors.first().expect("missing error");
-    match err {
-        ParseError::Delimiter(err) => {
-            assert_eq!(err.expected, Delim::Paren);
-            assert_eq!(err.found, SyntaxKind::T_RPAREN);
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-}
-
 fn assert_unclosed_angle_span<F, T>(src: &str, parser: F)
 where
     F: Fn(Vec<SyntaxElement<DdlogLanguage>>) -> (T, Vec<ParseError>),
@@ -233,28 +165,71 @@ fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case
     }
 }
 
-#[test]
-fn empty_name_error() {
-    let src = "function bad(: u32) {}";
-    let elements = tokens_for(src);
-    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    match errors.first().expect("missing error") {
-        ParseError::MissingName { .. } => {}
-        other => panic!("unexpected error: {other:?}"),
+enum ErrorExpectation {
+    Delimiter { expected: Delim, found: SyntaxKind },
+    MissingName,
+    MissingType,
+}
+
+impl ErrorExpectation {
+    fn assert_matches(&self, err: &ParseError) {
+        match (self, err) {
+            (Self::Delimiter { expected, found }, ParseError::Delimiter(delim)) => {
+                assert_eq!(delim.expected, *expected);
+                assert_eq!(delim.found, *found);
+            }
+            (
+                Self::MissingName,
+                ParseError::MissingName { .. },
+            ) | (
+                Self::MissingType,
+                ParseError::MissingType { .. },
+            ) => {}
+            (_, other) => panic!("unexpected error: {other:?}"),
+        }
     }
 }
 
-#[test]
-fn empty_type_error() {
-    let src = "function bad(x:) {}";
-    let elements = tokens_for(src);
-    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+#[rstest]
+#[case(
+    "function bad(x: Vec<u8>>): bool {}",
+    ErrorExpectation::Delimiter {
+        expected: Delim::Angle,
+        found: SyntaxKind::T_SHR,
+    },
+)]
+#[case(
+    "function bad(x: Vec<u8>], y: u32) {}",
+    ErrorExpectation::Delimiter {
+        expected: Delim::Bracket,
+        found: SyntaxKind::T_RBRACKET,
+    },
+)]
+#[case(
+    "function bad(x: u32}, y: bool) {}",
+    ErrorExpectation::Delimiter {
+        expected: Delim::Brace,
+        found: SyntaxKind::T_RBRACE,
+    },
+)]
+#[case(
+    "function bad(x: u32)   ) {}",
+    ErrorExpectation::Delimiter {
+        expected: Delim::Paren,
+        found: SyntaxKind::T_RPAREN,
+    },
+)]
+#[case("function bad(: u32) {}", ErrorExpectation::MissingName)]
+#[case("function bad(x:) {}", ErrorExpectation::MissingType)]
+fn parse_error_cases(
+    #[case] src: &str,
+    #[case] expectation: ErrorExpectation,
+    #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
+) {
+    let _ = src;
+    let (_pairs, errors) = parse_name_type_pairs(tokens_for.into_iter());
     assert_eq!(errors.len(), 1);
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    match errors.first().expect("missing error") {
-        ParseError::MissingType { .. } => {}
-        other => panic!("unexpected error: {other:?}"),
-    }
+    let err = errors.first().expect("missing error");
+    expectation.assert_matches(err);
 }
