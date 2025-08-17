@@ -135,44 +135,21 @@ pub(crate) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, 
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    use rowan::NodeOrToken;
-
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut stack = DelimStack::default();
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
-    while let Some(e) = iter.peek() {
-        if is_trivia(e) {
+    while iter.peek().is_some() {
+        if let Some(peeked) = iter.peek()
+            && is_trivia(peeked)
+        {
             iter.next();
             continue;
         }
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                kind if should_break_parsing(kind, ctx.stack.is_empty(), ctx.buf.is_empty()) => {
-                    break;
-                }
-                kind if is_opening_delimiter(kind) => {
-                    if handle_opening_delimiter(t, &mut ctx) {
-                        iter.next();
-                    }
-                }
-                kind if is_closing_delimiter(kind) => {
-                    if handle_closing_delimiter(t, &mut ctx, &mut errors) {
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                _ => {
-                    push(t, &mut ctx);
-                    iter.next();
-                }
-            },
-            NodeOrToken::Node(n) => {
-                ctx.buf.push_str(&n.text().to_string());
-                iter.next();
-            }
+
+        if process_type_element(iter, &mut ctx, &mut errors) {
+            break;
         }
     }
 
@@ -190,6 +167,63 @@ where
     }
 
     (buf.trim().to_string(), errors)
+}
+
+fn process_type_element<I>(
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    use rowan::NodeOrToken;
+
+    let Some(element) = iter.peek().cloned() else {
+        return false;
+    };
+    match element {
+        NodeOrToken::Token(t) => process_type_token(&t, iter, ctx, errors),
+        NodeOrToken::Node(n) => {
+            ctx.buf.push_str(&n.text().to_string());
+            iter.next();
+            false
+        }
+    }
+}
+
+fn process_type_token<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let kind = token.kind();
+    if should_break_parsing(kind, ctx.stack.is_empty(), ctx.buf.is_empty()) {
+        return true;
+    }
+
+    if is_opening_delimiter(kind) {
+        if handle_opening_delimiter(token, ctx) {
+            iter.next();
+        }
+        return false;
+    }
+
+    if is_closing_delimiter(kind) {
+        if handle_closing_delimiter(token, ctx, errors) {
+            iter.next();
+            return false;
+        }
+        return true;
+    }
+
+    push(token, ctx);
+    iter.next();
+    false
 }
 
 /// Handles an opening delimiter token.
