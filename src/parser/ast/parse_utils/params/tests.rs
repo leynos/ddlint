@@ -114,6 +114,14 @@ fn unmatched_brace_error() {
     assert_eq!(errors.len(), 1);
 }
 
+#[test]
+fn trailing_closer_after_trivia() {
+    let src = "function bad(x: u32)   ) {}";
+    let elements = tokens_for(src);
+    let (_pairs, errors) = parse_name_type_pairs(elements.into_iter());
+    assert_eq!(errors.len(), 1);
+}
+
 fn assert_unclosed_angle_span<F, T>(src: &str, parser: F)
 where
     F: Fn(Vec<SyntaxElement<DdlogLanguage>>) -> (T, Vec<ParseError>),

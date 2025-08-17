@@ -1,7 +1,9 @@
 //! Parameter parsing utilities.
 //!
-//! Extracts name-type pairs from parameter lists, reporting missing
-//! names, types, or mismatched delimiters.
+//! Extracts name–type pairs from parameter lists. The iterator should be
+//! positioned at the function or relation name so parsing begins at the
+//! opening `(`. Emits `MissingColon`, `MissingName`, `MissingType`, and
+//! delimiter errors when the list is malformed.
 
 use rowan::{SyntaxElement, TextRange, TextSize};
 
@@ -69,6 +71,8 @@ where
     ParameterBuilder::new(state, ProcessingContext::new(iter, errors)).build()
 }
 
+/// Consumes a trailing `,` and returns `false` to continue; consumes `)` and
+/// returns `true` to signal termination. Returns `false` for other tokens.
 fn handle_parameter_separator<I>(iter: &mut std::iter::Peekable<I>) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -121,16 +125,17 @@ where
 {
     use rowan::NodeOrToken;
     for e in iter {
-        if let NodeOrToken::Token(t) = e {
-            match t.kind() {
+        match e {
+            NodeOrToken::Token(t) => match t.kind() {
+                SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {}
                 SyntaxKind::T_RPAREN => push_error(errors, Delim::Paren, &t),
                 SyntaxKind::T_RBRACKET => push_error(errors, Delim::Bracket, &t),
                 SyntaxKind::T_RBRACE => push_error(errors, Delim::Brace, &t),
                 SyntaxKind::T_GT | SyntaxKind::T_SHR => push_error(errors, Delim::Angle, &t),
                 _ => break,
-            }
-        } else {
-            break;
+            },
+            // Stop on structural nodes; trailing delimiter errors target tokens only.
+            NodeOrToken::Node(_) => break,
         }
     }
 }
