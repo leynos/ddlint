@@ -32,7 +32,10 @@ where
     }
 }
 
-fn process_next_type_token<I>(
+/// Processes the next token within a type expression.
+///
+/// Returns `true` when parsing should terminate.
+fn process_next_token_in_type_expr<I>(
     iter: &mut std::iter::Peekable<I>,
     ctx: &mut TokenParseContext<'_>,
     errors: &mut Vec<ParseError>,
@@ -61,7 +64,7 @@ where
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
     while iter.peek().is_some() {
-        if process_next_type_token(iter, &mut ctx, &mut errors) {
+        if process_next_token_in_type_expr(iter, &mut ctx, &mut errors) {
             break;
         }
     }
@@ -105,6 +108,86 @@ where
     }
 }
 
+/// Returns `true` if `kind` represents an opening delimiter.
+fn is_opening_delimiter(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::T_LPAREN
+            | SyntaxKind::T_LT
+            | SyntaxKind::T_SHL
+            | SyntaxKind::T_LBRACKET
+            | SyntaxKind::T_LBRACE
+    )
+}
+
+/// Returns `true` if `kind` represents a closing delimiter.
+fn is_closing_delimiter(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::T_RPAREN
+            | SyntaxKind::T_GT
+            | SyntaxKind::T_SHR
+            | SyntaxKind::T_RBRACKET
+            | SyntaxKind::T_RBRACE
+    )
+}
+
+/// Pushes an opening delimiter onto the stack and output buffer.
+fn process_opening_delimiter<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+) where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let (delim, count) = match token.kind() {
+        SyntaxKind::T_LPAREN => (Delim::Paren, 1),
+        SyntaxKind::T_LT => (Delim::Angle, 1),
+        SyntaxKind::T_SHL => (Delim::Angle, 2),
+        SyntaxKind::T_LBRACKET => (Delim::Bracket, 1),
+        SyntaxKind::T_LBRACE => (Delim::Brace, 1),
+        _ => unreachable!(),
+    };
+    open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
+    push(token, ctx);
+    iter.next();
+}
+
+/// Processes a closing delimiter and reports mismatches when necessary.
+///
+/// Returns `true` when a mismatched parenthesis should terminate parsing.
+fn process_closing_delimiter<I>(
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+    errors: &mut Vec<ParseError>,
+) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let (delim, count, break_on_mismatch) = match token.kind() {
+        SyntaxKind::T_RPAREN => (Delim::Paren, 1, true),
+        SyntaxKind::T_GT => (Delim::Angle, 1, false),
+        SyntaxKind::T_SHR => (Delim::Angle, 2, false),
+        SyntaxKind::T_RBRACKET => (Delim::Bracket, 1, false),
+        SyntaxKind::T_RBRACE => (Delim::Brace, 1, false),
+        _ => unreachable!(),
+    };
+
+    if close_delimiter(&mut *ctx.stack, delim, count) < count {
+        if !break_on_mismatch {
+            push_error(errors, delim, token);
+        }
+        if break_on_mismatch {
+            return true;
+        }
+    }
+
+    push(token, ctx);
+    iter.next();
+    false
+}
+
 fn process_type_token<I>(
     token: &rowan::SyntaxToken<DdlogLanguage>,
     iter: &mut std::iter::Peekable<I>,
@@ -119,58 +202,18 @@ where
         return true;
     }
 
-    match kind {
-        SyntaxKind::T_LPAREN
-        | SyntaxKind::T_LT
-        | SyntaxKind::T_SHL
-        | SyntaxKind::T_LBRACKET
-        | SyntaxKind::T_LBRACE => {
-            let (delim, count) = match kind {
-                SyntaxKind::T_LPAREN => (Delim::Paren, 1),
-                SyntaxKind::T_LT => (Delim::Angle, 1),
-                SyntaxKind::T_SHL => (Delim::Angle, 2),
-                SyntaxKind::T_LBRACKET => (Delim::Bracket, 1),
-                SyntaxKind::T_LBRACE => (Delim::Brace, 1),
-                _ => unreachable!(),
-            };
-            open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
-            push(token, ctx);
-            iter.next();
-            false
-        }
-        SyntaxKind::T_RPAREN
-        | SyntaxKind::T_GT
-        | SyntaxKind::T_SHR
-        | SyntaxKind::T_RBRACKET
-        | SyntaxKind::T_RBRACE => {
-            let (delim, count, break_on_mismatch) = match kind {
-                SyntaxKind::T_RPAREN => (Delim::Paren, 1, true),
-                SyntaxKind::T_GT => (Delim::Angle, 1, false),
-                SyntaxKind::T_SHR => (Delim::Angle, 2, false),
-                SyntaxKind::T_RBRACKET => (Delim::Bracket, 1, false),
-                SyntaxKind::T_RBRACE => (Delim::Brace, 1, false),
-                _ => unreachable!(),
-            };
-
-            if close_delimiter(&mut *ctx.stack, delim, count) < count {
-                if !break_on_mismatch {
-                    push_error(errors, delim, token);
-                }
-                if break_on_mismatch {
-                    return true;
-                }
-            }
-
-            push(token, ctx);
-            iter.next();
-            false
-        }
-        _ => {
-            push(token, ctx);
-            iter.next();
-            false
-        }
+    if is_opening_delimiter(kind) {
+        process_opening_delimiter(token, iter, ctx);
+        return false;
     }
+
+    if is_closing_delimiter(kind) {
+        return process_closing_delimiter(token, iter, ctx, errors);
+    }
+
+    push(token, ctx);
+    iter.next();
+    false
 }
 
 fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
