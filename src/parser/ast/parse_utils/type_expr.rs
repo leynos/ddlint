@@ -32,26 +32,29 @@ where
     let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
 
     while let Some(e) = iter.peek() {
-        match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                kind if is_opening_delimiter(kind) => {
+        let cont = match e {
+            NodeOrToken::Token(t) => {
+                let kind = t.kind();
+                if is_opening_delimiter(kind) {
                     if handle_opening_delimiter(t, &mut ctx) {
                         iter.next();
                     }
-                }
-                kind if is_closing_delimiter(kind) => {
+                    true
+                } else if is_closing_delimiter(kind) {
                     if handle_closing_delimiter(t, &mut ctx, &mut errors) {
                         iter.next();
+                        true
                     } else {
-                        break;
+                        false
                     }
-                }
-                kind if should_break_parsing(kind, ctx.stack.is_empty()) => break,
-                _ => {
+                } else if should_break_parsing(kind, ctx.stack.is_empty()) {
+                    false
+                } else {
                     push(t, &mut ctx);
                     iter.next();
+                    true
                 }
-            },
+            }
             NodeOrToken::Node(n) => {
                 let text = n.text().to_string();
                 let is_ws = text.chars().all(char::is_whitespace);
@@ -60,21 +63,22 @@ where
                     ctx.buf.push_str(&text);
                 }
                 iter.next();
+                true
             }
+        };
+        if !cont {
+            break;
         }
     }
 
-    for (unclosed, span) in stack.unclosed() {
-        let ch = match unclosed {
+    for (delim, span) in stack.unclosed() {
+        let delimiter = match delim {
             Delim::Paren => ')',
             Delim::Angle => '>',
             Delim::Bracket => ']',
             Delim::Brace => '}',
         };
-        errors.push(ParseError::UnclosedDelimiter {
-            delimiter: ch,
-            span,
-        });
+        errors.push(ParseError::UnclosedDelimiter { delimiter, span });
     }
 
     (buf.trim().to_string(), errors)

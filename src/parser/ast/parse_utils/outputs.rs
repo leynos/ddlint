@@ -10,7 +10,7 @@ use crate::{DdlogLanguage, SyntaxKind};
 
 use super::super::skip_whitespace_and_comments;
 
-fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
+pub(super) fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {

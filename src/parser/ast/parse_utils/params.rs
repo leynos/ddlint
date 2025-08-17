@@ -205,6 +205,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::super::outputs::skip_to_top_level_colon;
     use super::*;
     use crate::parser::ast::AstNode;
     use crate::parser::parse;
