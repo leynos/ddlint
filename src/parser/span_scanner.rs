@@ -51,6 +51,42 @@ pub(super) fn parse_tokens(
     )
 }
 
+/// Parse a statement and record its span on success.
+///
+/// This helper centralises the common pattern of invoking a parser,
+/// recording the resulting span and skipping the line when parsing fails.
+///
+/// # Examples
+///
+/// ```no_run
+/// use chumsky::prelude::*;
+/// use crate::{parser::span_scanner::parse_and_record, SyntaxKind, Span};
+/// use crate::parser::span_collector::SpanCollector;
+///
+/// let src = "import foo\n";
+/// let tokens = crate::tokenize(src);
+/// let mut st = SpanCollector::new(&tokens, src, Vec::new());
+/// let ident = just(SyntaxKind::T_IDENT).map_with_span(|_, sp: Span| sp);
+/// let (_res, _err) = parse_and_record(&mut st, 0, ident);
+/// ```
+fn parse_and_record<P, E>(
+    st: &mut SpanCollector<'_, E>,
+    start: usize,
+    parser: P,
+) -> (Option<Span>, Vec<Simple<SyntaxKind>>)
+where
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+{
+    let (res, errs) = st.parse_span(parser, start);
+    if let Some(sp) = &res {
+        st.spans.push(sp.clone());
+        st.stream.skip_until(sp.end);
+    } else {
+        st.skip_line();
+    }
+    (res, errs)
+}
+
 fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -76,23 +112,15 @@ fn collect_import_spans(
             .padded_by(ws.clone())
             .ignore_then(ident.clone());
 
-        let imprt = just(SyntaxKind::K_IMPORT)
+        let parser = just(SyntaxKind::K_IMPORT)
             .padded_by(ws.clone())
             .ignore_then(module_path)
             .then(alias.or_not())
             .padded_by(ws)
             .map_with_span(|_, sp: Span| sp);
 
-        let (res, err) = st.parse_span(imprt, span.start);
-        if let Some(sp) = res {
-            let end = sp.end;
-            st.spans.push(sp);
-            st.stream.skip_until(end);
-        } else {
-            st.extra.extend(err);
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-        }
+        let (_, err) = parse_and_record(st, span.start, parser);
+        st.extra.extend(err);
     }
 
     let mut st = State::new(tokens, src, Vec::new());
@@ -136,18 +164,14 @@ where
         }
 
         let ws = inline_ws().repeated();
+        let start = span.start;
         let parser = just(SyntaxKind::K_EXTERN)
             .padded_by(ws.clone())
-            .ignore_then(decl_parser());
+            .ignore_then(decl_parser())
+            .map(move |sp: Span| start..sp.end);
 
-        let (res, err) = st.parse_span(parser, span.start);
-        if let Some(sp) = res {
-            st.spans.push(span.start..sp.end);
-            st.stream.skip_until(sp.end);
-        } else {
-            st.extra.extend(err);
-            st.skip_line();
-        }
+        let (_, err) = parse_and_record(st, start, parser);
+        st.extra.extend(err);
     };
 
     token_dispatch!(st, { SyntaxKind::K_EXTERN => handler });
@@ -329,18 +353,9 @@ fn collect_index_spans(
     }
 
     fn handle_index(st: &mut State<'_>, span: Span) {
-        let idx = index_decl();
-
-        let (res, err) = st.parse_span(idx, span.start);
-        if let Some(sp) = res {
-            let end = sp.end;
-            st.spans.push(sp);
-            st.stream.skip_until(end);
-        } else {
-            st.extra.extend(err);
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-        }
+        let parser = index_decl();
+        let (_, err) = parse_and_record(st, span.start, parser);
+        st.extra.extend(err);
     }
 
     let mut st = State::new(tokens, src, Vec::new());
@@ -414,27 +429,19 @@ fn collect_function_spans(
             return;
         }
 
+        let start = span.start;
         let parser = if is_extern {
+            let s = start;
             just(SyntaxKind::K_EXTERN)
                 .padded_by(inline_ws().repeated())
                 .ignore_then(func_decl(false))
+                .map(move |sp: Span| s..sp.end)
                 .boxed()
         } else {
             func_decl(true)
         };
-        let (res, err) = st.parse_span(parser, span.start);
-        if let Some(sp) = res {
-            let full = if is_extern {
-                span.start..sp.end
-            } else {
-                sp.clone()
-            };
-            st.spans.push(full.clone());
-            st.stream.skip_until(full.end);
-        } else {
-            st.extra.extend(err);
-            st.skip_line();
-        }
+        let (_, err) = parse_and_record(st, start, parser);
+        st.extra.extend(err);
     }
 
     fn handle_extern(st: &mut State<'_>, span: Span) {
@@ -595,4 +602,30 @@ fn collect_rule_spans(
 
     let (spans, errors) = st.into_parts();
     (spans, expr_spans, errors)
+}
+
+#[cfg(test)]
+mod tests {
+    //! Tests for the span scanner helper utilities.
+    use super::*;
+    use crate::tokenize;
+    use rstest::rstest;
+
+    #[rstest]
+    fn parse_and_record_import_records_span() {
+        let src = "import foo\n";
+        let tokens = tokenize(src);
+        let (spans, errs) = collect_import_spans(&tokens, src);
+        assert_eq!(spans, vec![0..11]);
+        assert!(errs.is_empty());
+    }
+
+    #[rstest]
+    fn parse_and_record_import_propagates_errors() {
+        let src = "import\n";
+        let tokens = tokenize(src);
+        let (spans, errs) = collect_import_spans(&tokens, src);
+        assert!(spans.is_empty());
+        assert!(!errs.is_empty());
+    }
 }
