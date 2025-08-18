@@ -7,6 +7,7 @@
 
 use rowan::SyntaxElement;
 
+use self::parse_utils::is_trivia;
 use crate::{DdlogLanguage, SyntaxKind};
 
 #[cfg_attr(
@@ -100,12 +101,13 @@ fn take_first_ident(
 ) -> Option<String> {
     use rowan::NodeOrToken;
     for e in iter {
+        if is_trivia(&e) {
+            continue;
+        }
         match e {
             NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
                 return Some(t.text().to_string());
             }
-            NodeOrToken::Token(t)
-                if matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) => {}
             _ => return None,
         }
     }
@@ -120,10 +122,7 @@ pub(super) fn skip_whitespace_and_comments<I>(iter: &mut std::iter::Peekable<I>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    while matches!(
-        iter.peek().map(SyntaxElement::kind),
-        Some(SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-    ) {
+    while matches!(iter.peek(), Some(e) if is_trivia(e)) {
         iter.next();
     }
 }

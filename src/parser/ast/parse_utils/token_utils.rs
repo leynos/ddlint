@@ -1,11 +1,11 @@
-//! Token manipulation utilities for delimiter parsing.
+//! Token manipulation utilities for parsing.
 //!
 //! These helpers maintain a `DelimStack` while building up a type expression
-//! string, ensuring delimiters are tracked consistently and any mismatches are
-//! reported via `ParseError`.
+//! string, classify trivia, and report delimiter mismatches via
+//! [`ParseError`].
 
-use crate::DdlogLanguage;
-use rowan::TextRange;
+use crate::{DdlogLanguage, SyntaxKind};
+use rowan::{SyntaxElement, TextRange};
 
 use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
 
@@ -85,4 +85,17 @@ pub(crate) fn push_error(
         found: token.kind(),
         span: token.text_range(),
     }));
+}
+
+/// Determines whether the element is whitespace or a comment.
+pub(crate) fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
+    use rowan::NodeOrToken;
+
+    match e {
+        NodeOrToken::Token(t) => {
+            matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+        }
+        // If comments can be nodes in the CST, this cheap kind check suffices.
+        NodeOrToken::Node(n) => n.kind() == SyntaxKind::T_COMMENT,
+    }
 }
