@@ -95,6 +95,12 @@ fn type_expr_unclosed_delimiter_span() {
     "extern function f(): Map<Vec<u32>, (bool, [string])>;",
     Some("Map<Vec<u32>,(bool,[string])>".to_string()),
 )]
+#[case(
+    "extern function f(): Map<Vec<Map<string, (u32, [Option<bool>])>>,(bool,[Map<string,u8>])>;",
+    Some(
+        "Map<Vec<Map<string,(u32,[Option<bool>])>>,(bool,[Map<string,u8>])>".to_string(),
+    ),
+)]
 fn trailing_type(
     #[case] src: &str,
     #[case] expected: Option<String>,

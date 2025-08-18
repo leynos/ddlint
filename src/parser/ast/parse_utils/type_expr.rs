@@ -101,67 +101,16 @@ where
     match element {
         NodeOrToken::Token(t) => process_type_token(&t, iter, ctx, errors),
         NodeOrToken::Node(n) => {
-            ctx.buf.push_str(&n.text().to_string());
+            for tok in n
+                .descendants_with_tokens()
+                .filter_map(NodeOrToken::into_token)
+            {
+                push(&tok, ctx);
+            }
             iter.next();
             false
         }
     }
-}
-
-/// Pushes an opening delimiter onto the stack and output buffer.
-fn process_opening_delimiter<I>(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    iter: &mut std::iter::Peekable<I>,
-    ctx: &mut TokenParseContext<'_>,
-) where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    let (delim, count) = match token.kind() {
-        SyntaxKind::T_LPAREN => (Delim::Paren, 1),
-        SyntaxKind::T_LT => (Delim::Angle, 1),
-        SyntaxKind::T_SHL => (Delim::Angle, 2),
-        SyntaxKind::T_LBRACKET => (Delim::Bracket, 1),
-        SyntaxKind::T_LBRACE => (Delim::Brace, 1),
-        _ => unreachable!(),
-    };
-    open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
-    push(token, ctx);
-    iter.next();
-}
-
-/// Processes a closing delimiter and reports mismatches when necessary.
-///
-/// Returns `true` when a mismatched parenthesis should terminate parsing.
-fn process_closing_delimiter<I>(
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    iter: &mut std::iter::Peekable<I>,
-    ctx: &mut TokenParseContext<'_>,
-    errors: &mut Vec<ParseError>,
-) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    let (delim, count, break_on_mismatch) = match token.kind() {
-        SyntaxKind::T_RPAREN => (Delim::Paren, 1, true),
-        SyntaxKind::T_GT => (Delim::Angle, 1, false),
-        SyntaxKind::T_SHR => (Delim::Angle, 2, false),
-        SyntaxKind::T_RBRACKET => (Delim::Bracket, 1, false),
-        SyntaxKind::T_RBRACE => (Delim::Brace, 1, false),
-        _ => unreachable!(),
-    };
-
-    if close_delimiter(&mut *ctx.stack, delim, count) < count {
-        if !break_on_mismatch {
-            push_error(errors, delim, token);
-        }
-        if break_on_mismatch {
-            return true;
-        }
-    }
-
-    push(token, ctx);
-    iter.next();
-    false
 }
 
 fn process_type_token<I>(
@@ -179,19 +128,76 @@ where
     }
 
     match kind {
-        SyntaxKind::T_LPAREN
-        | SyntaxKind::T_LT
-        | SyntaxKind::T_SHL
-        | SyntaxKind::T_LBRACKET
-        | SyntaxKind::T_LBRACE => {
-            process_opening_delimiter(token, iter, ctx);
+        SyntaxKind::T_LPAREN => {
+            open_delimiter(&mut *ctx.stack, Delim::Paren, token.text_range(), 1);
+            push(token, ctx);
+            iter.next();
             false
         }
-        SyntaxKind::T_RPAREN
-        | SyntaxKind::T_GT
-        | SyntaxKind::T_SHR
-        | SyntaxKind::T_RBRACKET
-        | SyntaxKind::T_RBRACE => process_closing_delimiter(token, iter, ctx, errors),
+        SyntaxKind::T_LT => {
+            open_delimiter(&mut *ctx.stack, Delim::Angle, token.text_range(), 1);
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_SHL => {
+            open_delimiter(&mut *ctx.stack, Delim::Angle, token.text_range(), 2);
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_LBRACKET => {
+            open_delimiter(&mut *ctx.stack, Delim::Bracket, token.text_range(), 1);
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_LBRACE => {
+            open_delimiter(&mut *ctx.stack, Delim::Brace, token.text_range(), 1);
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_RPAREN => {
+            if close_delimiter(&mut *ctx.stack, Delim::Paren, 1) < 1 {
+                return true;
+            }
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_GT => {
+            if close_delimiter(&mut *ctx.stack, Delim::Angle, 1) < 1 {
+                push_error(errors, Delim::Angle, token);
+            }
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_SHR => {
+            if close_delimiter(&mut *ctx.stack, Delim::Angle, 2) < 2 {
+                push_error(errors, Delim::Angle, token);
+            }
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_RBRACKET => {
+            if close_delimiter(&mut *ctx.stack, Delim::Bracket, 1) < 1 {
+                push_error(errors, Delim::Bracket, token);
+            }
+            push(token, ctx);
+            iter.next();
+            false
+        }
+        SyntaxKind::T_RBRACE => {
+            if close_delimiter(&mut *ctx.stack, Delim::Brace, 1) < 1 {
+                push_error(errors, Delim::Brace, token);
+            }
+            push(token, ctx);
+            iter.next();
+            false
+        }
         _ => {
             push(token, ctx);
             iter.next();

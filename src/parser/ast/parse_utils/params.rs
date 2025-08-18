@@ -322,8 +322,8 @@ where
                     self.iter.next();
                     break;
                 }
-                SyntaxKind::T_RPAREN => {
-                    // Do NOT consume ')'; leave it for the outer loop to terminate cleanly.
+                SyntaxKind::T_LBRACE | SyntaxKind::T_RPAREN => {
+                    // Do NOT consume '{' or ')'; leave it for the outer loop to terminate cleanly.
                     return true;
                 }
                 _ => {

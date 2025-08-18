@@ -134,14 +134,20 @@ fn unclosed_angle_error() {
 fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case] opener: &str) {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
+    let opener_kind = match opener {
+        "(" => SyntaxKind::T_LPAREN,
+        "[" => SyntaxKind::T_LBRACKET,
+        "{" => SyntaxKind::T_LBRACE,
+        _ => unreachable!("unsupported opener"),
+    };
     let spans: Vec<TextRange> = elements
         .iter()
         .filter_map(|e| match e {
-            SyntaxElement::Token(t) if t.text() == opener => Some(t.text_range()),
+            SyntaxElement::Token(t) if t.kind() == opener_kind => Some(t.text_range()),
             SyntaxElement::Token(_) | SyntaxElement::Node(_) => None,
         })
         .collect();
-    let open_span = if opener == "(" {
+    let open_span = if opener_kind == SyntaxKind::T_LPAREN {
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         spans.last().copied().expect("opening token missing")
     } else {
