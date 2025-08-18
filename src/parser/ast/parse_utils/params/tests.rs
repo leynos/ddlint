@@ -130,14 +130,12 @@ fn unclosed_angle_error() {
 #[rstest]
 #[case("function bad(x: (u32 {}", ')', "(")]
 #[case("function bad(x: [u32 {}", ']', "[")]
-#[case("function bad(x: {u32 {}", '}', "{")]
 fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case] opener: &str) {
     let elements = tokens_for(src);
     let (_pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
     let opener_kind = match opener {
         "(" => SyntaxKind::T_LPAREN,
         "[" => SyntaxKind::T_LBRACKET,
-        "{" => SyntaxKind::T_LBRACE,
         _ => unreachable!("unsupported opener"),
     };
     let spans: Vec<TextRange> = elements
@@ -262,6 +260,19 @@ fn reports_multiple_missing_names() {
         errors
             .iter()
             .all(|e| matches!(e, ParseError::MissingName { .. }))
+    );
+}
+
+#[test]
+fn body_opener_after_colon_is_missing_type() {
+    let src = "function f(x: {) {}";
+    let elements = tokens_for(src);
+    let (pairs, errors) = parse_name_type_pairs(elements.into_iter());
+    assert!(pairs.is_empty());
+    assert!(
+        errors
+            .iter()
+            .any(|e| matches!(e, ParseError::MissingType { .. }))
     );
 }
 

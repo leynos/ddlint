@@ -101,12 +101,13 @@ fn take_first_ident(
 ) -> Option<String> {
     use rowan::NodeOrToken;
     for e in iter {
+        if is_trivia(&e) {
+            continue;
+        }
         match e {
             NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
                 return Some(t.text().to_string());
             }
-            NodeOrToken::Token(t)
-                if matches!(t.kind(), SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) => {}
             _ => return None,
         }
     }

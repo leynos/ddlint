@@ -339,7 +339,7 @@ where
         skip_whitespace_and_comments(self.iter);
         if matches!(
             self.iter.peek().map(SyntaxElement::kind),
-            Some(SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN)
+            Some(SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN | SyntaxKind::T_LBRACE)
         ) {
             String::new()
         } else {
