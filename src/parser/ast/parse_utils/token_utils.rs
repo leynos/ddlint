@@ -14,11 +14,16 @@ use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
 pub(crate) struct TokenParseContext<'a> {
     pub(crate) buf: &'a mut String,
     pub(crate) stack: &'a mut DelimStack,
+    pub(crate) errors: &'a mut Vec<ParseError>,
 }
 
 impl<'a> TokenParseContext<'a> {
-    pub(crate) fn new(buf: &'a mut String, stack: &'a mut DelimStack) -> Self {
-        Self { buf, stack }
+    pub(crate) fn new(
+        buf: &'a mut String,
+        stack: &'a mut DelimStack,
+        errors: &'a mut Vec<ParseError>,
+    ) -> Self {
+        Self { buf, stack, errors }
     }
 }
 

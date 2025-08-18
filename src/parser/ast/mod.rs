@@ -96,22 +96,23 @@ fn skip_to_transformer_keyword(
 ///
 /// # Returns
 /// The identifier text if one is found.
+#[expect(
+    clippy::unnecessary_find_map,
+    reason = "find_map required to stop at first non-trivia element"
+)]
 fn take_first_ident(
     iter: impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
 ) -> Option<String> {
     use rowan::NodeOrToken;
-    for e in iter {
-        if is_trivia(&e) {
-            continue;
-        }
-        match e {
+
+    iter.filter(|e| !is_trivia(e))
+        .find_map(|e| match e {
             NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                return Some(t.text().to_string());
+                Some(Some(t.text().to_string()))
             }
-            _ => return None,
-        }
-    }
-    None
+            _ => Some(None),
+        })
+        .flatten()
 }
 
 /// Consume consecutive whitespace and comment tokens from the iterator.

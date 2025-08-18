@@ -38,7 +38,6 @@ where
 fn process_next_token_in_type_expr<I>(
     iter: &mut std::iter::Peekable<I>,
     ctx: &mut TokenParseContext<'_>,
-    errors: &mut Vec<ParseError>,
 ) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -46,7 +45,7 @@ where
     if skip_next_trivia_element(iter) {
         return false;
     }
-    process_type_element(iter, ctx, errors)
+    process_type_element(iter, ctx)
 }
 
 /// Parses a type expression from a token stream, returning the textual
@@ -61,10 +60,10 @@ where
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut stack = DelimStack::default();
-    let mut ctx = TokenParseContext::new(&mut buf, &mut stack);
+    let mut ctx = TokenParseContext::new(&mut buf, &mut stack, &mut errors);
 
     while iter.peek().is_some() {
-        if process_next_token_in_type_expr(iter, &mut ctx, &mut errors) {
+        if process_next_token_in_type_expr(iter, &mut ctx) {
             break;
         }
     }
@@ -88,7 +87,6 @@ where
 fn process_type_element<I>(
     iter: &mut std::iter::Peekable<I>,
     ctx: &mut TokenParseContext<'_>,
-    errors: &mut Vec<ParseError>,
 ) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -99,7 +97,7 @@ where
         return false;
     };
     match element {
-        NodeOrToken::Token(t) => process_type_token(&t, iter, ctx, errors),
+        NodeOrToken::Token(t) => process_type_token(&t, iter, ctx),
         NodeOrToken::Node(n) => {
             for tok in n
                 .descendants_with_tokens()
@@ -109,6 +107,57 @@ where
             }
             iter.next();
             false
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum DelimiterOperation {
+    Open,
+    Close,
+}
+
+fn process_delimiter<I>(
+    op: DelimiterOperation,
+    kind: SyntaxKind,
+    token: &rowan::SyntaxToken<DdlogLanguage>,
+    iter: &mut std::iter::Peekable<I>,
+    ctx: &mut TokenParseContext<'_>,
+) -> Option<bool>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    let (delim, count) = match (op, kind) {
+        (DelimiterOperation::Open, SyntaxKind::T_LPAREN)
+        | (DelimiterOperation::Close, SyntaxKind::T_RPAREN) => (Delim::Paren, 1),
+        (DelimiterOperation::Open, SyntaxKind::T_LT)
+        | (DelimiterOperation::Close, SyntaxKind::T_GT) => (Delim::Angle, 1),
+        (DelimiterOperation::Open, SyntaxKind::T_SHL)
+        | (DelimiterOperation::Close, SyntaxKind::T_SHR) => (Delim::Angle, 2),
+        (DelimiterOperation::Open, SyntaxKind::T_LBRACKET)
+        | (DelimiterOperation::Close, SyntaxKind::T_RBRACKET) => (Delim::Bracket, 1),
+        (DelimiterOperation::Open, SyntaxKind::T_LBRACE)
+        | (DelimiterOperation::Close, SyntaxKind::T_RBRACE) => (Delim::Brace, 1),
+        _ => return None,
+    };
+
+    match op {
+        DelimiterOperation::Open => {
+            open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
+            push(token, ctx);
+            iter.next();
+            Some(false)
+        }
+        DelimiterOperation::Close => {
+            if close_delimiter(&mut *ctx.stack, delim, count) < count {
+                if delim == Delim::Paren {
+                    return Some(true);
+                }
+                push_error(ctx.errors, delim, token);
+            }
+            push(token, ctx);
+            iter.next();
+            Some(false)
         }
     }
 }
@@ -125,18 +174,7 @@ fn process_opening_delimiter<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let (delim, count) = match kind {
-        SyntaxKind::T_LPAREN => (Delim::Paren, 1),
-        SyntaxKind::T_LT => (Delim::Angle, 1),
-        SyntaxKind::T_SHL => (Delim::Angle, 2),
-        SyntaxKind::T_LBRACKET => (Delim::Bracket, 1),
-        SyntaxKind::T_LBRACE => (Delim::Brace, 1),
-        _ => return false,
-    };
-    open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
-    push(token, ctx);
-    iter.next();
-    true
+    process_delimiter(DelimiterOperation::Open, kind, token, iter, ctx).is_some()
 }
 
 /// Attempts to close a delimiter and append the token text.
@@ -150,37 +188,17 @@ fn process_closing_delimiter<I>(
     token: &rowan::SyntaxToken<DdlogLanguage>,
     iter: &mut std::iter::Peekable<I>,
     ctx: &mut TokenParseContext<'_>,
-    errors: &mut Vec<ParseError>,
 ) -> Option<bool>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let (delim, count) = match kind {
-        SyntaxKind::T_RPAREN => (Delim::Paren, 1),
-        SyntaxKind::T_GT => (Delim::Angle, 1),
-        SyntaxKind::T_SHR => (Delim::Angle, 2),
-        SyntaxKind::T_RBRACKET => (Delim::Bracket, 1),
-        SyntaxKind::T_RBRACE => (Delim::Brace, 1),
-        _ => return None,
-    };
-
-    if close_delimiter(&mut *ctx.stack, delim, count) < count {
-        if delim == Delim::Paren {
-            return Some(true);
-        }
-        push_error(errors, delim, token);
-    }
-
-    push(token, ctx);
-    iter.next();
-    Some(false)
+    process_delimiter(DelimiterOperation::Close, kind, token, iter, ctx)
 }
 
 fn process_type_token<I>(
     token: &rowan::SyntaxToken<DdlogLanguage>,
     iter: &mut std::iter::Peekable<I>,
     ctx: &mut TokenParseContext<'_>,
-    errors: &mut Vec<ParseError>,
 ) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
@@ -194,7 +212,7 @@ where
         return false;
     }
 
-    if let Some(should_break) = process_closing_delimiter(kind, token, iter, ctx, errors) {
+    if let Some(should_break) = process_closing_delimiter(kind, token, iter, ctx) {
         return should_break;
     }
 

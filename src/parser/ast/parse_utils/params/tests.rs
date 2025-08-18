@@ -235,45 +235,37 @@ fn parse_error_cases(
     expectation.assert_matches(err);
 }
 
-#[test]
-fn reports_multiple_missing_types() {
-    let src = "function f(x:, y:) {}";
-    let elements = tokens_for(src);
-    let (pairs, errors) = parse_name_type_pairs(elements.into_iter());
+#[rstest]
+#[case(
+    "function f(x:, y:) {}",
+    Some(2),
+    |errors: &[ParseError]| errors.iter().all(|e| matches!(e, ParseError::MissingType { .. }))
+)]
+#[case(
+    "function f(:u32, :u64) {}",
+    Some(2),
+    |errors: &[ParseError]| errors.iter().all(|e| matches!(e, ParseError::MissingName { .. }))
+)]
+#[case(
+    "function f(x: {) {}",
+    None,
+    |errors: &[ParseError]| errors.iter().any(|e| matches!(e, ParseError::MissingType { .. }))
+)]
+fn multiple_error_scenarios(
+    #[case] src: &str,
+    #[case] expected_count: Option<usize>,
+    #[case] error_validator: fn(&[ParseError]) -> bool,
+    #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
+) {
+    let _ = src;
+    let (pairs, errors) = parse_name_type_pairs(tokens_for.into_iter());
     assert!(pairs.is_empty());
-    assert_eq!(errors.len(), 2);
-    assert!(
-        errors
-            .iter()
-            .all(|e| matches!(e, ParseError::MissingType { .. }))
-    );
-}
 
-#[test]
-fn reports_multiple_missing_names() {
-    let src = "function f(:u32, :u64) {}";
-    let elements = tokens_for(src);
-    let (pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert!(pairs.is_empty());
-    assert_eq!(errors.len(), 2);
-    assert!(
-        errors
-            .iter()
-            .all(|e| matches!(e, ParseError::MissingName { .. }))
-    );
-}
+    if let Some(count) = expected_count {
+        assert_eq!(errors.len(), count);
+    }
 
-#[test]
-fn body_opener_after_colon_is_missing_type() {
-    let src = "function f(x: {) {}";
-    let elements = tokens_for(src);
-    let (pairs, errors) = parse_name_type_pairs(elements.into_iter());
-    assert!(pairs.is_empty());
-    assert!(
-        errors
-            .iter()
-            .any(|e| matches!(e, ParseError::MissingType { .. }))
-    );
+    assert!(error_validator(&errors));
 }
 
 #[test]
