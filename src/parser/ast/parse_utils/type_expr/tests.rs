@@ -80,6 +80,19 @@ fn type_expr_unclosed_delimiter_span() {
     }
 }
 
+#[test]
+fn mismatched_closing_delimiter_records_error() {
+    let src = "function f(): u32> {}";
+    let mut iter = tokens_for(src).into_iter().peekable();
+    skip_to_top_level_colon(&mut iter);
+    let (_ty, errors) = parse_type_expr(&mut iter);
+    assert!(
+        errors.iter().any(|e| matches!(e, ParseError::Delimiter(_))),
+        "expected delimiter error, got: {:?}",
+        errors
+    );
+}
+
 #[rstest]
 #[case("function f(): u32 {}", Some("u32".to_string()))]
 #[case("extern function f(): bool;", Some("bool".to_string()))]

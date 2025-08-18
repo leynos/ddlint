@@ -101,7 +101,7 @@ fn take_first_ident(
 ) -> Option<String> {
     use rowan::NodeOrToken;
 
-    iter.find(|e| !is_trivia(e)).and_then(|e| match e {
+    iter.filter(|e| !is_trivia(e)).next().and_then(|e| match e {
         NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_string()),
         _ => None,
     })

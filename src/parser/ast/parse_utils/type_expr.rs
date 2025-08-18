@@ -10,9 +10,7 @@ use crate::{DdlogLanguage, SyntaxKind};
 use super::super::skip_whitespace_and_comments;
 use super::{
     errors::{Delim, DelimStack, ParseError},
-    token_utils::{
-        TokenParseContext, close_delimiter, is_trivia, open_delimiter, push, push_error,
-    },
+    token_utils::{TokenParseContext, close_delimiter, is_trivia, open_delimiter, push},
 };
 
 /// Skips the next element if it's trivia and advances the iterator.
@@ -151,9 +149,11 @@ where
         DelimiterOperation::Close => {
             if close_delimiter(&mut *ctx.stack, delim, count) < count {
                 if delim == Delim::Paren {
+                    // A stray closing parenthesis terminates the type expression
+                    // as higher layers interpret this as the end of parameters.
                     return Some(true);
                 }
-                push_error(ctx.errors, delim, token);
+                ctx.push_error(delim, token);
             }
             push(token, ctx);
             iter.next();
@@ -161,40 +161,6 @@ where
         }
     }
 }
-
-/// Records an opening delimiter and appends its token text.
-///
-/// Returns `true` if `kind` was handled and the token consumed.
-fn process_opening_delimiter<I>(
-    kind: SyntaxKind,
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    iter: &mut std::iter::Peekable<I>,
-    ctx: &mut TokenParseContext<'_>,
-) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    process_delimiter(DelimiterOperation::Open, kind, token, iter, ctx).is_some()
-}
-
-/// Attempts to close a delimiter and append the token text.
-///
-/// Returns:
-/// - `Some(true)` if a mismatched `)` should terminate parsing.
-/// - `Some(false)` if the delimiter was handled and parsing continues.
-/// - `None` if `kind` was not a closing delimiter.
-fn process_closing_delimiter<I>(
-    kind: SyntaxKind,
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    iter: &mut std::iter::Peekable<I>,
-    ctx: &mut TokenParseContext<'_>,
-) -> Option<bool>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    process_delimiter(DelimiterOperation::Close, kind, token, iter, ctx)
-}
-
 fn process_type_token<I>(
     token: &rowan::SyntaxToken<DdlogLanguage>,
     iter: &mut std::iter::Peekable<I>,
@@ -208,11 +174,9 @@ where
         return true;
     }
 
-    if process_opening_delimiter(kind, token, iter, ctx) {
-        return false;
-    }
-
-    if let Some(should_break) = process_closing_delimiter(kind, token, iter, ctx) {
+    if let Some(should_break) = process_delimiter(DelimiterOperation::Open, kind, token, iter, ctx)
+        .or_else(|| process_delimiter(DelimiterOperation::Close, kind, token, iter, ctx))
+    {
         return should_break;
     }
 

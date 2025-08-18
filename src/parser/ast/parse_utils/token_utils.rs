@@ -25,6 +25,21 @@ impl<'a> TokenParseContext<'a> {
     ) -> Self {
         Self { buf, stack, errors }
     }
+
+    /// Record an unexpected delimiter encountered while parsing.
+    ///
+    /// The error is pushed onto the shared buffer within the context.
+    pub(crate) fn push_error(
+        &mut self,
+        expected: Delim,
+        token: &rowan::SyntaxToken<DdlogLanguage>,
+    ) {
+        self.errors.push(ParseError::Delimiter(DelimiterError {
+            expected,
+            found: token.kind(),
+            span: token.text_range(),
+        }));
+    }
 }
 
 /// Records an opening delimiter on the provided stack.
