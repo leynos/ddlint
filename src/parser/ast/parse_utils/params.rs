@@ -34,31 +34,16 @@ impl ParameterParsingState {
     }
 }
 
-fn find_opening_paren<I>(iter: &mut std::iter::Peekable<I>) -> bool
+fn find_opening_paren<I>(iter: &mut std::iter::Peekable<I>) -> Option<TextRange>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     for e in iter {
         if e.kind() == SyntaxKind::T_LPAREN {
-            return true;
+            return Some(e.text_range());
         }
     }
-    false
-}
-
-fn should_stop_parsing<I>(iter: &mut std::iter::Peekable<I>) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    use rowan::NodeOrToken;
-    match iter.peek() {
-        Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_RPAREN => {
-            iter.next();
-            true
-        }
-        None => true,
-        _ => false,
-    }
+    None
 }
 
 fn parse_single_parameter<I>(
@@ -99,25 +84,35 @@ where
 fn parse_parameter_list<I>(
     iter: &mut std::iter::Peekable<I>,
     errors: &mut Vec<ParseError>,
-) -> Vec<(String, String)>
+) -> (Vec<(String, String)>, bool)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
+    use rowan::NodeOrToken;
     let mut pairs = Vec::new();
+    let mut terminated_by_rparen = false;
     loop {
         skip_whitespace_and_comments(iter);
-        if should_stop_parsing(iter) {
-            break;
+        match iter.peek() {
+            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_RPAREN => {
+                iter.next();
+                terminated_by_rparen = true;
+                break;
+            }
+            Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_LBRACE => break,
+            None => break,
+            _ => {}
         }
         if let Some(pair) = parse_single_parameter(iter, errors) {
             pairs.push(pair);
         }
         skip_whitespace_and_comments(iter);
         if handle_parameter_separator(iter) {
+            terminated_by_rparen = true;
             break;
         }
     }
-    pairs
+    (pairs, terminated_by_rparen)
 }
 
 fn collect_trailing_delimiter_errors<I>(iter: I, errors: &mut Vec<ParseError>)
@@ -146,11 +141,19 @@ where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     let mut iter = iter.peekable();
-    if !find_opening_paren(&mut iter) {
+    let open_span = find_opening_paren(&mut iter);
+    if open_span.is_none() {
         return (Vec::new(), Vec::new());
     }
     let mut errors = Vec::new();
-    let pairs = parse_parameter_list(&mut iter, &mut errors);
+    let (mut pairs, terminated) = parse_parameter_list(&mut iter, &mut errors);
+    if !terminated && let Some(span) = open_span {
+        pairs.clear();
+        errors.push(ParseError::UnclosedDelimiter {
+            delimiter: ')',
+            span,
+        });
+    }
     collect_trailing_delimiter_errors(iter, &mut errors);
     (pairs, errors)
 }

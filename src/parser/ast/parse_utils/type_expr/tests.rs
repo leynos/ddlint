@@ -1,5 +1,7 @@
+use super::super::errors::ParseError;
 use super::super::outputs::skip_to_top_level_colon;
 use super::*;
+use crate::SyntaxKind;
 use crate::parser::ast::AstNode;
 use crate::parser::parse;
 use rowan::SyntaxElement;
@@ -88,6 +90,10 @@ fn type_expr_unclosed_delimiter_span() {
 #[case(
     "extern function f(): Map<string, Vec<(u32, Option<bool>)>>;",
     Some("Map<string,Vec<(u32,Option<bool>)>>".to_string()),
+)]
+#[case(
+    "extern function f(): Map<Vec<u32>, (bool, [string])>;",
+    Some("Map<Vec<u32>,(bool,[string])>".to_string()),
 )]
 fn trailing_type(
     #[case] src: &str,

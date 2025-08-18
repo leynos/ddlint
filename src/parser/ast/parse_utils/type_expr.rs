@@ -108,30 +108,6 @@ where
     }
 }
 
-/// Returns `true` if `kind` represents an opening delimiter.
-fn is_opening_delimiter(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::T_LPAREN
-            | SyntaxKind::T_LT
-            | SyntaxKind::T_SHL
-            | SyntaxKind::T_LBRACKET
-            | SyntaxKind::T_LBRACE
-    )
-}
-
-/// Returns `true` if `kind` represents a closing delimiter.
-fn is_closing_delimiter(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::T_RPAREN
-            | SyntaxKind::T_GT
-            | SyntaxKind::T_SHR
-            | SyntaxKind::T_RBRACKET
-            | SyntaxKind::T_RBRACE
-    )
-}
-
 /// Pushes an opening delimiter onto the stack and output buffer.
 fn process_opening_delimiter<I>(
     token: &rowan::SyntaxToken<DdlogLanguage>,
@@ -202,18 +178,26 @@ where
         return true;
     }
 
-    if is_opening_delimiter(kind) {
-        process_opening_delimiter(token, iter, ctx);
-        return false;
+    match kind {
+        SyntaxKind::T_LPAREN
+        | SyntaxKind::T_LT
+        | SyntaxKind::T_SHL
+        | SyntaxKind::T_LBRACKET
+        | SyntaxKind::T_LBRACE => {
+            process_opening_delimiter(token, iter, ctx);
+            false
+        }
+        SyntaxKind::T_RPAREN
+        | SyntaxKind::T_GT
+        | SyntaxKind::T_SHR
+        | SyntaxKind::T_RBRACKET
+        | SyntaxKind::T_RBRACE => process_closing_delimiter(token, iter, ctx, errors),
+        _ => {
+            push(token, ctx);
+            iter.next();
+            false
+        }
     }
-
-    if is_closing_delimiter(kind) {
-        return process_closing_delimiter(token, iter, ctx, errors);
-    }
-
-    push(token, ctx);
-    iter.next();
-    false
 }
 
 fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
