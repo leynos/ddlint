@@ -14,11 +14,27 @@ use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
 pub(crate) struct TokenParseContext<'a> {
     pub(crate) buf: &'a mut String,
     pub(crate) stack: &'a mut DelimStack,
+    pub(crate) errors: &'a mut Vec<ParseError>,
 }
 
 impl<'a> TokenParseContext<'a> {
-    pub(crate) fn new(buf: &'a mut String, stack: &'a mut DelimStack) -> Self {
-        Self { buf, stack }
+    pub(crate) fn new(
+        buf: &'a mut String,
+        stack: &'a mut DelimStack,
+        errors: &'a mut Vec<ParseError>,
+    ) -> Self {
+        Self { buf, stack, errors }
+    }
+
+    /// Record an unexpected delimiter encountered while parsing.
+    ///
+    /// The error is pushed onto the shared buffer within the context.
+    pub(crate) fn push_error(
+        &mut self,
+        expected: Delim,
+        token: &rowan::SyntaxToken<DdlogLanguage>,
+    ) {
+        record_delimiter_error(self.errors, expected, token);
     }
 }
 
@@ -75,7 +91,7 @@ pub(crate) fn push(token: &rowan::SyntaxToken<DdlogLanguage>, ctx: &mut TokenPar
 ///
 /// A [`ParseError::Delimiter`] is appended with the expected delimiter
 /// type and the span of the found token.
-pub(crate) fn push_error(
+pub(crate) fn record_delimiter_error(
     errors: &mut Vec<ParseError>,
     expected: Delim,
     token: &rowan::SyntaxToken<DdlogLanguage>,
@@ -97,5 +113,44 @@ pub(crate) fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
         }
         // If comments can be nodes in the CST, this cheap kind check suffices.
         NodeOrToken::Node(n) => n.kind() == SyntaxKind::T_COMMENT,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SyntaxKind;
+    use crate::parser::parse;
+    use rowan::SyntaxElement;
+
+    fn token_of_kind(src: &str, kind: SyntaxKind) -> rowan::SyntaxToken<DdlogLanguage> {
+        let parsed = parse(src);
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        parsed
+            .root()
+            .syntax()
+            .descendants_with_tokens()
+            .find_map(|e| match e {
+                SyntaxElement::Token(t) if t.kind() == kind => Some(t),
+                _ => None,
+            })
+            .expect("token missing")
+    }
+
+    #[test]
+    fn push_error_records_delimiter() {
+        let mut buf = String::new();
+        let mut stack = DelimStack::default();
+        let mut errors = Vec::new();
+        let mut ctx = TokenParseContext::new(&mut buf, &mut stack, &mut errors);
+        let token = token_of_kind("function t() {}", SyntaxKind::T_RBRACE);
+        ctx.push_error(Delim::Paren, &token);
+        match errors.as_slice() {
+            [ParseError::Delimiter(d)] => {
+                assert_eq!(d.expected, Delim::Paren);
+                assert_eq!(d.found, SyntaxKind::T_RBRACE);
+            }
+            other => panic!("unexpected errors: {other:?}"),
+        }
     }
 }
