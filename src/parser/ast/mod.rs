@@ -97,14 +97,16 @@ fn skip_to_transformer_keyword(
 /// # Returns
 /// The identifier text if one is found.
 fn take_first_ident(
-    mut iter: impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+    iter: impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
 ) -> Option<String> {
     use rowan::NodeOrToken;
 
-    iter.filter(|e| !is_trivia(e)).next().and_then(|e| match e {
-        NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_string()),
-        _ => None,
-    })
+    iter.into_iter()
+        .find(|e| !is_trivia(e))
+        .and_then(|e| match e {
+            NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_string()),
+            _ => None,
+        })
 }
 
 /// Consume consecutive whitespace and comment tokens from the iterator.

@@ -309,7 +309,7 @@ fn parameter_parsing_scenarios(
         assert_eq!(errors.len(), count);
     }
 
-    assert!(error_validator(&errors), "unexpected errors: {:?}", errors);
+    assert!(error_validator(&errors), "unexpected errors: {errors:?}");
 }
 
 #[test]

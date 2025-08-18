@@ -13,7 +13,7 @@ use super::super::skip_whitespace_and_comments;
 use super::type_expr::parse_type_expr;
 use super::{
     errors::{Delim, ParseError},
-    token_utils::{is_trivia, push_error},
+    token_utils::{is_trivia, record_delimiter_error},
 };
 
 struct ParameterParsingState {
@@ -124,10 +124,12 @@ where
         match e {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {}
-                SyntaxKind::T_RPAREN => push_error(errors, Delim::Paren, &t),
-                SyntaxKind::T_RBRACKET => push_error(errors, Delim::Bracket, &t),
-                SyntaxKind::T_RBRACE => push_error(errors, Delim::Brace, &t),
-                SyntaxKind::T_GT | SyntaxKind::T_SHR => push_error(errors, Delim::Angle, &t),
+                SyntaxKind::T_RPAREN => record_delimiter_error(errors, Delim::Paren, &t),
+                SyntaxKind::T_RBRACKET => record_delimiter_error(errors, Delim::Bracket, &t),
+                SyntaxKind::T_RBRACE => record_delimiter_error(errors, Delim::Brace, &t),
+                SyntaxKind::T_GT | SyntaxKind::T_SHR => {
+                    record_delimiter_error(errors, Delim::Angle, &t);
+                }
                 _ => break,
             },
             // Stop on structural nodes; trailing delimiter errors target tokens only.

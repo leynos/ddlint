@@ -1,4 +1,4 @@
-use super::super::errors::ParseError;
+use super::super::errors::{Delim, ParseError};
 use super::super::outputs::skip_to_top_level_colon;
 use super::*;
 use crate::SyntaxKind;
@@ -86,11 +86,13 @@ fn mismatched_closing_delimiter_records_error() {
     let mut iter = tokens_for(src).into_iter().peekable();
     skip_to_top_level_colon(&mut iter);
     let (_ty, errors) = parse_type_expr(&mut iter);
-    assert!(
-        errors.iter().any(|e| matches!(e, ParseError::Delimiter(_))),
-        "expected delimiter error, got: {:?}",
-        errors
-    );
+    match errors.as_slice() {
+        [ParseError::Delimiter(d)] => {
+            assert_eq!(d.expected, Delim::Angle);
+            assert_eq!(d.found, SyntaxKind::T_GT);
+        }
+        other => panic!("expected exactly one delimiter error, got: {other:?}"),
+    }
 }
 
 #[rstest]
