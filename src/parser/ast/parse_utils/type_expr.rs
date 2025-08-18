@@ -149,10 +149,11 @@ where
         DelimiterOperation::Close => {
             if close_delimiter(&mut *ctx.stack, delim, count) < count {
                 if delim == Delim::Paren {
-                    // A stray closing parenthesis terminates the type expression.
-                    // Rationale: higher layers use ')' as a hard boundary for
-                    // parameter lists; continuing here risks consuming tokens
-                    // beyond parameters.
+                    // A stray closing parenthesis terminates the type
+                    // expression without recording an error. Higher layers use
+                    // `)` as a hard boundary for parameter lists; continuing
+                    // here risks consuming tokens beyond parameters and would
+                    // produce duplicate diagnostics.
                     return Some(true);
                 }
                 ctx.push_error(delim, token);
