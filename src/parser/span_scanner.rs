@@ -145,11 +145,11 @@ where
     let mut st = State::new(tokens, src, Vec::new());
 
     let handler = move |st: &mut State<'_>, span: Span| {
-        if st
+        let is_decl = st
             .stream
             .peek_after_ws_inline()
-            .is_none_or(|(k, _)| *k != decl_kind)
-        {
+            .is_some_and(|(k, _)| *k == decl_kind);
+        if !is_decl {
             st.skip_line();
             return;
         }
