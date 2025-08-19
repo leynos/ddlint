@@ -145,18 +145,11 @@ where
     let mut st = State::new(tokens, src, Vec::new());
 
     let handler = move |st: &mut State<'_>, span: Span| {
-        let mut idx = st.stream.cursor() + 1;
-        while let Some(tok) = st.stream.tokens().get(idx) {
-            let text = st.stream.src().get(tok.1.clone()).unwrap_or("");
-            if matches!(tok.0, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-                && !text.contains('\n')
-            {
-                idx += 1;
-            } else {
-                break;
-            }
-        }
-        if st.stream.tokens().get(idx).map(|t| t.0) != Some(decl_kind) {
+        if st
+            .stream
+            .peek_after_ws_inline()
+            .is_none_or(|(k, _)| *k != decl_kind)
+        {
             st.skip_line();
             return;
         }
