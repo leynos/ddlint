@@ -15,7 +15,6 @@ mod token_utils;
 mod type_expr;
 
 pub use delimiter::extract_parenthesized;
-pub(crate) use delimiter::paren_block_span;
 
 pub(crate) use outputs::parse_output_list;
 pub(crate) use params::parse_name_type_pairs;

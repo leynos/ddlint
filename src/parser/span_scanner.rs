@@ -212,6 +212,87 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
     st.spans
 }
 
+/// Parse a relation name followed by a non-empty column list.
+///
+/// # Examples
+///
+/// Valid input:
+///
+/// ```rust,ignore
+/// use chumsky::Parser as _;
+/// let src = "User(id: u32)";
+/// let tokens = crate::tokenize(src);
+/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
+/// assert!(relation_columns().parse(stream).is_ok());
+/// ```
+///
+/// Invalid input:
+///
+/// ```rust,ignore
+/// use chumsky::Parser as _;
+/// let src = "User"; // Missing column list
+/// let tokens = crate::tokenize(src);
+/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
+/// assert!(relation_columns().parse(stream).is_err());
+/// ```
+fn relation_columns() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
+    let ws = inline_ws().repeated();
+    ident()
+        .padded_by(ws.clone())
+        .then(balanced_block_nonempty(
+            SyntaxKind::T_LPAREN,
+            SyntaxKind::T_RPAREN,
+        ))
+        .padded_by(ws)
+        .map_with_span(|_, sp: Span| sp)
+}
+
+/// Parse a `primary key` clause.
+///
+/// # Examples
+///
+/// Valid input:
+///
+/// ```rust,ignore
+/// use chumsky::Parser as _;
+/// let src = "primary key(id)";
+/// let tokens = crate::tokenize(src);
+/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
+/// assert!(primary_key_clause(src).parse(stream).is_ok());
+/// ```
+///
+/// Invalid input:
+///
+/// ```rust,ignore
+/// use chumsky::Parser as _;
+/// let src = "primary key"; // Missing column list
+/// let tokens = crate::tokenize(src);
+/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
+/// assert!(primary_key_clause(src).parse(stream).is_err());
+/// ```
+fn primary_key_clause(src: &str) -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + '_ {
+    let ws = inline_ws().repeated();
+    let kw = move |expected: &'static str| {
+        filter_map(move |span: Span, kind| {
+            if kind == SyntaxKind::T_IDENT && src.get(span.clone()) == Some(expected) {
+                Ok(())
+            } else {
+                Err(Simple::custom(span, format!("expected '{expected}'")))
+            }
+        })
+    };
+
+    kw("primary")
+        .padded_by(ws.clone())
+        .ignore_then(kw("key"))
+        .then(balanced_block_nonempty(
+            SyntaxKind::T_LPAREN,
+            SyntaxKind::T_RPAREN,
+        ))
+        .padded_by(ws)
+        .map_with_span(|_, sp: Span| sp)
+}
+
 fn collect_relation_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -224,58 +305,36 @@ fn collect_relation_spans(
 
     type State<'a> = SpanCollector<'a, Extras<'a>>;
 
-    fn consume_paren_block(st: &mut State<'_>) -> bool {
-        if let Some((SyntaxKind::T_LPAREN, span)) = st.stream.peek().cloned() {
-            let (res, err) = st.parse_span(super::ast::parse_utils::paren_block_span(), span.start);
-            st.extra.errors.extend(err);
-            if let Some(sp) = res {
-                st.stream.skip_until(sp.end);
-                true
+    fn record_relation(st: &mut State<'_>, start: usize) {
+        let cols = relation_columns();
+
+        let (cols_res, cols_err) = st.parse_span(cols, start);
+        if let Some(sp) = cols_res {
+            st.stream.skip_until(sp.end);
+            st.stream.skip_ws_inline();
+            let mut ok = true;
+            if let Some((SyntaxKind::T_IDENT, pk_span)) = st.stream.peek().cloned()
+                && st.extra.src.get(pk_span.clone()) == Some("primary")
+            {
+                let (pk_res, pk_err) =
+                    st.parse_span(primary_key_clause(st.extra.src), pk_span.start);
+                if let Some(pk_sp) = pk_res {
+                    st.stream.skip_until(pk_sp.end);
+                } else {
+                    st.extra.errors.extend(pk_err);
+                    ok = false;
+                }
+            }
+
+            if ok {
+                let end = st.stream.line_end(st.stream.cursor());
+                st.stream.skip_until(end);
+                st.spans.push(start..end);
             } else {
                 st.skip_line();
-                false
             }
         } else {
-            true
-        }
-    }
-
-    fn skip_relation_columns(st: &mut State<'_>) -> bool {
-        st.stream.skip_ws_inline();
-        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_IDENT)) {
-            st.stream.advance();
-        }
-        st.stream.skip_ws_inline();
-        consume_paren_block(st)
-    }
-
-    fn skip_primary_key_clause(st: &mut State<'_>) -> bool {
-        st.stream.skip_ws_inline();
-        if let Some((SyntaxKind::T_IDENT, span)) = st.stream.peek().cloned()
-            && st.extra.src.get(span.clone()) == Some("primary")
-        {
-            st.stream.advance();
-            st.stream.skip_ws_inline();
-            if let Some((SyntaxKind::T_IDENT, sp)) = st.stream.peek().cloned()
-                && st.extra.src.get(sp.clone()) == Some("key")
-            {
-                st.stream.advance();
-                st.stream.skip_ws_inline();
-                return consume_paren_block(st);
-            }
-        }
-        true
-    }
-
-    fn record_relation(st: &mut State<'_>, start: usize) {
-        let cols_ok = skip_relation_columns(st);
-        let pk_ok = skip_primary_key_clause(st);
-
-        if cols_ok && pk_ok {
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-            st.spans.push(start..end);
-        } else {
+            st.extra.errors.extend(cols_err);
             st.skip_line();
         }
     }

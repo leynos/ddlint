@@ -4,32 +4,9 @@
 //! text content from within balanced delimiters, handling nested structures
 //! correctly.
 
-use chumsky::prelude::*;
 use rowan::SyntaxElement;
 
-use super::super::super::lexer_helpers::balanced_block;
-use crate::{DdlogLanguage, Span, SyntaxKind};
-
-/// Parser for a parenthesised block, returning its span.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// # use ddlint::parser::ast::parse_utils::paren_block_span;
-/// # use ddlint::tokenize;
-/// # use chumsky::{Parser, Stream};
-/// # let src = "(foo)";
-/// # let tokens = tokenize(src);
-/// let span = paren_block_span()
-///     .parse(Stream::from_iter(0..src.len(), tokens.into_iter()))
-///     .unwrap();
-/// assert_eq!(span.start, 0);
-/// ```
-#[inline]
-pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
-{
-    balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
-}
+use crate::{DdlogLanguage, SyntaxKind};
 
 /// Error returned when an opening delimiter is never closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
