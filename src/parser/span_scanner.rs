@@ -53,8 +53,11 @@ pub(super) fn parse_tokens(
 
 /// Parse a statement and record its span on success.
 ///
-/// This helper centralises the common pattern of invoking a parser,
-/// recording the resulting span and skipping the line when parsing fails.
+/// The `parser` **must** consume the entire statement and return a `Span`
+/// covering it, including any trailing inline whitespace. Any parse errors
+/// produced by `parser` are appended to `st.extra`. On success the span is
+/// recorded and the token stream advanced to the end of the statement;
+/// otherwise the current line is skipped.
 ///
 /// # Examples
 ///
@@ -65,11 +68,12 @@ pub(super) fn parse_tokens(
 ///
 /// let src = "import foo\n";
 /// let tokens = crate::tokenize(src);
-/// let mut st = SpanCollector::new(&tokens, src, ());
+/// let mut st = SpanCollector::new(&tokens, src, Vec::new());
 /// let ident = just(SyntaxKind::T_IDENT).map_with_span(|_, sp: Span| sp);
 /// let (span, errs) = parse_and_record(&mut st, 0, ident);
 /// assert!(span.is_some());
 /// assert!(errs.is_empty());
+/// assert_eq!(st.extra, errs);
 /// ```
 fn parse_and_record<P, E>(
     st: &mut SpanCollector<'_, E>,
@@ -78,15 +82,16 @@ fn parse_and_record<P, E>(
 ) -> (Option<Span>, Vec<Simple<SyntaxKind>>)
 where
     P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+    E: Extend<Simple<SyntaxKind>>,
 {
     let (res, errs) = st.parse_span(parser, start);
-    match &res {
-        Some(sp) => {
-            st.stream.skip_until(sp.end);
-            st.spans.push(sp.clone());
-        }
-        None => st.skip_line(),
+    if let Some(sp) = res.clone() {
+        st.stream.skip_until(sp.end);
+        st.spans.push(sp);
+    } else {
+        st.skip_line();
     }
+    st.extra.extend(errs.clone());
     (res, errs)
 }
 
@@ -124,8 +129,7 @@ fn collect_import_spans(
             .padded_by(ws)
             .map_with_span(|_, sp: Span| sp);
 
-        let (_, err) = parse_and_record(st, span.start, parser);
-        st.extra.extend(err);
+        parse_and_record(st, span.start, parser);
     };
 
     token_dispatch!(st, {
@@ -166,8 +170,7 @@ where
             .ignore_then(decl_parser())
             .map(move |sp: Span| start..sp.end);
 
-        let (_, err) = parse_and_record(st, start, parser);
-        st.extra.extend(err);
+        parse_and_record(st, start, parser);
     };
 
     token_dispatch!(st, { SyntaxKind::K_EXTERN => handler });
@@ -352,8 +355,7 @@ fn collect_index_spans(
 
     let handle_index = |st: &mut State<'_>, span: Span| {
         let parser = index_decl();
-        let (_, err) = parse_and_record(st, span.start, parser);
-        st.extra.extend(err);
+        parse_and_record(st, span.start, parser);
     };
 
     token_dispatch!(st, {
@@ -436,8 +438,7 @@ fn collect_function_spans(
         } else {
             func_decl(true)
         };
-        let (_, err) = parse_and_record(st, start, parser);
-        st.extra.extend(err);
+        parse_and_record(st, start, parser);
     }
 
     let mut st = State::new(tokens, src, Vec::new());
@@ -607,20 +608,16 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn parse_and_record_records_import_span() {
-        let src = "import foo\n";
+    #[case("import foo\n", vec![0..11], true)]
+    #[case("import\n", vec![], false)]
+    fn collect_import_spans_cases(
+        #[case] src: &str,
+        #[case] expected: Vec<Span>,
+        #[case] errs_empty: bool,
+    ) {
         let tokens = tokenize(src);
         let (spans, errs) = collect_import_spans(&tokens, src);
-        assert_eq!(spans, vec![0..11]);
-        assert!(errs.is_empty());
-    }
-
-    #[rstest]
-    fn parse_and_record_propagates_errors() {
-        let src = "import\n";
-        let tokens = tokenize(src);
-        let (spans, errs) = collect_import_spans(&tokens, src);
-        assert!(spans.is_empty());
-        assert!(!errs.is_empty());
+        assert_eq!(spans, expected);
+        assert_eq!(errs.is_empty(), errs_empty);
     }
 }
