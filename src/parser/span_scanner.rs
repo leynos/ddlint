@@ -1,4 +1,4 @@
-//! Statement span scanning utilities.
+//! Utilities for scanning top-level statement spans.
 //!
 //! This module walks a token stream to identify top-level statement spans.
 //! It groups the ranges for imports, typedefs, relations, indexes,
@@ -247,6 +247,25 @@ fn relation_columns() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind
         .map_with_span(|_, sp: Span| sp)
 }
 
+fn keyword<'a>(
+    src: &'a str,
+    expected: &'static str,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + 'a {
+    filter_map(move |span: Span, kind| {
+        let found = src.get(span.clone()).unwrap_or("<none>");
+        if kind == SyntaxKind::T_IDENT && found == expected {
+            Ok(())
+        } else {
+            let err_span = span.clone();
+            Err(Simple::custom(
+                span,
+                format!("expected `{expected}`, but found `{found}` at span {err_span:?}"),
+            ))
+        }
+    })
+    .then_ignore(inline_ws().repeated())
+}
+
 /// Parse a `primary key` clause.
 ///
 /// # Examples
@@ -271,25 +290,12 @@ fn relation_columns() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind
 /// assert!(primary_key_clause(src).parse(stream).is_err());
 /// ```
 fn primary_key_clause(src: &str) -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + '_ {
-    let ws = inline_ws().repeated();
-    let kw = move |expected: &'static str| {
-        filter_map(move |span: Span, kind| {
-            if kind == SyntaxKind::T_IDENT && src.get(span.clone()) == Some(expected) {
-                Ok(())
-            } else {
-                Err(Simple::custom(span, format!("expected '{expected}'")))
-            }
-        })
-    };
-
-    kw("primary")
-        .padded_by(ws.clone())
-        .ignore_then(kw("key"))
+    keyword(src, "primary")
+        .ignore_then(keyword(src, "key"))
         .then(balanced_block_nonempty(
             SyntaxKind::T_LPAREN,
             SyntaxKind::T_RPAREN,
         ))
-        .padded_by(ws)
         .map_with_span(|_, sp: Span| sp)
 }
 
