@@ -44,38 +44,55 @@ pub(super) fn normalise_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Parse a program containing a single relation and return it.
+/// Parse a program and extract the first item produced by `extractor`.
+///
+/// The helper asserts that parsing succeeds without errors and that the
+/// extractor yields at least one item.
 #[expect(clippy::expect_used, reason = "helpers used only in tests")]
-pub(super) fn parse_relation(src: &str) -> Relation {
+fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
+    src: &str,
+    extractor: F,
+) -> T {
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
-    let relations = parsed.root().relations();
-    relations.first().cloned().expect("relation missing")
+    assert!(
+        parsed.errors().is_empty(),
+        "unexpected errors: {:?}",
+        parsed.errors()
+    );
+    let items = extractor(parsed.root());
+    items.first().cloned().expect("item missing")
+}
+
+/// Parse a program containing a single relation and return it.
+pub(super) fn parse_relation(src: &str) -> Relation {
+    parse_single_item(src, crate::parser::ast::Root::relations)
 }
 
 /// Parse a program containing a single index and return it.
-#[expect(clippy::expect_used, reason = "helpers used only in tests")]
 pub(super) fn parse_index(src: &str) -> Index {
-    let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
-    let indexes = parsed.root().indexes();
-    indexes.first().cloned().expect("index missing")
+    parse_single_item(src, crate::parser::ast::Root::indexes)
 }
 
 /// Parse a program containing a single function and return it.
-#[expect(clippy::expect_used, reason = "helpers used only in tests")]
 pub(super) fn parse_function(src: &str) -> Function {
-    let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
-    let funcs = parsed.root().functions();
-    funcs.first().cloned().expect("function missing")
+    parse_single_item(src, crate::parser::ast::Root::functions)
 }
 
 /// Parse a program containing a single transformer and return it.
-#[expect(clippy::expect_used, reason = "helpers used only in tests")]
 pub(super) fn parse_transformer(src: &str) -> Transformer {
-    let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
-    let transformers = parsed.root().transformers();
-    transformers.first().cloned().expect("transformer missing")
+    parse_single_item(src, crate::parser::ast::Root::transformers)
 }
+
+// Example helper for other AST nodes:
+//
+// pub(super) fn parse_rule(src: &str) -> Rule {
+//     parse_single_item(src, |root| root.rules())
+// }
+//
+// pub(super) fn parse_type_def(src: &str) -> TypeDef {
+//     parse_single_item(src, |root| root.type_defs())
+// }
+//
+// pub(super) fn parse_import(src: &str) -> Import {
+//     parse_single_item(src, |root| root.imports())
+// }

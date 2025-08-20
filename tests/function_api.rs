@@ -36,7 +36,11 @@ fn function_api(
     #[case] ret: Option<String>,
 ) {
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "unexpected errors: {:?}",
+        parsed.errors()
+    );
     let funcs = parsed.root().functions();
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let func = funcs.first().expect("function missing");
