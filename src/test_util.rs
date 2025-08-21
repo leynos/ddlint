@@ -59,6 +59,7 @@ pub fn call(name: &str, args: Vec<Expr>) -> Expr {
 /// # Panics
 /// Panics if `errors` is empty or the message or span do not match.
 #[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_parse_error(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
@@ -66,7 +67,7 @@ pub fn assert_parse_error(
     end: usize,
 ) {
     assert_eq!(errors.len(), 1, "expected one error, got {errors:?}");
-    let error = errors.first().unwrap_or_else(|| panic!("error missing"));
+    let error = errors.first().expect("error missing");
     let rendered = format!("{error:?}");
     assert!(
         rendered.contains(expected_msg),
@@ -83,6 +84,7 @@ pub fn assert_parse_error(
 /// # Panics
 /// Panics if `errors` is empty or the error kind does not indicate a mismatch.
 #[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_delimiter_error(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
@@ -92,7 +94,7 @@ pub fn assert_delimiter_error(
     use chumsky::error::SimpleReason;
 
     assert_parse_error(errors, expected_msg, start, end);
-    let error = errors.first().unwrap_or_else(|| panic!("error missing"));
+    let error = errors.first().expect("error missing");
     assert!(
         matches!(
             error.reason(),
@@ -112,6 +114,7 @@ pub fn assert_delimiter_error(
 /// Panics if `errors` is empty or the error kind does not indicate an unclosed
 /// delimiter.
 #[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_unclosed_delimiter_error(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
@@ -121,7 +124,7 @@ pub fn assert_unclosed_delimiter_error(
     use chumsky::error::SimpleReason;
 
     assert_parse_error(errors, expected_msg, start, end);
-    let error = errors.first().unwrap_or_else(|| panic!("error missing"));
+    let error = errors.first().expect("error missing");
     assert!(
         matches!(
             error.reason(),

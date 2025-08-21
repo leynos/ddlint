@@ -4,7 +4,7 @@
 
 use crate::{
     parse,
-    parser::ast::{Function, Index, Relation, Transformer},
+    parser::ast::{Function, Import, Index, Relation, Transformer},
 };
 
 type SyntaxNode = rowan::SyntaxNode<crate::DdlogLanguage>;
@@ -81,6 +81,11 @@ pub(super) fn parse_function(src: &str) -> Function {
 /// Parse a program containing a single transformer and return it.
 pub(super) fn parse_transformer(src: &str) -> Transformer {
     parse_single_item(src, crate::parser::ast::Root::transformers)
+}
+
+/// Parse a program containing a single import and return it.
+pub(super) fn parse_import(src: &str) -> Import {
+    parse_single_item(src, crate::parser::ast::Root::imports)
 }
 
 // Example helper for other AST nodes:
