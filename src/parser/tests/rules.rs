@@ -23,45 +23,25 @@ fn fact_rule() -> &'static str {
 }
 
 #[rstest]
-fn simple_rule_parsed(simple_rule: &str) {
-    let parsed = parse(simple_rule);
-    assert!(
-        !parsed.errors().is_empty(),
-        "rule parsing expected to emit errors until implementation is complete",
-    );
+#[case::simple_rule(simple_rule(), true)]
+#[case::multi_literal_rule(multi_literal_rule(), true)]
+#[case::fact_rule(fact_rule(), false)]
+fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool) {
+    let parsed = parse(rule_input);
+    if should_have_errors {
+        assert!(
+            !parsed.errors().is_empty(),
+            "rule parsing expected to emit errors until implementation is complete",
+        );
+    } else {
+        assert!(parsed.errors().is_empty());
+    }
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
     let Some(rule) = rules.first() else {
         panic!("rule missing");
     };
-    assert_eq!(pretty_print(rule.syntax()), simple_rule);
-}
-
-#[rstest]
-fn multi_literal_rule_parsed(multi_literal_rule: &str) {
-    let parsed = parse(multi_literal_rule);
-    assert!(
-        !parsed.errors().is_empty(),
-        "rule parsing expected to emit errors until implementation is complete",
-    );
-    let rules = parsed.root().rules();
-    assert_eq!(rules.len(), 1);
-    let Some(rule) = rules.first() else {
-        panic!("rule missing");
-    };
-    assert_eq!(pretty_print(rule.syntax()), multi_literal_rule);
-}
-
-#[rstest]
-fn fact_rule_parsed(fact_rule: &str) {
-    let parsed = parse(fact_rule);
-    assert!(parsed.errors().is_empty());
-    let rules = parsed.root().rules();
-    assert_eq!(rules.len(), 1);
-    let Some(rule) = rules.first() else {
-        panic!("rule missing");
-    };
-    assert_eq!(pretty_print(rule.syntax()), fact_rule);
+    assert_eq!(pretty_print(rule.syntax()), rule_input);
 }
 
 #[test]
