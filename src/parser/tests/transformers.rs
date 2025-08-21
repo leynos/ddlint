@@ -101,8 +101,16 @@ fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn transformer_duplicate_input_names(transformer_dup_inputs: &str) {
-    let t = parse_transformer(transformer_dup_inputs);
+    let parsed = crate::parse(transformer_dup_inputs);
+    assert!(
+        parsed.errors().is_empty(),
+        "unexpected errors: {:?}",
+        parsed.errors()
+    );
+    let transformers = parsed.root().transformers();
+    let t = transformers.first().expect("transformer missing");
     let inputs = t.inputs();
     let foo_count = inputs.iter().filter(|(n, _)| n == "foo").count();
     assert_eq!(foo_count, 2);
