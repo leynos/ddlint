@@ -45,52 +45,21 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
     assert_eq!(pretty_print(rule.syntax()), rule_input);
 }
 
-#[test]
-fn invalid_rule_missing_head() {
-    let input = ":- User(user_id, username, _).";
+#[rstest]
+#[case(":- User(user_id, username, _).", "missing head")]
+#[case("UserLogin(username, session_id) :- .", "missing body")]
+#[case(
+    "UserLogin(username, session_id) User(user_id, username, _).",
+    "missing ':-'"
+)]
+#[case(
+    "UserLogin(username, session_id) :- User(user_id, username, _)",
+    "missing '.'"
+)]
+#[case("This is not a rule!", "invalid input")]
+fn invalid_rule_cases(#[case] input: &str, #[case] msg_hint: &str) {
     let parsed = parse(input);
-    assert!(
-        !parsed.errors().is_empty(),
-        "Expected errors for missing head",
-    );
-}
-
-#[test]
-fn invalid_rule_missing_body() {
-    let input = "UserLogin(username, session_id) :- .";
-    let parsed = parse(input);
-    assert!(
-        !parsed.errors().is_empty(),
-        "Expected errors for missing body",
-    );
-}
-
-#[test]
-fn invalid_rule_no_colon_dash() {
-    let input = "UserLogin(username, session_id) User(user_id, username, _).";
-    let parsed = parse(input);
-    assert!(
-        !parsed.errors().is_empty(),
-        "Expected errors for missing ':-'",
-    );
-}
-
-#[test]
-fn invalid_rule_missing_period() {
-    let input = "UserLogin(username, session_id) :- User(user_id, username, _)";
-    let parsed = parse(input);
-    assert!(
-        !parsed.errors().is_empty(),
-        "Expected errors for missing period at end",
-    );
-}
-
-#[test]
-fn invalid_rule_garbage() {
-    let input = "This is not a rule!";
-    let parsed = parse(input);
-    assert!(
-        !parsed.errors().is_empty(),
-        "Expected errors for completely invalid input",
-    );
+    let errors = parsed.errors();
+    assert!(!errors.is_empty(), "expected error: {msg_hint}");
+    // Prefer assert_parse_error(&parsed, msg_hint, start, end) when available.
 }

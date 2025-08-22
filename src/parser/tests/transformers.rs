@@ -70,15 +70,21 @@ fn parses_transformers(
 }
 
 #[rstest]
-fn transformer_no_outputs_is_error(transformer_no_outputs: &str) {
-    let parsed = crate::parse(transformer_no_outputs);
-    assert!(!parsed.errors().is_empty());
-}
-
-#[rstest]
-fn transformer_invalid_is_error(transformer_invalid: &str) {
-    let parsed = crate::parse(transformer_invalid);
-    assert!(!parsed.errors().is_empty());
+#[case::no_outputs(transformer_no_outputs(), "missing output type")]
+#[case::invalid_decl(transformer_invalid(), "incomplete transformer")]
+#[expect(
+    clippy::used_underscore_binding,
+    reason = "message placeholder for future assert_parse_error"
+)]
+fn transformer_error_cases(#[case] src: &str, #[case] _msg_hint: &str) {
+    let parsed = crate::parse(src);
+    let errors = parsed.errors();
+    assert!(
+        !errors.is_empty(),
+        "expected errors for invalid transformer: {src}",
+    );
+    // Optional: use assert_parse_error if available
+    // assert_parse_error(errors, msg_hint, start, end);
     assert!(parsed.root().transformers().is_empty());
 }
 

@@ -9,6 +9,7 @@ use crate::{
     parser::ast::{Expr, Literal},
 };
 use chumsky::error::Simple;
+use std::ops::Range;
 
 /// Construct a numeric [`Expr::Literal`].
 #[must_use]
@@ -81,13 +82,12 @@ pub fn assert_parse_error(
 fn assert_delimiter_error_impl(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
-    start: usize,
-    end: usize,
+    span: Range<usize>,
     error_description: &str,
 ) {
     use chumsky::error::SimpleReason;
 
-    assert_parse_error(errors, expected_msg, start, end);
+    assert_parse_error(errors, expected_msg, span.start, span.end);
     let error = errors.first().expect("error missing");
     assert!(
         matches!(
@@ -112,7 +112,7 @@ pub fn assert_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(errors, expected_msg, start, end, "delimiter mismatch");
+    assert_delimiter_error_impl(errors, expected_msg, start..end, "delimiter mismatch");
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
@@ -130,5 +130,5 @@ pub fn assert_unclosed_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(errors, expected_msg, start, end, "unclosed delimiter");
+    assert_delimiter_error_impl(errors, expected_msg, start..end, "unclosed delimiter");
 }
