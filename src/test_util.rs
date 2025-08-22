@@ -76,6 +76,26 @@ pub fn assert_parse_error(
     assert_eq!(error.span(), start..end);
 }
 
+/// Kinds of delimiter-related parse errors.
+#[derive(Debug, Clone, Copy)]
+enum DelimiterErrorKind {
+    /// A closing delimiter did not match the expected kind.
+    Mismatch,
+    /// An opening delimiter had no matching closing token.
+    Unclosed,
+}
+
+impl DelimiterErrorKind {
+    /// Return a human-readable description of this error kind.
+    #[must_use]
+    fn description(&self) -> &str {
+        match self {
+            Self::Mismatch => "delimiter mismatch",
+            Self::Unclosed => "unclosed delimiter",
+        }
+    }
+}
+
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 fn assert_delimiter_error_impl(
@@ -83,7 +103,7 @@ fn assert_delimiter_error_impl(
     expected_msg: &str,
     start: usize,
     end: usize,
-    error_description: &str,
+    kind: DelimiterErrorKind,
 ) {
     use chumsky::error::SimpleReason;
 
@@ -94,7 +114,8 @@ fn assert_delimiter_error_impl(
             error.reason(),
             SimpleReason::Unexpected | SimpleReason::Custom(_)
         ),
-        "expected {error_description}, got {:?}",
+        "expected {}, got {:?}",
+        kind.description(),
         error.reason()
     );
 }
@@ -114,7 +135,13 @@ pub fn assert_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(errors, expected_msg, start, end, "delimiter mismatch");
+    assert_delimiter_error_impl(
+        errors,
+        expected_msg,
+        start,
+        end,
+        DelimiterErrorKind::Mismatch,
+    );
     let _ = errors.first().expect("error missing");
 }
 
@@ -134,6 +161,12 @@ pub fn assert_unclosed_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(errors, expected_msg, start, end, "unclosed delimiter");
+    assert_delimiter_error_impl(
+        errors,
+        expected_msg,
+        start,
+        end,
+        DelimiterErrorKind::Unclosed,
+    );
     let _ = errors.first().expect("error missing");
 }
