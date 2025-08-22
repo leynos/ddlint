@@ -76,6 +76,29 @@ pub fn assert_parse_error(
     assert_eq!(error.span(), start..end);
 }
 
+#[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
+fn assert_delimiter_error_impl(
+    errors: &[Simple<SyntaxKind>],
+    expected_msg: &str,
+    start: usize,
+    end: usize,
+    error_description: &str,
+) {
+    use chumsky::error::SimpleReason;
+
+    assert_parse_error(errors, expected_msg, start, end);
+    let error = errors.first().expect("error missing");
+    assert!(
+        matches!(
+            error.reason(),
+            SimpleReason::Unexpected | SimpleReason::Custom(_)
+        ),
+        "expected {error_description}, got {:?}",
+        error.reason()
+    );
+}
+
 /// Assert that a parser error indicates a delimiter mismatch.
 ///
 /// This is a thin wrapper over [`assert_parse_error`] that also checks the error
@@ -91,18 +114,8 @@ pub fn assert_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    use chumsky::error::SimpleReason;
-
-    assert_parse_error(errors, expected_msg, start, end);
-    let error = errors.first().expect("error missing");
-    assert!(
-        matches!(
-            error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
-        ),
-        "expected delimiter mismatch, got {:?}",
-        error.reason()
-    );
+    assert_delimiter_error_impl(errors, expected_msg, start, end, "delimiter mismatch");
+    let _ = errors.first().expect("error missing");
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
@@ -121,16 +134,6 @@ pub fn assert_unclosed_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    use chumsky::error::SimpleReason;
-
-    assert_parse_error(errors, expected_msg, start, end);
-    let error = errors.first().expect("error missing");
-    assert!(
-        matches!(
-            error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
-        ),
-        "expected unclosed delimiter, got {:?}",
-        error.reason()
-    );
+    assert_delimiter_error_impl(errors, expected_msg, start, end, "unclosed delimiter");
+    let _ = errors.first().expect("error missing");
 }
