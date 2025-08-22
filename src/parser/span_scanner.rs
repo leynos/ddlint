@@ -315,25 +315,24 @@ fn collect_relation_spans(
     fn record_relation(st: &mut State<'_>, start: usize) {
         let cols = relation_columns();
 
-        let (cols_res, cols_err) = st.parse_span(cols, start);
+        let (cols_res, mut errs) = st.parse_span(cols, start);
         if let Some(sp) = cols_res {
             st.stream.skip_until(sp.end);
             st.stream.skip_ws_inline();
-            let mut ok = true;
+
             if let Some((SyntaxKind::T_IDENT, pk_span)) = st.stream.peek().cloned()
                 && st.extra.src.get(pk_span.clone()) == Some("primary")
             {
                 let (pk_res, pk_err) =
                     st.parse_span(primary_key_clause(st.extra.src), pk_span.start);
+                errs.extend(pk_err);
                 if let Some(pk_sp) = pk_res {
                     st.stream.skip_until(pk_sp.end);
-                } else {
-                    st.extra.errors.extend(pk_err);
-                    ok = false;
                 }
             }
 
-            if ok {
+            st.extra.errors.extend(errs.clone());
+            if errs.is_empty() {
                 let end = st.stream.line_end(st.stream.cursor());
                 st.stream.skip_until(end);
                 st.spans.push(start..end);
@@ -341,7 +340,7 @@ fn collect_relation_spans(
                 st.skip_line();
             }
         } else {
-            st.extra.errors.extend(cols_err);
+            st.extra.errors.extend(errs);
             st.skip_line();
         }
     }

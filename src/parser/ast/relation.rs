@@ -147,7 +147,10 @@ impl Relation {
                 collected,
                 expected,
             }) if !collected.is_empty() => {
-                panic!("unclosed delimiter {expected:?}; got {collected:?}");
+                log::debug!(
+                    "unclosed delimiter while parsing primary key: expected {expected:?}, collected: {collected:?}"
+                );
+                return None;
             }
             Err(_) => return None,
         };
