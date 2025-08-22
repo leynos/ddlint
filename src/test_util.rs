@@ -78,11 +78,12 @@ pub fn assert_parse_error(
 
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
-fn assert_delimiter_mismatch_impl(
+fn assert_delimiter_error_impl(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
     start: usize,
     end: usize,
+    error_description: &str,
 ) {
     use chumsky::error::SimpleReason;
 
@@ -93,9 +94,21 @@ fn assert_delimiter_mismatch_impl(
             error.reason(),
             SimpleReason::Unexpected | SimpleReason::Custom(_)
         ),
-        "expected delimiter mismatch, got {:?}",
+        "expected {error_description}, got {:?}",
         error.reason()
     );
+}
+
+#[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
+fn assert_delimiter_mismatch_impl(
+    errors: &[Simple<SyntaxKind>],
+    expected_msg: &str,
+    start: usize,
+    end: usize,
+) {
+    assert_delimiter_error_impl(errors, expected_msg, start, end, "delimiter mismatch");
+    let _ = errors.first().expect("error missing");
 }
 
 #[track_caller]
@@ -106,18 +119,8 @@ fn assert_unclosed_delimiter_impl(
     start: usize,
     end: usize,
 ) {
-    use chumsky::error::SimpleReason;
-
-    assert_parse_error(errors, expected_msg, start, end);
-    let error = errors.first().expect("error missing");
-    assert!(
-        matches!(
-            error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
-        ),
-        "expected unclosed delimiter, got {:?}",
-        error.reason()
-    );
+    assert_delimiter_error_impl(errors, expected_msg, start, end, "unclosed delimiter");
+    let _ = errors.first().expect("error missing");
 }
 
 /// Assert that a parser error indicates a delimiter mismatch.
