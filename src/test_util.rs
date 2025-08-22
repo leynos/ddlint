@@ -11,6 +11,61 @@ use crate::{
 use chumsky::error::Simple;
 use std::ops::Range;
 
+/// Typed wrapper for variable and function names.
+#[derive(Debug, Clone)]
+pub struct Name(String);
+
+impl From<&str> for Name {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl From<String> for Name {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+/// Common error message patterns for parser assertions.
+#[derive(Debug, Clone)]
+pub enum ErrorPattern {
+    Custom(String),
+    UnexpectedToken,
+    UnexpectedEof,
+    UnclosedDelimiter,
+    MismatchedDelimiter,
+}
+
+impl ErrorPattern {
+    fn contains_message(&self, rendered: &str) -> bool {
+        match self {
+            Self::Custom(msg) => rendered.contains(msg),
+            Self::UnexpectedToken => rendered.contains("unexpected"),
+            Self::UnexpectedEof => rendered.contains("EOF") || rendered.contains("end"),
+            Self::UnclosedDelimiter => {
+                rendered.contains("unclosed") || rendered.contains("missing")
+            }
+            Self::MismatchedDelimiter => {
+                rendered.contains("expected") || rendered.contains("found")
+            }
+        }
+    }
+}
+
+impl From<&str> for ErrorPattern {
+    fn from(s: &str) -> Self {
+        Self::Custom(s.to_string())
+    }
+}
+
+/// Internal error type for delimiter errors.
+#[derive(Debug, Copy, Clone)]
+enum DelimiterErrorType {
+    Mismatch,
+    Unclosed,
+}
+
 /// Construct a numeric [`Expr::Literal`].
 #[must_use]
 pub fn lit_num(n: &str) -> Expr {
@@ -30,22 +85,25 @@ pub fn lit_bool(b: bool) -> Expr {
 }
 
 /// Construct a variable [`Expr::Variable`].
+///
+/// Accepts any type convertible into [`Name`].
 #[must_use]
-pub fn var(name: &str) -> Expr {
-    Expr::Variable(name.into())
+pub fn var(name: impl Into<Name>) -> Expr {
+    let name: Name = name.into();
+    Expr::Variable(name.0)
 }
 
 /// Construct a function call [`Expr::Call`].
+///
+/// Accepts any type convertible into [`Name`] for the function name.
 #[must_use]
-pub fn call(name: &str, args: Vec<Expr>) -> Expr {
-    Expr::Call {
-        name: name.into(),
-        args,
-    }
+pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
+    let name: Name = name.into();
+    Expr::Call { name: name.0, args }
 }
 
-/// Assert that the parser produced exactly one error with the expected message
-/// and span.
+/// Assert that the parser produced exactly one error matching
+/// `expected_pattern` and span.
 ///
 /// # Examples
 ///
@@ -63,16 +121,17 @@ pub fn call(name: &str, args: Vec<Expr>) -> Expr {
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_parse_error(
     errors: &[Simple<SyntaxKind>],
-    expected_msg: &str,
+    expected_pattern: impl Into<ErrorPattern>,
     start: usize,
     end: usize,
 ) {
+    let pattern: ErrorPattern = expected_pattern.into();
     assert_eq!(errors.len(), 1, "expected one error, got {errors:?}");
     let error = errors.first().expect("error missing");
     let rendered = format!("{error:?}");
     assert!(
-        rendered.contains(expected_msg),
-        "expected error to contain '{expected_msg}', got '{rendered}'"
+        pattern.contains_message(&rendered),
+        "expected error to contain pattern '{pattern:?}', got '{rendered}'",
     );
     assert_eq!(error.span(), start..end);
 }
@@ -81,44 +140,50 @@ pub fn assert_parse_error(
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 fn assert_delimiter_error_impl(
     errors: &[Simple<SyntaxKind>],
-    expected_msg: &str,
+    expected_pattern: &ErrorPattern,
     span: Range<usize>,
-    error_description: &str,
+    error_type: DelimiterErrorType,
 ) {
     use chumsky::error::SimpleReason;
 
-    assert_parse_error(errors, expected_msg, span.start, span.end);
     let error = errors.first().expect("error missing");
+    let rendered = format!("{error:?}");
+    assert!(
+        expected_pattern.contains_message(&rendered),
+        "expected error to contain pattern '{expected_pattern:?}', got '{rendered}'",
+    );
+    assert_eq!(error.span(), span);
     assert!(
         matches!(
             error.reason(),
             SimpleReason::Unexpected | SimpleReason::Custom(_)
         ),
-        "expected {error_description}, got {:?}",
+        "expected {:?}, got {:?}",
+        error_type,
         error.reason()
     );
 }
 /// Assert that a parser error indicates a delimiter mismatch.
 ///
-/// This is a thin wrapper over [`assert_parse_error`] that also checks the error
-/// reports a found token.
+/// This verifies the message, span and that the reason reports a found token.
 ///
 /// # Panics
 /// Panics if `errors` is empty or the error kind does not indicate a mismatch.
 #[track_caller]
 pub fn assert_delimiter_error(
     errors: &[Simple<SyntaxKind>],
-    expected_msg: &str,
+    expected_pattern: impl Into<ErrorPattern>,
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(errors, expected_msg, start..end, "delimiter mismatch");
+    let pattern: ErrorPattern = expected_pattern.into();
+    assert_delimiter_error_impl(errors, &pattern, start..end, DelimiterErrorType::Mismatch);
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
 ///
 /// This verifies the error span points to the opening delimiter and that no
-/// closing token was found.
+/// closing token was found while matching the expected pattern.
 ///
 /// # Panics
 /// Panics if `errors` is empty or the error kind does not indicate an unclosed
@@ -126,9 +191,10 @@ pub fn assert_delimiter_error(
 #[track_caller]
 pub fn assert_unclosed_delimiter_error(
     errors: &[Simple<SyntaxKind>],
-    expected_msg: &str,
+    expected_pattern: impl Into<ErrorPattern>,
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(errors, expected_msg, start..end, "unclosed delimiter");
+    let pattern: ErrorPattern = expected_pattern.into();
+    assert_delimiter_error_impl(errors, &pattern, start..end, DelimiterErrorType::Unclosed);
 }
