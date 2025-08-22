@@ -76,34 +76,13 @@ pub fn assert_parse_error(
     assert_eq!(error.span(), start..end);
 }
 
-/// Kinds of delimiter-related parse errors.
-#[derive(Debug, Clone, Copy)]
-enum DelimiterErrorKind {
-    /// A closing delimiter did not match the expected kind.
-    Mismatch,
-    /// An opening delimiter had no matching closing token.
-    Unclosed,
-}
-
-impl DelimiterErrorKind {
-    /// Return a human-readable description of this error kind.
-    #[must_use]
-    fn description(&self) -> &str {
-        match self {
-            Self::Mismatch => "delimiter mismatch",
-            Self::Unclosed => "unclosed delimiter",
-        }
-    }
-}
-
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
-fn assert_delimiter_error_impl(
+fn assert_delimiter_mismatch_impl(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
     start: usize,
     end: usize,
-    kind: DelimiterErrorKind,
 ) {
     use chumsky::error::SimpleReason;
 
@@ -114,8 +93,29 @@ fn assert_delimiter_error_impl(
             error.reason(),
             SimpleReason::Unexpected | SimpleReason::Custom(_)
         ),
-        "expected {}, got {:?}",
-        kind.description(),
+        "expected delimiter mismatch, got {:?}",
+        error.reason()
+    );
+}
+
+#[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
+fn assert_unclosed_delimiter_impl(
+    errors: &[Simple<SyntaxKind>],
+    expected_msg: &str,
+    start: usize,
+    end: usize,
+) {
+    use chumsky::error::SimpleReason;
+
+    assert_parse_error(errors, expected_msg, start, end);
+    let error = errors.first().expect("error missing");
+    assert!(
+        matches!(
+            error.reason(),
+            SimpleReason::Unexpected | SimpleReason::Custom(_)
+        ),
+        "expected unclosed delimiter, got {:?}",
         error.reason()
     );
 }
@@ -128,21 +128,13 @@ fn assert_delimiter_error_impl(
 /// # Panics
 /// Panics if `errors` is empty or the error kind does not indicate a mismatch.
 #[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_delimiter_error(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(
-        errors,
-        expected_msg,
-        start,
-        end,
-        DelimiterErrorKind::Mismatch,
-    );
-    let _ = errors.first().expect("error missing");
+    assert_delimiter_mismatch_impl(errors, expected_msg, start, end);
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
@@ -154,19 +146,11 @@ pub fn assert_delimiter_error(
 /// Panics if `errors` is empty or the error kind does not indicate an unclosed
 /// delimiter.
 #[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_unclosed_delimiter_error(
     errors: &[Simple<SyntaxKind>],
     expected_msg: &str,
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_impl(
-        errors,
-        expected_msg,
-        start,
-        end,
-        DelimiterErrorKind::Unclosed,
-    );
-    let _ = errors.first().expect("error missing");
+    assert_unclosed_delimiter_impl(errors, expected_msg, start, end);
 }
