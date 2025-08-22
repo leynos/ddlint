@@ -1,8 +1,8 @@
-//! Utilities for parsing balanced delimiters and extracting enclosed content.
+//! Utilities for extracting text from within balanced, nested delimiters.
 //!
-//! This module provides functions to parse parenthesised blocks and extract
-//! text content from within balanced delimiters, handling nested structures
-//! correctly.
+//! This module provides functions to extract text from within balanced,
+//! nested delimiters (e.g., parenthesised blocks), handling arbitrary opening
+//! and closing kinds.
 
 use std::fmt;
 
@@ -57,7 +57,8 @@ impl std::error::Error for UnclosedDelimiterError {}
 ///
 /// # Errors
 ///
-/// Returns an [`UnclosedDelimiterError`] if the closing delimiter is missing.
+/// Returns an [`UnclosedDelimiterError`] if the opening delimiter is absent or
+/// the closing delimiter is missing.
 #[must_use = "discarding the extracted text loses delimiter content"]
 pub fn extract_delimited<I>(
     iter: &mut std::iter::Peekable<I>,
@@ -67,7 +68,12 @@ pub fn extract_delimited<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    skip_to_opening_delimiter(iter, open_kind);
+    if !skip_to_opening_delimiter(iter, open_kind) {
+        return Err(UnclosedDelimiterError {
+            collected: String::new(),
+            expected: close_kind,
+        });
+    }
 
     let mut depth = 1usize;
     let mut buf = String::new();
@@ -114,15 +120,16 @@ impl<'a> DelimiterParseContext<'a> {
     }
 }
 
-fn skip_to_opening_delimiter<I>(iter: &mut std::iter::Peekable<I>, open_kind: SyntaxKind)
+fn skip_to_opening_delimiter<I>(iter: &mut std::iter::Peekable<I>, open_kind: SyntaxKind) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     for e in iter.by_ref() {
         if e.kind() == open_kind {
-            break;
+            return true;
         }
     }
+    false
 }
 
 fn process_element(
@@ -132,17 +139,18 @@ fn process_element(
     match e.kind() {
         k if k == ctx.open_kind => {
             *ctx.depth += 1;
-            append_element_text(e, ctx.buf);
+            push_element_text(ctx.buf, e);
             ElementResult::Continue
         }
-        k if k == ctx.close_kind => {
-            let SyntaxElement::Token(t) = e else {
-                unreachable!()
-            };
-            handle_close_delimiter(ctx, t.text())
-        }
+        k if k == ctx.close_kind => match e {
+            SyntaxElement::Token(t) => handle_close_delimiter(ctx, t.text()),
+            SyntaxElement::Node(n) => {
+                let tmp = n.text().to_string();
+                handle_close_delimiter(ctx, &tmp)
+            }
+        },
         _ => {
-            append_element_text(e, ctx.buf);
+            push_element_text(ctx.buf, e);
             ElementResult::Continue
         }
     }
@@ -158,7 +166,7 @@ fn handle_close_delimiter(ctx: &mut DelimiterParseContext<'_>, text: &str) -> El
     }
 }
 
-fn append_element_text(e: &SyntaxElement<DdlogLanguage>, buf: &mut String) {
+fn push_element_text(buf: &mut String, e: &SyntaxElement<DdlogLanguage>) {
     match e {
         SyntaxElement::Token(t) => buf.push_str(t.text()),
         SyntaxElement::Node(n) => n.text().for_each_chunk(|chunk| buf.push_str(chunk)),

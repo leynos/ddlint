@@ -99,23 +99,12 @@ impl Relation {
     where
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     {
-        let mut depth = 0usize;
-        for e in iter.by_ref() {
-            match e.kind() {
-                SyntaxKind::T_LPAREN => depth += 1,
-                SyntaxKind::T_RPAREN => {
-                    if depth == 0 {
-                        return None;
-                    }
-                    depth -= 1;
-                    if depth == 0 {
-                        return Some(());
-                    }
-                }
-                _ => {}
-            }
-        }
-        None
+        // Consume the first parenthesised list and discard content.
+        super::skip_whitespace_and_comments(iter);
+        let _ =
+            super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
+                .ok()?;
+        Some(())
     }
 
     /// Parse the `primary key` keyword sequence.
@@ -146,10 +135,22 @@ impl Relation {
     where
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     {
+        use super::parse_utils::UnclosedDelimiterError;
         super::skip_whitespace_and_comments(iter);
-        let content =
-            super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
-                .ok()?;
+        let content = match super::parse_utils::extract_delimited(
+            iter,
+            SyntaxKind::T_LPAREN,
+            SyntaxKind::T_RPAREN,
+        ) {
+            Ok(text) => text,
+            Err(UnclosedDelimiterError {
+                collected,
+                expected,
+            }) if !collected.is_empty() => {
+                panic!("unclosed delimiter {expected:?}; got {collected:?}");
+            }
+            Err(_) => return None,
+        };
 
         let keys = content
             .split(',')
