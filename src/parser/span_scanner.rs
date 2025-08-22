@@ -243,8 +243,8 @@ fn relation_columns() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind
             SyntaxKind::T_LPAREN,
             SyntaxKind::T_RPAREN,
         ))
-        .padded_by(ws)
         .map_with_span(|_, sp: Span| sp)
+        .then_ignore(ws)
 }
 
 fn keyword<'a>(

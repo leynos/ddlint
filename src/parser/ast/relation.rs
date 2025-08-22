@@ -147,12 +147,9 @@ impl Relation {
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     {
         super::skip_whitespace_and_comments(iter);
-        let content = super::parse_utils::extract_parenthesized(
-            iter,
-            SyntaxKind::T_LPAREN,
-            SyntaxKind::T_RPAREN,
-        )
-        .ok()?;
+        let content =
+            super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
+                .ok()?;
 
         let keys = content
             .split(',')

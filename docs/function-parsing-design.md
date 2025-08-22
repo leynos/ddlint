@@ -59,9 +59,9 @@ skip whitespace and comment tokens, so no trivia appears in the extracted text.
 that records the expected and actual tokens. Unclosed delimiters produce
 `ParseError::UnclosedDelimiter` once parsing stops, highlighting the position
 of the opening delimiter. In addition to the stack-driven path, utilities that
-balance delimiters (e.g., `extract_parenthesized` in
-`parse_utils/delimiter.rs`) can also surface unclosed-delimiter errors, which
-likewise report the opening token’s span.
+balance delimiters (e.g., `extract_delimited` in `parse_utils/delimiter.rs`)
+can also surface unclosed-delimiter errors, which likewise report the opening
+token’s span.
 
 A hierarchy of error types supports rich diagnostics when delimiters do not
 match or names and types are missing. Short description: the following diagram

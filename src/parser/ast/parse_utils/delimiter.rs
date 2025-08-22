@@ -4,6 +4,8 @@
 //! text content from within balanced delimiters, handling nested structures
 //! correctly.
 
+use std::fmt;
+
 use rowan::SyntaxElement;
 
 use crate::{DdlogLanguage, SyntaxKind};
@@ -14,6 +16,18 @@ pub struct UnclosedDelimiterError {
     pub collected: String,
     pub expected: SyntaxKind,
 }
+
+impl fmt::Display for UnclosedDelimiterError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "unclosed delimiter; expected {:#?}, collected: {:?}",
+            self.expected, self.collected
+        )
+    }
+}
+
+impl std::error::Error for UnclosedDelimiterError {}
 
 /// Extract the text inside the first matching pair of delimiters.
 ///
@@ -27,13 +41,13 @@ pub struct UnclosedDelimiterError {
 ///
 /// ```rust,no_run
 /// # use ddlint::{parse, SyntaxKind};
-/// # use ddlint::parser::ast::parse_utils::extract_parenthesized;
+/// # use ddlint::parser::ast::parse_utils::extract_delimited;
 /// # let mut elems = parse("function f() { (nested (content)) }")
 /// #     .root()
 /// #     .syntax()
 /// #     .children_with_tokens()
 /// #     .peekable();
-/// let text = extract_parenthesized(
+/// let text = extract_delimited(
 ///     &mut elems,
 ///     SyntaxKind::T_LPAREN,
 ///     SyntaxKind::T_RPAREN,
@@ -44,7 +58,8 @@ pub struct UnclosedDelimiterError {
 /// # Errors
 ///
 /// Returns an [`UnclosedDelimiterError`] if the closing delimiter is missing.
-pub fn extract_parenthesized<I>(
+#[must_use = "discarding the extracted text loses delimiter content"]
+pub fn extract_delimited<I>(
     iter: &mut std::iter::Peekable<I>,
     open_kind: SyntaxKind,
     close_kind: SyntaxKind,
@@ -118,12 +133,12 @@ fn process_element(
     match e.kind() {
         k if k == ctx.open_kind => {
             *ctx.depth += 1;
-            ctx.buf.push_str(&text);
+            ctx.buf.push_str(text.as_ref());
             ElementResult::Continue
         }
-        k if k == ctx.close_kind => handle_close_delimiter(ctx, &text),
+        k if k == ctx.close_kind => handle_close_delimiter(ctx, text.as_ref()),
         _ => {
-            ctx.buf.push_str(&text);
+            ctx.buf.push_str(text.as_ref());
             ElementResult::Continue
         }
     }
@@ -139,9 +154,11 @@ fn handle_close_delimiter(ctx: &mut DelimiterParseContext<'_>, text: &str) -> El
     }
 }
 
-fn element_text(e: &SyntaxElement<DdlogLanguage>) -> String {
+use std::borrow::Cow;
+
+fn element_text(e: &SyntaxElement<DdlogLanguage>) -> Cow<'_, str> {
     match e {
-        SyntaxElement::Token(t) => t.text().to_string(),
-        SyntaxElement::Node(n) => n.text().to_string(),
+        SyntaxElement::Token(t) => Cow::Borrowed(t.text()),
+        SyntaxElement::Node(n) => Cow::Owned(n.text().to_string()),
     }
 }

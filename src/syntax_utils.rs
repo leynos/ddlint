@@ -35,7 +35,7 @@ pub fn parse_parenthesized_list(
 }
 
 fn extract_parenthesized(tokens: impl Iterator<Item = SyntaxElement<DdlogLanguage>>) -> String {
-    use crate::parser::ast::parse_utils::extract_parenthesized as inner;
+    use crate::parser::ast::parse_utils::extract_delimited as inner;
 
     let mut iter = tokens.peekable();
     inner(&mut iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).unwrap_or_else(|err| err.collected)

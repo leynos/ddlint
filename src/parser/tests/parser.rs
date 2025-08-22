@@ -561,22 +561,11 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
 }
 
 #[rstest]
-fn relation_empty_columns_is_error(relation_empty_columns: &str) {
-    let parsed = parse(relation_empty_columns);
-    assert!(!parsed.errors().is_empty());
-    assert!(parsed.root().relations().is_empty());
-}
-
-#[rstest]
-fn relation_whitespace_columns_is_error(relation_whitespace_columns: &str) {
-    let parsed = parse(relation_whitespace_columns);
-    assert!(!parsed.errors().is_empty());
-    assert!(parsed.root().relations().is_empty());
-}
-
-#[rstest]
-fn relation_invalid_primary_key_is_error(relation_invalid_pk: &str) {
-    let parsed = parse(relation_invalid_pk);
+#[case(relation_empty_columns())]
+#[case(relation_whitespace_columns())]
+#[case(relation_invalid_pk())]
+fn relation_invalid_is_error(#[case] src: &str) {
+    let parsed = parse(src);
     assert!(!parsed.errors().is_empty());
     assert!(parsed.root().relations().is_empty());
 }
