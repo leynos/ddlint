@@ -297,6 +297,7 @@ fn primary_key_clause(src: &str) -> impl Parser<SyntaxKind, Span, Error = Simple
             SyntaxKind::T_RPAREN,
         ))
         .map_with_span(|_, sp: Span| sp)
+        .then_ignore(inline_ws().repeated())
 }
 
 fn collect_relation_spans(

@@ -14,9 +14,15 @@ mod params;
 mod token_utils;
 mod type_expr;
 
-pub use delimiter::{
-    UnclosedDelimiterError, extract_delimited, extract_delimited as extract_parenthesized,
-};
+/// Error returned when a delimited block is not properly closed.
+pub use delimiter::UnclosedDelimiterError;
+/// Extract text balanced between the specified opening and closing delimiters.
+/// Prefer this over legacy names.
+pub use delimiter::extract_delimited;
+#[deprecated(since = "0.1.0", note = "Use extract_delimited instead")]
+/// Legacy alias retained for backwards compatibility; schedule removal in the
+/// next minor release.
+pub use delimiter::extract_delimited as extract_parenthesized;
 
 pub(crate) use outputs::parse_output_list;
 pub(crate) use params::parse_name_type_pairs;

@@ -129,16 +129,20 @@ fn process_element(
     e: &SyntaxElement<DdlogLanguage>,
     ctx: &mut DelimiterParseContext<'_>,
 ) -> ElementResult {
-    let text = element_text(e);
     match e.kind() {
         k if k == ctx.open_kind => {
             *ctx.depth += 1;
-            ctx.buf.push_str(text.as_ref());
+            append_element_text(e, ctx.buf);
             ElementResult::Continue
         }
-        k if k == ctx.close_kind => handle_close_delimiter(ctx, text.as_ref()),
+        k if k == ctx.close_kind => {
+            let SyntaxElement::Token(t) = e else {
+                unreachable!()
+            };
+            handle_close_delimiter(ctx, t.text())
+        }
         _ => {
-            ctx.buf.push_str(text.as_ref());
+            append_element_text(e, ctx.buf);
             ElementResult::Continue
         }
     }
@@ -154,11 +158,9 @@ fn handle_close_delimiter(ctx: &mut DelimiterParseContext<'_>, text: &str) -> El
     }
 }
 
-use std::borrow::Cow;
-
-fn element_text(e: &SyntaxElement<DdlogLanguage>) -> Cow<'_, str> {
+fn append_element_text(e: &SyntaxElement<DdlogLanguage>, buf: &mut String) {
     match e {
-        SyntaxElement::Token(t) => Cow::Borrowed(t.text()),
-        SyntaxElement::Node(n) => Cow::Owned(n.text().to_string()),
+        SyntaxElement::Token(t) => buf.push_str(t.text()),
+        SyntaxElement::Node(n) => n.text().for_each_chunk(|chunk| buf.push_str(chunk)),
     }
 }
