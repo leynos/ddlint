@@ -24,6 +24,7 @@ fn fact_rule() -> &'static str {
 
 #[rstest]
 #[case::simple_rule(simple_rule(), true)]
+// TODO: rules with multiple body literals should parse without errors once supported
 #[case::multi_literal_rule(multi_literal_rule(), true)]
 #[case::fact_rule(fact_rule(), false)]
 fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool) {
