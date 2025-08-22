@@ -98,31 +98,6 @@ fn assert_delimiter_error_impl(
         error.reason()
     );
 }
-
-#[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
-fn assert_delimiter_mismatch_impl(
-    errors: &[Simple<SyntaxKind>],
-    expected_msg: &str,
-    start: usize,
-    end: usize,
-) {
-    assert_delimiter_error_impl(errors, expected_msg, start, end, "delimiter mismatch");
-    let _ = errors.first().expect("error missing");
-}
-
-#[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
-fn assert_unclosed_delimiter_impl(
-    errors: &[Simple<SyntaxKind>],
-    expected_msg: &str,
-    start: usize,
-    end: usize,
-) {
-    assert_delimiter_error_impl(errors, expected_msg, start, end, "unclosed delimiter");
-    let _ = errors.first().expect("error missing");
-}
-
 /// Assert that a parser error indicates a delimiter mismatch.
 ///
 /// This is a thin wrapper over [`assert_parse_error`] that also checks the error
@@ -137,7 +112,7 @@ pub fn assert_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_mismatch_impl(errors, expected_msg, start, end);
+    assert_delimiter_error_impl(errors, expected_msg, start, end, "delimiter mismatch");
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
@@ -155,5 +130,5 @@ pub fn assert_unclosed_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_unclosed_delimiter_impl(errors, expected_msg, start, end);
+    assert_delimiter_error_impl(errors, expected_msg, start, end, "unclosed delimiter");
 }
