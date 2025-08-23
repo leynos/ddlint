@@ -79,14 +79,35 @@ fn assert_index_count(parsed: &crate::Parsed, expected: usize) {
     assert_eq!(parsed.root().indexes().len(), expected);
 }
 
-/// Assert that all root collections are empty.
-fn assert_empty_collections(parsed: &crate::Parsed) {
+/// Assert that no declaration items are present.
+///
+/// This covers imports and type definitions.
+fn assert_no_declarations(parsed: &crate::Parsed) {
     assert!(parsed.root().imports().is_empty());
     assert!(parsed.root().type_defs().is_empty());
+}
+
+/// Assert that no executable items are present.
+///
+/// Executable items include relations, functions, and rules.
+fn assert_no_executables(parsed: &crate::Parsed) {
     assert!(parsed.root().relations().is_empty());
     assert!(parsed.root().functions().is_empty());
-    assert!(parsed.root().indexes().is_empty());
     assert!(parsed.root().rules().is_empty());
+}
+
+/// Assert that no indexes are present.
+fn assert_no_indexes(parsed: &crate::Parsed) {
+    assert!(parsed.root().indexes().is_empty());
+}
+
+/// Assert that all root collections are empty.
+///
+/// This delegates to the specialised helpers above.
+fn assert_empty_collections(parsed: &crate::Parsed) {
+    assert_no_declarations(parsed);
+    assert_no_executables(parsed);
+    assert_no_indexes(parsed);
 }
 
 /// Assert that the root node contains the expected number of children.
