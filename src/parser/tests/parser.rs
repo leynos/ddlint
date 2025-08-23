@@ -129,6 +129,16 @@ fn relation_invalid_pk() -> &'static str {
 }
 
 #[fixture]
+fn relation_pk_empty() -> &'static str {
+    "relation Foo(x: u32) primary key ()"
+}
+
+#[fixture]
+fn relation_pk_trailing_comma() -> &'static str {
+    "relation Foo(x: u32) primary key (x,)"
+}
+
+#[fixture]
 fn index_whitespace_variations() -> &'static str {
     "  index  Idx_User_ws \t on\n  User (\n    username  )  "
 }
@@ -564,6 +574,8 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
 #[case(relation_empty_columns())]
 #[case(relation_whitespace_columns())]
 #[case(relation_invalid_pk())]
+#[case(relation_pk_empty())]
+#[case(relation_pk_trailing_comma())]
 fn relation_invalid_is_error(#[case] src: &str) {
     let parsed = parse(src);
     assert!(!parsed.errors().is_empty());

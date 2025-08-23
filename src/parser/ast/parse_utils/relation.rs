@@ -83,22 +83,24 @@ fn keyword<'a>(
 pub(crate) fn primary_key_clause(
     src: &str,
 ) -> impl Parser<SyntaxKind, Vec<String>, Error = Simple<SyntaxKind>> + '_ {
+    let ws = inline_ws().repeated();
+    let ident_text =
+        ident().map_with_span(move |(), sp: Span| src.get(sp.clone()).unwrap_or("").to_string());
+
     inline_ws()
         .repeated()
         .ignore_then(keyword(src, "primary"))
         .ignore_then(keyword(src, "key"))
         .ignore_then(
-            balanced_block_nonempty(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(
-                |(), sp: Span| {
-                    let inner = src.get(sp.start + 1..sp.end - 1).unwrap_or("");
-                    inner
-                        .split(',')
-                        .map(str::trim)
-                        .filter(|s| !s.is_empty())
-                        .map(str::to_string)
-                        .collect::<Vec<_>>()
-                },
-            ),
+            just(SyntaxKind::T_LPAREN)
+                .ignore_then(
+                    ident_text
+                        .clone()
+                        .padded_by(ws.clone())
+                        .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
+                        .at_least(1),
+                )
+                .then_ignore(just(SyntaxKind::T_RPAREN)),
         )
-        .then_ignore(inline_ws().repeated())
+        .then_ignore(ws)
 }
