@@ -3,6 +3,7 @@
 //! Validates extern transformer syntax and edge cases.
 
 use super::common::parse_transformer;
+use crate::test_util::{ErrorPattern, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -70,21 +71,17 @@ fn parses_transformers(
 }
 
 #[rstest]
-#[case::no_outputs(transformer_no_outputs(), "missing output type")]
-#[case::invalid_decl(transformer_invalid(), "incomplete transformer")]
-#[expect(
-    clippy::used_underscore_binding,
-    reason = "message placeholder for future assert_parse_error"
-)]
-fn transformer_error_cases(#[case] src: &str, #[case] _msg_hint: &str) {
+#[case::no_outputs(transformer_no_outputs(), ErrorPattern::from("Unexpected"), 0, 48)]
+#[case::invalid_decl(transformer_invalid(), ErrorPattern::from("Unexpected"), 0, 59)]
+fn transformer_error_cases(
+    #[case] src: &str,
+    #[case] pattern: ErrorPattern,
+    #[case] start: usize,
+    #[case] end: usize,
+) {
     let parsed = crate::parse(src);
     let errors = parsed.errors();
-    assert!(
-        !errors.is_empty(),
-        "expected errors for invalid transformer: {src}",
-    );
-    // Optional: use assert_parse_error if available
-    // assert_parse_error(errors, msg_hint, start, end);
+    assert_parse_error(errors, pattern, start, end);
     assert!(parsed.root().transformers().is_empty());
 }
 
