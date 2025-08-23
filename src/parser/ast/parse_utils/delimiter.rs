@@ -19,9 +19,14 @@ pub struct UnclosedDelimiterError {
 
 impl fmt::Display for UnclosedDelimiterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kind = if self.collected.is_empty() {
+            "missing opening"
+        } else {
+            "unclosed"
+        };
         write!(
             f,
-            "unclosed delimiter; expected {:#?}, collected: {:?}",
+            "{kind} delimiter; expected {:#?}, collected: {:?}",
             self.expected, self.collected
         )
     }
@@ -51,7 +56,7 @@ impl std::error::Error for UnclosedDelimiterError {}
 ///     &mut elems,
 ///     SyntaxKind::T_LPAREN,
 ///     SyntaxKind::T_RPAREN,
-/// ).unwrap();
+/// ).expect("expected matching closing delimiter");
 /// assert_eq!(text, "nested (content)");
 /// ```
 ///
@@ -71,7 +76,7 @@ where
     if !skip_to_opening_delimiter(iter, open_kind) {
         return Err(UnclosedDelimiterError {
             collected: String::new(),
-            expected: close_kind,
+            expected: open_kind,
         });
     }
 

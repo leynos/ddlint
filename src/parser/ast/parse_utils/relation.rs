@@ -51,10 +51,8 @@ fn keyword<'a>(
         if kind == SyntaxKind::T_IDENT && found == expected {
             Ok(())
         } else {
-            Err(Simple::custom(
-                span.clone(),
-                format!("expected `{expected}`, but found `{found}` at span {span:?}"),
-            ))
+            let msg = format!("expected `{expected}`, but found `{found}` at span {span:?}");
+            Err(Simple::custom(span, msg))
         }
     })
     .then_ignore(ws)
@@ -69,7 +67,9 @@ fn keyword<'a>(
 /// let src = "primary key(id, other)";
 /// let tokens = crate::tokenize(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// let keys = primary_key_clause(src).parse(stream).unwrap();
+/// let keys = primary_key_clause(src)
+///     .parse(stream)
+///     .expect("expected column list");
 /// assert_eq!(keys, vec!["id", "other"]);
 /// ```
 ///
