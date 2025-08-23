@@ -3,7 +3,12 @@
 //! These tests ensure parsing followed by pretty-printing reproduces the
 //! original source and that basic program structure is detected correctly.
 
-use super::common::pretty_print;
+use super::common::{
+    assert_parse_has_errors,
+    assert_program_round_trip,
+    parse_program,
+    pretty_print,
+};
 use crate::{SyntaxKind, parse};
 use rstest::{fixture, rstest};
 
@@ -24,23 +29,12 @@ fn empty_prog() -> &'static str {
 
 #[rstest]
 fn parse_round_trip(simple_prog: &str) {
-    let parsed = parse(simple_prog);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
-    let text = pretty_print(parsed.root().syntax());
-    assert_eq!(text, simple_prog);
-    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+    assert_program_round_trip(simple_prog);
 }
 
 #[rstest]
 fn complex_program_round_trip(complex_prog: &str) {
-    let parsed = parse(complex_prog);
-    assert!(parsed.errors().is_empty());
-    let text = pretty_print(parsed.root().syntax());
-    assert_eq!(text, complex_prog);
+    let parsed = assert_program_round_trip(complex_prog);
     let relations = parsed.root().relations();
     assert_eq!(relations.len(), 2);
     let [first, second] = relations.as_slice() else {
@@ -54,8 +48,7 @@ fn complex_program_round_trip(complex_prog: &str) {
 
 #[rstest]
 fn empty_program_has_no_items(empty_prog: &str) {
-    let parsed = parse(empty_prog);
-    assert!(parsed.errors().is_empty());
+    let parsed = parse_program(empty_prog);
     assert!(parsed.root().imports().is_empty());
     assert!(parsed.root().type_defs().is_empty());
     assert!(parsed.root().relations().is_empty());
@@ -70,10 +63,7 @@ fn empty_program_has_no_items(empty_prog: &str) {
 fn error_token_produces_error_node() {
     let source = "?( relation Foo(";
     let parsed = parse(source);
-    assert!(
-        !parsed.errors().is_empty(),
-        "expected parse errors for {source}"
-    );
+    assert_parse_has_errors(&parsed);
     let root = parsed.root().syntax();
     let has_error = root
         .children_with_tokens()
