@@ -7,6 +7,8 @@
 pub mod language;
 pub mod parser;
 pub mod syntax_utils;
+#[cfg(any(test, feature = "test-util"))]
+#[doc(hidden)]
 pub mod test_util;
 pub mod tokenizer;
 
