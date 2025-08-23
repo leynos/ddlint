@@ -4,10 +4,7 @@
 //! original source and that basic program structure is detected correctly.
 
 use super::common::{
-    assert_parse_has_errors,
-    assert_program_round_trip,
-    parse_program,
-    pretty_print,
+    assert_parse_has_errors, assert_program_round_trip, parse_program, pretty_print,
 };
 use crate::{SyntaxKind, parse};
 use rstest::{fixture, rstest};
