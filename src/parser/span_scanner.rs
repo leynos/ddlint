@@ -1,4 +1,4 @@
-//! Statement span scanning utilities.
+//! Utilities for scanning top-level statement spans.
 //!
 //! This module walks a token stream to identify top-level statement spans.
 //! It groups the ranges for imports, typedefs, relations, indexes,
@@ -15,6 +15,7 @@ use super::{
     lexer_helpers::{atom, balanced_block, balanced_block_nonempty, ident, inline_ws},
     span_collector::SpanCollector,
 };
+use crate::parser::ast::parse_utils::{primary_key_clause, relation_columns};
 
 /// Scan the token stream and collect spans for each statement category.
 pub(super) fn parse_tokens(
@@ -212,6 +213,19 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
     st.spans
 }
 
+/// Parse a relation name followed by a non-empty column list.
+///
+/// # Examples
+///
+/// Valid input:
+///
+/// ```rust,ignore
+/// use chumsky::Parser as _;
+/// let src = "User(id: u32)";
+/// let tokens = crate::tokenize(src);
+/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
+/// assert!(relation_columns().parse(stream).is_ok());
+/// ```
 fn collect_relation_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -224,57 +238,33 @@ fn collect_relation_spans(
 
     type State<'a> = SpanCollector<'a, Extras<'a>>;
 
-    fn consume_paren_block(st: &mut State<'_>) -> bool {
-        if let Some((SyntaxKind::T_LPAREN, span)) = st.stream.peek().cloned() {
-            let (res, err) = st.parse_span(super::ast::parse_utils::paren_block_span(), span.start);
-            st.extra.errors.extend(err);
-            if let Some(sp) = res {
-                st.stream.skip_until(sp.end);
-                true
+    fn record_relation(st: &mut State<'_>, start: usize) {
+        let parser = relation_columns()
+            .then(primary_key_clause(st.extra.src).or_not())
+            .map_with_span(|_, sp: Span| sp);
+
+        let (res, errs) = st.parse_span(parser, start);
+        st.extra.errors.extend(errs.clone());
+
+        if let Some(sp) = res {
+            st.stream.skip_until(sp.end);
+            st.stream.skip_ws_inline();
+            if errs.is_empty() {
+                if let Some((_, span)) = st.stream.peek().cloned()
+                    && st.extra.src.get(span.clone()) == Some("primary")
+                {
+                    st.extra
+                        .errors
+                        .push(Simple::custom(span, "invalid primary key clause"));
+                    st.skip_line();
+                } else {
+                    let end = st.stream.line_end(st.stream.cursor());
+                    st.stream.skip_until(end);
+                    st.spans.push(start..end);
+                }
             } else {
                 st.skip_line();
-                false
             }
-        } else {
-            true
-        }
-    }
-
-    fn skip_relation_columns(st: &mut State<'_>) -> bool {
-        st.stream.skip_ws_inline();
-        if matches!(st.stream.peek().map(|t| t.0), Some(SyntaxKind::T_IDENT)) {
-            st.stream.advance();
-        }
-        st.stream.skip_ws_inline();
-        consume_paren_block(st)
-    }
-
-    fn skip_primary_key_clause(st: &mut State<'_>) -> bool {
-        st.stream.skip_ws_inline();
-        if let Some((SyntaxKind::T_IDENT, span)) = st.stream.peek().cloned()
-            && st.extra.src.get(span.clone()) == Some("primary")
-        {
-            st.stream.advance();
-            st.stream.skip_ws_inline();
-            if let Some((SyntaxKind::T_IDENT, sp)) = st.stream.peek().cloned()
-                && st.extra.src.get(sp.clone()) == Some("key")
-            {
-                st.stream.advance();
-                st.stream.skip_ws_inline();
-                return consume_paren_block(st);
-            }
-        }
-        true
-    }
-
-    fn record_relation(st: &mut State<'_>, start: usize) {
-        let cols_ok = skip_relation_columns(st);
-        let pk_ok = skip_primary_key_clause(st);
-
-        if cols_ok && pk_ok {
-            let end = st.stream.line_end(st.stream.cursor());
-            st.stream.skip_until(end);
-            st.spans.push(start..end);
         } else {
             st.skip_line();
         }

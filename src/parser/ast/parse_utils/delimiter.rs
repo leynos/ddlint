@@ -1,35 +1,14 @@
-//! Utilities for parsing balanced delimiters and extracting enclosed content.
+//! Utilities for extracting text from within balanced, nested delimiters.
 //!
-//! This module provides functions to parse parenthesised blocks and extract
-//! text content from within balanced delimiters, handling nested structures
-//! correctly.
+//! This module provides functions to extract text from within balanced,
+//! nested delimiters (e.g., parenthesised blocks), handling arbitrary opening
+//! and closing kinds.
 
-use chumsky::prelude::*;
+use std::fmt;
+
 use rowan::SyntaxElement;
 
-use super::super::super::lexer_helpers::balanced_block;
-use crate::{DdlogLanguage, Span, SyntaxKind};
-
-/// Parser for a parenthesised block, returning its span.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// # use ddlint::parser::ast::parse_utils::paren_block_span;
-/// # use ddlint::tokenize;
-/// # use chumsky::{Parser, Stream};
-/// # let src = "(foo)";
-/// # let tokens = tokenize(src);
-/// let span = paren_block_span()
-///     .parse(Stream::from_iter(0..src.len(), tokens.into_iter()))
-///     .unwrap();
-/// assert_eq!(span.start, 0);
-/// ```
-#[inline]
-pub(crate) fn paren_block_span() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + Clone
-{
-    balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).map_with_span(|(), sp: Span| sp)
-}
+use crate::{DdlogLanguage, SyntaxKind};
 
 /// Error returned when an opening delimiter is never closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,6 +16,23 @@ pub struct UnclosedDelimiterError {
     pub collected: String,
     pub expected: SyntaxKind,
 }
+
+impl fmt::Display for UnclosedDelimiterError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kind = if self.collected.is_empty() {
+            "missing opening"
+        } else {
+            "unclosed"
+        };
+        write!(
+            f,
+            "{kind} delimiter; expected {:#?}, collected: {:?}",
+            self.expected, self.collected
+        )
+    }
+}
+
+impl std::error::Error for UnclosedDelimiterError {}
 
 /// Extract the text inside the first matching pair of delimiters.
 ///
@@ -50,24 +46,26 @@ pub struct UnclosedDelimiterError {
 ///
 /// ```rust,no_run
 /// # use ddlint::{parse, SyntaxKind};
-/// # use ddlint::parser::ast::parse_utils::extract_parenthesized;
+/// # use ddlint::parser::ast::parse_utils::extract_delimited;
 /// # let mut elems = parse("function f() { (nested (content)) }")
 /// #     .root()
 /// #     .syntax()
 /// #     .children_with_tokens()
 /// #     .peekable();
-/// let text = extract_parenthesized(
+/// let text = extract_delimited(
 ///     &mut elems,
 ///     SyntaxKind::T_LPAREN,
 ///     SyntaxKind::T_RPAREN,
-/// ).unwrap();
+/// ).expect("expected matching closing delimiter");
 /// assert_eq!(text, "nested (content)");
 /// ```
 ///
 /// # Errors
 ///
-/// Returns an [`UnclosedDelimiterError`] if the closing delimiter is missing.
-pub fn extract_parenthesized<I>(
+/// Returns an [`UnclosedDelimiterError`] if the opening delimiter is absent or
+/// the closing delimiter is missing.
+#[must_use = "discarding the extracted text loses delimiter content"]
+pub fn extract_delimited<I>(
     iter: &mut std::iter::Peekable<I>,
     open_kind: SyntaxKind,
     close_kind: SyntaxKind,
@@ -75,7 +73,12 @@ pub fn extract_parenthesized<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    skip_to_opening_delimiter(iter, open_kind);
+    if !skip_to_opening_delimiter(iter, open_kind) {
+        return Err(UnclosedDelimiterError {
+            collected: String::new(),
+            expected: open_kind,
+        });
+    }
 
     let mut depth = 1usize;
     let mut buf = String::new();
@@ -122,49 +125,52 @@ impl<'a> DelimiterParseContext<'a> {
     }
 }
 
-fn skip_to_opening_delimiter<I>(iter: &mut std::iter::Peekable<I>, open_kind: SyntaxKind)
+fn skip_to_opening_delimiter<I>(iter: &mut std::iter::Peekable<I>, open_kind: SyntaxKind) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     for e in iter.by_ref() {
         if e.kind() == open_kind {
-            break;
+            return true;
         }
     }
+    false
 }
 
 fn process_element(
     e: &SyntaxElement<DdlogLanguage>,
     ctx: &mut DelimiterParseContext<'_>,
 ) -> ElementResult {
-    let text = element_text(e);
     match e.kind() {
         k if k == ctx.open_kind => {
             *ctx.depth += 1;
-            ctx.buf.push_str(&text);
+            push_element_text(ctx.buf, e);
             ElementResult::Continue
         }
-        k if k == ctx.close_kind => handle_close_delimiter(ctx, &text),
+        k if k == ctx.close_kind => handle_close_delimiter(ctx, e),
         _ => {
-            ctx.buf.push_str(&text);
+            push_element_text(ctx.buf, e);
             ElementResult::Continue
         }
     }
 }
 
-fn handle_close_delimiter(ctx: &mut DelimiterParseContext<'_>, text: &str) -> ElementResult {
+fn handle_close_delimiter(
+    ctx: &mut DelimiterParseContext<'_>,
+    e: &SyntaxElement<DdlogLanguage>,
+) -> ElementResult {
     *ctx.depth -= 1;
     if *ctx.depth == 0 {
         ElementResult::Complete
     } else {
-        ctx.buf.push_str(text);
+        push_element_text(ctx.buf, e);
         ElementResult::Continue
     }
 }
 
-fn element_text(e: &SyntaxElement<DdlogLanguage>) -> String {
+fn push_element_text(buf: &mut String, e: &SyntaxElement<DdlogLanguage>) {
     match e {
-        SyntaxElement::Token(t) => t.text().to_string(),
-        SyntaxElement::Node(n) => n.text().to_string(),
+        SyntaxElement::Token(t) => buf.push_str(t.text()),
+        SyntaxElement::Node(n) => n.text().for_each_chunk(|chunk| buf.push_str(chunk)),
     }
 }
