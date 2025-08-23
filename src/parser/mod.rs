@@ -52,10 +52,20 @@ pub mod ast;
 
 #[cfg(test)]
 mod tests {
+    //! Tests for parser components and integration scenarios.
+
+    mod common;
     mod expression;
     mod expression_integration;
     mod expression_span;
-    mod parser;
+    mod functions;
+    mod imports;
+    mod indexes;
+    mod relations;
+    mod round_trip;
+    mod rules;
+    mod transformers;
+    mod types;
     use super::token_stream::TokenStream;
     use crate::{SyntaxKind, tokenize};
     use rstest::rstest;
