@@ -61,7 +61,7 @@ fn parses_transformers(
     #[case] outputs: Vec<String>,
 ) {
     let t = parse_transformer(src);
-    assert_eq!(t.name(), Some(name.into()));
+    assert_eq!(t.name().as_deref(), Some(name));
     let in_expected: Vec<(String, String)> = inputs
         .into_iter()
         .map(|(n, ty)| (n.into(), ty.into()))
@@ -95,7 +95,7 @@ fn transformer_no_inputs_parsed(transformer_no_inputs: &str) {
 #[rstest]
 fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
     let t = parse_transformer(transformer_extra_ws);
-    assert_eq!(t.name(), Some("spaced".into()));
+    assert_eq!(t.name().as_deref(), Some("spaced"));
     assert_eq!(
         t.inputs(),
         vec![("foo".into(), "Bar".into()), ("baz".into(), "Qux".into())]

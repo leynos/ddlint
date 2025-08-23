@@ -51,7 +51,7 @@ mod tests {
             .first()
             .cloned()
             .expect("typedef missing");
-        assert_eq!(td.name(), Some("Handle".into()));
+        assert_eq!(td.name().as_deref(), Some("Handle"));
         assert!(td.is_extern());
     }
 
@@ -65,7 +65,7 @@ mod tests {
             .first()
             .cloned()
             .expect("typedef missing");
-        assert_eq!(td.name(), Some("UserId".into()));
+        assert_eq!(td.name().as_deref(), Some("UserId"));
         assert!(!td.is_extern());
     }
 }

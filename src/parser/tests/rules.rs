@@ -33,7 +33,8 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
     if should_have_errors {
         assert!(
             !parsed.errors().is_empty(),
-            "rule parsing expected to emit errors until implementation is complete",
+            "expected parse errors, got: {:?}",
+            parsed.errors()
         );
     } else {
         assert!(

@@ -59,7 +59,7 @@ mod tests {
             .first()
             .cloned()
             .expect("index missing");
-        assert_eq!(idx.relation(), Some("R".into()));
+        assert_eq!(idx.relation().as_deref(), Some("R"));
         assert_eq!(idx.columns(), vec!["lower(name)".to_string()]);
     }
 }

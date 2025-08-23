@@ -86,6 +86,6 @@ mod tests {
             .first()
             .cloned()
             .expect("function missing");
-        assert_eq!(func.name(), Some("foo".into()));
+        assert_eq!(func.name().as_deref(), Some("foo"));
     }
 }

@@ -38,7 +38,11 @@ fn parse_round_trip(simple_prog: &str) {
 #[rstest]
 fn complex_program_round_trip(complex_prog: &str) {
     let parsed = parse(complex_prog);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     let text = pretty_print(parsed.root().syntax());
     assert_eq!(text, complex_prog);
     let relations = parsed.root().relations();
@@ -48,14 +52,18 @@ fn complex_program_round_trip(complex_prog: &str) {
     };
     assert!(first.is_input());
     assert!(second.is_output());
-    assert_eq!(first.name(), Some("R".into()));
-    assert_eq!(second.name(), Some("S".into()));
+    assert_eq!(first.name().as_deref(), Some("R"));
+    assert_eq!(second.name().as_deref(), Some("S"));
 }
 
 #[rstest]
 fn empty_program_has_no_items(empty_prog: &str) {
     let parsed = parse(empty_prog);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     assert!(parsed.root().imports().is_empty());
     assert!(parsed.root().type_defs().is_empty());
     assert!(parsed.root().relations().is_empty());

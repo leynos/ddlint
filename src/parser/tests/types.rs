@@ -11,11 +11,15 @@ use rstest::rstest;
 fn standard_typedef() {
     let src = "typedef Uuid = string\n";
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
-    assert_eq!(def.name(), Some("Uuid".into()));
+    assert_eq!(def.name().as_deref(), Some("Uuid"));
     assert!(!def.is_extern());
 }
 
@@ -23,11 +27,15 @@ fn standard_typedef() {
 fn complex_typedef() {
     let src = "typedef UserRecord = (name: string, age: u64, active: bool)\n";
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
-    assert_eq!(def.name(), Some("UserRecord".into()));
+    assert_eq!(def.name().as_deref(), Some("UserRecord"));
     assert!(!def.is_extern());
 }
 
@@ -35,11 +43,15 @@ fn complex_typedef() {
 fn extern_type() {
     let src = "extern type FfiHandle\n";
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
-    assert_eq!(def.name(), Some("FfiHandle".into()));
+    assert_eq!(def.name().as_deref(), Some("FfiHandle"));
     assert!(def.is_extern());
 }
 
@@ -49,10 +61,7 @@ fn extern_without_type_is_ignored() {
     let parsed = parse(src);
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
-    assert_eq!(
-        defs.first().and_then(TypeDef::name),
-        Some("Bar".to_string())
-    );
+    assert_eq!(defs.first().and_then(TypeDef::name).as_deref(), Some("Bar"));
 }
 
 #[rstest]
@@ -73,13 +82,17 @@ fn typedef_variations(
     #[case] expected_text: &str,
 ) {
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs
         .first()
         .unwrap_or_else(|| panic!("typedef should exist for valid source"));
-    assert_eq!(def.name(), Some(expected.to_string()));
+    assert_eq!(def.name().as_deref(), Some(expected));
     assert_eq!(def.is_extern(), is_extern);
     let text = pretty_print(def.syntax());
     assert_eq!(text, expected_text);
@@ -89,7 +102,11 @@ fn typedef_variations(
 fn typedef_nesting_and_whitespace() {
     let src = "typedef Foo=string\ntypedef   Bar = u64  \n";
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     assert_eq!(pretty_print(parsed.root().syntax()), src);
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 2);
@@ -110,7 +127,11 @@ fn typedef_nesting_and_whitespace() {
 fn typedef_missing_name_returns_none() {
     let src = "typedef = string\n";
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert!(
+        parsed.errors().is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors()
+    );
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs

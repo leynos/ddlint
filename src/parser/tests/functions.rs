@@ -75,7 +75,7 @@ fn parses_functions(
     #[case] ret: Option<&str>,
 ) {
     let func = parse_function(src);
-    assert_eq!(func.name(), Some(name.into()));
+    assert_eq!(func.name().as_deref(), Some(name));
     assert_eq!(func.is_extern(), is_extern);
     let expected: Vec<(String, String)> = params
         .into_iter()

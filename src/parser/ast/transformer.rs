@@ -60,7 +60,7 @@ mod tests {
             .first()
             .cloned()
             .expect("transformer missing");
-        assert_eq!(tr.name(), Some("t".into()));
+        assert_eq!(tr.name().as_deref(), Some("t"));
     }
 
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]

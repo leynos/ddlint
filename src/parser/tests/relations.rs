@@ -68,7 +68,7 @@ fn parses_relations(
 fn multiline_relation_parsed(multiline_relation: &str) {
     let rel = parse_relation(multiline_relation);
     assert!(rel.is_input());
-    assert_eq!(rel.name(), Some("Log".into()));
+    assert_eq!(rel.name().as_deref(), Some("Log"));
     assert_eq!(
         rel.columns(),
         vec![
