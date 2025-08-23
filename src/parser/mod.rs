@@ -52,6 +52,8 @@ pub mod ast;
 
 #[cfg(test)]
 mod tests {
+    //! Tests for parser components and integration scenarios.
+
     mod common;
     mod expression;
     mod expression_integration;

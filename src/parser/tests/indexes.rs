@@ -3,6 +3,7 @@
 //! These tests cover single and multi-column indexes and error cases.
 
 use super::common::{normalise_whitespace, parse_index, pretty_print};
+use crate::test_util::{assert_parse_error, assert_unclosed_delimiter_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -52,23 +53,22 @@ fn parses_indexes(
 }
 
 #[rstest]
+#[expect(clippy::expect_used, reason = "fixture invariant")]
 fn index_missing_on_is_error(index_invalid_missing_on: &str) {
-    use chumsky::error::SimpleReason;
-
     let parsed = crate::parse(index_invalid_missing_on);
-    let errors = parsed.errors();
-    assert_eq!(errors.len(), 1);
-    let Some(err) = errors.first() else {
-        panic!("expected parse error");
-    };
-    assert!(matches!(err.reason(), SimpleReason::Unexpected));
-    assert_eq!(parsed.root().indexes().len(), 0);
+    let start = index_invalid_missing_on
+        .find("User")
+        .expect("fixture invariant");
+    let end = start + "User".len();
+    assert_parse_error(parsed.errors(), "K_ON", start, end);
+    assert!(parsed.root().indexes().is_empty());
 }
 
 #[rstest]
 fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
     let parsed = crate::parse(index_unbalanced_parentheses);
-    assert!(!parsed.errors().is_empty());
+    let len = index_unbalanced_parentheses.len();
+    assert_unclosed_delimiter_error(parsed.errors(), "T_RPAREN", 0, len);
     assert!(parsed.root().indexes().is_empty());
 }
 

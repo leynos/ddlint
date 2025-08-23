@@ -2,7 +2,7 @@
 //!
 //! Covers standard and aliased imports along with basic error recovery.
 
-use crate::{SyntaxKind, ast::Import, parse};
+use crate::{ast::Import, parse, test_util::assert_parse_error};
 use rstest::rstest;
 
 use super::common::parse_import;
@@ -24,22 +24,9 @@ fn import_statement_parses(#[case] src: &str, #[case] path: &str, #[case] alias:
 
 #[rstest]
 fn import_statement_invalid_missing_path() {
-    use chumsky::error::SimpleReason;
-
     let src = "import as missing_path";
     let parsed = parse(src);
-    let errors = parsed.errors();
-    assert_eq!(errors.len(), 1);
-    let Some(error) = errors.first() else {
-        panic!("expected error");
-    };
-    assert!(matches!(error.reason(), SimpleReason::Unexpected));
-    assert!(
-        error
-            .expected()
-            .any(|e| e.as_ref().is_some_and(|k| *k == SyntaxKind::T_IDENT))
-    );
-    assert_eq!(error.found(), Some(&SyntaxKind::K_AS));
+    assert_parse_error(parsed.errors(), "T_IDENT", 7, 9);
     let imports = parsed.root().imports();
     assert!(imports.is_empty());
 }

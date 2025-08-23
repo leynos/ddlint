@@ -3,7 +3,7 @@
 //! Exercises extern and normal functions with varied signatures.
 
 use super::common::{parse_function, pretty_print};
-use crate::parser::ast::AstNode;
+use crate::{parser::ast::AstNode, test_util::assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -105,20 +105,30 @@ fn function_unclosed_params() -> &'static str {
 #[rstest]
 fn extern_function_missing_colon_is_error(extern_function_missing_colon: &str) {
     let parsed = crate::parse(extern_function_missing_colon);
-    assert!(!parsed.errors().is_empty());
+    assert_parse_error(parsed.errors(), "T_LPAREN", 30, 33);
     assert!(parsed.root().functions().is_empty());
 }
 
 #[rstest]
 fn function_unterminated_body_is_error(function_unterminated_body: &str) {
     let parsed = crate::parse(function_unterminated_body);
-    assert!(!parsed.errors().is_empty());
+    assert_parse_error(
+        parsed.errors(),
+        "T_RBRACE",
+        0,
+        function_unterminated_body.len(),
+    );
     assert!(parsed.root().functions().is_empty());
 }
 
 #[rstest]
 fn function_unclosed_params_is_error(function_unclosed_params: &str) {
     let parsed = crate::parse(function_unclosed_params);
-    assert!(!parsed.errors().is_empty());
+    assert_parse_error(
+        parsed.errors(),
+        "T_RPAREN",
+        0,
+        function_unclosed_params.len(),
+    );
     assert!(parsed.root().functions().is_empty());
 }

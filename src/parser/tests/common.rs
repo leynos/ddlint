@@ -87,17 +87,3 @@ pub(super) fn parse_transformer(src: &str) -> Transformer {
 pub(super) fn parse_import(src: &str) -> Import {
     parse_single_item(src, crate::parser::ast::Root::imports)
 }
-
-// Example helper for other AST nodes:
-//
-// pub(super) fn parse_rule(src: &str) -> Rule {
-//     parse_single_item(src, |root| root.rules())
-// }
-//
-// pub(super) fn parse_type_def(src: &str) -> TypeDef {
-//     parse_single_item(src, |root| root.type_defs())
-// }
-//
-// pub(super) fn parse_import(src: &str) -> Import {
-//     parse_single_item(src, |root| root.imports())
-// }
