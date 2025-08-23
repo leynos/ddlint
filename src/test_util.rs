@@ -111,7 +111,7 @@ pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
 /// use chumsky::error::Simple;
 /// use ddlint::{test_util::assert_parse_error, SyntaxKind};
 ///
-/// let err = Simple::custom(0..1, "oops");
+/// let err: Simple<SyntaxKind> = Simple::custom(0..1, "oops");
 /// assert_parse_error(&[err], "oops", 0, 1);
 /// ```
 ///
