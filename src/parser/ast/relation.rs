@@ -101,9 +101,12 @@ impl Relation {
     {
         // Consume the first parenthesised list and discard content.
         super::skip_whitespace_and_comments(iter);
-        let _ =
+        if let Err(err) =
             super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
-                .ok()?;
+        {
+            log::debug!("failed to skip relation columns: {err}");
+            return None;
+        }
         Some(())
     }
 
@@ -131,6 +134,9 @@ impl Relation {
     }
 
     /// Extract the comma separated key names from parentheses.
+    ///
+    /// TODO: migrate to the `primary_key_clause` parser once its API stabilises
+    /// to consolidate delimiter handling.
     fn extract_key_list<I>(iter: &mut std::iter::Peekable<I>) -> Option<Vec<String>>
     where
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,

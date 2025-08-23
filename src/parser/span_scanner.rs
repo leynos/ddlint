@@ -251,19 +251,19 @@ fn keyword<'a>(
     src: &'a str,
     expected: &'static str,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + 'a {
+    let ws = inline_ws().repeated();
     filter_map(move |span: Span, kind| {
         let found = src.get(span.clone()).unwrap_or("<none>");
         if kind == SyntaxKind::T_IDENT && found == expected {
             Ok(())
         } else {
-            let err_span = span.clone();
             Err(Simple::custom(
-                span,
-                format!("expected `{expected}`, but found `{found}` at span {err_span:?}"),
+                span.clone(),
+                format!("expected `{expected}`, but found `{found}` at span {span:?}"),
             ))
         }
     })
-    .then_ignore(inline_ws().repeated())
+    .then_ignore(ws)
 }
 
 /// Parse a `primary key` clause.
@@ -313,34 +313,33 @@ fn collect_relation_spans(
     type State<'a> = SpanCollector<'a, Extras<'a>>;
 
     fn record_relation(st: &mut State<'_>, start: usize) {
-        let cols = relation_columns();
+        let parser = relation_columns()
+            .then(primary_key_clause(st.extra.src).or_not())
+            .map_with_span(|_, sp: Span| sp);
 
-        let (cols_res, mut errs) = st.parse_span(cols, start);
-        if let Some(sp) = cols_res {
+        let (res, errs) = st.parse_span(parser, start);
+        st.extra.errors.extend(errs.clone());
+
+        if let Some(sp) = res {
             st.stream.skip_until(sp.end);
             st.stream.skip_ws_inline();
-
-            if let Some((SyntaxKind::T_IDENT, pk_span)) = st.stream.peek().cloned()
-                && st.extra.src.get(pk_span.clone()) == Some("primary")
-            {
-                let (pk_res, pk_err) =
-                    st.parse_span(primary_key_clause(st.extra.src), pk_span.start);
-                errs.extend(pk_err);
-                if let Some(pk_sp) = pk_res {
-                    st.stream.skip_until(pk_sp.end);
-                }
-            }
-
-            st.extra.errors.extend(errs.clone());
             if errs.is_empty() {
-                let end = st.stream.line_end(st.stream.cursor());
-                st.stream.skip_until(end);
-                st.spans.push(start..end);
+                if let Some((_, span)) = st.stream.peek().cloned()
+                    && st.extra.src.get(span.clone()) == Some("primary")
+                {
+                    st.extra
+                        .errors
+                        .push(Simple::custom(span, "invalid primary key clause"));
+                    st.skip_line();
+                } else {
+                    let end = st.stream.line_end(st.stream.cursor());
+                    st.stream.skip_until(end);
+                    st.spans.push(start..end);
+                }
             } else {
                 st.skip_line();
             }
         } else {
-            st.extra.errors.extend(errs);
             st.skip_line();
         }
     }
