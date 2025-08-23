@@ -110,25 +110,10 @@ fn extern_function_missing_colon_is_error(extern_function_missing_colon: &str) {
 }
 
 #[rstest]
-fn function_unterminated_body_is_error(function_unterminated_body: &str) {
-    let parsed = crate::parse(function_unterminated_body);
-    assert_parse_error(
-        parsed.errors(),
-        "T_RBRACE",
-        0,
-        function_unterminated_body.len(),
-    );
-    assert!(parsed.root().functions().is_empty());
-}
-
-#[rstest]
-fn function_unclosed_params_is_error(function_unclosed_params: &str) {
-    let parsed = crate::parse(function_unclosed_params);
-    assert_parse_error(
-        parsed.errors(),
-        "T_RPAREN",
-        0,
-        function_unclosed_params.len(),
-    );
+#[case(function_unterminated_body(), "T_RBRACE", function_unterminated_body().len())]
+#[case(function_unclosed_params(), "T_RPAREN", function_unclosed_params().len())]
+fn function_error_cases(#[case] src: &str, #[case] token: &str, #[case] end: usize) {
+    let parsed = crate::parse(src);
+    assert_parse_error(parsed.errors(), token, 0, end);
     assert!(parsed.root().functions().is_empty());
 }

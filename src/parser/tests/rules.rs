@@ -5,6 +5,7 @@
 use super::common::pretty_print;
 use crate::parse;
 use crate::parser::ast::AstNode;
+use crate::test_util::{ErrorPattern, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -35,31 +36,60 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
             "rule parsing expected to emit errors until implementation is complete",
         );
     } else {
-        assert!(parsed.errors().is_empty());
+        assert!(
+            parsed.errors().is_empty(),
+            "parse errors: {:?}",
+            parsed.errors()
+        );
     }
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
-    let Some(rule) = rules.first() else {
-        panic!("rule missing");
-    };
-    assert_eq!(pretty_print(rule.syntax()), rule_input);
+    let rule = rules
+        .first()
+        .unwrap_or_else(|| panic!("rule missing, rules: {rules:?}"));
+    assert_eq!(
+        pretty_print(rule.syntax()),
+        rule_input,
+        "round trip mismatch"
+    );
 }
 
 #[rstest]
-#[case(":- User(user_id, username, _).", "missing head")]
-#[case("UserLogin(username, session_id) :- .", "missing body")]
+#[case(
+    ":- User(user_id, username, _).",
+    ErrorPattern::from("Unexpected"),
+    0,
+    2
+)]
+#[case(
+    "UserLogin(username, session_id) :- .",
+    ErrorPattern::from("Unexpected"),
+    35,
+    36
+)]
 #[case(
     "UserLogin(username, session_id) User(user_id, username, _).",
-    "missing ':-'"
+    ErrorPattern::from("Unexpected"),
+    32,
+    36
 )]
 #[case(
     "UserLogin(username, session_id) :- User(user_id, username, _)",
-    "missing '.'"
+    ErrorPattern::from("Unexpected"),
+    0,
+    61
 )]
-#[case("This is not a rule!", "invalid input")]
-fn invalid_rule_cases(#[case] input: &str, #[case] msg_hint: &str) {
+#[case("This is not a rule!", ErrorPattern::from("Unexpected"), 5, 7)]
+fn invalid_rule_cases(
+    #[case] input: &str,
+    #[case] pattern: ErrorPattern,
+    #[case] start: usize,
+    #[case] end: usize,
+) {
     let parsed = parse(input);
     let errors = parsed.errors();
-    assert!(!errors.is_empty(), "expected error: {msg_hint}");
-    // Prefer assert_parse_error(&parsed, msg_hint, start, end) when available.
+    let first = errors
+        .first()
+        .unwrap_or_else(|| panic!("expected parse error"));
+    assert_parse_error(std::slice::from_ref(first), pattern, start, end);
 }

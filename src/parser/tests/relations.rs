@@ -4,6 +4,7 @@
 
 use super::common::{parse_relation, pretty_print};
 use crate::parser::ast::AstNode;
+use crate::test_util::assert_unclosed_delimiter_error;
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -53,7 +54,7 @@ fn parses_relations(
     let rel = parse_relation(src);
     assert_eq!(rel.is_input(), is_input);
     assert_eq!(rel.is_output(), is_output);
-    assert_eq!(rel.name(), Some(name.into()));
+    assert_eq!(rel.name().as_deref(), Some(name));
     let cols: Vec<(String, String)> = columns
         .into_iter()
         .map(|(n, t)| (n.into(), t.into()))
@@ -82,6 +83,10 @@ fn multiline_relation_parsed(multiline_relation: &str) {
 #[rstest]
 fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &str) {
     let parsed = crate::parse(relation_unbalanced_parentheses);
-    assert!(!parsed.errors().is_empty());
+    let len = relation_unbalanced_parentheses.len();
+    let start = relation_unbalanced_parentheses
+        .find('(')
+        .unwrap_or_else(|| panic!("fixture invariant"));
+    assert_unclosed_delimiter_error(parsed.errors(), "T_RPAREN", start, len);
     assert!(parsed.root().relations().is_empty());
 }

@@ -79,6 +79,8 @@ fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
 fn index_declaration_whitespace_variations(#[case] src: &str) {
     let parsed = crate::parse(src);
     assert!(parsed.errors().is_empty());
+    let indexes = parsed.root().indexes();
+    assert_eq!(indexes.len(), 1);
     let printed = pretty_print(parsed.root().syntax());
     assert_eq!(normalise_whitespace(&printed), normalise_whitespace(src));
     let idx = parse_index(src);
