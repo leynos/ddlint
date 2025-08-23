@@ -142,13 +142,7 @@ fn process_element(
             push_element_text(ctx.buf, e);
             ElementResult::Continue
         }
-        k if k == ctx.close_kind => match e {
-            SyntaxElement::Token(t) => handle_close_delimiter(ctx, t.text()),
-            SyntaxElement::Node(n) => {
-                let tmp = n.text().to_string();
-                handle_close_delimiter(ctx, &tmp)
-            }
-        },
+        k if k == ctx.close_kind => handle_close_delimiter(ctx, e),
         _ => {
             push_element_text(ctx.buf, e);
             ElementResult::Continue
@@ -156,12 +150,15 @@ fn process_element(
     }
 }
 
-fn handle_close_delimiter(ctx: &mut DelimiterParseContext<'_>, text: &str) -> ElementResult {
+fn handle_close_delimiter(
+    ctx: &mut DelimiterParseContext<'_>,
+    e: &SyntaxElement<DdlogLanguage>,
+) -> ElementResult {
     *ctx.depth -= 1;
     if *ctx.depth == 0 {
         ElementResult::Complete
     } else {
-        ctx.buf.push_str(text);
+        push_element_text(ctx.buf, e);
         ElementResult::Continue
     }
 }
