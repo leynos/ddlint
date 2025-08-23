@@ -88,10 +88,30 @@ impl Relation {
     /// Primary key column names if specified.
     #[must_use]
     pub fn primary_key(&self) -> Option<Vec<String>> {
+        use super::parse_utils::primary_key_clause;
+        use crate::tokenize;
+        use chumsky::Parser as _;
+
         let mut iter = self.syntax.children_with_tokens().peekable();
         Self::skip_to_end_of_columns(&mut iter)?;
-        Self::parse_primary_key_keywords(&mut iter)?;
-        Self::extract_key_list(&mut iter)
+        let rest = iter
+            .clone()
+            .map(|e| match e {
+                rowan::NodeOrToken::Token(t) => t.text().to_string(),
+                rowan::NodeOrToken::Node(n) => n.text().to_string(),
+            })
+            .collect::<String>();
+        if rest.is_empty() {
+            return None;
+        }
+        let tokens = tokenize(&rest);
+        let stream = chumsky::Stream::from_iter(0..rest.len(), tokens.into_iter());
+        let parser = primary_key_clause(&rest);
+        let (res, errs) = parser.parse_recovery(stream);
+        if !errs.is_empty() {
+            log::debug!("failed to parse primary key clause: {errs:?}");
+        }
+        res
     }
 
     /// Skip over the column declaration list and stop on the closing `)`.
@@ -108,66 +128,6 @@ impl Relation {
             return None;
         }
         Some(())
-    }
-
-    /// Parse the `primary key` keyword sequence.
-    fn parse_primary_key_keywords<I>(iter: &mut std::iter::Peekable<I>) -> Option<()>
-    where
-        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
-    {
-        super::skip_whitespace_and_comments(iter);
-        Self::expect_keyword(iter, "primary")?;
-        super::skip_whitespace_and_comments(iter);
-        Self::expect_keyword(iter, "key")?;
-        Some(())
-    }
-
-    fn expect_keyword<I>(iter: &mut std::iter::Peekable<I>, kw: &str) -> Option<()>
-    where
-        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
-    {
-        use rowan::NodeOrToken as E;
-        match iter.next() {
-            Some(E::Token(t)) if t.kind() == SyntaxKind::T_IDENT && t.text() == kw => Some(()),
-            _ => None,
-        }
-    }
-
-    /// Extract the comma separated key names from parentheses.
-    ///
-    /// TODO: migrate to the `primary_key_clause` parser once its API stabilises
-    /// to consolidate delimiter handling.
-    fn extract_key_list<I>(iter: &mut std::iter::Peekable<I>) -> Option<Vec<String>>
-    where
-        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
-    {
-        use super::parse_utils::UnclosedDelimiterError;
-        super::skip_whitespace_and_comments(iter);
-        let content = match super::parse_utils::extract_delimited(
-            iter,
-            SyntaxKind::T_LPAREN,
-            SyntaxKind::T_RPAREN,
-        ) {
-            Ok(text) => text,
-            Err(UnclosedDelimiterError {
-                collected,
-                expected,
-            }) if !collected.is_empty() => {
-                log::debug!(
-                    "unclosed delimiter while parsing primary key: expected {expected:?}, collected: {collected:?}"
-                );
-                return None;
-            }
-            Err(_) => return None,
-        };
-
-        let keys = content
-            .split(',')
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(str::to_string)
-            .collect::<Vec<_>>();
-        if keys.is_empty() { None } else { Some(keys) }
     }
 }
 

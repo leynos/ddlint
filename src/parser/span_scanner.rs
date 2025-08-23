@@ -15,6 +15,7 @@ use super::{
     lexer_helpers::{atom, balanced_block, balanced_block_nonempty, ident, inline_ws},
     span_collector::SpanCollector,
 };
+use crate::parser::ast::parse_utils::{primary_key_clause, relation_columns};
 
 /// Scan the token stream and collect spans for each statement category.
 pub(super) fn parse_tokens(
@@ -225,81 +226,6 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// assert!(relation_columns().parse(stream).is_ok());
 /// ```
-///
-/// Invalid input:
-///
-/// ```rust,ignore
-/// use chumsky::Parser as _;
-/// let src = "User"; // Missing column list
-/// let tokens = crate::tokenize(src);
-/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// assert!(relation_columns().parse(stream).is_err());
-/// ```
-fn relation_columns() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-    let ws = inline_ws().repeated();
-    ident()
-        .padded_by(ws.clone())
-        .then(balanced_block_nonempty(
-            SyntaxKind::T_LPAREN,
-            SyntaxKind::T_RPAREN,
-        ))
-        .map_with_span(|_, sp: Span| sp)
-        .then_ignore(ws)
-}
-
-fn keyword<'a>(
-    src: &'a str,
-    expected: &'static str,
-) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + 'a {
-    let ws = inline_ws().repeated();
-    filter_map(move |span: Span, kind| {
-        let found = src.get(span.clone()).unwrap_or("<none>");
-        if kind == SyntaxKind::T_IDENT && found == expected {
-            Ok(())
-        } else {
-            Err(Simple::custom(
-                span.clone(),
-                format!("expected `{expected}`, but found `{found}` at span {span:?}"),
-            ))
-        }
-    })
-    .then_ignore(ws)
-}
-
-/// Parse a `primary key` clause.
-///
-/// # Examples
-///
-/// Valid input:
-///
-/// ```rust,ignore
-/// use chumsky::Parser as _;
-/// let src = "primary key(id)";
-/// let tokens = crate::tokenize(src);
-/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// assert!(primary_key_clause(src).parse(stream).is_ok());
-/// ```
-///
-/// Invalid input:
-///
-/// ```rust,ignore
-/// use chumsky::Parser as _;
-/// let src = "primary key"; // Missing column list
-/// let tokens = crate::tokenize(src);
-/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// assert!(primary_key_clause(src).parse(stream).is_err());
-/// ```
-fn primary_key_clause(src: &str) -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> + '_ {
-    keyword(src, "primary")
-        .ignore_then(keyword(src, "key"))
-        .then(balanced_block_nonempty(
-            SyntaxKind::T_LPAREN,
-            SyntaxKind::T_RPAREN,
-        ))
-        .map_with_span(|_, sp: Span| sp)
-        .then_ignore(inline_ws().repeated())
-}
-
 fn collect_relation_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
