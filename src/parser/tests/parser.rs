@@ -48,6 +48,89 @@ fn normalise_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Assert that parsing succeeded and the pretty-printed output matches the
+/// original source.
+///
+/// This helper combines common validation used across tests to keep individual
+/// cases focused on their specific behaviour.
+fn assert_parse_success(parsed: &crate::Parsed, expected_text: &str) {
+    assert!(parsed.errors().is_empty());
+    let text = pretty_print(parsed.root().syntax());
+    assert_eq!(text, expected_text);
+}
+
+/// Assert that the root node has the expected kind.
+fn assert_root_kind(parsed: &crate::Parsed) {
+    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+}
+
+/// Assert that parsing produced errors.
+fn assert_parse_has_errors(parsed: &crate::Parsed) {
+    assert!(!parsed.errors().is_empty());
+}
+
+/// Assert the number of relations collected by the root node.
+fn assert_relation_count(parsed: &crate::Parsed, expected: usize) {
+    assert_eq!(parsed.root().relations().len(), expected);
+}
+
+/// Assert the number of indexes collected by the root node.
+fn assert_index_count(parsed: &crate::Parsed, expected: usize) {
+    assert_eq!(parsed.root().indexes().len(), expected);
+}
+
+/// Assert that all root collections are empty.
+fn assert_empty_collections(parsed: &crate::Parsed) {
+    assert!(parsed.root().imports().is_empty());
+    assert!(parsed.root().type_defs().is_empty());
+    assert!(parsed.root().relations().is_empty());
+    assert!(parsed.root().functions().is_empty());
+    assert!(parsed.root().indexes().is_empty());
+    assert!(parsed.root().rules().is_empty());
+}
+
+/// Assert that the root node contains the expected number of children.
+fn assert_root_children(parsed: &crate::Parsed, expected: usize) {
+    assert_eq!(parsed.root().syntax().children().count(), expected);
+}
+
+/// Assert common properties of a relation.
+fn assert_relation_properties(
+    relation: &Relation,
+    name: &str,
+    is_input: bool,
+    is_output: bool,
+) {
+    assert_eq!(relation.name(), Some(name.into()));
+    assert_eq!(relation.is_input(), is_input);
+    assert_eq!(relation.is_output(), is_output);
+}
+
+/// Assert the columns declared for a relation.
+fn assert_relation_columns(relation: &Relation, expected: Vec<(String, String)>) {
+    assert_eq!(relation.columns(), expected);
+}
+
+/// Assert the primary key of a relation.
+fn assert_relation_primary_key(
+    relation: &Relation,
+    expected: Option<Vec<String>>,
+) {
+    assert_eq!(relation.primary_key(), expected);
+}
+
+/// Assert common properties of an index declaration.
+fn assert_index_properties(
+    index: &Index,
+    name: &str,
+    relation: &str,
+    columns: Vec<String>,
+) {
+    assert_eq!(index.name(), Some(name.into()));
+    assert_eq!(index.relation(), Some(relation.into()));
+    assert_eq!(index.columns(), columns);
+}
+
 #[fixture]
 fn simple_prog() -> &'static str {
     "input relation R(x: u32);"
@@ -148,42 +231,58 @@ fn index_whitespace_variations() -> &'static str {
 #[rstest]
 fn parse_round_trip(simple_prog: &str) {
     let parsed = parse(simple_prog);
-    let text = pretty_print(parsed.root().syntax());
-    assert_eq!(text, simple_prog);
-    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+    assert_parse_success(&parsed, simple_prog);
+    assert_root_kind(&parsed);
 }
 
-/// Verifies parsing of a multi-statement program and round-trip printing.
+/// The complex program parses successfully and maintains its text on
+/// round-trip.
 #[rstest]
-fn complex_program_round_trip(complex_prog: &str) {
+fn complex_program_parse_success(complex_prog: &str) {
     let parsed = parse(complex_prog);
-    assert!(parsed.errors().is_empty());
-    let text = pretty_print(parsed.root().syntax());
-    assert_eq!(text, complex_prog);
+    assert_parse_success(&parsed, complex_prog);
+    assert_root_kind(&parsed);
+}
+
+/// The complex program contains exactly two relations.
+#[rstest]
+fn complex_program_has_two_relations(complex_prog: &str) {
+    let parsed = parse(complex_prog);
+    assert_relation_count(&parsed, 2);
+}
+
+/// The complex program's relations have the expected names and flags.
+#[rstest]
+fn complex_program_relation_properties(complex_prog: &str) {
+    let parsed = parse(complex_prog);
     let relations = parsed.root().relations();
-    assert_eq!(relations.len(), 2);
     let [first, second] = relations.as_slice() else {
         panic!("expected two relations");
     };
-    assert!(first.is_input());
-    assert!(second.is_output());
-    assert_eq!(first.name(), Some("R".into()));
-    assert_eq!(second.name(), Some("S".into()));
+    assert_relation_properties(first, "R", true, false);
+    assert_relation_properties(second, "S", false, true);
 }
 
 /// Parsing an empty program should produce an empty root node.
 #[rstest]
-fn empty_program_has_no_items(empty_prog: &str) {
+fn empty_program_parse_success(empty_prog: &str) {
     let parsed = parse(empty_prog);
-    assert!(parsed.errors().is_empty());
-    assert!(parsed.root().imports().is_empty());
-    assert!(parsed.root().type_defs().is_empty());
-    assert!(parsed.root().relations().is_empty());
-    assert!(parsed.root().functions().is_empty());
-    assert!(parsed.root().indexes().is_empty());
-    assert!(parsed.root().rules().is_empty());
-    assert_eq!(pretty_print(parsed.root().syntax()), "");
-    assert_eq!(parsed.root().syntax().children().count(), 0);
+    assert_parse_success(&parsed, "");
+    assert_root_kind(&parsed);
+}
+
+/// The empty program yields no top-level items.
+#[rstest]
+fn empty_program_collections_empty(empty_prog: &str) {
+    let parsed = parse(empty_prog);
+    assert_empty_collections(&parsed);
+}
+
+/// The empty program produces no child nodes in the CST.
+#[rstest]
+fn empty_program_structure_valid(empty_prog: &str) {
+    let parsed = parse(empty_prog);
+    assert_root_children(&parsed, 0);
 }
 
 /// Ensures that invalid tokens are represented by `N_ERROR` nodes in the CST.
@@ -406,126 +505,108 @@ fn typedef_missing_name_returns_none() {
 }
 
 #[rstest]
-fn input_relation_parsed(input_relation_pk: &str) {
-    let parsed = parse(input_relation_pk);
-    let relations = parsed.root().relations();
-    assert_eq!(relations.len(), 1);
-    let rel = relations
+#[case::input(input_relation_pk())]
+#[case::output(output_relation_no_pk())]
+#[case::internal(internal_relation_compound_pk())]
+#[case::multiline(multiline_relation())]
+fn relation_parse_success(#[case] src: &str) {
+    let parsed = parse(src);
+    assert_parse_success(&parsed, src);
+    assert_root_kind(&parsed);
+    assert_relation_count(&parsed, 1);
+}
+
+#[rstest]
+#[case::input(input_relation_pk(), "User", true, false)]
+#[case::output(output_relation_no_pk(), "Alert", false, true)]
+#[case::internal(internal_relation_compound_pk(), "UserSession", false, false)]
+#[case::multiline(multiline_relation(), "Log", true, false)]
+fn relation_properties(
+    #[case] src: &str,
+    #[case] name: &str,
+    #[case] is_input: bool,
+    #[case] is_output: bool,
+) {
+    let parsed = parse(src);
+    let rel = parsed
+        .root()
+        .relations()
         .first()
-        .cloned()
-        .unwrap_or_else(|| panic!("relation missing"));
-    assert!(rel.is_input());
-    assert!(!rel.is_output());
-    assert_eq!(rel.name(), Some("User".into()));
-    assert_eq!(
-        rel.columns(),
-        vec![
-            ("user_id".into(), "u32".into()),
-            ("username".into(), "string".into()),
-        ]
-    );
-    assert_eq!(rel.primary_key(), Some(vec!["user_id".into()]));
+        .expect("relation missing");
+    assert_relation_properties(rel, name, is_input, is_output);
 }
 
 #[rstest]
-fn output_relation_parsed(output_relation_no_pk: &str) {
-    let parsed = parse(output_relation_no_pk);
-    let relations = parsed.root().relations();
-    assert_eq!(relations.len(), 1);
-    let rel = relations
+#[case::input(
+    input_relation_pk(),
+    vec![("user_id", "u32"), ("username", "string")],
+    Some(vec!["user_id"]),
+)]
+#[case::output(
+    output_relation_no_pk(),
+    vec![("message", "string"), ("timestamp", "u64")],
+    None,
+)]
+#[case::internal(
+    internal_relation_compound_pk(),
+    vec![
+        ("user_id", "u32"),
+        ("session_id", "string"),
+        ("start_time", "u64"),
+    ],
+    Some(vec!["user_id", "session_id"]),
+)]
+#[case::multiline(
+    multiline_relation(),
+    vec![("id", "u32"), ("message", "string")],
+    Some(vec!["id"]),
+)]
+fn relation_structure(
+    #[case] src: &str,
+    #[case] columns: Vec<(&str, &str)>,
+    #[case] pk: Option<Vec<&str>>,
+) {
+    let parsed = parse(src);
+    let rel = parsed
+        .root()
+        .relations()
         .first()
-        .cloned()
-        .unwrap_or_else(|| panic!("relation missing"));
-    assert!(!rel.is_input());
-    assert!(rel.is_output());
-    assert_eq!(rel.name(), Some("Alert".into()));
-    assert_eq!(
-        rel.columns(),
-        vec![
-            ("message".into(), "string".into()),
-            ("timestamp".into(), "u64".into()),
-        ]
-    );
-    assert!(rel.primary_key().is_none());
+        .expect("relation missing");
+    let cols = columns
+        .into_iter()
+        .map(|(n, t)| (n.to_string(), t.to_string()))
+        .collect();
+    assert_relation_columns(rel, cols);
+    let pk_owned = pk.map(|v| v.into_iter().map(String::from).collect());
+    assert_relation_primary_key(rel, pk_owned);
 }
 
+
 #[rstest]
-fn internal_relation_parsed(internal_relation_compound_pk: &str) {
-    let parsed = parse(internal_relation_compound_pk);
-    let relations = parsed.root().relations();
-    assert_eq!(relations.len(), 1);
-    let rel = relations
+#[case::single(index_single_column(), "Idx_User_username", "User", vec!["username"])]
+#[case::multi(
+    index_multi_column(),
+    "Idx_Session_user_time",
+    "UserSession",
+    vec!["user_id", "start_time"],
+)]
+#[case::nested(index_nested_function(), "Idx_lower_username", "User", vec!["lower(username)"])]
+fn index_parse_and_properties(
+    #[case] src: &str,
+    #[case] name: &str,
+    #[case] relation: &str,
+    #[case] columns: Vec<&str>,
+) {
+    let parsed = parse(src);
+    assert_parse_success(&parsed, src);
+    assert_index_count(&parsed, 1);
+    let idx = parsed
+        .root()
+        .indexes()
         .first()
-        .cloned()
-        .unwrap_or_else(|| panic!("relation missing"));
-    assert!(!rel.is_input());
-    assert!(!rel.is_output());
-    assert_eq!(rel.name(), Some("UserSession".into()));
-    assert_eq!(
-        rel.columns(),
-        vec![
-            ("user_id".into(), "u32".into()),
-            ("session_id".into(), "string".into()),
-            ("start_time".into(), "u64".into()),
-        ]
-    );
-    assert_eq!(
-        rel.primary_key(),
-        Some(vec!["user_id".into(), "session_id".into()])
-    );
-}
-
-#[rstest]
-fn multiline_relation_parsed(multiline_relation: &str) {
-    let parsed = parse(multiline_relation);
-    assert!(parsed.errors().is_empty());
-    let relations = parsed.root().relations();
-    assert_eq!(relations.len(), 1);
-    let rel = relations
-        .first()
-        .unwrap_or_else(|| panic!("relation missing"));
-    assert!(rel.is_input());
-    assert_eq!(rel.name(), Some("Log".into()));
-    assert_eq!(
-        rel.columns(),
-        vec![
-            ("id".into(), "u32".into()),
-            ("message".into(), "string".into()),
-        ]
-    );
-    assert_eq!(rel.primary_key(), Some(vec!["id".into()]));
-    assert_eq!(pretty_print(rel.syntax()), multiline_relation);
-}
-
-#[rstest]
-fn index_single_column_parsed(index_single_column: &str) {
-    let parsed = parse(index_single_column);
-    assert!(parsed.errors().is_empty());
-    let indexes = parsed.root().indexes();
-    assert_eq!(indexes.len(), 1);
-    let Some(idx) = indexes.first() else {
-        panic!("index should exist for valid source");
-    };
-    assert_eq!(idx.name(), Some("Idx_User_username".into()));
-    assert_eq!(idx.relation(), Some("User".into()));
-    assert_eq!(idx.columns(), vec![String::from("username")]);
-}
-
-#[rstest]
-fn index_multi_column_parsed(index_multi_column: &str) {
-    let parsed = parse(index_multi_column);
-    assert!(parsed.errors().is_empty());
-    let indexes = parsed.root().indexes();
-    assert_eq!(indexes.len(), 1);
-    let Some(idx) = indexes.first() else {
-        panic!("index should exist for valid source");
-    };
-    assert_eq!(idx.name(), Some("Idx_Session_user_time".into()));
-    assert_eq!(idx.relation(), Some("UserSession".into()));
-    assert_eq!(
-        idx.columns(),
-        vec![String::from("user_id"), String::from("start_time")]
-    );
+        .expect("index missing");
+    let cols = columns.into_iter().map(String::from).collect();
+    assert_index_properties(idx, name, relation, cols);
 }
 
 #[rstest]
@@ -540,20 +621,6 @@ fn index_missing_on_is_error(index_invalid_missing_on: &str) {
     };
     assert!(matches!(err.reason(), SimpleReason::Unexpected));
     assert_eq!(parsed.root().indexes().len(), 0);
-}
-
-#[rstest]
-fn index_nested_function_parsed(index_nested_function: &str) {
-    let parsed = parse(index_nested_function);
-    assert!(parsed.errors().is_empty());
-    let indexes = parsed.root().indexes();
-    assert_eq!(indexes.len(), 1);
-    let Some(idx) = indexes.first() else {
-        panic!("index should exist for valid source");
-    };
-    assert_eq!(idx.name(), Some("Idx_lower_username".into()));
-    assert_eq!(idx.relation(), Some("User".into()));
-    assert_eq!(idx.columns(), vec![String::from("lower(username)")]);
 }
 
 #[rstest]
