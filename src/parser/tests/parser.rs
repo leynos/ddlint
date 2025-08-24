@@ -3,9 +3,18 @@
 //! These tests verify that the parser builds a correct CST and that source
 //! round-trips through `pretty_print` unchanged.
 
-use crate::{SyntaxKind, ast::AstNode, parse};
+use crate::{ast::AstNode, parse, SyntaxKind};
 use rstest::rstest;
-use super::common::{assert_parse_has_errors, assert_program_round_trip, parse_program, pretty_print};
+use super::common::{
+    assert_parse_has_errors,
+    assert_program_round_trip,
+    parse_function,
+    parse_index,
+    parse_program,
+    parse_relation,
+    parse_transformer,
+    pretty_print,
+};
 
 mod programs;
 use programs::{
@@ -45,9 +54,8 @@ fn relation_counts(#[case] prog: BasicProgram, #[case] expected: usize) {
 #[case(RelationProgram::OutputRelationNoPk, RelationSpec::new("Alert").output().column("message", "string").column("timestamp", "u64"))]
 #[case(RelationProgram::InternalRelationCompoundPk, RelationSpec::new("UserSession").column(USER_ID, "u32").column("session_id", "string").column("start_time", "u64").pk(vec![USER_ID, "session_id"]))]
 fn relation_parsing(#[case] prog: RelationProgram, #[case] spec: RelationSpec) {
-    let parsed = parse_program(prog.source());
-    let rel = parsed.root().relations().first().expect("relation missing");
-    spec.assert(rel);
+    let rel = parse_relation(prog.source());
+    spec.assert(&rel);
 }
 
 #[rstest]
@@ -69,9 +77,8 @@ fn relation_invalid(#[case] prog: RelationProgram) {
 #[case(IndexProgram::IndexNestedFunction, IndexSpec::new("Idx_lower_username", "User").column("lower(username)"))]
 #[case(IndexProgram::IndexWhitespaceVariations, IndexSpec::new("Idx_User_ws", "User").column(USERNAME))]
 fn index_parsing(#[case] prog: IndexProgram, #[case] spec: IndexSpec) {
-    let parsed = parse_program(prog.source());
-    let idx = parsed.root().indexes().first().expect("index missing");
-    spec.assert(idx);
+    let idx = parse_index(prog.source());
+    spec.assert(&idx);
 }
 
 #[rstest]
@@ -177,9 +184,8 @@ fn typedef_errors(#[case] src: &str) {
 #[case(FunctionProgram::FunctionNestedGenerics, FnSpec::new("test").param("p", "Vec<Map<string,Vec<u8>>>").param("arr", "[Vec<u32>]").ret("bool"))]
 #[case(FunctionProgram::FunctionShiftParam, FnSpec::new("shift").param("x", "Vec<<u8>>").ret("bool"))]
 fn function_parsing(#[case] prog: FunctionProgram, #[case] spec: FnSpec) {
-    let parsed = parse_program(prog.source());
-    let func = parsed.root().functions().first().expect("function missing");
-    spec.assert(func);
+    let func = parse_function(prog.source());
+    spec.assert(&func);
 }
 
 #[rstest]
@@ -200,13 +206,8 @@ fn function_errors(#[case] prog: FunctionProgram) {
 #[case(TransformerProgram::TransformerDupInputs, TransformerSpec::new("dup_inputs").input("foo", "Bar").input("foo", "Baz").output("Out"))]
 #[case(TransformerProgram::TransformerReservedNames, TransformerSpec::new("reserved").input("transformer", "Type").input("extern", "Type").output("out"))]
 fn transformer_parsing(#[case] prog: TransformerProgram, #[case] spec: TransformerSpec) {
-    let parsed = parse_program(prog.source());
-    let t = parsed
-        .root()
-        .transformers()
-        .first()
-        .expect("transformer missing");
-    spec.assert(t);
+    let t = parse_transformer(prog.source());
+    spec.assert(&t);
 }
 
 #[rstest]

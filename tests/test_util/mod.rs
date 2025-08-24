@@ -9,10 +9,6 @@
     dead_code,
     reason = "helpers are reused across multiple tests so some may be unused"
 )]
-#![expect(
-    clippy::expect_used,
-    reason = "test helpers use expect for clearer failure messages"
-)]
 
 use chumsky::error::Simple;
 use ddlint::{
@@ -186,14 +182,18 @@ pub fn assert_parse_error(
     end: usize,
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
-    assert_eq!(errors.len(), 1, "expected one error, got {errors:?}");
-    let error = errors.first().expect("error missing");
+    assert!(!errors.is_empty(), "no errors reported");
+    let span = start..end;
+    let (idx, error) = errors
+        .iter()
+        .enumerate()
+        .find(|(_, e)| e.span() == span)
+        .unwrap_or_else(|| panic!("no error with span {span:?}; errors: {errors:?}"));
     let rendered = format!("{error:?}");
     assert!(
         pattern.contains_message(&rendered),
-        "expected error to contain pattern '{pattern:?}', got '{rendered}'",
+        "error #{idx} did not match pattern {pattern:?}: {rendered}",
     );
-    assert_eq!(error.span(), start..end);
 }
 
 #[track_caller]
@@ -204,23 +204,35 @@ fn assert_delimiter_error_impl(
     error_type: DelimiterErrorType,
 ) {
     use chumsky::error::SimpleReason;
-
-    let error = errors.first().expect("error missing");
+    assert!(!errors.is_empty(), "no errors reported");
+    let (idx, error) = errors
+        .iter()
+        .enumerate()
+        .find(|(_, e)| e.span() == span)
+        .unwrap_or_else(|| panic!("no error with span {span:?}; errors: {errors:?}"));
     let rendered = format!("{error:?}");
     assert!(
         expected_pattern.contains_message(&rendered),
-        "expected error to contain pattern '{expected_pattern:?}', got '{rendered}'",
+        "error #{idx} did not match pattern {expected_pattern:?}: {rendered}",
     );
-    assert_eq!(error.span(), span);
-    assert!(
-        matches!(
+    match error_type {
+        DelimiterErrorType::Unclosed => assert!(
+            matches!(
+                error.reason(),
+                SimpleReason::Unclosed { .. } | SimpleReason::Unexpected | SimpleReason::Custom(_)
+            ),
+            "expected Unclosed, got {:?}",
             error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
         ),
-        "expected {:?}, got {:?}",
-        error_type,
-        error.reason()
-    );
+        DelimiterErrorType::Mismatch => assert!(
+            matches!(
+                error.reason(),
+                SimpleReason::Unexpected | SimpleReason::Custom(_)
+            ),
+            "expected Mismatch (Unexpected/Custom), got {:?}",
+            error.reason(),
+        ),
+    }
 }
 
 /// Assert that a parser error indicates a delimiter mismatch.

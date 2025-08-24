@@ -56,14 +56,22 @@ pub(super) fn normalise_whitespace(text: &str) -> String {
 /// let parsed = parse_program("input relation R(x: u32);");
 /// assert!(parsed.errors().is_empty());
 /// ```
+#[track_caller]
 pub(super) fn parse_program(src: &str) -> crate::Parsed {
     let parsed = parse(src);
     assert!(
         parsed.errors().is_empty(),
-        "unexpected errors: {:?}",
-        parsed.errors()
+        "parse_program: unexpected errors: {:?}\nsource: {:?}",
+        parsed.errors(),
+        src
     );
-    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+    assert_eq!(
+        parsed.root().kind(),
+        SyntaxKind::N_DATALOG_PROGRAM,
+        "parse_program: unexpected root kind; got {:?}\nsource: {:?}",
+        parsed.root().kind(),
+        src
+    );
     parsed
 }
 
@@ -79,9 +87,14 @@ pub(super) fn parse_program(src: &str) -> crate::Parsed {
 ///
 /// assert_program_round_trip("input relation R(x: u32);");
 /// ```
+#[track_caller]
 pub(super) fn assert_program_round_trip(src: &str) -> crate::Parsed {
     let parsed = parse_program(src);
-    assert_eq!(pretty_print(parsed.root().syntax()), src);
+    assert_eq!(
+        pretty_print(parsed.root().syntax()),
+        src,
+        "round_trip: printed output diverged from input",
+    );
     parsed
 }
 
@@ -95,8 +108,12 @@ pub(super) fn assert_program_round_trip(src: &str) -> crate::Parsed {
 /// let parsed = ddlint::parse("?");
 /// assert_parse_has_errors(&parsed);
 /// ```
+#[track_caller]
 pub(super) fn assert_parse_has_errors(parsed: &crate::Parsed) {
-    assert!(!parsed.errors().is_empty());
+    assert!(
+        !parsed.errors().is_empty(),
+        "assert_parse_has_errors: expected errors but none found"
+    );
 }
 
 /// Parse a program and extract the first item produced by `extractor`.

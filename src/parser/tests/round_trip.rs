@@ -6,7 +6,9 @@
 use super::common::{
     assert_parse_has_errors, assert_program_round_trip, parse_program, pretty_print,
 };
-use crate::{SyntaxKind, parse};
+#[rustfmt::skip]
+use crate::{parse, SyntaxKind};
+use chumsky::error::SimpleReason;
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -61,6 +63,12 @@ fn error_token_produces_error_node() {
     let source = "?( relation Foo(";
     let parsed = parse(source);
     assert_parse_has_errors(&parsed);
+    let errors = parsed.errors();
+    assert_eq!(errors.len(), 1);
+    #[expect(clippy::expect_used, reason = "test asserts single error")]
+    let error = errors.first().expect("expected error");
+    assert!(matches!(error.reason(), SimpleReason::Unexpected));
+    assert!(error.found().is_none());
     let root = parsed.root().syntax();
     let has_error = root
         .children_with_tokens()
