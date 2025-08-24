@@ -3,7 +3,7 @@
 //! Utilities here support concise feature-focused parser tests.
 
 use crate::{
-    parse,
+    SyntaxKind, parse,
     parser::ast::{Function, Import, Index, Relation, Transformer},
 };
 
@@ -42,6 +42,78 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
 /// ```
 pub(super) fn normalise_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Parse a program and assert that no errors were produced.
+///
+/// The returned [`crate::Parsed`] can be further inspected by tests.
+///
+/// # Examples
+///
+/// ```ignore
+/// use ddlint::parser::tests::common::parse_program;
+///
+/// let parsed = parse_program("input relation R(x: u32);");
+/// assert!(parsed.errors().is_empty());
+/// ```
+#[track_caller]
+pub(super) fn parse_program(src: &str) -> crate::Parsed {
+    let parsed = parse(src);
+    assert!(
+        parsed.errors().is_empty(),
+        "parse_program: unexpected errors: {:?}\nsource: {:?}",
+        parsed.errors(),
+        src
+    );
+    assert_eq!(
+        parsed.root().kind(),
+        SyntaxKind::N_DATALOG_PROGRAM,
+        "parse_program: unexpected root kind; got {:?}\nsource: {:?}",
+        parsed.root().kind(),
+        src
+    );
+    parsed
+}
+
+/// Parse a program and verify it round-trips via [`pretty_print`].
+///
+/// This asserts that the root node is a `N_DATALOG_PROGRAM`, no errors
+/// occurred and the reconstructed source matches the original input.
+///
+/// # Examples
+///
+/// ```ignore
+/// use ddlint::parser::tests::common::assert_program_round_trip;
+///
+/// assert_program_round_trip("input relation R(x: u32);");
+/// ```
+#[track_caller]
+pub(super) fn assert_program_round_trip(src: &str) -> crate::Parsed {
+    let parsed = parse_program(src);
+    assert_eq!(
+        pretty_print(parsed.root().syntax()),
+        src,
+        "round_trip: printed output diverged from input",
+    );
+    parsed
+}
+
+/// Assert that parsing produced at least one error.
+///
+/// # Examples
+///
+/// ```ignore
+/// use ddlint::parser::tests::common::assert_parse_has_errors;
+///
+/// let parsed = ddlint::parse("?");
+/// assert_parse_has_errors(&parsed);
+/// ```
+#[track_caller]
+pub(super) fn assert_parse_has_errors(parsed: &crate::Parsed) {
+    assert!(
+        !parsed.errors().is_empty(),
+        "assert_parse_has_errors: expected errors but none found"
+    );
 }
 
 /// Parse a program and extract the first item produced by `extractor`.
