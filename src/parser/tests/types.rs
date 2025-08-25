@@ -5,17 +5,14 @@
 use super::common::pretty_print;
 use crate::parse;
 use crate::parser::ast::{AstNode, TypeDef};
+use crate::test_util::assert_no_parse_errors;
 use rstest::rstest;
 
 #[rstest]
 fn standard_typedef() {
     let src = "typedef Uuid = string\n";
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
@@ -27,11 +24,7 @@ fn standard_typedef() {
 fn complex_typedef() {
     let src = "typedef UserRecord = (name: string, age: u64, active: bool)\n";
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
@@ -43,11 +36,7 @@ fn complex_typedef() {
 fn extern_type() {
     let src = "extern type FfiHandle\n";
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
@@ -82,11 +71,7 @@ fn typedef_variations(
     #[case] expected_text: &str,
 ) {
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs
@@ -102,11 +87,7 @@ fn typedef_variations(
 fn typedef_nesting_and_whitespace() {
     let src = "typedef Foo=string\ntypedef   Bar = u64  \n";
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     assert_eq!(pretty_print(parsed.root().syntax()), src);
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 2);
@@ -127,11 +108,7 @@ fn typedef_nesting_and_whitespace() {
 fn typedef_missing_name_returns_none() {
     let src = "typedef = string\n";
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
     let def = defs

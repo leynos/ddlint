@@ -4,7 +4,9 @@
 //! and that the `Function` AST node provides the expected API methods.
 
 use ddlint::parser::parse;
+mod test_util;
 use rstest::rstest;
+use test_util::assert_no_parse_errors;
 
 #[rstest]
 #[case(
@@ -36,11 +38,7 @@ fn function_api(
     #[case] ret: Option<String>,
 ) {
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let funcs = parsed.root().functions();
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let func = funcs.first().expect("function missing");

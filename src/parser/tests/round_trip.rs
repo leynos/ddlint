@@ -4,6 +4,7 @@
 //! original source and that basic program structure is detected correctly.
 
 use super::common::pretty_print;
+use crate::test_util::assert_no_parse_errors;
 use crate::{SyntaxKind, parse};
 use rstest::{fixture, rstest};
 
@@ -25,11 +26,7 @@ fn empty_prog() -> &'static str {
 #[rstest]
 fn parse_round_trip(simple_prog: &str) {
     let parsed = parse(simple_prog);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let text = pretty_print(parsed.root().syntax());
     assert_eq!(text, simple_prog);
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
@@ -38,11 +35,7 @@ fn parse_round_trip(simple_prog: &str) {
 #[rstest]
 fn complex_program_round_trip(complex_prog: &str) {
     let parsed = parse(complex_prog);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let text = pretty_print(parsed.root().syntax());
     assert_eq!(text, complex_prog);
     let relations = parsed.root().relations();
@@ -59,11 +52,7 @@ fn complex_program_round_trip(complex_prog: &str) {
 #[rstest]
 fn empty_program_has_no_items(empty_prog: &str) {
     let parsed = parse(empty_prog);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     assert!(parsed.root().imports().is_empty());
     assert!(parsed.root().type_defs().is_empty());
     assert!(parsed.root().relations().is_empty());

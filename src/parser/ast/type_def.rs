@@ -44,6 +44,7 @@ mod tests {
     #[test]
     fn extern_type_parsed() {
         let parsed = parse("extern type Handle");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let td = parsed
             .root()
@@ -58,6 +59,7 @@ mod tests {
     #[test]
     fn regular_typedef_parsed() {
         let parsed = parse("typedef UserId = u64");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let td = parsed
             .root()

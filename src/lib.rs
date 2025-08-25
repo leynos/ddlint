@@ -9,7 +9,7 @@ pub mod parser;
 pub mod syntax_utils;
 #[cfg(test)]
 #[doc(hidden)]
-pub mod test_util;
+mod test_util;
 pub mod tokenizer;
 
 pub use language::{DdlogLanguage, SyntaxKind};

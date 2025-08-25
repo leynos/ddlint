@@ -3,7 +3,7 @@
 //! Validates extern transformer syntax and edge cases.
 
 use super::common::parse_transformer;
-use crate::test_util::{ErrorPattern, assert_parse_error};
+use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -107,11 +107,7 @@ fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
 #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn transformer_duplicate_input_names(transformer_dup_inputs: &str) {
     let parsed = crate::parse(transformer_dup_inputs);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let transformers = parsed.root().transformers();
     let t = transformers.first().expect("transformer missing");
     let inputs = t.inputs();

@@ -5,7 +5,7 @@
 use super::common::pretty_print;
 use crate::parse;
 use crate::parser::ast::AstNode;
-use crate::test_util::{ErrorPattern, assert_parse_error};
+use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -37,11 +37,7 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
             parsed.errors()
         );
     } else {
-        assert!(
-            parsed.errors().is_empty(),
-            "parse errors: {:?}",
-            parsed.errors()
-        );
+        assert_no_parse_errors(parsed.errors());
     }
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);

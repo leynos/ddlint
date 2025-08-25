@@ -80,6 +80,7 @@ mod tests {
     #[test]
     fn function_name() {
         let parsed = parse("function foo() {}");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         let func = parsed
             .root()
             .functions()

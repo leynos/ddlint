@@ -54,6 +54,7 @@ mod tests {
     #[test]
     fn transformer_name() {
         let parsed = parse("extern transformer t(x: A): B");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         let tr = parsed
             .root()
             .transformers()
@@ -68,6 +69,7 @@ mod tests {
     fn multiple_inputs_outputs() {
         let src = "extern transformer t(a: X, b: Y): Out1, Out2";
         let parsed = parse(src);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         let tr = parsed
             .root()
             .transformers()

@@ -3,7 +3,9 @@
 //! These tests cover single and multi-column indexes and error cases.
 
 use super::common::{normalise_whitespace, parse_index, pretty_print};
-use crate::test_util::{assert_parse_error, assert_unclosed_delimiter_error};
+use crate::test_util::{
+    assert_no_parse_errors, assert_parse_error, assert_unclosed_delimiter_error,
+};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -78,11 +80,7 @@ fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
 #[case(index_whitespace_variations())]
 fn index_declaration_whitespace_variations(#[case] src: &str) {
     let parsed = crate::parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let indexes = parsed.root().indexes();
     assert_eq!(indexes.len(), 1);
     let printed = pretty_print(parsed.root().syntax());

@@ -53,12 +53,14 @@ mod tests {
     #[test]
     fn index_columns() {
         let parsed = parse("index I on R(lower(name))");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         let idx = parsed
             .root()
             .indexes()
             .first()
             .cloned()
             .expect("index missing");
+        assert_eq!(idx.name().as_deref(), Some("I"));
         assert_eq!(idx.relation().as_deref(), Some("R"));
         assert_eq!(idx.columns(), vec!["lower(name)".to_string()]);
     }
