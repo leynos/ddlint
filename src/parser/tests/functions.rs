@@ -82,8 +82,7 @@ fn parses_functions(
         .map(|(n, t)| (n.into(), t.into()))
         .collect();
     assert_eq!(func.parameters(), expected);
-    let expected_ret = ret.map(str::to_string);
-    assert_eq!(func.return_type(), expected_ret);
+    assert_eq!(func.return_type().as_deref(), ret);
     assert_eq!(pretty_print(func.syntax()), src);
 }
 
