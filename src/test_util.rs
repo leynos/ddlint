@@ -31,25 +31,11 @@ impl From<String> for Name {
 #[derive(Debug, Clone)]
 pub enum ErrorPattern {
     Custom(String),
-    UnexpectedToken,
-    UnexpectedEof,
-    UnclosedDelimiter,
-    MismatchedDelimiter,
 }
 
 impl ErrorPattern {
     fn contains_message(&self, rendered: &str) -> bool {
-        match self {
-            Self::Custom(msg) => rendered.contains(msg),
-            Self::UnexpectedToken => rendered.contains("unexpected"),
-            Self::UnexpectedEof => rendered.contains("EOF") || rendered.contains("end"),
-            Self::UnclosedDelimiter => {
-                rendered.contains("unclosed") || rendered.contains("missing")
-            }
-            Self::MismatchedDelimiter => {
-                rendered.contains("expected") || rendered.contains("found")
-            }
-        }
+        matches!(self, Self::Custom(msg) if rendered.contains(msg))
     }
 }
 
@@ -57,13 +43,6 @@ impl From<&str> for ErrorPattern {
     fn from(s: &str) -> Self {
         Self::Custom(s.to_string())
     }
-}
-
-/// Internal error type for delimiter errors.
-#[derive(Debug, Copy, Clone)]
-enum DelimiterErrorType {
-    Mismatch,
-    Unclosed,
 }
 
 /// Construct a numeric [`Expr::Literal`].
@@ -100,6 +79,23 @@ pub fn var(name: impl Into<Name>) -> Expr {
 pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     let name: Name = name.into();
     Expr::Call { name: name.0, args }
+}
+
+/// Assert that a parser produced no errors.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::assert_no_parse_errors;
+/// let errors: Vec<chumsky::error::Simple<ddlint::SyntaxKind>> = Vec::new();
+/// assert_no_parse_errors(&errors);
+/// ```
+///
+/// # Panics
+/// Panics if `errors` is not empty.
+#[track_caller]
+pub fn assert_no_parse_errors<E: std::fmt::Debug>(errors: &[E]) {
+    assert!(errors.is_empty(), "Parse errors: {errors:?}");
 }
 
 /// Assert that the parser produced exactly one error matching
@@ -142,7 +138,6 @@ fn assert_delimiter_error_impl(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: &ErrorPattern,
     span: Range<usize>,
-    error_type: DelimiterErrorType,
 ) {
     use chumsky::error::SimpleReason;
 
@@ -158,26 +153,9 @@ fn assert_delimiter_error_impl(
             error.reason(),
             SimpleReason::Unexpected | SimpleReason::Custom(_)
         ),
-        "expected {:?}, got {:?}",
-        error_type,
+        "expected unclosed delimiter, got {:?}",
         error.reason()
     );
-}
-/// Assert that a parser error indicates a delimiter mismatch.
-///
-/// This verifies the message, span and that the reason reports a found token.
-///
-/// # Panics
-/// Panics if `errors` is empty or the error kind does not indicate a mismatch.
-#[track_caller]
-pub fn assert_delimiter_error(
-    errors: &[Simple<SyntaxKind>],
-    expected_pattern: impl Into<ErrorPattern>,
-    start: usize,
-    end: usize,
-) {
-    let pattern: ErrorPattern = expected_pattern.into();
-    assert_delimiter_error_impl(errors, &pattern, start..end, DelimiterErrorType::Mismatch);
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
@@ -196,5 +174,5 @@ pub fn assert_unclosed_delimiter_error(
     end: usize,
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
-    assert_delimiter_error_impl(errors, &pattern, start..end, DelimiterErrorType::Unclosed);
+    assert_delimiter_error_impl(errors, &pattern, start..end);
 }

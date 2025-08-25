@@ -3,7 +3,7 @@
 //! Validates extern transformer syntax and edge cases.
 
 use super::common::parse_transformer;
-use crate::test_util::{ErrorPattern, assert_parse_error};
+use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -61,7 +61,7 @@ fn parses_transformers(
     #[case] outputs: Vec<String>,
 ) {
     let t = parse_transformer(src);
-    assert_eq!(t.name(), Some(name.into()));
+    assert_eq!(t.name().as_deref(), Some(name));
     let in_expected: Vec<(String, String)> = inputs
         .into_iter()
         .map(|(n, ty)| (n.into(), ty.into()))
@@ -95,7 +95,7 @@ fn transformer_no_inputs_parsed(transformer_no_inputs: &str) {
 #[rstest]
 fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
     let t = parse_transformer(transformer_extra_ws);
-    assert_eq!(t.name(), Some("spaced".into()));
+    assert_eq!(t.name().as_deref(), Some("spaced"));
     assert_eq!(
         t.inputs(),
         vec![("foo".into(), "Bar".into()), ("baz".into(), "Qux".into())]
@@ -107,11 +107,7 @@ fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
 #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 fn transformer_duplicate_input_names(transformer_dup_inputs: &str) {
     let parsed = crate::parse(transformer_dup_inputs);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected errors: {:?}",
-        parsed.errors()
-    );
+    assert_no_parse_errors(parsed.errors());
     let transformers = parsed.root().transformers();
     let t = transformers.first().expect("transformer missing");
     let inputs = t.inputs();

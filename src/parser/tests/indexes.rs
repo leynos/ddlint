@@ -3,7 +3,9 @@
 //! These tests cover single and multi-column indexes and error cases.
 
 use super::common::{normalise_whitespace, parse_index, pretty_print};
-use crate::test_util::{assert_parse_error, assert_unclosed_delimiter_error};
+use crate::test_util::{
+    assert_no_parse_errors, assert_parse_error, assert_unclosed_delimiter_error,
+};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -47,8 +49,8 @@ fn parses_indexes(
     #[case] columns: Vec<String>,
 ) {
     let idx = parse_index(src);
-    assert_eq!(idx.name(), Some(name.into()));
-    assert_eq!(idx.relation(), Some(relation.into()));
+    assert_eq!(idx.name().as_deref(), Some(name));
+    assert_eq!(idx.relation().as_deref(), Some(relation));
     assert_eq!(idx.columns(), columns);
 }
 
@@ -78,13 +80,13 @@ fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
 #[case(index_whitespace_variations())]
 fn index_declaration_whitespace_variations(#[case] src: &str) {
     let parsed = crate::parse(src);
-    assert!(parsed.errors().is_empty());
+    assert_no_parse_errors(parsed.errors());
     let indexes = parsed.root().indexes();
     assert_eq!(indexes.len(), 1);
     let printed = pretty_print(parsed.root().syntax());
     assert_eq!(normalise_whitespace(&printed), normalise_whitespace(src));
     let idx = parse_index(src);
-    assert_eq!(idx.name(), Some("Idx_User_ws".into()));
-    assert_eq!(idx.relation(), Some("User".into()));
+    assert_eq!(idx.name().as_deref(), Some("Idx_User_ws"));
+    assert_eq!(idx.relation().as_deref(), Some("User"));
     assert_eq!(idx.columns(), vec![String::from("username")]);
 }

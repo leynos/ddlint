@@ -23,7 +23,7 @@
 //! #         .expect("rule missing")
 //! # }
 //! let rule = first_rule("R(x) :- S(x), T(x).");
-//! assert_eq!(rule.head(), Some("R(x)".into()));
+//! assert_eq!(rule.head().as_deref(), Some("R(x)"));
 //! assert_eq!(rule.body_literals(), vec!["S(x)".into(), "T(x)".into()]);
 //! ```
 
@@ -163,7 +163,7 @@ mod tests {
             .first()
             .cloned()
             .expect("rule missing");
-        assert_eq!(rule.head(), Some("A(x)".into()));
+        assert_eq!(rule.head().as_deref(), Some("A(x)"));
         assert_eq!(rule.body_literals(), vec!["B(x)".to_string()]);
     }
 }

@@ -4,8 +4,9 @@
 //! that specific delimiter issues are reported with precise spans.
 
 use ddlint::parser::parse;
-use ddlint::test_util::{assert_delimiter_error, assert_unclosed_delimiter_error};
+mod test_util;
 use rstest::rstest;
+use test_util::{assert_delimiter_error, assert_unclosed_delimiter_error};
 
 #[rstest]
 #[case("function f(x: int {", "T_RPAREN", 0, 19, true)]

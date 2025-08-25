@@ -54,11 +54,7 @@ fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
     extractor: F,
 ) -> T {
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected errors: {:?}",
-        parsed.errors()
-    );
+    crate::test_util::assert_no_parse_errors(parsed.errors());
     let items = extractor(parsed.root());
     items.first().cloned().expect("item missing")
 }
