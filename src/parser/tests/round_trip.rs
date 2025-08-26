@@ -3,7 +3,7 @@
 //! These tests ensure parsing followed by pretty-printing reproduces the
 //! original source and that basic program structure is detected correctly.
 
-use super::common::pretty_print;
+use super::helpers::pretty_print;
 use crate::test_util::assert_no_parse_errors;
 use crate::{SyntaxKind, parse};
 use rstest::{fixture, rstest};

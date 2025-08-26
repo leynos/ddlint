@@ -9,7 +9,7 @@ use crate::{
 };
 use rstest::rstest;
 
-use super::common::parse_import;
+use super::helpers::parse_import;
 
 #[rstest]
 #[case::standard("import standard_library", "standard_library", None)]

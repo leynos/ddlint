@@ -2,7 +2,7 @@
 //!
 //! Exercises typedef and extern type handling.
 
-use super::common::pretty_print;
+use super::helpers::pretty_print;
 use crate::parse;
 use crate::parser::ast::{AstNode, TypeDef};
 use crate::test_util::assert_no_parse_errors;

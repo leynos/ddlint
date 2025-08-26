@@ -2,7 +2,7 @@
 //!
 //! Validates parsing for input, output, and internal relations.
 
-use super::common::{parse_relation, pretty_print};
+use super::helpers::{parse_relation, pretty_print};
 use crate::parser::ast::AstNode;
 use crate::test_util::assert_unclosed_delimiter_error;
 use rstest::{fixture, rstest};

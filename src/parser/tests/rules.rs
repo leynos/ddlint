@@ -2,7 +2,7 @@
 //!
 //! Ensures rule heads, bodies, and error cases are handled.
 
-use super::common::pretty_print;
+use super::helpers::pretty_print;
 use crate::parse;
 use crate::parser::ast::AstNode;
 use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
