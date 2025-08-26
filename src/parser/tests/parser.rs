@@ -142,6 +142,7 @@ fn import_missing_path() {
 #[case("extern type FfiHandle\n", ("FfiHandle", true))]
 fn typedef_parsing(#[case] src: &str, #[case] expect: (&str, bool)) {
     let parsed = parse_ok(src);
+    assert_eq!(parsed.root().type_defs().len(), 1, "expected exactly one typedef");
     let def = parsed
         .root()
         .type_defs()
@@ -199,6 +200,7 @@ fn function_errors(#[case] prog: FunctionProgram) {
 #[case(TransformerProgram::TransformerReservedNames, TransformerSpec::new("reserved").input("transformer", "Type").input("extern", "Type").output("out"))]
 fn transformer_parsing(#[case] prog: TransformerProgram, #[case] spec: TransformerSpec) {
     let parsed = parse_ok(prog.source());
+    assert_eq!(parsed.root().transformers().len(), 1, "expected exactly one transformer");
     let t = parsed
         .root()
         .transformers()

@@ -15,7 +15,8 @@ fn standard_typedef() {
     assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
-    let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
+    #[expect(clippy::expect_used, reason = "tests require a typedef")]
+    let def = defs.first().expect("typedef not found");
     assert_eq!(def.name().as_deref(), Some("Uuid"));
     assert!(!def.is_extern());
 }
@@ -27,7 +28,8 @@ fn complex_typedef() {
     assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
-    let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
+    #[expect(clippy::expect_used, reason = "tests require a typedef")]
+    let def = defs.first().expect("typedef not found");
     assert_eq!(def.name().as_deref(), Some("UserRecord"));
     assert!(!def.is_extern());
 }
@@ -39,7 +41,8 @@ fn extern_type() {
     assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
-    let def = defs.first().unwrap_or_else(|| panic!("typedef not found"));
+    #[expect(clippy::expect_used, reason = "tests require a typedef")]
+    let def = defs.first().expect("typedef not found");
     assert_eq!(def.name().as_deref(), Some("FfiHandle"));
     assert!(def.is_extern());
 }
@@ -74,9 +77,8 @@ fn typedef_variations(
     assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
-    let def = defs
-        .first()
-        .unwrap_or_else(|| panic!("typedef should exist for valid source"));
+    #[expect(clippy::expect_used, reason = "tests require a typedef")]
+    let def = defs.first().expect("typedef should exist for valid source");
     assert_eq!(def.name().as_deref(), Some(expected));
     assert_eq!(def.is_extern(), is_extern);
     let text = pretty_print(def.syntax());
@@ -91,12 +93,10 @@ fn typedef_nesting_and_whitespace() {
     assert_eq!(pretty_print(parsed.root().syntax()), src);
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 2);
-    let first = defs
-        .first()
-        .unwrap_or_else(|| panic!("first typedef missing"));
-    let second = defs
-        .get(1)
-        .unwrap_or_else(|| panic!("second typedef missing"));
+    #[expect(clippy::expect_used, reason = "tests require both typedefs to exist")]
+    let first = defs.first().expect("first typedef missing");
+    #[expect(clippy::expect_used, reason = "tests require both typedefs to exist")]
+    let second = defs.get(1).expect("second typedef missing");
     assert_eq!(pretty_print(first.syntax()), "typedef Foo=string\n");
     assert_eq!(pretty_print(second.syntax()), "typedef   Bar = u64  \n");
     let first_end = first.syntax().text_range().end();
@@ -111,8 +111,7 @@ fn typedef_missing_name_returns_none() {
     assert_no_parse_errors(parsed.errors());
     let defs = parsed.root().type_defs();
     assert_eq!(defs.len(), 1);
-    let def = defs
-        .first()
-        .unwrap_or_else(|| panic!("typedef span exists"));
+    #[expect(clippy::expect_used, reason = "tests require a typedef span")]
+    let def = defs.first().expect("typedef span exists");
     assert_eq!(def.name(), None);
 }
