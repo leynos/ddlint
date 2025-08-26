@@ -45,6 +45,7 @@ pub(super) fn normalise_whitespace(text: &str) -> String {
 }
 
 /// Parse `src` and assert that the program is well formed.
+#[track_caller]
 pub(super) fn parse_ok(src: &str) -> crate::Parsed {
     let parsed = parse(src);
     crate::test_util::assert_no_parse_errors(parsed.errors());
@@ -53,16 +54,20 @@ pub(super) fn parse_ok(src: &str) -> crate::Parsed {
 }
 
 /// Parse `src` expecting at least one error.
+#[track_caller]
 pub(super) fn parse_err(src: &str) -> crate::Parsed {
     let parsed = parse(src);
     assert!(
         !parsed.errors().is_empty(),
         "expected parse to fail but it succeeded"
     );
+    // Keep CST shape invariant even on error paths.
+    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     parsed
 }
 
 /// Parse and ensure the source round-trips via `pretty_print`.
+#[track_caller]
 pub(super) fn round_trip(src: &str) {
     let parsed = parse_ok(src);
     assert_eq!(pretty_print(parsed.root().syntax()), src);

@@ -35,7 +35,8 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
     };
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
-    let rule = rules.first().unwrap_or_else(|| panic!("rule missing"));
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = rules.first().expect("rule missing");
     assert_eq!(
         pretty_print(rule.syntax()),
         rule_input,
@@ -77,8 +78,7 @@ fn invalid_rule_cases(
 ) {
     let parsed = parse_err(input);
     let errors = parsed.errors();
-    let first = errors
-        .first()
-        .unwrap_or_else(|| panic!("expected parse error"));
+    #[expect(clippy::expect_used, reason = "tests expect at least one parse error")]
+    let first = errors.first().expect("expected parse error");
     assert_parse_error(std::slice::from_ref(first), pattern, start, end);
 }

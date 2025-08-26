@@ -45,6 +45,7 @@ fn relation_counts(#[case] prog: BasicProgram, #[case] expected: usize) {
 #[case(RelationProgram::InternalRelationCompoundPk, RelationSpec::new("UserSession").column(USER_ID, "u32").column("session_id", "string").column("start_time", "u64").pk(vec![USER_ID, "session_id"]))]
 fn relation_parsing(#[case] prog: RelationProgram, #[case] spec: RelationSpec) {
     let parsed = parse_ok(prog.source());
+    assert_eq!(parsed.root().relations().len(), 1, "expected exactly one relation");
     let rel = parsed.root().relations().first().expect("relation missing");
     spec.assert(rel);
 }
@@ -68,6 +69,7 @@ fn relation_invalid(#[case] prog: RelationProgram) {
 #[case(IndexProgram::IndexWhitespaceVariations, IndexSpec::new("Idx_User_ws", "User").column(USERNAME))]
 fn index_parsing(#[case] prog: IndexProgram, #[case] spec: IndexSpec) {
     let parsed = parse_ok(prog.source());
+    assert_eq!(parsed.root().indexes().len(), 1, "expected exactly one index");
     let idx = parsed.root().indexes().first().expect("index missing");
     spec.assert(idx);
 }
