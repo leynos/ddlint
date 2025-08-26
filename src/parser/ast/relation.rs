@@ -21,7 +21,7 @@
 //! # }
 //! let rel = first_relation("input relation R(x: u32, y: string) primary key (x)");
 //!
-//! assert_eq!(rel.name(), Some("R".into()));
+//! assert_eq!(rel.name().as_deref(), Some("R"));
 //! assert!(rel.is_input());
 //! assert_eq!(
 //!     rel.columns(),
@@ -148,7 +148,7 @@ mod tests {
             .first()
             .cloned()
             .expect("relation missing");
-        assert_eq!(rel.name(), Some("R".into()));
+        assert_eq!(rel.name().as_deref(), Some("R"));
         assert!(rel.is_input());
     }
 }

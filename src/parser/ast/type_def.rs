@@ -44,6 +44,7 @@ mod tests {
     #[test]
     fn extern_type_parsed() {
         let parsed = parse("extern type Handle");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let td = parsed
             .root()
@@ -51,13 +52,14 @@ mod tests {
             .first()
             .cloned()
             .expect("typedef missing");
-        assert_eq!(td.name(), Some("Handle".into()));
+        assert_eq!(td.name().as_deref(), Some("Handle"));
         assert!(td.is_extern());
     }
 
     #[test]
     fn regular_typedef_parsed() {
         let parsed = parse("typedef UserId = u64");
+        crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let td = parsed
             .root()
@@ -65,7 +67,7 @@ mod tests {
             .first()
             .cloned()
             .expect("typedef missing");
-        assert_eq!(td.name(), Some("UserId".into()));
+        assert_eq!(td.name().as_deref(), Some("UserId"));
         assert!(!td.is_extern());
     }
 }

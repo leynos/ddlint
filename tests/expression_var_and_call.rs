@@ -5,10 +5,11 @@
 
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
+mod test_util;
+use rstest::rstest;
+use test_util::{
     assert_delimiter_error, assert_parse_error, assert_unclosed_delimiter_error, call, lit_num, var,
 };
-use rstest::rstest;
 
 #[rstest]
 #[case("x", var("x"))]

@@ -2,7 +2,11 @@
 //!
 //! Covers standard and aliased imports along with basic error recovery.
 
-use crate::{ast::Import, parse, test_util::assert_parse_error};
+use crate::{
+    ast::Import,
+    parse,
+    test_util::{assert_no_parse_errors, assert_parse_error},
+};
 use rstest::rstest;
 
 use super::common::parse_import;
@@ -45,7 +49,7 @@ fn import_invalid_then_valid() {
 fn import_multiple_statements() {
     let src = "import a\nimport b as c";
     let parsed = parse(src);
-    assert!(parsed.errors().is_empty());
+    assert_no_parse_errors(parsed.errors());
     let imports = parsed.root().imports();
     let paths: Vec<_> = imports.iter().map(|i| (i.path(), i.alias())).collect();
     assert_eq!(paths, [("a".into(), None), ("b".into(), Some("c".into()))]);

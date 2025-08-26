@@ -75,15 +75,14 @@ fn parses_functions(
     #[case] ret: Option<&str>,
 ) {
     let func = parse_function(src);
-    assert_eq!(func.name(), Some(name.into()));
+    assert_eq!(func.name().as_deref(), Some(name));
     assert_eq!(func.is_extern(), is_extern);
     let expected: Vec<(String, String)> = params
         .into_iter()
         .map(|(n, t)| (n.into(), t.into()))
         .collect();
     assert_eq!(func.parameters(), expected);
-    let expected_ret = ret.map(str::to_string);
-    assert_eq!(func.return_type(), expected_ret);
+    assert_eq!(func.return_type().as_deref(), ret);
     assert_eq!(pretty_print(func.syntax()), src);
 }
 
