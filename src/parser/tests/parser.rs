@@ -5,7 +5,7 @@
 
 use crate::{SyntaxKind, ast::AstNode};
 use rstest::rstest;
-use super::helpers::{parse_err, parse_ok, pretty_print, round_trip};
+use super::helpers::{parse_err, parse_ok, round_trip};
 
 mod programs;
 use programs::{
@@ -85,10 +85,7 @@ fn index_errors(#[case] prog: IndexProgram) {
 #[case(RuleProgram::MultiLiteralRule)]
 #[case(RuleProgram::FactRule)]
 fn rule_parsing(#[case] prog: RuleProgram) {
-    let src = prog.source();
-    let parsed = parse_ok(src);
-    let rule = parsed.root().rules().first().expect("rule missing");
-    assert_eq!(pretty_print(rule.syntax()), src);
+    round_trip(prog.source());
 }
 
 #[rstest]
@@ -173,6 +170,11 @@ fn typedef_errors(#[case] src: &str) {
 #[case(FunctionProgram::FunctionShiftParam, FnSpec::new("shift").param("x", "Vec<<u8>>").ret("bool"))]
 fn function_parsing(#[case] prog: FunctionProgram, #[case] spec: FnSpec) {
     let parsed = parse_ok(prog.source());
+    assert_eq!(
+        parsed.root().functions().len(),
+        1,
+        "expected exactly one function",
+    );
     let func = parsed.root().functions().first().expect("function missing");
     spec.assert(func);
 }

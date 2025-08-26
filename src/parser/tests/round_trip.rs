@@ -3,9 +3,8 @@
 //! These tests ensure parsing followed by pretty-printing reproduces the
 //! original source and that basic program structure is detected correctly.
 
-use super::helpers::pretty_print;
-use crate::test_util::assert_no_parse_errors;
-use crate::{SyntaxKind, parse};
+use super::helpers::{parse_err, parse_ok, pretty_print, round_trip};
+use crate::SyntaxKind;
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -25,17 +24,12 @@ fn empty_prog() -> &'static str {
 
 #[rstest]
 fn parse_round_trip(simple_prog: &str) {
-    let parsed = parse(simple_prog);
-    assert_no_parse_errors(parsed.errors());
-    let text = pretty_print(parsed.root().syntax());
-    assert_eq!(text, simple_prog);
-    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+    round_trip(simple_prog);
 }
 
 #[rstest]
 fn complex_program_round_trip(complex_prog: &str) {
-    let parsed = parse(complex_prog);
-    assert_no_parse_errors(parsed.errors());
+    let parsed = parse_ok(complex_prog);
     let text = pretty_print(parsed.root().syntax());
     assert_eq!(text, complex_prog);
     let relations = parsed.root().relations();
@@ -51,8 +45,7 @@ fn complex_program_round_trip(complex_prog: &str) {
 
 #[rstest]
 fn empty_program_has_no_items(empty_prog: &str) {
-    let parsed = parse(empty_prog);
-    assert_no_parse_errors(parsed.errors());
+    let parsed = parse_ok(empty_prog);
     assert!(parsed.root().imports().is_empty());
     assert!(parsed.root().type_defs().is_empty());
     assert!(parsed.root().relations().is_empty());
@@ -66,11 +59,7 @@ fn empty_program_has_no_items(empty_prog: &str) {
 #[rstest]
 fn error_token_produces_error_node() {
     let source = "?( relation Foo(";
-    let parsed = parse(source);
-    assert!(
-        !parsed.errors().is_empty(),
-        "expected parse errors for {source}"
-    );
+    let parsed = parse_err(source);
     let root = parsed.root().syntax();
     let has_error = root
         .children_with_tokens()

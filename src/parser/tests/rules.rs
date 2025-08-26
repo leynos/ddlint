@@ -2,10 +2,9 @@
 //!
 //! Ensures rule heads, bodies, and error cases are handled.
 
-use super::helpers::pretty_print;
-use crate::parse;
+use super::helpers::{parse_err, parse_ok, pretty_print};
 use crate::parser::ast::AstNode;
-use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
+use crate::test_util::{ErrorPattern, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -29,21 +28,14 @@ fn fact_rule() -> &'static str {
 #[case::multi_literal_rule(multi_literal_rule(), true)]
 #[case::fact_rule(fact_rule(), false)]
 fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool) {
-    let parsed = parse(rule_input);
-    if should_have_errors {
-        assert!(
-            !parsed.errors().is_empty(),
-            "expected parse errors, got: {:?}",
-            parsed.errors()
-        );
+    let parsed = if should_have_errors {
+        parse_err(rule_input)
     } else {
-        assert_no_parse_errors(parsed.errors());
-    }
+        parse_ok(rule_input)
+    };
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
-    let rule = rules
-        .first()
-        .unwrap_or_else(|| panic!("rule missing, rules: {rules:?}"));
+    let rule = rules.first().unwrap_or_else(|| panic!("rule missing"));
     assert_eq!(
         pretty_print(rule.syntax()),
         rule_input,
@@ -83,7 +75,7 @@ fn invalid_rule_cases(
     #[case] start: usize,
     #[case] end: usize,
 ) {
-    let parsed = parse(input);
+    let parsed = parse_err(input);
     let errors = parsed.errors();
     let first = errors
         .first()
