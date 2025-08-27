@@ -2,7 +2,7 @@
 //!
 //! Exercises extern and normal functions with varied signatures.
 
-use super::common::{parse_function, pretty_print};
+use super::helpers::{parse_function, pretty_print};
 use crate::{parser::ast::AstNode, test_util::assert_parse_error};
 use rstest::{fixture, rstest};
 

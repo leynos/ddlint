@@ -2,7 +2,7 @@
 //!
 //! Validates extern transformer syntax and edge cases.
 
-use super::common::parse_transformer;
+use super::helpers::parse_transformer;
 use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
 use rstest::{fixture, rstest};
 

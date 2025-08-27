@@ -3,7 +3,7 @@
 //! Utilities here support concise feature-focused parser tests.
 
 use crate::{
-    parse,
+    SyntaxKind, parse,
     parser::ast::{Function, Import, Index, Relation, Transformer},
 };
 
@@ -44,6 +44,35 @@ pub(super) fn normalise_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Parse `src` and assert that the program is well formed.
+#[track_caller]
+pub(super) fn parse_ok(src: &str) -> crate::Parsed {
+    let parsed = parse(src);
+    crate::test_util::assert_no_parse_errors(parsed.errors());
+    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+    parsed
+}
+
+/// Parse `src` expecting at least one error.
+#[track_caller]
+pub(super) fn parse_err(src: &str) -> crate::Parsed {
+    let parsed = parse(src);
+    assert!(
+        !parsed.errors().is_empty(),
+        "expected parse to fail but it succeeded"
+    );
+    // Keep CST shape invariant even on error paths.
+    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+    parsed
+}
+
+/// Parse and ensure the source round-trips via `pretty_print`.
+#[track_caller]
+pub(super) fn round_trip(src: &str) {
+    let parsed = parse_ok(src);
+    assert_eq!(pretty_print(parsed.root().syntax()), src);
+}
+
 /// Parse a program and extract the first item produced by `extractor`.
 ///
 /// The helper asserts that parsing succeeds without errors and that the
@@ -55,6 +84,7 @@ fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
 ) -> T {
     let parsed = parse(src);
     crate::test_util::assert_no_parse_errors(parsed.errors());
+    assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     let items = extractor(parsed.root());
     items.first().cloned().expect("item missing")
 }

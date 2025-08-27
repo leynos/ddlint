@@ -54,11 +54,11 @@ pub mod ast;
 mod tests {
     //! Tests for parser components and integration scenarios.
 
-    mod common;
     mod expression;
     mod expression_integration;
     mod expression_span;
     mod functions;
+    mod helpers;
     mod imports;
     mod indexes;
     mod relations;
