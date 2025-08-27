@@ -81,6 +81,38 @@ pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     Expr::Call { name: name.0, args }
 }
 
+/// Construct a struct literal [`Expr::Struct`].
+#[must_use]
+pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
+    let name: Name = name.into();
+    Expr::Struct {
+        name: name.0,
+        fields,
+    }
+}
+
+/// Convenience to build a struct field tuple.
+#[must_use]
+pub fn field(name: impl Into<Name>, expr: Expr) -> (String, Expr) {
+    let name: Name = name.into();
+    (name.0, expr)
+}
+
+/// Construct a tuple literal [`Expr::Tuple`].
+#[must_use]
+pub fn tuple(items: Vec<Expr>) -> Expr {
+    Expr::Tuple(items)
+}
+
+/// Construct a closure literal [`Expr::Closure`].
+#[must_use]
+pub fn closure(params: Vec<&str>, body: Expr) -> Expr {
+    Expr::Closure {
+        params: params.into_iter().map(ToString::to_string).collect(),
+        body: Box::new(body),
+    }
+}
+
 /// Assert that a parser produced no errors.
 ///
 /// # Examples

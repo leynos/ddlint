@@ -184,13 +184,54 @@ where
             return Some(lit);
         }
         match kind {
-            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(&span))),
+            SyntaxKind::T_IDENT => {
+                let name = self.slice(&span);
+                if matches!(self.peek(), Some(SyntaxKind::T_LBRACE)) {
+                    self.next();
+                    let fields = self.parse_struct_fields()?;
+                    if !self.expect(SyntaxKind::T_RBRACE) {
+                        return None;
+                    }
+                    Some(Expr::Struct { name, fields })
+                } else {
+                    Some(Expr::Variable(name))
+                }
+            }
             SyntaxKind::T_LPAREN => {
-                let expr = self.parse_expr(0);
+                if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+                    self.next();
+                    return Some(Expr::Tuple(Vec::new()));
+                }
+                let first = self.parse_expr(0)?;
+                let mut items = vec![first];
+                let mut is_tuple = false;
+                while matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                    is_tuple = true;
+                    self.next();
+                    if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+                        break;
+                    }
+                    items.push(self.parse_expr(0)?);
+                }
                 if !self.expect(SyntaxKind::T_RPAREN) {
                     return None;
                 }
-                expr.map(|e| Expr::Group(Box::new(e)))
+                if is_tuple {
+                    Some(Expr::Tuple(items))
+                } else {
+                    Some(Expr::Group(Box::new(items.remove(0))))
+                }
+            }
+            SyntaxKind::T_PIPE => {
+                let params = self.parse_closure_params()?;
+                if !self.expect(SyntaxKind::T_PIPE) {
+                    return None;
+                }
+                let body = self.parse_expr(0)?;
+                Some(Expr::Closure {
+                    params,
+                    body: Box::new(body),
+                })
             }
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
@@ -223,6 +264,57 @@ where
             self.next();
         }
         Some(args)
+    }
+
+    /// Parse fields of a struct literal.
+    ///
+    /// Assumes the opening brace has already been consumed.
+    fn parse_struct_fields(&mut self) -> Option<Vec<(String, Expr)>> {
+        let mut fields = Vec::new();
+        if matches!(self.peek(), Some(SyntaxKind::T_RBRACE)) {
+            return Some(fields);
+        }
+        loop {
+            let (k, sp) = self.next()?;
+            if k != SyntaxKind::T_IDENT {
+                self.push_error(sp, "expected field name");
+                return None;
+            }
+            let name = self.slice(&sp);
+            if !self.expect(SyntaxKind::T_COLON) {
+                return None;
+            }
+            let value = self.parse_expr(0)?;
+            fields.push((name, value));
+            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                break;
+            }
+            self.next();
+        }
+        Some(fields)
+    }
+
+    /// Parse the parameter list of a closure literal.
+    ///
+    /// Assumes the leading `|` has been consumed.
+    fn parse_closure_params(&mut self) -> Option<Vec<String>> {
+        let mut params = Vec::new();
+        if matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
+            return Some(params);
+        }
+        loop {
+            let (k, sp) = self.next()?;
+            if k != SyntaxKind::T_IDENT {
+                self.push_error(sp, "expected parameter name");
+                return None;
+            }
+            params.push(self.slice(&sp));
+            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                break;
+            }
+            self.next();
+        }
+        Some(params)
     }
 
     /// Parse a literal token into an [`Expr`].

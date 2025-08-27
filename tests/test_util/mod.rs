@@ -49,6 +49,40 @@ pub fn call(name: &str, args: Vec<Expr>) -> Expr {
 }
 const _: fn(&str, Vec<Expr>) -> Expr = call;
 
+/// Construct a struct literal [`Expr::Struct`].
+#[must_use]
+pub fn struct_expr(name: &str, fields: Vec<(String, Expr)>) -> Expr {
+    Expr::Struct {
+        name: name.into(),
+        fields,
+    }
+}
+const _: fn(&str, Vec<(String, Expr)>) -> Expr = struct_expr;
+
+/// Convenience to build a struct field tuple.
+#[must_use]
+pub fn field(name: &str, expr: Expr) -> (String, Expr) {
+    (name.into(), expr)
+}
+const _: fn(&str, Expr) -> (String, Expr) = field;
+
+/// Construct a tuple literal [`Expr::Tuple`].
+#[must_use]
+pub fn tuple(items: Vec<Expr>) -> Expr {
+    Expr::Tuple(items)
+}
+const _: fn(Vec<Expr>) -> Expr = tuple;
+
+/// Construct a closure literal [`Expr::Closure`].
+#[must_use]
+pub fn closure(params: Vec<&str>, body: Expr) -> Expr {
+    Expr::Closure {
+        params: params.into_iter().map(ToString::to_string).collect(),
+        body: Box::new(body),
+    }
+}
+const _: fn(Vec<&str>, Expr) -> Expr = closure;
+
 /// Assert that a parser produced no errors.
 ///
 /// # Examples

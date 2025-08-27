@@ -361,3 +361,10 @@ parenthesis, the parser treats it as a function call, parsing a comma-separated
 list of argument expressions and producing `Expr::Call { name, args }`. This
 postfix form naturally binds tighter than infix operators, so no additional
 precedence entries are required.
+
+Struct literals, tuple literals and closures extend the prefix grammar. Struct
+construction recognises `Ident { field: expr, ... }` and records field order in
+the AST. Tuple literals are distinguished from grouped expressions by the
+presence of a comma or an empty pair of parentheses. Closure literals parse a
+pipe-delimited parameter list followed by the body expression. Each feature is
+implemented with small helper routines to keep the main parser readable.

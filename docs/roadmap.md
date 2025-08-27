@@ -105,7 +105,7 @@ control flow. This phase aims to build a complete grammar.
   - [x] Implement parsers for variable references (`e_var`) and function calls
     (`e_func`).
 
-  - [ ] Implement parsers for compound data structures: struct literals
+  - [x] Implement parsers for compound data structures: struct literals
     (`e_struct`), tuple literals (`e_tuple`), and closures (`e_closure`).
 
 - [ ] **Implement Control-Flow Parsing**
