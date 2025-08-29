@@ -366,5 +366,6 @@ Struct literals, tuple literals and closures extend the prefix grammar. Struct
 construction recognises `Ident { field: expr, ... }` and records field order in
 the AST. Tuple literals are distinguished from grouped expressions by the
 presence of a comma or an empty pair of parentheses. Closure literals parse a
-pipe-delimited parameter list followed by the body expression. Each feature is
-implemented with small helper routines to keep the main parser readable.
+pipe-delimited parameter list (allowing a trailing comma) followed by the body
+expression. Each feature is implemented with small helper routines to keep the
+main parser readable.

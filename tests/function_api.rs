@@ -4,9 +4,8 @@
 //! and that the `Function` AST node provides the expected API methods.
 
 use ddlint::parser::parse;
-mod test_util;
+use ddlint::test_util::assert_no_parse_errors;
 use rstest::rstest;
-use test_util::assert_no_parse_errors;
 
 #[rstest]
 #[case(

@@ -190,6 +190,21 @@ fn assert_delimiter_error_impl(
     );
 }
 
+/// Assert that a parser error indicates a delimiter mismatch.
+///
+/// # Panics
+/// Panics if `errors` is empty or the error does not match `expected_pattern`.
+#[track_caller]
+pub fn assert_delimiter_error(
+    errors: &[Simple<SyntaxKind>],
+    expected_pattern: impl Into<ErrorPattern>,
+    start: usize,
+    end: usize,
+) {
+    let pattern: ErrorPattern = expected_pattern.into();
+    assert_delimiter_error_impl(errors, &pattern, start..end);
+}
+
 /// Assert that a parser error indicates an unclosed delimiter.
 ///
 /// This verifies the error span points to the opening delimiter and that no

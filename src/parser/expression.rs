@@ -290,7 +290,10 @@ where
         if is_tuple {
             Some(Expr::Tuple(items))
         } else {
-            Some(Expr::Group(Box::new(items.remove(0))))
+            // `items` has exactly one element here; pop avoids shifting.
+            #[expect(clippy::expect_used, reason = "tuple contains one element")]
+            let item = items.pop().expect("group expression missing item");
+            Some(Expr::Group(Box::new(item)))
         }
     }
 
@@ -309,9 +312,16 @@ where
     /// ```
     fn parse_closure_literal(&mut self) -> Option<Expr> {
         let params = self.parse_closure_params()?;
-        if !self.expect(SyntaxKind::T_PIPE) {
+        if !matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
+            let span = self
+                .tokens
+                .peek()
+                .map(|t| t.1.clone())
+                .unwrap_or(self.src.len()..self.src.len());
+            self.push_error(span, "expected `|`");
             return None;
         }
+        self.next();
         let body = self.parse_expr(0)?;
         Some(Expr::Closure {
             params,
@@ -384,7 +394,10 @@ where
             if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
                 break;
             }
-            self.next();
+            self.next(); // consume comma
+            if matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
+                break; // allow trailing comma
+            }
         }
         Some(params)
     }
