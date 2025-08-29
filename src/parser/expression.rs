@@ -184,55 +184,9 @@ where
             return Some(lit);
         }
         match kind {
-            SyntaxKind::T_IDENT => {
-                let name = self.slice(&span);
-                if matches!(self.peek(), Some(SyntaxKind::T_LBRACE)) {
-                    self.next();
-                    let fields = self.parse_struct_fields()?;
-                    if !self.expect(SyntaxKind::T_RBRACE) {
-                        return None;
-                    }
-                    Some(Expr::Struct { name, fields })
-                } else {
-                    Some(Expr::Variable(name))
-                }
-            }
-            SyntaxKind::T_LPAREN => {
-                if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
-                    self.next();
-                    return Some(Expr::Tuple(Vec::new()));
-                }
-                let first = self.parse_expr(0)?;
-                let mut items = vec![first];
-                let mut is_tuple = false;
-                while matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
-                    is_tuple = true;
-                    self.next();
-                    if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
-                        break;
-                    }
-                    items.push(self.parse_expr(0)?);
-                }
-                if !self.expect(SyntaxKind::T_RPAREN) {
-                    return None;
-                }
-                if is_tuple {
-                    Some(Expr::Tuple(items))
-                } else {
-                    Some(Expr::Group(Box::new(items.remove(0))))
-                }
-            }
-            SyntaxKind::T_PIPE => {
-                let params = self.parse_closure_params()?;
-                if !self.expect(SyntaxKind::T_PIPE) {
-                    return None;
-                }
-                let body = self.parse_expr(0)?;
-                Some(Expr::Closure {
-                    params,
-                    body: Box::new(body),
-                })
-            }
+            SyntaxKind::T_IDENT => self.parse_identifier_or_struct(&span),
+            SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
+            SyntaxKind::T_PIPE => self.parse_closure_literal(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
                     self.push_error(span, "unexpected token");
@@ -245,6 +199,124 @@ where
                 })
             }
         }
+    }
+
+    /// Parse an identifier expression or struct literal.
+    ///
+    /// The identifier span has already been consumed from the stream. The
+    /// method resolves the name and delegates to [`parse_ident_expression`] to
+    /// determine whether a struct literal or variable is present.
+    ///
+    /// # Parameters
+    /// - `span`: Span covering the identifier token.
+    ///
+    /// # Returns
+    /// The parsed expression or `None` if parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// let expr = parser.parse_identifier_or_struct(&span).unwrap();
+    /// ```
+    fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
+        let name = self.slice(span);
+        self.parse_ident_expression(name)
+    }
+
+    /// Parse either a struct literal or variable expression.
+    ///
+    /// This inspects the next token after an identifier to decide whether it
+    /// introduces a struct literal (`Name { ... }`) or is a simple variable
+    /// reference.
+    ///
+    /// # Parameters
+    /// - `name`: Text of the identifier just parsed.
+    ///
+    /// # Returns
+    /// The parsed expression or `None` if struct field parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// // assumes `parser` has the remaining tokens for `Point { x: 1 }`
+    /// let expr = parser
+    ///     .parse_ident_expression("Point".to_string())
+    ///     .unwrap();
+    /// ```
+    fn parse_ident_expression(&mut self, name: String) -> Option<Expr> {
+        if matches!(self.peek(), Some(SyntaxKind::T_LBRACE)) {
+            self.next();
+            let fields = self.parse_struct_fields()?;
+            if !self.expect(SyntaxKind::T_RBRACE) {
+                return None;
+            }
+            Some(Expr::Struct { name, fields })
+        } else {
+            Some(Expr::Variable(name))
+        }
+    }
+
+    /// Parse an expression in parentheses or a tuple literal.
+    ///
+    /// Assumes the opening parenthesis has already been consumed. A single
+    /// element without a trailing comma is treated as a grouped expression.
+    /// Multiple elements or a trailing comma produce a tuple.
+    ///
+    /// # Returns
+    /// The parsed expression or `None` if parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// // parses `(1, 2)` as a tuple
+    /// let expr = parser.parse_parenthesized_expr().unwrap();
+    /// ```
+    fn parse_parenthesized_expr(&mut self) -> Option<Expr> {
+        if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+            self.next();
+            return Some(Expr::Tuple(Vec::new()));
+        }
+        let first = self.parse_expr(0)?;
+        let mut items = vec![first];
+        let mut is_tuple = false;
+        while matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+            is_tuple = true;
+            self.next();
+            if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+                break;
+            }
+            items.push(self.parse_expr(0)?);
+        }
+        if !self.expect(SyntaxKind::T_RPAREN) {
+            return None;
+        }
+        if is_tuple {
+            Some(Expr::Tuple(items))
+        } else {
+            Some(Expr::Group(Box::new(items.remove(0))))
+        }
+    }
+
+    /// Parse a closure literal starting with `|`.
+    ///
+    /// Assumes the leading pipe has already been consumed. Parameters are read
+    /// until the closing pipe, after which the body expression is parsed.
+    ///
+    /// # Returns
+    /// The constructed [`Expr::Closure`] or `None` if parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// // parses `|x| x` as a closure expression
+    /// let expr = parser.parse_closure_literal().unwrap();
+    /// ```
+    fn parse_closure_literal(&mut self) -> Option<Expr> {
+        let params = self.parse_closure_params()?;
+        if !self.expect(SyntaxKind::T_PIPE) {
+            return None;
+        }
+        let body = self.parse_expr(0)?;
+        Some(Expr::Closure {
+            params,
+            body: Box::new(body),
+        })
     }
 
     /// Parse a comma-separated list of function arguments.
