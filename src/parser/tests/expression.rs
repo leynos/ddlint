@@ -21,7 +21,7 @@ use rstest::rstest;
 #[case("Point { x: 1, y: 2 }", struct_expr("Point", vec![field("x", lit_num("1")), field("y", lit_num("2"))]))]
 #[case("Point {}", struct_expr("Point", vec![]))]
 #[case("|x, y| x + y", closure(vec!["x", "y"], Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }))]
-#[case("|| 1", closure(vec![], lit_num("1")))]
+#[case("|| 1", closure(std::iter::empty::<&str>(), lit_num("1")))]
 #[case("|x,| x", closure(vec!["x"], var("x")))]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
