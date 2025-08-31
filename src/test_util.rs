@@ -108,13 +108,13 @@ pub fn tuple(items: Vec<Expr>) -> Expr {
 ///
 /// Accepts any iterable of parameter names.
 #[must_use]
-pub fn closure<P>(params: P, body: Expr) -> Expr
+pub fn closure<P, S>(params: P, body: Expr) -> Expr
 where
-    P: IntoIterator,
-    P::Item: ToString,
+    P: IntoIterator<Item = S>,
+    S: AsRef<str>,
 {
     Expr::Closure {
-        params: params.into_iter().map(|p| p.to_string()).collect(),
+        params: params.into_iter().map(|p| p.as_ref().to_string()).collect(),
         body: Box::new(body),
     }
 }

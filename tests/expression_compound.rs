@@ -23,6 +23,13 @@ use rstest::rstest;
     "Point { x: 1, }",
     struct_expr("Point", vec![field("x", lit_num("1"))]),
 )]
+#[case(
+    "Point { x: 1, y: 2, }",
+    struct_expr(
+        "Point",
+        vec![field("x", lit_num("1")), field("y", lit_num("2"))],
+    ),
+)]
 #[case("|x, y| x + y", closure(vec!["x", "y"], Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }))]
 #[case("|| 1", closure(std::iter::empty::<&str>(), lit_num("1")))]
 #[case("|x,| x", closure(vec!["x"], var("x")))]
@@ -36,6 +43,7 @@ fn parses_compound_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("(1, 2", "expected", 5, 5, true)]
 #[case("|x|", "invalid expression", 3, 3, false)]
 #[case("|x x", "expected `|`", 3, 4, false)]
+#[case("||", "invalid expression", 2, 2, false)]
 fn compound_expression_errors(
     #[case] src: &str,
     #[case] msg: &str,

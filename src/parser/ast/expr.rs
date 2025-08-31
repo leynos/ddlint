@@ -107,27 +107,23 @@ impl Expr {
                 }
             }
             Self::Struct { name, fields } => {
-                let fields = fields
-                    .iter()
-                    .map(|(n, e)| format!("({n} {})", e.to_sexpr()))
-                    .collect::<Vec<_>>();
-                if fields.is_empty() {
-                    format!("(struct {name})")
-                } else {
-                    format!("(struct {name} {})", fields.join(" "))
+                use std::fmt::Write as _;
+                let mut out = String::with_capacity(16);
+                let _ = write!(&mut out, "(struct {name}");
+                for (n, e) in fields {
+                    let _ = write!(&mut out, " ({n} {})", e.to_sexpr());
                 }
+                out.push(')');
+                out
             }
             Self::Tuple(items) => {
-                let items = items
-                    .iter()
-                    .map(Self::to_sexpr)
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                if items.is_empty() {
-                    "(tuple)".to_string()
-                } else {
-                    format!("(tuple {items})")
+                use std::fmt::Write as _;
+                let mut out = String::from("(tuple");
+                for item in items {
+                    let _ = write!(&mut out, " {}", item.to_sexpr());
                 }
+                out.push(')');
+                out
             }
             Self::Closure { params, body } => {
                 let params = params.join(" ");

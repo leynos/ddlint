@@ -17,8 +17,7 @@ thiserror = { version = "1.0", default-features = false }
 internal-test-utils = []
 
 [dev-dependencies]
-ddlint = { path = ".", features = ["internal-test-utils"] }
-rstest = ">=0.25.0, <0.26.0"
+rstest = "0.25"
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
