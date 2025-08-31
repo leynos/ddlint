@@ -348,58 +348,91 @@ where
         Some(args)
     }
 
-    /// Parse fields of a struct literal.
+    /// Parse a comma-separated sequence of identifiers.
     ///
-    /// Assumes the opening brace has already been consumed.
-    fn parse_struct_fields(&mut self) -> Option<Vec<(String, Expr)>> {
-        let mut fields = Vec::new();
-        if matches!(self.peek(), Some(SyntaxKind::T_RBRACE)) {
-            return Some(fields);
+    /// `terminator` specifies the closing token, `err_msg` is used when a
+    /// non-identifier token is encountered, and `process_item` constructs the
+    /// output element for each identifier. Trailing commas are permitted when
+    /// `allow_trailing_comma` is `true`.
+    ///
+    /// ```rust,ignore
+    /// // parses `|x, y|` parameters as ["x", "y"]
+    /// let ids = parser.parse_comma_separated_identifiers(
+    ///     SyntaxKind::T_PIPE,
+    ///     "expected parameter name",
+    ///     |_parser, name| Some(name),
+    ///     true,
+    /// ).unwrap();
+    /// assert_eq!(ids, vec!["x", "y"]);
+    /// ```
+    fn parse_comma_separated_identifiers<T>(
+        &mut self,
+        terminator: SyntaxKind,
+        err_msg: &'static str,
+        mut process_item: impl FnMut(&mut Self, String) -> Option<T>,
+        allow_trailing_comma: bool,
+    ) -> Option<Vec<T>> {
+        let mut items = Vec::new();
+        if matches!(self.peek(), Some(k) if k == terminator) {
+            return Some(items);
         }
         loop {
             let (k, sp) = self.next()?;
             if k != SyntaxKind::T_IDENT {
-                self.push_error(sp, "expected field name");
+                self.push_error(sp, err_msg);
                 return None;
             }
             let name = self.slice(&sp);
-            if !self.expect(SyntaxKind::T_COLON) {
-                return None;
-            }
-            let value = self.parse_expr(0)?;
-            fields.push((name, value));
+            items.push(process_item(self, name)?);
             if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
                 break;
             }
             self.next();
+            if allow_trailing_comma && matches!(self.peek(), Some(k) if k == terminator) {
+                break;
+            }
         }
-        Some(fields)
+        Some(items)
+    }
+
+    /// Parse fields of a struct literal.
+    ///
+    /// Assumes the opening brace has already been consumed.
+    ///
+    /// ```rust,ignore
+    /// // parses `{ x: 1 }` as a single field
+    /// let fields = parser.parse_struct_fields().unwrap();
+    /// ```
+    fn parse_struct_fields(&mut self) -> Option<Vec<(String, Expr)>> {
+        self.parse_comma_separated_identifiers(
+            SyntaxKind::T_RBRACE,
+            "expected field name",
+            |parser, name| {
+                if !parser.expect(SyntaxKind::T_COLON) {
+                    return None;
+                }
+                let value = parser.parse_expr(0)?;
+                Some((name, value))
+            },
+            true,
+        )
     }
 
     /// Parse the parameter list of a closure literal.
     ///
     /// Assumes the leading `|` has been consumed.
+    ///
+    /// ```rust,ignore
+    /// // parses `|x, y|` parameters as ["x", "y"]
+    /// let params = parser.parse_closure_params().unwrap();
+    /// ```
     fn parse_closure_params(&mut self) -> Option<Vec<String>> {
-        let mut params = Vec::new();
-        if matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
-            return Some(params);
-        }
-        loop {
-            let (k, sp) = self.next()?;
-            if k != SyntaxKind::T_IDENT {
-                self.push_error(sp, "expected parameter name");
-                return None;
-            }
-            params.push(self.slice(&sp));
-            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
-                break;
-            }
-            self.next(); // consume comma
-            if matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
-                break; // allow trailing comma
-            }
-        }
-        Some(params)
+        self.parse_comma_separated_identifiers(
+            SyntaxKind::T_PIPE,
+            "expected parameter name",
+            |_parser, name| Some(name),
+            true,
+        )
     }
 
     /// Parse a literal token into an [`Expr`].

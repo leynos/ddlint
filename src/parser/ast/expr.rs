@@ -65,7 +65,7 @@ pub enum Expr {
     Struct {
         /// Name of the struct being constructed.
         name: String,
-        /// Field initialisers in declaration order.
+        /// Field initializers in declaration order.
         fields: Vec<(String, Expr)>,
     },
     /// Tuple literal expression.

@@ -9,7 +9,7 @@ pub mod parser;
 pub mod syntax_utils;
 pub mod tokenizer;
 
-#[cfg(any(test, feature = "test-util"))]
+#[cfg(any(test, feature = "internal-test-utils"))]
 #[doc(hidden)]
 pub mod test_util;
 

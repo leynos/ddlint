@@ -19,6 +19,10 @@ use rstest::rstest;
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
 #[case("Point { x: 1 }", struct_expr("Point", vec![field("x", lit_num("1"))]))]
 #[case("Point {}", struct_expr("Point", vec![]))]
+#[case(
+    "Point { x: 1, }",
+    struct_expr("Point", vec![field("x", lit_num("1"))]),
+)]
 #[case("|x, y| x + y", closure(vec!["x", "y"], Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }))]
 #[case("|| 1", closure(std::iter::empty::<&str>(), lit_num("1")))]
 #[case("|x,| x", closure(vec!["x"], var("x")))]
