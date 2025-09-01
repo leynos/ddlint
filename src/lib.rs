@@ -9,6 +9,7 @@ pub mod parser;
 pub mod syntax_utils;
 pub mod tokenizer;
 
+// Only expose test utilities to tests and opt-in consumers.
 #[cfg(any(test, feature = "test-support"))]
 #[doc(hidden)]
 pub mod test_util;
