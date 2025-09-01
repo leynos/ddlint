@@ -27,24 +27,15 @@ use rstest::rstest;
 #[case("|x, y| x + y", closure(vec!["x", "y"], Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }))]
 #[case("|| 1", closure(std::iter::empty::<&str>(), lit_num("1")))]
 #[case("|x,| x", closure(vec!["x"], var("x")))]
-#[case(
-    "Point { pair: (1, 2) }",
-    struct_expr(
-        "Point",
-        vec![field("pair", tuple(vec![lit_num("1"), lit_num("2")]))],
-    ),
-)]
+#[case("Point { pair: (1, 2) }", struct_expr("Point", vec![field("pair", tuple(vec![lit_num("1"), lit_num("2")]))]))]
 #[case(
     "(|| 1, |x| x)",
     tuple(vec![
-        closure(std::iter::empty::<&str>(), lit_num("1")),
+        closure(Vec::<&str>::new(), lit_num("1")),
         closure(vec!["x"], var("x")),
     ]),
 )]
-#[case(
-    "|x| Point { x: x }",
-    closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])),
-)]
+#[case("|x| Point { x: x }", closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])))]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);

@@ -219,6 +219,7 @@ pub fn assert_delimiter_error(
 /// Panics if `errors` is empty or the error kind does not indicate an unclosed
 /// delimiter.
 #[track_caller]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_unclosed_delimiter_error(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: impl Into<ErrorPattern>,
@@ -226,7 +227,8 @@ pub fn assert_unclosed_delimiter_error(
     end: usize,
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
-    let error = assert_delimiter_error_impl(errors, &pattern, start..end);
+    assert_delimiter_error_impl(errors, &pattern, start..end);
+    let error = errors.first().expect("error missing");
     assert!(
         matches!(error.reason(), SimpleReason::Unclosed { .. }),
         "expected unclosed delimiter, got {:?}",

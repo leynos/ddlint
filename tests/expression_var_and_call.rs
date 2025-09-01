@@ -32,8 +32,7 @@ fn call_parsing_errors(
         panic!("expected error");
     };
     match kind {
-        "unclosed" => assert_delimiter_error(&errors, msg, start, end),
-        "mismatch" => assert_delimiter_error(&errors, msg, start, end),
+        "unclosed" | "mismatch" => assert_delimiter_error(&errors, msg, start, end),
         _ => assert_parse_error(&errors, msg, start, end),
     }
 }
