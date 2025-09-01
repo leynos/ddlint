@@ -3,7 +3,7 @@
 //! The implementation is a small hand-rolled Pratt parser. `chumsky`
 //! 0.9 does not provide a built-in Pratt combinator, so this module
 //! offers a focused parser that operates over the token stream
-//! produced by the lexer. It recognises a subset of operators needed
+//! produced by the lexer. It recognizes a subset of operators needed
 //! for arithmetic and logical expressions.
 
 use chumsky::error::Simple;
@@ -73,7 +73,7 @@ impl<'a, I> Pratt<'a, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
-    /// Construct a new Pratt parser over a pre-tokenised input.
+    /// Construct a new Pratt parser over a pre-tokenized input.
     ///
     /// The parser keeps a reference to the token slice and original source so
     /// spans can be resolved back to strings when constructing literals or
@@ -443,7 +443,7 @@ where
     /// - `span`: The source span to slice when constructing literal values.
     ///
     /// # Returns
-    /// `Some(expr)` if the token represents a recognised literal, or `None`
+    /// `Some(expr)` if the token represents a recognized literal, or `None`
     /// otherwise.
     fn parse_literal(&self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
@@ -520,8 +520,14 @@ where
     /// - `span`: The byte range within the original source.
     ///
     /// # Returns
-    /// The corresponding substring, or an empty string if the span is invalid.
+    /// The corresponding substring.
+    ///
+    /// # Panics
+    /// Panics if the span is invalid.
     fn slice(&self, span: &Span) -> String {
-        self.src.get(span.clone()).unwrap_or("").to_string()
+        self.src
+            .get(span.clone())
+            .unwrap_or_else(|| panic!("lexer produced invalid span"))
+            .to_string()
     }
 }
