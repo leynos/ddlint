@@ -322,7 +322,8 @@ where
             return None;
         }
         self.next();
-        // Parse the remaining input as the closure body at lowest precedence.
+        // Parse the remainder as the closure body; closures bind weakest so
+        // the body parses with `min_bp` 0.
         let body = self.parse_expr(0)?;
         Some(Expr::Closure {
             params,
