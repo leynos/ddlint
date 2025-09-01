@@ -187,27 +187,49 @@ fn assert_delimiter_error_impl<'a>(
     error
 }
 
-/// Assert that a delimiter error matches `expected_pattern` and satisfies
-/// `reason_check`.
-///
-/// Delegates to [`assert_delimiter_error_impl`] for pattern and span
-/// validation before asserting that the error reason passes `reason_check`.
+/// Kinds of delimiter-related parser errors.
+#[derive(Debug, Clone, Copy)]
+enum DelimiterErrorKind {
+    /// The encountered closing delimiter did not match the expected opener.
+    Mismatch,
+    /// A delimiter was opened but never closed.
+    Unclosed,
+}
+
+impl DelimiterErrorKind {
+    fn reason_check(self, reason: &SimpleReason<SyntaxKind, Range<usize>>) -> bool {
+        match self {
+            Self::Mismatch => {
+                matches!(reason, SimpleReason::Unexpected | SimpleReason::Custom(_))
+            }
+            Self::Unclosed => matches!(reason, SimpleReason::Unclosed { .. }),
+        }
+    }
+
+    const fn description(self) -> &'static str {
+        match self {
+            Self::Mismatch => "delimiter mismatch",
+            Self::Unclosed => "unclosed delimiter",
+        }
+    }
+}
+
+/// Assert that a delimiter error matches `expected_pattern` and has the
+/// specified [`DelimiterErrorKind`].
 #[track_caller]
-fn assert_delimiter_error_with_reason_check<F>(
+fn assert_delimiter_error_of_kind(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: impl Into<ErrorPattern>,
     start: usize,
     end: usize,
-    reason_check: F,
-    reason_description: &str,
-) where
-    F: Fn(&SimpleReason<SyntaxKind, Range<usize>>) -> bool,
-{
+    kind: DelimiterErrorKind,
+) {
     let pattern: ErrorPattern = expected_pattern.into();
     let error = assert_delimiter_error_impl(errors, &pattern, start..end);
     assert!(
-        reason_check(error.reason()),
-        "expected {reason_description}, got {:?}",
+        kind.reason_check(error.reason()),
+        "expected {}, got {:?}",
+        kind.description(),
         error.reason()
     );
 }
@@ -223,15 +245,12 @@ pub fn assert_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_with_reason_check(
+    assert_delimiter_error_of_kind(
         errors,
         expected_pattern,
         start,
         end,
-        |reason: &SimpleReason<SyntaxKind, Range<usize>>| {
-            matches!(reason, SimpleReason::Unexpected | SimpleReason::Custom(_))
-        },
-        "delimiter mismatch",
+        DelimiterErrorKind::Mismatch,
     );
 }
 
@@ -250,14 +269,11 @@ pub fn assert_unclosed_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    assert_delimiter_error_with_reason_check(
+    assert_delimiter_error_of_kind(
         errors,
         expected_pattern,
         start,
         end,
-        |reason: &SimpleReason<SyntaxKind, Range<usize>>| {
-            matches!(reason, SimpleReason::Unclosed { .. })
-        },
-        "unclosed delimiter",
+        DelimiterErrorKind::Unclosed,
     );
 }
