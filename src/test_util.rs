@@ -187,6 +187,31 @@ fn assert_delimiter_error_impl<'a>(
     error
 }
 
+/// Assert that a delimiter error matches `expected_pattern` and satisfies
+/// `reason_check`.
+///
+/// Delegates to [`assert_delimiter_error_impl`] for pattern and span
+/// validation before asserting that the error reason passes `reason_check`.
+#[track_caller]
+fn assert_delimiter_error_with_reason_check<F>(
+    errors: &[Simple<SyntaxKind>],
+    expected_pattern: impl Into<ErrorPattern>,
+    start: usize,
+    end: usize,
+    reason_check: F,
+    reason_description: &str,
+) where
+    F: Fn(&SimpleReason<SyntaxKind, Range<usize>>) -> bool,
+{
+    let pattern: ErrorPattern = expected_pattern.into();
+    let error = assert_delimiter_error_impl(errors, &pattern, start..end);
+    assert!(
+        reason_check(error.reason()),
+        "expected {reason_description}, got {:?}",
+        error.reason()
+    );
+}
+
 /// Assert that a parser error indicates a delimiter mismatch.
 ///
 /// # Panics
@@ -198,15 +223,15 @@ pub fn assert_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    let pattern: ErrorPattern = expected_pattern.into();
-    let error = assert_delimiter_error_impl(errors, &pattern, start..end);
-    assert!(
-        matches!(
-            error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
-        ),
-        "expected delimiter mismatch, got {:?}",
-        error.reason()
+    assert_delimiter_error_with_reason_check(
+        errors,
+        expected_pattern,
+        start,
+        end,
+        |reason: &SimpleReason<SyntaxKind, Range<usize>>| {
+            matches!(reason, SimpleReason::Unexpected | SimpleReason::Custom(_))
+        },
+        "delimiter mismatch",
     );
 }
 
@@ -219,19 +244,20 @@ pub fn assert_delimiter_error(
 /// Panics if `errors` is empty or the error kind does not indicate an unclosed
 /// delimiter.
 #[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_unclosed_delimiter_error(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: impl Into<ErrorPattern>,
     start: usize,
     end: usize,
 ) {
-    let pattern: ErrorPattern = expected_pattern.into();
-    assert_delimiter_error_impl(errors, &pattern, start..end);
-    let error = errors.first().expect("error missing");
-    assert!(
-        matches!(error.reason(), SimpleReason::Unclosed { .. }),
-        "expected unclosed delimiter, got {:?}",
-        error.reason()
+    assert_delimiter_error_with_reason_check(
+        errors,
+        expected_pattern,
+        start,
+        end,
+        |reason: &SimpleReason<SyntaxKind, Range<usize>>| {
+            matches!(reason, SimpleReason::Unclosed { .. })
+        },
+        "unclosed delimiter",
     );
 }
