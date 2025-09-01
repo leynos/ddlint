@@ -364,8 +364,8 @@ precedence entries are required.
 
 Struct literals, tuple literals, and closures extend the prefix grammar. Struct
 construction recognizes `Ident { field: expr, ... }` and records field order in
-the AST. Both structs and tuples accept trailing commas. Tuple literals are
-distinguished from grouped expressions by the presence of a comma or an empty
-pair of parentheses. Closure literals parse a pipe-delimited parameter list
+the AST. Tuple literals are distinguished from grouped expressions by the
+presence of a comma or an empty pair of parentheses. Both structs and tuples
+accept trailing commas. Closure literals parse a pipe-delimited parameter list
 (allowing a trailing comma) followed by the body expression. Each feature is
 implemented with small helper routines to keep the main parser readable.
