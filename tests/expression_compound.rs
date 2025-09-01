@@ -6,8 +6,7 @@
 use ddlint::parser::ast::{BinaryOp, Expr};
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, closure, field, lit_num, struct_expr,
-    tuple, var,
+    assert_delimiter_error, assert_parse_error, closure, field, lit_num, struct_expr, tuple, var,
 };
 use rstest::rstest;
 
@@ -55,7 +54,7 @@ fn compound_expression_errors(
         panic!("expected error");
     };
     if unclosed {
-        assert_unclosed_delimiter_error(&errors, msg, start, end);
+        assert_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);
     }

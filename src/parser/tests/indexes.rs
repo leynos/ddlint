@@ -3,9 +3,7 @@
 //! These tests cover single and multi-column indexes and error cases.
 
 use super::helpers::{normalise_whitespace, parse_index, pretty_print};
-use crate::test_util::{
-    assert_no_parse_errors, assert_parse_error, assert_unclosed_delimiter_error,
-};
+use crate::test_util::{assert_delimiter_error, assert_no_parse_errors, assert_parse_error};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -70,7 +68,7 @@ fn index_missing_on_is_error(index_invalid_missing_on: &str) {
 fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
     let parsed = crate::parse(index_unbalanced_parentheses);
     let len = index_unbalanced_parentheses.len();
-    assert_unclosed_delimiter_error(parsed.errors(), "T_RPAREN", 0, len);
+    assert_delimiter_error(parsed.errors(), "T_RPAREN", 0, len);
     assert!(parsed.root().indexes().is_empty());
 }
 

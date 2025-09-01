@@ -8,7 +8,7 @@ use crate::{
     SyntaxKind,
     parser::ast::{Expr, Literal},
 };
-use chumsky::error::Simple;
+use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
 
 /// Typed wrapper for variable and function names.
@@ -172,13 +172,11 @@ pub fn assert_parse_error(
 
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
-fn assert_delimiter_error_impl(
-    errors: &[Simple<SyntaxKind>],
+fn assert_delimiter_error_impl<'a>(
+    errors: &'a [Simple<SyntaxKind>],
     expected_pattern: &ErrorPattern,
     span: Range<usize>,
-) {
-    use chumsky::error::SimpleReason;
-
+) -> &'a Simple<SyntaxKind> {
     let error = errors.first().expect("error missing");
     let rendered = format!("{error:?}");
     assert!(
@@ -186,14 +184,7 @@ fn assert_delimiter_error_impl(
         "expected error to contain pattern '{expected_pattern:?}', got '{rendered}'",
     );
     assert_eq!(error.span(), span);
-    assert!(
-        matches!(
-            error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
-        ),
-        "expected unclosed delimiter, got {:?}",
-        error.reason()
-    );
+    error
 }
 
 /// Assert that a parser error indicates a delimiter mismatch.
@@ -208,7 +199,15 @@ pub fn assert_delimiter_error(
     end: usize,
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
-    assert_delimiter_error_impl(errors, &pattern, start..end);
+    let error = assert_delimiter_error_impl(errors, &pattern, start..end);
+    assert!(
+        matches!(
+            error.reason(),
+            SimpleReason::Unexpected | SimpleReason::Custom(_)
+        ),
+        "expected delimiter mismatch, got {:?}",
+        error.reason()
+    );
 }
 
 /// Assert that a parser error indicates an unclosed delimiter.
@@ -227,5 +226,10 @@ pub fn assert_unclosed_delimiter_error(
     end: usize,
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
-    assert_delimiter_error_impl(errors, &pattern, start..end);
+    let error = assert_delimiter_error_impl(errors, &pattern, start..end);
+    assert!(
+        matches!(error.reason(), SimpleReason::Unclosed { .. }),
+        "expected unclosed delimiter, got {:?}",
+        error.reason()
+    );
 }

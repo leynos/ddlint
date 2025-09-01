@@ -5,9 +5,7 @@
 
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, assert_unclosed_delimiter_error, call, lit_num, var,
-};
+use ddlint::test_util::{assert_delimiter_error, assert_parse_error, call, lit_num, var};
 use rstest::rstest;
 
 #[rstest]
@@ -34,7 +32,7 @@ fn call_parsing_errors(
         panic!("expected error");
     };
     match kind {
-        "unclosed" => assert_unclosed_delimiter_error(&errors, msg, start, end),
+        "unclosed" => assert_delimiter_error(&errors, msg, start, end),
         "mismatch" => assert_delimiter_error(&errors, msg, start, end),
         _ => assert_parse_error(&errors, msg, start, end),
     }
