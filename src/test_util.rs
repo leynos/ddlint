@@ -220,12 +220,11 @@ impl DelimiterErrorKind {
 fn assert_delimiter_error_of_kind(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: impl Into<ErrorPattern>,
-    start: usize,
-    end: usize,
+    span: Range<usize>,
     kind: DelimiterErrorKind,
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
-    let error = assert_delimiter_error_impl(errors, &pattern, start..end);
+    let error = assert_delimiter_error_impl(errors, &pattern, span);
     assert!(
         kind.reason_check(error.reason()),
         "expected {}, got {:?}",
@@ -248,8 +247,7 @@ pub fn assert_delimiter_error(
     assert_delimiter_error_of_kind(
         errors,
         expected_pattern,
-        start,
-        end,
+        start..end,
         DelimiterErrorKind::Mismatch,
     );
 }
@@ -272,8 +270,7 @@ pub fn assert_unclosed_delimiter_error(
     assert_delimiter_error_of_kind(
         errors,
         expected_pattern,
-        start,
-        end,
+        start..end,
         DelimiterErrorKind::Unclosed,
     );
 }
