@@ -2,7 +2,7 @@
 
 use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
-use crate::test_util::{call, lit_bool, lit_num, lit_str, var};
+use crate::test_util::{call, closure, field, lit_bool, lit_num, lit_str, struct_expr, tuple, var};
 use rstest::rstest;
 
 #[rstest]
@@ -13,6 +13,29 @@ use rstest::rstest;
 #[case("x", var("x"))]
 #[case("foo()", call("foo", vec![]))]
 #[case("add(x, 1)", call("add", vec![var("x"), lit_num("1")]))]
+#[case("(1, 2)", tuple(vec![lit_num("1"), lit_num("2")]))]
+#[case("(1, 2, 3)", tuple(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
+#[case("(1,)", tuple(vec![lit_num("1")]))]
+#[case("()", tuple(vec![]))]
+#[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
+#[case("Point { x: 1, y: 2 }", struct_expr("Point", vec![field("x", lit_num("1")), field("y", lit_num("2"))]))]
+#[case("Point {}", struct_expr("Point", vec![]))]
+#[case(
+    "Point { x: 1, y: 2, }",
+    struct_expr("Point", vec![field("x", lit_num("1")), field("y", lit_num("2"))]),
+)]
+#[case("|x, y| x + y", closure(vec!["x", "y"], Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }))]
+#[case("|| 1", closure(std::iter::empty::<&str>(), lit_num("1")))]
+#[case("|x,| x", closure(vec!["x"], var("x")))]
+#[case("Point { pair: (1, 2) }", struct_expr("Point", vec![field("pair", tuple(vec![lit_num("1"), lit_num("2")]))]))]
+#[case(
+    "(|| 1, |x| x)",
+    tuple(vec![
+        closure(Vec::<&str>::new(), lit_num("1")),
+        closure(vec!["x"], var("x")),
+    ]),
+)]
+#[case("|x| Point { x: x }", closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])))]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);

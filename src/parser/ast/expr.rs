@@ -61,6 +61,22 @@ pub enum Expr {
         /// Argument expressions supplied to the function.
         args: Vec<Expr>,
     },
+    /// Struct literal expression.
+    Struct {
+        /// Name of the struct being constructed.
+        name: String,
+        /// Field initializers in declaration order.
+        fields: Vec<(String, Expr)>,
+    },
+    /// Tuple literal expression.
+    Tuple(Vec<Expr>),
+    /// Closure literal expression.
+    Closure {
+        /// Parameters introduced by the closure.
+        params: Vec<String>,
+        /// Body expression executed when invoked.
+        body: Box<Expr>,
+    },
     /// Unary operation expression.
     Unary { op: UnaryOp, expr: Box<Expr> },
     /// Binary operation expression.
@@ -89,6 +105,29 @@ impl Expr {
                     let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
                     format!("({} {})", name, args.join(" "))
                 }
+            }
+            Self::Struct { name, fields } => {
+                use std::fmt::Write as _;
+                let mut out = String::with_capacity(16);
+                let _ = write!(&mut out, "(struct {name}");
+                for (n, e) in fields {
+                    let _ = write!(&mut out, " ({n} {})", e.to_sexpr());
+                }
+                out.push(')');
+                out
+            }
+            Self::Tuple(items) => {
+                use std::fmt::Write as _;
+                let mut out = String::from("(tuple");
+                for item in items {
+                    let _ = write!(&mut out, " {}", item.to_sexpr());
+                }
+                out.push(')');
+                out
+            }
+            Self::Closure { params, body } => {
+                let params = params.join(" ");
+                format!("(closure ({params}) {})", body.to_sexpr())
             }
             Self::Unary { op, expr } => {
                 let op_str = match op {

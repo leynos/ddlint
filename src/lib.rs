@@ -7,10 +7,12 @@
 pub mod language;
 pub mod parser;
 pub mod syntax_utils;
-#[cfg(test)]
-#[doc(hidden)]
-mod test_util;
 pub mod tokenizer;
+
+// Only expose test utilities to tests and opt-in consumers.
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub mod test_util;
 
 pub use language::{DdlogLanguage, SyntaxKind};
 pub use parser::{Parsed, ast, parse};

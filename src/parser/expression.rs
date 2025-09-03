@@ -3,7 +3,7 @@
 //! The implementation is a small hand-rolled Pratt parser. `chumsky`
 //! 0.9 does not provide a built-in Pratt combinator, so this module
 //! offers a focused parser that operates over the token stream
-//! produced by the lexer. It recognises a subset of operators needed
+//! produced by the lexer. It recognizes a subset of operators needed
 //! for arithmetic and logical expressions.
 
 use chumsky::error::Simple;
@@ -73,7 +73,7 @@ impl<'a, I> Pratt<'a, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
-    /// Construct a new Pratt parser over a pre-tokenised input.
+    /// Construct a new Pratt parser over a pre-tokenized input.
     ///
     /// The parser keeps a reference to the token slice and original source so
     /// spans can be resolved back to strings when constructing literals or
@@ -184,14 +184,9 @@ where
             return Some(lit);
         }
         match kind {
-            SyntaxKind::T_IDENT => Some(Expr::Variable(self.slice(&span))),
-            SyntaxKind::T_LPAREN => {
-                let expr = self.parse_expr(0);
-                if !self.expect(SyntaxKind::T_RPAREN) {
-                    return None;
-                }
-                expr.map(|e| Expr::Group(Box::new(e)))
-            }
+            SyntaxKind::T_IDENT => self.parse_identifier_or_struct(&span),
+            SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
+            SyntaxKind::T_PIPE => self.parse_closure_literal(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
                     self.push_error(span, "unexpected token");
@@ -204,6 +199,136 @@ where
                 })
             }
         }
+    }
+
+    /// Parse an identifier expression or struct literal.
+    ///
+    /// The identifier span has already been consumed from the stream. The
+    /// method resolves the name and delegates to [`parse_ident_expression`] to
+    /// determine whether a struct literal or variable is present.
+    ///
+    /// # Parameters
+    /// - `span`: Span covering the identifier token.
+    ///
+    /// # Returns
+    /// The parsed expression or `None` if parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// let expr = parser.parse_identifier_or_struct(&span).unwrap();
+    /// ```
+    fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
+        let name = self.slice(span);
+        self.parse_ident_expression(name)
+    }
+
+    /// Parse either a struct literal or variable expression.
+    ///
+    /// This inspects the next token after an identifier to decide whether it
+    /// introduces a struct literal (`Name { ... }`) or is a simple variable
+    /// reference.
+    ///
+    /// # Parameters
+    /// - `name`: Text of the identifier just parsed.
+    ///
+    /// # Returns
+    /// The parsed expression or `None` if struct field parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// // assumes `parser` has the remaining tokens for `Point { x: 1 }`
+    /// let expr = parser
+    ///     .parse_ident_expression("Point".to_string())
+    ///     .unwrap();
+    /// ```
+    fn parse_ident_expression(&mut self, name: String) -> Option<Expr> {
+        if matches!(self.peek(), Some(SyntaxKind::T_LBRACE)) {
+            self.next();
+            let fields = self.parse_struct_fields()?;
+            if !self.expect(SyntaxKind::T_RBRACE) {
+                return None;
+            }
+            Some(Expr::Struct { name, fields })
+        } else {
+            Some(Expr::Variable(name))
+        }
+    }
+
+    /// Parse an expression in parentheses or a tuple literal.
+    ///
+    /// Assumes the opening parenthesis has already been consumed. A single
+    /// element without a trailing comma is treated as a grouped expression.
+    /// Multiple elements or a trailing comma produce a tuple.
+    ///
+    /// # Returns
+    /// The parsed expression or `None` if parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// // parses `(1, 2)` as a tuple
+    /// let expr = parser.parse_parenthesized_expr().unwrap();
+    /// ```
+    fn parse_parenthesized_expr(&mut self) -> Option<Expr> {
+        if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+            self.next();
+            return Some(Expr::Tuple(Vec::new()));
+        }
+        let first = self.parse_expr(0)?;
+        let mut items = vec![first];
+        let mut is_tuple = false;
+        while matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+            is_tuple = true;
+            self.next();
+            if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+                break;
+            }
+            items.push(self.parse_expr(0)?);
+        }
+        if !self.expect(SyntaxKind::T_RPAREN) {
+            return None;
+        }
+        if is_tuple {
+            Some(Expr::Tuple(items))
+        } else {
+            // `items` has exactly one element here; pop avoids shifting.
+            #[expect(clippy::expect_used, reason = "tuple contains one element")]
+            let item = items.pop().expect("group expression missing item");
+            Some(Expr::Group(Box::new(item)))
+        }
+    }
+
+    /// Parse a closure literal starting with `|`.
+    ///
+    /// Assumes the leading pipe has already been consumed. Parameters are read
+    /// until the closing pipe, after which the body expression is parsed.
+    ///
+    /// # Returns
+    /// The constructed [`Expr::Closure`] or `None` if parsing fails.
+    ///
+    /// # Examples
+    /// ```rust,ignore
+    /// // parses `|x| x` as a closure expression
+    /// let expr = parser.parse_closure_literal().unwrap();
+    /// ```
+    fn parse_closure_literal(&mut self) -> Option<Expr> {
+        let params = self.parse_closure_params()?;
+        if !matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
+            let span = self
+                .tokens
+                .peek()
+                .map(|t| t.1.clone())
+                .unwrap_or(self.src.len()..self.src.len());
+            self.push_error(span, "expected `|`");
+            return None;
+        }
+        self.next();
+        // Parse the remainder as the closure body; closures bind weakest so
+        // the body parses with `min_bp` 0.
+        let body = self.parse_expr(0)?;
+        Some(Expr::Closure {
+            params,
+            body: Box::new(body),
+        })
     }
 
     /// Parse a comma-separated list of function arguments.
@@ -225,6 +350,93 @@ where
         Some(args)
     }
 
+    /// Parse a comma-separated sequence of identifiers.
+    ///
+    /// `terminator` specifies the closing token, `err_msg` is used when a
+    /// non-identifier token is encountered, and `process_item` constructs the
+    /// output element for each identifier. Trailing commas are permitted when
+    /// `allow_trailing_comma` is `true`.
+    ///
+    /// ```rust,ignore
+    /// // parses `|x, y|` parameters as ["x", "y"]
+    /// let ids = parser.parse_comma_separated_identifiers(
+    ///     SyntaxKind::T_PIPE,
+    ///     "expected parameter name",
+    ///     |_parser, name| Some(name),
+    ///     true,
+    /// ).unwrap();
+    /// assert_eq!(ids, vec!["x", "y"]);
+    /// ```
+    fn parse_comma_separated_identifiers<T>(
+        &mut self,
+        terminator: SyntaxKind,
+        err_msg: &'static str,
+        mut process_item: impl FnMut(&mut Self, String) -> Option<T>,
+        allow_trailing_comma: bool,
+    ) -> Option<Vec<T>> {
+        let mut items = Vec::new();
+        if matches!(self.peek(), Some(k) if k == terminator) {
+            return Some(items);
+        }
+        loop {
+            let (k, sp) = self.next()?;
+            if k != SyntaxKind::T_IDENT {
+                self.push_error(sp, err_msg);
+                return None;
+            }
+            let name = self.slice(&sp);
+            items.push(process_item(self, name)?);
+            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+                break;
+            }
+            self.next();
+            if allow_trailing_comma && matches!(self.peek(), Some(k) if k == terminator) {
+                break;
+            }
+        }
+        Some(items)
+    }
+
+    /// Parse fields of a struct literal.
+    ///
+    /// Assumes the opening brace has already been consumed.
+    ///
+    /// ```rust,ignore
+    /// // parses `{ x: 1 }` as a single field
+    /// let fields = parser.parse_struct_fields().unwrap();
+    /// ```
+    fn parse_struct_fields(&mut self) -> Option<Vec<(String, Expr)>> {
+        self.parse_comma_separated_identifiers(
+            SyntaxKind::T_RBRACE,
+            "expected field name",
+            |parser, name| {
+                if !parser.expect(SyntaxKind::T_COLON) {
+                    return None;
+                }
+                let value = parser.parse_expr(0)?;
+                Some((name, value))
+            },
+            true,
+        )
+    }
+
+    /// Parse the parameter list of a closure literal.
+    ///
+    /// Assumes the leading `|` has been consumed.
+    ///
+    /// ```rust,ignore
+    /// // parses `|x, y|` parameters as ["x", "y"]
+    /// let params = parser.parse_closure_params().unwrap();
+    /// ```
+    fn parse_closure_params(&mut self) -> Option<Vec<String>> {
+        self.parse_comma_separated_identifiers(
+            SyntaxKind::T_PIPE,
+            "expected parameter name",
+            |_parser, name| Some(name),
+            true,
+        )
+    }
+
     /// Parse a literal token into an [`Expr`].
     ///
     /// # Parameters
@@ -232,7 +444,7 @@ where
     /// - `span`: The source span to slice when constructing literal values.
     ///
     /// # Returns
-    /// `Some(expr)` if the token represents a recognised literal, or `None`
+    /// `Some(expr)` if the token represents a recognized literal, or `None`
     /// otherwise.
     fn parse_literal(&self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
@@ -309,8 +521,14 @@ where
     /// - `span`: The byte range within the original source.
     ///
     /// # Returns
-    /// The corresponding substring, or an empty string if the span is invalid.
+    /// The corresponding substring.
+    ///
+    /// # Panics
+    /// Panics if the span is invalid.
     fn slice(&self, span: &Span) -> String {
-        self.src.get(span.clone()).unwrap_or("").to_string()
+        self.src
+            .get(span.clone())
+            .unwrap_or_else(|| panic!("lexer produced invalid span"))
+            .to_string()
     }
 }

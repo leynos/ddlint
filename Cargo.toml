@@ -7,17 +7,17 @@ edition = "2024"
 rowan = { version = "0.15", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
-logos = { version = ">=0.13.0, <0.14.0", default-features = false, features = ["export_derive"] }
-phf = { version = ">=0.11.0, <0.12.0", default-features = false, features = ["macros"] }
-chumsky = { version = ">=0.9.0, <0.10.0", default-features = false, features = ["std"] }
-log = { version = ">=0.4.0, <0.5.0", default-features = false }
+logos = { version = "0.13", default-features = false, features = ["export_derive"] }
+phf = { version = "0.11", default-features = false, features = ["macros"] }
+chumsky = { version = "0.9", default-features = false, features = ["std"] }
+log = { version = "0.4", default-features = false }
 thiserror = { version = "1.0", default-features = false }
 
 [features]
-test-util = []
+test-support = []
 
 [dev-dependencies]
-rstest = ">=0.25.0, <0.26.0"
+rstest = "0.25"
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

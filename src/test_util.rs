@@ -8,7 +8,7 @@ use crate::{
     SyntaxKind,
     parser::ast::{Expr, Literal},
 };
-use chumsky::error::Simple;
+use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
 
 /// Typed wrapper for variable and function names.
@@ -81,6 +81,44 @@ pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     Expr::Call { name: name.0, args }
 }
 
+/// Construct a struct literal [`Expr::Struct`].
+#[must_use]
+pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
+    let name: Name = name.into();
+    Expr::Struct {
+        name: name.0,
+        fields,
+    }
+}
+
+/// Convenience to build a struct field tuple.
+#[must_use]
+pub fn field(name: impl Into<Name>, expr: Expr) -> (String, Expr) {
+    let name: Name = name.into();
+    (name.0, expr)
+}
+
+/// Construct a tuple literal [`Expr::Tuple`].
+#[must_use]
+pub fn tuple(items: Vec<Expr>) -> Expr {
+    Expr::Tuple(items)
+}
+
+/// Construct a closure literal [`Expr::Closure`].
+///
+/// Accepts any iterable of parameter names.
+#[must_use]
+pub fn closure<P, S>(params: P, body: Expr) -> Expr
+where
+    P: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    Expr::Closure {
+        params: params.into_iter().map(|p| p.as_ref().to_string()).collect(),
+        body: Box::new(body),
+    }
+}
+
 /// Assert that a parser produced no errors.
 ///
 /// # Examples
@@ -134,13 +172,11 @@ pub fn assert_parse_error(
 
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
-fn assert_delimiter_error_impl(
-    errors: &[Simple<SyntaxKind>],
+fn assert_delimiter_error_impl<'a>(
+    errors: &'a [Simple<SyntaxKind>],
     expected_pattern: &ErrorPattern,
     span: Range<usize>,
-) {
-    use chumsky::error::SimpleReason;
-
+) -> &'a Simple<SyntaxKind> {
     let error = errors.first().expect("error missing");
     let rendered = format!("{error:?}");
     assert!(
@@ -148,13 +184,71 @@ fn assert_delimiter_error_impl(
         "expected error to contain pattern '{expected_pattern:?}', got '{rendered}'",
     );
     assert_eq!(error.span(), span);
+    error
+}
+
+/// Kinds of delimiter-related parser errors.
+#[derive(Debug, Clone, Copy)]
+enum DelimiterErrorKind {
+    /// The encountered closing delimiter did not match the expected opener.
+    Mismatch,
+    /// A delimiter was opened but never closed.
+    Unclosed,
+}
+
+impl DelimiterErrorKind {
+    fn reason_check(self, reason: &SimpleReason<SyntaxKind, Range<usize>>) -> bool {
+        match self {
+            Self::Mismatch => {
+                matches!(reason, SimpleReason::Unexpected | SimpleReason::Custom(_))
+            }
+            Self::Unclosed => matches!(reason, SimpleReason::Unclosed { .. }),
+        }
+    }
+
+    const fn description(self) -> &'static str {
+        match self {
+            Self::Mismatch => "delimiter mismatch",
+            Self::Unclosed => "unclosed delimiter",
+        }
+    }
+}
+
+/// Assert that a delimiter error matches `expected_pattern` and has the
+/// specified [`DelimiterErrorKind`].
+#[track_caller]
+fn assert_delimiter_error_of_kind(
+    errors: &[Simple<SyntaxKind>],
+    expected_pattern: impl Into<ErrorPattern>,
+    span: Range<usize>,
+    kind: DelimiterErrorKind,
+) {
+    let pattern: ErrorPattern = expected_pattern.into();
+    let error = assert_delimiter_error_impl(errors, &pattern, span);
     assert!(
-        matches!(
-            error.reason(),
-            SimpleReason::Unexpected | SimpleReason::Custom(_)
-        ),
-        "expected unclosed delimiter, got {:?}",
+        kind.reason_check(error.reason()),
+        "expected {}, got {:?}",
+        kind.description(),
         error.reason()
+    );
+}
+
+/// Assert that a parser error indicates a delimiter mismatch.
+///
+/// # Panics
+/// Panics if `errors` is empty or the error does not match `expected_pattern`.
+#[track_caller]
+pub fn assert_delimiter_error(
+    errors: &[Simple<SyntaxKind>],
+    expected_pattern: impl Into<ErrorPattern>,
+    start: usize,
+    end: usize,
+) {
+    assert_delimiter_error_of_kind(
+        errors,
+        expected_pattern,
+        start..end,
+        DelimiterErrorKind::Mismatch,
     );
 }
 
@@ -173,6 +267,10 @@ pub fn assert_unclosed_delimiter_error(
     start: usize,
     end: usize,
 ) {
-    let pattern: ErrorPattern = expected_pattern.into();
-    assert_delimiter_error_impl(errors, &pattern, start..end);
+    assert_delimiter_error_of_kind(
+        errors,
+        expected_pattern,
+        start..end,
+        DelimiterErrorKind::Unclosed,
+    );
 }

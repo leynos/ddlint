@@ -4,7 +4,7 @@
 
 use super::helpers::{parse_relation, pretty_print};
 use crate::parser::ast::AstNode;
-use crate::test_util::assert_unclosed_delimiter_error;
+use crate::test_util::assert_delimiter_error;
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -88,6 +88,6 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
     // opening delimiter position. This preserves branch behaviour while still
     // asserting the unclosed ')' is detected.
     let len = relation_unbalanced_parentheses.len();
-    assert_unclosed_delimiter_error(parsed.errors(), "T_RPAREN", 0, len);
+    assert_delimiter_error(parsed.errors(), "T_RPAREN", 0, len);
     assert!(parsed.root().relations().is_empty());
 }
