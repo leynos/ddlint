@@ -75,11 +75,7 @@ where
     }
 
     fn parse_function_call_postfix(&mut self, lhs: Expr) -> Option<Expr> {
-        self.ts.next_tok(); // '(' already peeked
-        let args = self.parse_args()?;
-        if !self.ts.expect(SyntaxKind::T_RPAREN) {
-            return None;
-        }
+        let args = self.parse_parenthesized_args()?;
         Some(Expr::Call {
             callee: Box::new(lhs),
             args,
@@ -134,16 +130,21 @@ where
     }
 
     fn parse_method_call(&mut self, lhs: Expr, name: String) -> Option<Expr> {
-        self.ts.next_tok(); // '('
-        let args = self.parse_args()?;
-        if !self.ts.expect(SyntaxKind::T_RPAREN) {
-            return None;
-        }
+        let args = self.parse_parenthesized_args()?;
         Some(Expr::MethodCall {
             recv: Box::new(lhs),
             name,
             args,
         })
+    }
+
+    fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
+        self.ts.next_tok(); // '(' already peeked
+        let args = self.parse_args()?;
+        if !self.ts.expect(SyntaxKind::T_RPAREN) {
+            return None;
+        }
+        Some(args)
     }
 
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {
