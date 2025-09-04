@@ -186,19 +186,8 @@ fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
     KEYWORDS.get(ident).copied()
 }
 
-/// Tokenise the provided `DDlog` source.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use ddlint::{tokenize, SyntaxKind};
-///
-/// let tokens = tokenize("input relation R(x: u32);");
-/// assert_eq!(tokens.len(), 12);
-/// assert_eq!(tokens[0].0, SyntaxKind::K_INPUT);
-/// ```
 #[must_use]
-pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
+fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
     let mut lexer = Token::lexer(src);
     let estimated_tokens = src.len() >> 2; // roughly four chars per token
     let mut out = Vec::with_capacity(estimated_tokens);
@@ -254,4 +243,33 @@ pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
         out.push((kind, span));
     }
     out
+}
+
+/// Tokenise the source, excluding whitespace and comments.
+///
+/// Returns only significant tokens for use in expression parsing.
+#[must_use]
+pub fn tokenize_no_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
+    tokenize_impl(src)
+        .into_iter()
+        .filter(|(k, _)| !matches!(k, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .collect()
+}
+
+/// Tokenise the provided `DDlog` source.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use ddlint::{tokenize, SyntaxKind};
+///
+/// let tokens = tokenize("input relation R(x: u32);");
+/// assert_eq!(tokens.len(), 12);
+/// assert_eq!(tokens[0].0, SyntaxKind::K_INPUT);
+/// ```
+///
+/// This variant retains whitespace and comment tokens.
+#[must_use]
+pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
+    tokenize_impl(src)
 }

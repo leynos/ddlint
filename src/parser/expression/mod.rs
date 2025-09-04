@@ -6,9 +6,10 @@
 //! handles literals and prefix forms, and [`infix`] folds infix operators. The
 //! public API is re-exported here.
 
+mod infix;
 mod pratt;
 mod prefix;
-mod infix;
+mod token_stream;
 
 pub use pratt::parse_expression;
 

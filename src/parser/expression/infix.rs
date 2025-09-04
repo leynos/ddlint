@@ -10,14 +10,14 @@ where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
     pub(super) fn parse_infix(&mut self, mut lhs: Expr, min_bp: u8) -> Option<Expr> {
-        while let Some(op_kind) = self.peek() {
+        while let Some(op_kind) = self.ts.peek_kind() {
             let Some((l_bp, r_bp, op)) = infix_binding_power(op_kind) else {
                 break;
             };
             if l_bp < min_bp {
                 break;
             }
-            self.next();
+            self.ts.next_tok();
             let rhs = self.parse_expr(r_bp)?;
             lhs = Expr::Binary {
                 op,

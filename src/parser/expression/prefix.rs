@@ -10,7 +10,7 @@ where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
-        let (kind, span) = self.next()?;
+        let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {
             return Some(lit);
         }
@@ -20,7 +20,7 @@ where
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
-                    self.push_error(span, "unexpected token");
+                    self.ts.push_error(span, "unexpected token");
                     return None;
                 };
                 let rhs = self.parse_expr(bp)?;
@@ -33,15 +33,15 @@ where
     }
 
     fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
-        let name = self.slice(span);
+        let name = self.ts.slice(span);
         self.parse_ident_expression(name)
     }
 
     fn parse_ident_expression(&mut self, name: String) -> Option<Expr> {
-        if matches!(self.peek(), Some(SyntaxKind::T_LBRACE)) {
-            self.next();
+        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
+            self.ts.next_tok();
             let fields = self.parse_struct_fields()?;
-            if !self.expect(SyntaxKind::T_RBRACE) {
+            if !self.ts.expect(SyntaxKind::T_RBRACE) {
                 return None;
             }
             Some(Expr::Struct { name, fields })
@@ -51,22 +51,22 @@ where
     }
 
     fn parse_parenthesized_expr(&mut self) -> Option<Expr> {
-        if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
-            self.next();
+        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
+            self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
         let first = self.parse_expr(0)?;
         let mut items = vec![first];
         let mut is_tuple = false;
-        while matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
             is_tuple = true;
-            self.next();
-            if matches!(self.peek(), Some(SyntaxKind::T_RPAREN)) {
+            self.ts.next_tok();
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
                 break;
             }
             items.push(self.parse_expr(0)?);
         }
-        if !self.expect(SyntaxKind::T_RPAREN) {
+        if !self.ts.expect(SyntaxKind::T_RPAREN) {
             return None;
         }
         if is_tuple {
@@ -80,16 +80,12 @@ where
 
     fn parse_closure_literal(&mut self) -> Option<Expr> {
         let params = self.parse_closure_params()?;
-        if !matches!(self.peek(), Some(SyntaxKind::T_PIPE)) {
-            let span = self
-                .tokens
-                .peek()
-                .map(|t| t.1.clone())
-                .unwrap_or(self.src.len()..self.src.len());
-            self.push_error(span, "expected `|`");
+        if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_PIPE)) {
+            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, "expected `|`");
             return None;
         }
-        self.next();
+        self.ts.next_tok();
         let body = self.parse_expr(0)?;
         Some(Expr::Closure {
             params,
@@ -105,22 +101,22 @@ where
         allow_trailing_comma: bool,
     ) -> Option<Vec<T>> {
         let mut items = Vec::new();
-        if matches!(self.peek(), Some(k) if k == terminator) {
+        if matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
             return Some(items);
         }
         loop {
-            let (k, sp) = self.next()?;
+            let (k, sp) = self.ts.next_tok()?;
             if k != SyntaxKind::T_IDENT {
-                self.push_error(sp, err_msg);
+                self.ts.push_error(sp, err_msg);
                 return None;
             }
-            let name = self.slice(&sp);
+            let name = self.ts.slice(&sp);
             items.push(process_item(self, name)?);
-            if !matches!(self.peek(), Some(SyntaxKind::T_COMMA)) {
+            if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
                 break;
             }
-            self.next();
-            if allow_trailing_comma && matches!(self.peek(), Some(k) if k == terminator) {
+            self.ts.next_tok();
+            if allow_trailing_comma && matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
                 break;
             }
         }
@@ -132,7 +128,7 @@ where
             SyntaxKind::T_RBRACE,
             "expected field name",
             |parser, name| {
-                if !parser.expect(SyntaxKind::T_COLON) {
+                if !parser.ts.expect(SyntaxKind::T_COLON) {
                     return None;
                 }
                 let value = parser.parse_expr(0)?;
@@ -153,9 +149,9 @@ where
 
     fn parse_literal(&self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
-            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.slice(span)))),
+            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.ts.slice(span)))),
             SyntaxKind::T_STRING => {
-                let raw = self.slice(span);
+                let raw = self.ts.slice(span);
                 let value = raw
                     .strip_prefix('"')
                     .and_then(|s| s.strip_suffix('"'))
