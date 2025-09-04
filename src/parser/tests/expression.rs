@@ -2,7 +2,10 @@
 
 use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
-use crate::test_util::{call, closure, field, lit_bool, lit_num, lit_str, struct_expr, tuple, var};
+use crate::test_util::{
+    bit_slice, call, call_expr, closure, field, field_access, lit_bool, lit_num, lit_str,
+    method_call, struct_expr, tuple, tuple_index, var,
+};
 use rstest::rstest;
 
 #[rstest]
@@ -36,6 +39,11 @@ use rstest::rstest;
     ]),
 )]
 #[case("|x| Point { x: x }", closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])))]
+#[case("(f)(x)", call_expr(Expr::Group(Box::new(var("f"))), vec![var("x")]))]
+#[case("foo.bar(x)", method_call(var("foo"), "bar", vec![var("x")]))]
+#[case("foo.bar", field_access(var("foo"), "bar"))]
+#[case("e[1,0]", bit_slice(var("e"), lit_num("1"), lit_num("0")))]
+#[case("t.0", tuple_index(var("t"), "0"))]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);

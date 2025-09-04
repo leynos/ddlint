@@ -41,7 +41,7 @@ fn parses_compound_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("Point { x: 1", "expected", 12, 12, true)]
 #[case("(1, 2", "expected", 5, 5, true)]
 #[case("|x|", "invalid expression", 3, 3, false)]
-#[case("|x x", "expected `|`", 3, 4, false)]
+#[case("|x x", "expected T_PIPE", 3, 4, false)]
 #[case("||", "invalid expression", 2, 2, false)]
 fn compound_expression_errors(
     #[case] src: &str,

@@ -56,25 +56,84 @@ where
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        let mut lhs = self.parse_prefix()?;
-
-        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LPAREN)) {
-            let Some((_, lparen_span)) = self.ts.next_tok() else {
-                unreachable!("T_LPAREN was peeked");
-            };
-            let args = self.parse_args()?;
-            if !self.ts.expect(SyntaxKind::T_RPAREN) {
-                return None;
-            }
-            let Expr::Variable(name) = lhs else {
-                self.ts
-                    .push_error(lparen_span, "call target must be identifier");
-                return None;
-            };
-            lhs = Expr::Call { name, args };
-        }
-
+        let lhs = self.parse_prefix()?;
+        let lhs = self.parse_postfix(lhs)?;
         self.parse_infix(lhs, min_bp)
+    }
+
+    // New: highest-precedence postfix operators
+    pub(super) fn parse_postfix(&mut self, mut lhs: Expr) -> Option<Expr> {
+        loop {
+            match self.ts.peek_kind() {
+                Some(SyntaxKind::T_LPAREN) => {
+                    let _ = self.ts.next_tok();
+                    let args = self.parse_args()?;
+                    if !self.ts.expect(SyntaxKind::T_RPAREN) {
+                        return None;
+                    }
+                    lhs = Expr::Call {
+                        callee: Box::new(lhs),
+                        args,
+                    };
+                }
+                Some(SyntaxKind::T_LBRACKET) => {
+                    let _ = self.ts.next_tok();
+                    let hi = self.parse_expr(0)?;
+                    if !self.ts.expect(SyntaxKind::T_COMMA) {
+                        return None;
+                    }
+                    let lo = self.parse_expr(0)?;
+                    if !self.ts.expect(SyntaxKind::T_RBRACKET) {
+                        return None;
+                    }
+                    lhs = Expr::BitSlice {
+                        expr: Box::new(lhs),
+                        hi: Box::new(hi),
+                        lo: Box::new(lo),
+                    };
+                }
+                Some(SyntaxKind::T_DOT) => {
+                    let _ = self.ts.next_tok();
+                    match self.ts.next_tok() {
+                        Some((SyntaxKind::T_IDENT, sp)) => {
+                            let name = self.ts.slice(&sp);
+                            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LPAREN)) {
+                                let _ = self.ts.next_tok();
+                                let args = self.parse_args()?;
+                                if !self.ts.expect(SyntaxKind::T_RPAREN) {
+                                    return None;
+                                }
+                                lhs = Expr::MethodCall {
+                                    recv: Box::new(lhs),
+                                    name,
+                                    args,
+                                };
+                            } else {
+                                lhs = Expr::FieldAccess {
+                                    expr: Box::new(lhs),
+                                    field: name,
+                                };
+                            }
+                        }
+                        Some((SyntaxKind::T_NUMBER, sp)) => {
+                            let idx = self.ts.slice(&sp);
+                            lhs = Expr::TupleIndex {
+                                expr: Box::new(lhs),
+                                index: idx,
+                            };
+                        }
+                        other => {
+                            let sp = other.map_or_else(|| self.ts.eof_span(), |(_, s)| s);
+                            self.ts
+                                .push_error(sp, "expected identifier or tuple index after '.'");
+                            return None;
+                        }
+                    }
+                }
+                _ => break,
+            }
+        }
+        Some(lhs)
     }
 
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {

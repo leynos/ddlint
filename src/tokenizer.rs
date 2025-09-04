@@ -189,11 +189,17 @@ fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
 #[must_use]
 fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
     let mut lexer = Token::lexer(src);
-    let estimated_tokens = src.len() >> 2; // roughly four chars per token
+    #[expect(
+        clippy::integer_division,
+        clippy::integer_division_remainder_used,
+        reason = "rough capacity estimate"
+    )]
+    let estimated_tokens = src.len() / 4; // roughly four chars per token
     let mut out = Vec::with_capacity(estimated_tokens);
     while let Some(result) = lexer.next() {
         let span = lexer.span();
-        let text = src.get(span.clone()).unwrap_or("");
+        #[expect(clippy::expect_used, reason = "invalid span indicates lexer bug")]
+        let text = src.get(span.clone()).expect("lexer produced invalid span");
         let Ok(token) = result else {
             out.push((SyntaxKind::N_ERROR, span));
             continue;

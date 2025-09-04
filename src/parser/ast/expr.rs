@@ -56,10 +56,42 @@ pub enum Expr {
     Variable(String),
     /// Function call expression.
     Call {
-        /// Name of the function being invoked.
-        name: String,
+        /// Callee expression being invoked.
+        callee: Box<Expr>,
         /// Argument expressions supplied to the function.
         args: Vec<Expr>,
+    },
+    /// Method call expression.
+    MethodCall {
+        /// Receiver expression providing the method context.
+        recv: Box<Expr>,
+        /// Name of the method being invoked.
+        name: String,
+        /// Argument expressions supplied to the method.
+        args: Vec<Expr>,
+    },
+    /// Field access expression.
+    FieldAccess {
+        /// Expression whose field is being accessed.
+        expr: Box<Expr>,
+        /// Name of the field.
+        field: String,
+    },
+    /// Tuple index expression.
+    TupleIndex {
+        /// Expression to index.
+        expr: Box<Expr>,
+        /// String form of the tuple index.
+        index: String,
+    },
+    /// Bit slice expression.
+    BitSlice {
+        /// Expression being sliced.
+        expr: Box<Expr>,
+        /// High index of the slice.
+        hi: Box<Expr>,
+        /// Low index of the slice.
+        lo: Box<Expr>,
     },
     /// Struct literal expression.
     Struct {
@@ -95,16 +127,34 @@ impl Expr {
     pub fn to_sexpr(&self) -> String {
         match self {
             Self::Literal(Literal::Number(n)) => n.clone(),
-            Self::Literal(Literal::String(s)) => format!("\"{s}\""),
+            Self::Literal(Literal::String(s)) => format!("{s:?}"),
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
-            Self::Call { name, args } => {
+            Self::Call { callee, args } => {
                 if args.is_empty() {
-                    format!("({name})")
+                    format!("(call {})", callee.to_sexpr())
                 } else {
                     let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
-                    format!("({} {})", name, args.join(" "))
+                    format!("(call {} {})", callee.to_sexpr(), args.join(" "))
                 }
+            }
+            Self::MethodCall { recv, name, args } => {
+                let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
+                format!("(method {} {} {})", recv.to_sexpr(), name, args.join(" "))
+            }
+            Self::FieldAccess { expr, field } => {
+                format!("(field {} {})", expr.to_sexpr(), field)
+            }
+            Self::TupleIndex { expr, index } => {
+                format!("(tuple-index {} {index})", expr.to_sexpr())
+            }
+            Self::BitSlice { expr, hi, lo } => {
+                format!(
+                    "(bitslice {} {} {})",
+                    expr.to_sexpr(),
+                    hi.to_sexpr(),
+                    lo.to_sexpr()
+                )
             }
             Self::Struct { name, fields } => {
                 use std::fmt::Write as _;

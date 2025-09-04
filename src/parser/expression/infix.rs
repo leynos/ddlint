@@ -3,7 +3,7 @@
 use crate::parser::ast::{Expr, infix_binding_power};
 use crate::{Span, SyntaxKind};
 
-use super::Pratt;
+use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where
@@ -17,8 +17,14 @@ where
             if l_bp < min_bp {
                 break;
             }
-            self.ts.next_tok();
-            let rhs = self.parse_expr(r_bp)?;
+            let Some((_, op_span)) = self.ts.next_tok() else {
+                unreachable!("peeked operator");
+            };
+            let Some(rhs) = self.parse_expr(r_bp) else {
+                self.ts
+                    .push_error(op_span, "missing right-hand side for operator");
+                return None;
+            };
             lhs = Expr::Binary {
                 op,
                 lhs: Box::new(lhs),

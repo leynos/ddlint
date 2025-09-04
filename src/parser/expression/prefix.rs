@@ -3,7 +3,7 @@
 use crate::parser::ast::{Expr, Literal, prefix_binding_power};
 use crate::{Span, SyntaxKind};
 
-use super::Pratt;
+use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where
@@ -18,9 +18,11 @@ where
             SyntaxKind::T_IDENT => self.parse_identifier_or_struct(&span),
             SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
+            SyntaxKind::T_LBRACE => self.parse_brace_group(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
-                    self.ts.push_error(span, "unexpected token");
+                    self.ts
+                        .push_error(span.clone(), format!("unexpected token: {k:?}"));
                     return None;
                 };
                 let rhs = self.parse_expr(bp)?;
@@ -72,20 +74,34 @@ where
         if is_tuple {
             Some(Expr::Tuple(items))
         } else {
-            #[expect(clippy::expect_used, reason = "tuple contains one element")]
-            let item = items.pop().expect("group expression missing item");
+            #[expect(
+                clippy::expect_used,
+                reason = "parser invariant: group contains exactly one item"
+            )]
+            let item = items.pop().expect("expected one item in group");
             Some(Expr::Group(Box::new(item)))
         }
     }
 
-    fn parse_closure_literal(&mut self) -> Option<Expr> {
-        let params = self.parse_closure_params()?;
-        if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_PIPE)) {
-            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(span, "expected `|`");
+    fn parse_brace_group(&mut self) -> Option<Expr> {
+        // `{ expr }` – alternative grouping (not a struct literal; those are parsed after an identifier).
+        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+            let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(sp, "expected expression");
             return None;
         }
-        self.ts.next_tok();
+        let inner = self.parse_expr(0)?;
+        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+            return None;
+        }
+        Some(Expr::Group(Box::new(inner)))
+    }
+
+    fn parse_closure_literal(&mut self) -> Option<Expr> {
+        let params = self.parse_closure_params()?;
+        if !self.ts.expect(SyntaxKind::T_PIPE) {
+            return None;
+        }
         let body = self.parse_expr(0)?;
         Some(Expr::Closure {
             params,
@@ -93,6 +109,8 @@ where
         })
     }
 
+    /// Parse a comma-separated list of identifiers up to (but not consuming) `terminator`.
+    /// Returns an empty vector if the next token is `terminator`. Callers must consume `terminator`.
     fn parse_comma_separated_identifiers<T>(
         &mut self,
         terminator: SyntaxKind,
