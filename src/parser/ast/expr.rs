@@ -130,17 +130,9 @@ impl Expr {
             Self::Literal(Literal::String(s)) => format!("{s:?}"),
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
-            Self::Call { callee, args } => {
-                if args.is_empty() {
-                    format!("(call {})", callee.to_sexpr())
-                } else {
-                    let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
-                    format!("(call {} {})", callee.to_sexpr(), args.join(" "))
-                }
-            }
+            Self::Call { callee, args } => self.format_call_sexpr(callee, args),
             Self::MethodCall { recv, name, args } => {
-                let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
-                format!("(method {} {} {})", recv.to_sexpr(), name, args.join(" "))
+                self.format_method_call_sexpr(recv, name, args)
             }
             Self::FieldAccess { expr, field } => {
                 format!("(field {} {})", expr.to_sexpr(), field)
@@ -156,51 +148,89 @@ impl Expr {
                     lo.to_sexpr()
                 )
             }
-            Self::Struct { name, fields } => {
-                use std::fmt::Write as _;
-                let mut out = String::with_capacity(16);
-                let _ = write!(&mut out, "(struct {name}");
-                for (n, e) in fields {
-                    let _ = write!(&mut out, " ({n} {})", e.to_sexpr());
-                }
-                out.push(')');
-                out
-            }
-            Self::Tuple(items) => {
-                use std::fmt::Write as _;
-                let mut out = String::from("(tuple");
-                for item in items {
-                    let _ = write!(&mut out, " {}", item.to_sexpr());
-                }
-                out.push(')');
-                out
-            }
-            Self::Closure { params, body } => {
-                let params = params.join(" ");
-                format!("(closure ({params}) {})", body.to_sexpr())
-            }
-            Self::Unary { op, expr } => {
-                let op_str = match op {
-                    UnaryOp::Not => "not",
-                    UnaryOp::Neg => "-",
-                };
-                format!("({} {})", op_str, expr.to_sexpr())
-            }
-            Self::Binary { op, lhs, rhs } => {
-                let op_str = match op {
-                    BinaryOp::Add => "+",
-                    BinaryOp::Sub => "-",
-                    BinaryOp::Mul => "*",
-                    BinaryOp::Div => "/",
-                    BinaryOp::Mod => "%",
-                    BinaryOp::Eq => "==",
-                    BinaryOp::Neq => "!=",
-                    BinaryOp::And => "and",
-                    BinaryOp::Or => "or",
-                };
-                format!("({} {} {})", op_str, lhs.to_sexpr(), rhs.to_sexpr())
-            }
+            Self::Struct { name, fields } => self.format_struct_sexpr(name, fields),
+            Self::Tuple(items) => self.format_tuple_sexpr(items),
+            Self::Closure { params, body } => self.format_closure_sexpr(params, body),
+            Self::Unary { op, expr } => self.format_unary_sexpr(*op, expr),
+            Self::Binary { op, lhs, rhs } => self.format_binary_sexpr(*op, lhs, rhs),
             Self::Group(e) => format!("(group {})", e.to_sexpr()),
         }
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_call_sexpr(&self, callee: &Expr, args: &[Expr]) -> String {
+        let _ = self;
+        if args.is_empty() {
+            format!("(call {})", callee.to_sexpr())
+        } else {
+            let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
+            format!("(call {} {})", callee.to_sexpr(), args.join(" "))
+        }
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_method_call_sexpr(&self, recv: &Expr, name: &str, args: &[Expr]) -> String {
+        let _ = self;
+        let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
+        format!("(method {} {} {})", recv.to_sexpr(), name, args.join(" "))
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_struct_sexpr(&self, name: &str, fields: &[(String, Expr)]) -> String {
+        use std::fmt::Write as _;
+        let _ = self;
+        let mut out = String::with_capacity(16);
+        let _ = write!(&mut out, "(struct {name}");
+        for (n, e) in fields {
+            let _ = write!(&mut out, " ({n} {})", e.to_sexpr());
+        }
+        out.push(')');
+        out
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_tuple_sexpr(&self, items: &[Expr]) -> String {
+        use std::fmt::Write as _;
+        let _ = self;
+        let mut out = String::from("(tuple");
+        for item in items {
+            let _ = write!(&mut out, " {}", item.to_sexpr());
+        }
+        out.push(')');
+        out
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_closure_sexpr(&self, params: &[String], body: &Expr) -> String {
+        let _ = self;
+        let params = params.join(" ");
+        format!("(closure ({params}) {})", body.to_sexpr())
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_unary_sexpr(&self, op: UnaryOp, expr: &Expr) -> String {
+        let _ = self;
+        let op_str = match op {
+            UnaryOp::Not => "not",
+            UnaryOp::Neg => "-",
+        };
+        format!("({} {})", op_str, expr.to_sexpr())
+    }
+
+    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
+    fn format_binary_sexpr(&self, op: BinaryOp, lhs: &Expr, rhs: &Expr) -> String {
+        let _ = self;
+        let op_str = match op {
+            BinaryOp::Add => "+",
+            BinaryOp::Sub => "-",
+            BinaryOp::Mul => "*",
+            BinaryOp::Div => "/",
+            BinaryOp::Mod => "%",
+            BinaryOp::Eq => "==",
+            BinaryOp::Neq => "!=",
+            BinaryOp::And => "and",
+            BinaryOp::Or => "or",
+        };
+        format!("({} {} {})", op_str, lhs.to_sexpr(), rhs.to_sexpr())
     }
 }
