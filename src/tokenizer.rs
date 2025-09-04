@@ -63,6 +63,8 @@ enum Token {
     Star,
     #[token("/")]
     Slash,
+    #[token("++")]
+    PlusPlus,
     #[token("+")]
     Plus,
     #[token("-")]
@@ -87,6 +89,8 @@ enum Token {
     Shr,
     #[token("<<")]
     Shl,
+    #[token("?")]
+    Question,
     #[token("~")]
     Tilde,
     #[token("@")]
@@ -229,6 +233,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
             Token::Percent => SyntaxKind::T_PERCENT,
             Token::Star => SyntaxKind::T_STAR,
             Token::Slash => SyntaxKind::T_SLASH,
+            Token::PlusPlus => SyntaxKind::T_PLUSPLUS,
             Token::Plus => SyntaxKind::T_PLUS,
             Token::Minus => SyntaxKind::T_MINUS,
             Token::Arrow => SyntaxKind::T_ARROW,
@@ -241,6 +246,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
             Token::Neq => SyntaxKind::T_NEQ,
             Token::Shr => SyntaxKind::T_SHR,
             Token::Shl => SyntaxKind::T_SHL,
+            Token::Question => SyntaxKind::T_QUESTION,
             Token::Tilde => SyntaxKind::T_TILDE,
             Token::At => SyntaxKind::T_AT,
             Token::Hash => SyntaxKind::T_HASH,
