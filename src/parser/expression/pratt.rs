@@ -27,8 +27,7 @@ where
 /// Returns a vector of [`Simple`] errors when parsing fails.
 #[must_use = "discarding the Result will ignore parse errors"]
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
-    let tokens = tokenize_no_trivia(src);
-    let mut parser = Pratt::new(tokens.into_iter(), src);
+    let mut parser = Pratt::new(tokenize_no_trivia(src).into_iter(), src);
     let expr = parser.parse_expr(0);
     if let (Some(_), Some(sp)) = (&expr, parser.ts.check_unexpected_token()) {
         parser.ts.push_error(sp, "unexpected token");
@@ -67,7 +66,7 @@ where
             lhs = match self.ts.peek_kind() {
                 Some(SyntaxKind::T_LPAREN) => self.parse_function_call_postfix(lhs)?,
                 Some(SyntaxKind::T_LBRACKET) => self.parse_bit_slice_postfix(lhs)?,
-                Some(SyntaxKind::T_DOT) => self.parse_dot_operation_postfix(lhs)?,
+                Some(SyntaxKind::T_DOT) => self.parse_dot_access_postfix(lhs)?,
                 _ => break,
             };
         }
@@ -99,7 +98,7 @@ where
         })
     }
 
-    fn parse_dot_operation_postfix(&mut self, lhs: Expr) -> Option<Expr> {
+    fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         self.ts.next_tok(); // '.'
         match self.ts.next_tok() {
             Some((SyntaxKind::T_IDENT, sp)) => {
