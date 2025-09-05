@@ -167,22 +167,34 @@ impl Expr {
         }
     }
 
+    fn format_sexpr<I>(tag: &str, parts: I) -> String
+    where
+        I: IntoIterator<Item = String>,
+    {
+        let mut buf = String::from("(");
+        buf.push_str(tag);
+        for part in parts {
+            buf.push(' ');
+            buf.push_str(&part);
+        }
+        buf.push(')');
+        buf
+    }
+
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
     fn format_call_sexpr(&self, callee: &Expr, args: &[Expr]) -> String {
         let _ = self;
-        if args.is_empty() {
-            format!("(call {})", callee.to_sexpr())
-        } else {
-            let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
-            format!("(call {} {})", callee.to_sexpr(), args.join(" "))
-        }
+        let parts = std::iter::once(callee.to_sexpr()).chain(args.iter().map(Self::to_sexpr));
+        Self::format_sexpr("call", parts)
     }
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
     fn format_method_call_sexpr(&self, recv: &Expr, name: &str, args: &[Expr]) -> String {
         let _ = self;
-        let args = args.iter().map(Self::to_sexpr).collect::<Vec<_>>();
-        format!("(method {} {} {})", recv.to_sexpr(), name, args.join(" "))
+        let parts = std::iter::once(recv.to_sexpr())
+            .chain(std::iter::once(name.to_string()))
+            .chain(args.iter().map(Self::to_sexpr));
+        Self::format_sexpr("method", parts)
     }
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
@@ -200,14 +212,9 @@ impl Expr {
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
     fn format_tuple_sexpr(&self, items: &[Expr]) -> String {
-        use std::fmt::Write as _;
         let _ = self;
-        let mut out = String::from("(tuple");
-        for item in items {
-            let _ = write!(&mut out, " {}", item.to_sexpr());
-        }
-        out.push(')');
-        out
+        let parts = items.iter().map(Self::to_sexpr);
+        Self::format_sexpr("tuple", parts)
     }
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
@@ -224,7 +231,7 @@ impl Expr {
             UnaryOp::Not => "not",
             UnaryOp::Neg => "-",
         };
-        format!("({} {})", op_str, expr.to_sexpr())
+        Self::format_sexpr(op_str, [expr.to_sexpr()])
     }
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
@@ -246,6 +253,6 @@ impl Expr {
             BinaryOp::Seq => ";",
             BinaryOp::Imply => "=>",
         };
-        format!("({} {} {})", op_str, lhs.to_sexpr(), rhs.to_sexpr())
+        Self::format_sexpr(op_str, [lhs.to_sexpr(), rhs.to_sexpr()])
     }
 }
