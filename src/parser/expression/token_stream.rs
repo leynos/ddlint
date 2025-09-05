@@ -53,23 +53,25 @@ where
         }
     }
 
-    pub(super) fn check_unexpected_token(&mut self) -> Option<Span> {
-        if self.peek_kind().is_some() {
-            self.next_tok().map(|(_, sp)| sp)
-        } else {
-            None
+    /// Drain and return any remaining tokens after a parsed expression.
+    pub(super) fn drain_unexpected_tokens(&mut self) -> Vec<(SyntaxKind, Span)> {
+        let mut rest = Vec::new();
+        while let Some(tok) = self.next_tok() {
+            rest.push(tok);
         }
+        rest
     }
 
     pub(super) fn push_error(&mut self, span: Span, msg: impl Into<String>) {
         self.errors.push(Simple::custom(span, msg.into()));
     }
 
-    pub(super) fn slice(&self, span: &Span) -> String {
+    #[expect(clippy::expect_used, reason = "lexer invariant: spans originate from source")]
+    pub(super) fn slice(&self, span: &Span) -> &'a str {
+        debug_assert!(span.end <= self.src.len(), "lexer produced invalid span");
         self.src
             .get(span.clone())
-            .unwrap_or_else(|| panic!("lexer produced invalid span"))
-            .to_string()
+            .expect("lexer produced invalid span")
     }
 
     pub(super) fn eof_span(&self) -> Span {
