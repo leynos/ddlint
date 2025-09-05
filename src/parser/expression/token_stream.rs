@@ -66,12 +66,9 @@ where
         self.errors.push(Simple::custom(span, msg.into()));
     }
 
-    #[expect(clippy::expect_used, reason = "lexer invariant: spans originate from source")]
-    pub(super) fn slice(&self, span: &Span) -> &'a str {
+    pub(super) fn slice(&self, span: &Span) -> String {
         debug_assert!(span.end <= self.src.len(), "lexer produced invalid span");
-        self.src
-            .get(span.clone())
-            .expect("lexer produced invalid span")
+        self.src.get(span.clone()).unwrap_or("").to_string()
     }
 
     pub(super) fn eof_span(&self) -> Span {

@@ -29,17 +29,16 @@ where
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let mut parser = Pratt::new(tokenize_no_trivia(src).into_iter(), src);
     let expr = parser.parse_expr(0);
-    if expr.is_some() {
+    if let Some(expr_val) = expr {
         for (kind, sp) in parser.ts.drain_unexpected_tokens() {
             parser
                 .ts
                 .push_error(sp, format!("unexpected token: {kind:?}"));
         }
-    }
-    if parser.ts.errors.is_empty() {
-        if let Some(expr) = expr {
-            return Ok(expr);
+        if parser.ts.errors.is_empty() {
+            return Ok(expr_val);
         }
+    } else if parser.ts.errors.is_empty() {
         parser
             .ts
             .push_error(parser.ts.eof_span(), "invalid expression");
@@ -106,7 +105,7 @@ where
         self.ts.next_tok(); // '.'
         match self.ts.next_tok() {
             Some((SyntaxKind::T_IDENT, sp)) => {
-                let name = self.ts.slice(&sp).to_string();
+                let name = self.ts.slice(&sp);
                 if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LPAREN)) {
                     self.parse_method_call(lhs, name)
                 } else {
@@ -117,7 +116,7 @@ where
                 }
             }
             Some((SyntaxKind::T_NUMBER, sp)) => {
-                let idx = self.ts.slice(&sp).to_string();
+                let idx = self.ts.slice(&sp);
                 Some(Expr::TupleIndex {
                     expr: Box::new(lhs),
                     index: idx,

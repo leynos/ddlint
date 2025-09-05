@@ -35,7 +35,7 @@ where
     }
 
     fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
-        let name = self.ts.slice(span).to_string();
+        let name = self.ts.slice(span);
         self.parse_ident_expression(name)
     }
 
@@ -128,7 +128,7 @@ where
                 self.ts.push_error(sp, err_msg);
                 return None;
             }
-            let name = self.ts.slice(&sp).to_string();
+            let name = self.ts.slice(&sp);
             items.push(process_item(self, name)?);
             if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
                 break;
@@ -167,15 +167,13 @@ where
 
     fn parse_literal(&self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
-            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(
-                self.ts.slice(span).to_string(),
-            ))),
+            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.ts.slice(span)))),
             SyntaxKind::T_STRING => {
                 let raw = self.ts.slice(span);
                 let value = raw
                     .strip_prefix('"')
                     .and_then(|s| s.strip_suffix('"'))
-                    .unwrap_or(raw)
+                    .unwrap_or(raw.as_str())
                     .to_string();
                 Some(Expr::Literal(Literal::String(value)))
             }
