@@ -87,6 +87,10 @@ pub enum BinaryOp {
     BitAnd, BitOr, Shl, Shr,
     // Assignment
     Assign,
+    // Type
+    Ascribe, Cast,
+    // Sequencing and control
+    Seq, Imply,
     // Other
     Concat, // '++' in DDlog
 }

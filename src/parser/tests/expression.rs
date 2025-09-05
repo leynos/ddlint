@@ -44,6 +44,12 @@ use rstest::rstest;
 #[case("foo.bar", field_access(var("foo"), "bar"))]
 #[case("e[1,0]", bit_slice(var("e"), lit_num("1"), lit_num("0")))]
 #[case("t.0", tuple_index(var("t"), "0"))]
+#[case("x: T", Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) })]
+#[case("x as T", Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) })]
+#[case("a = b = c", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
+#[case("a = b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("a and b => c or d", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("c")), rhs: Box::new(var("d")) }) })]
+#[case("a or b and c", Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
@@ -63,6 +69,11 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case("1 +", 1)]
 #[case("(1 + 2", 1)]
 #[case("1 ? 2", 1)]
+#[case("x :", 1)]
+#[case("x as", 1)]
+#[case("x =", 1)]
+#[case("x ;", 1)]
+#[case("x =>", 1)]
 #[case("", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {

@@ -20,7 +20,11 @@ where
             let Some((_, op_span)) = self.ts.next_tok() else {
                 unreachable!("peeked operator");
             };
-            let Some(rhs) = self.parse_expr(r_bp) else {
+            let rhs = match op_kind {
+                SyntaxKind::T_COLON | SyntaxKind::K_AS => self.parse_type(),
+                _ => self.parse_expr(r_bp),
+            };
+            let Some(rhs) = rhs else {
                 self.ts
                     .push_error(op_span, "missing right-hand side for operator");
                 return None;

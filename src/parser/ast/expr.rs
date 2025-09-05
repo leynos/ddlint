@@ -45,6 +45,16 @@ pub enum BinaryOp {
     And,
     /// Logical OR operator.
     Or,
+    /// Type ascription operator.
+    Ascribe,
+    /// Cast operator.
+    Cast,
+    /// Assignment operator.
+    Assign,
+    /// Sequencing operator.
+    Seq,
+    /// Logical implication operator.
+    Imply,
 }
 
 /// Parsed expression tree.
@@ -230,6 +240,11 @@ impl Expr {
             BinaryOp::Neq => "!=",
             BinaryOp::And => "and",
             BinaryOp::Or => "or",
+            BinaryOp::Ascribe => ":",
+            BinaryOp::Cast => "as",
+            BinaryOp::Assign => "=",
+            BinaryOp::Seq => ";",
+            BinaryOp::Imply => "=>",
         };
         format!("({} {} {})", op_str, lhs.to_sexpr(), rhs.to_sexpr())
     }
