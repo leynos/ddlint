@@ -161,6 +161,12 @@ where
                 break;
             }
             self.ts.next_tok();
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
+                let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+                self.ts
+                    .push_error(sp, "unexpected trailing comma in argument list");
+                return None;
+            }
         }
         Some(args)
     }

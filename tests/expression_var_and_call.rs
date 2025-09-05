@@ -20,6 +20,7 @@ fn parses_vars_and_calls(#[case] src: &str, #[case] expected: Expr) {
 #[rstest]
 #[case("foo(", "invalid expression", 4, 4, "unclosed")]
 #[case("foo(]", "unexpected token", 4, 5, "mismatch")]
+#[case("foo(x,)", "unexpected trailing comma in argument list", 6, 7, "other")]
 #[case("foo(1 2)", "expected T_RPAREN", 6, 7, "other")]
 fn call_parsing_errors(
     #[case] src: &str,
