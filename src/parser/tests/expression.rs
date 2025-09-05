@@ -75,6 +75,10 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case("x ;", 1)]
 #[case("x =>", 1)]
 #[case("", 1)]
+#[case("e[1 0]", 1)]
+#[case("e[1,0", 1)]
+#[case("t.", 1)]
+#[case("t.-1", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
