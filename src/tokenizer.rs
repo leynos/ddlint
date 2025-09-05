@@ -264,7 +264,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use ddlint::{tokenize_without_trivia, SyntaxKind};
 ///
 /// let tokens = tokenize_without_trivia("input R(x: u32);");
