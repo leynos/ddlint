@@ -6,7 +6,7 @@
 
 #![expect(clippy::expect_used, reason = "tests assert exact behaviour")]
 
-use ddlint::{SyntaxKind, tokenize};
+use ddlint::{SyntaxKind, tokenize_with_trivia};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -19,14 +19,14 @@ fn simple_input() -> &'static str {
 #[case("relation", vec![SyntaxKind::K_RELATION])]
 #[case("R", vec![SyntaxKind::T_IDENT])]
 fn single_tokens(#[case] source: &str, #[case] expected: Vec<SyntaxKind>) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
     assert_eq!(kinds, expected);
 }
 
 #[rstest]
 fn token_spans(simple_input: &str) {
-    let tokens = tokenize(simple_input);
+    let tokens = tokenize_with_trivia(simple_input);
     for (kind, span) in tokens {
         let text = simple_input
             .get(span.clone())
@@ -43,7 +43,7 @@ fn token_spans(simple_input: &str) {
 #[case("123", SyntaxKind::T_NUMBER)]
 #[case("\"foo\"", SyntaxKind::T_STRING)]
 fn literal_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -58,7 +58,7 @@ fn literal_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[case("0o77", SyntaxKind::T_NUMBER)]
 #[case("1e10", SyntaxKind::T_NUMBER)]
 fn extended_number_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -74,7 +74,7 @@ fn extended_number_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[case("/* c */", SyntaxKind::T_COMMENT)]
 #[case("// line", SyntaxKind::T_COMMENT)]
 fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -86,7 +86,7 @@ fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[rstest]
 #[case("$")]
 fn unknown_character_produces_error(#[case] source: &str) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -97,7 +97,7 @@ fn unknown_character_produces_error(#[case] source: &str) {
 
 #[test]
 fn unterminated_string_is_error() {
-    let tokens = tokenize("\"foo");
+    let tokens = tokenize_with_trivia("\"foo");
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -111,7 +111,7 @@ fn unterminated_string_is_error() {
 #[case(":", SyntaxKind::T_COLON)]
 #[case("::", SyntaxKind::T_COLON_COLON)]
 fn punctuation_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -129,7 +129,7 @@ fn punctuation_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[case(",", SyntaxKind::T_COMMA)]
 #[case(".", SyntaxKind::T_DOT)]
 fn delimiter_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -166,7 +166,7 @@ fn delimiter_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[case("#", SyntaxKind::T_HASH)]
 #[case("'", SyntaxKind::T_APOSTROPHE)]
 fn operator_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
-    let tokens = tokenize(source);
+    let tokens = tokenize_with_trivia(source);
     assert_eq!(tokens.len(), 1);
     let first = tokens
         .first()
@@ -177,14 +177,14 @@ fn operator_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 
 #[test]
 fn negative_number_tokens() {
-    let tokens = tokenize("-1");
+    let tokens = tokenize_with_trivia("-1");
     let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
     assert_eq!(kinds, vec![SyntaxKind::T_MINUS, SyntaxKind::T_NUMBER]);
 }
 
 #[test]
 fn escaped_string_token() {
-    let tokens = tokenize("\"a\\\"b\"");
+    let tokens = tokenize_with_trivia("\"a\\\"b\"");
     assert_eq!(tokens.len(), 1);
     assert_eq!(
         tokens
@@ -197,7 +197,7 @@ fn escaped_string_token() {
 
 #[test]
 fn unterminated_comment_is_error() {
-    let tokens = tokenize("/* comment");
+    let tokens = tokenize_with_trivia("/* comment");
     assert_eq!(tokens.len(), 1);
     assert_eq!(
         tokens
@@ -210,14 +210,14 @@ fn unterminated_comment_is_error() {
 
 #[test]
 fn empty_input_produces_no_tokens() {
-    let tokens = tokenize("");
+    let tokens = tokenize_with_trivia("");
     assert!(tokens.is_empty());
 }
 
 #[test]
 fn complex_expression() {
     let src = "R(a, b) :- Q(a) && S(b).";
-    let tokens = tokenize(src);
+    let tokens = tokenize_with_trivia(src);
     // ensure we tokenise without errors and capture punctuation
     assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
     assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_IMPLIES));

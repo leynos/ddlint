@@ -6,7 +6,7 @@
 //! and rules. It lays down the framework for integrating `chumsky` combinators
 //! and error recovery in later stages.
 
-use crate::tokenize;
+use crate::tokenize_with_trivia;
 
 #[macro_use]
 mod lexer_helpers;
@@ -25,7 +25,7 @@ pub use cst_builder::{Parsed, ParsedSpans};
 
 /// Parse the provided source string.
 ///
-/// The function tokenises the source using [`tokenize`], then uses a minimal
+/// The function tokenises the source using [`tokenize_with_trivia`], then uses a minimal
 /// `chumsky` parser to wrap those tokens into a CST. Syntactic error recovery
 /// will insert `N_ERROR` nodes when grammar rules fail once they exist.
 ///
@@ -39,7 +39,7 @@ pub use cst_builder::{Parsed, ParsedSpans};
 /// ```
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
-    let tokens = tokenize(src);
+    let tokens = tokenize_with_trivia(src);
     let (spans, errors) = parse_tokens(&tokens, src);
 
     let green = build_green_tree(&tokens, src, &spans);
@@ -67,7 +67,7 @@ mod tests {
     mod transformers;
     mod types;
     use super::token_stream::TokenStream;
-    use crate::{SyntaxKind, tokenize};
+    use crate::{SyntaxKind, tokenize_with_trivia};
     use rstest::rstest;
 
     /// Tests that `skip_until` advances the token stream cursor past the specified span end.
@@ -76,7 +76,7 @@ mod tests {
     ///
     /// ```no_run
     /// let src = "import foo\n";
-    /// let tokens = tokenize(src);
+    /// let tokens = tokenize_with_trivia(src);
     /// let mut stream = TokenStream::new(&tokens, src);
     /// let end = stream.line_end(0);
     /// stream.skip_until(end);
@@ -85,7 +85,7 @@ mod tests {
     #[rstest]
     fn skip_until_advances_past_span() {
         let src = "import foo\n";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let mut stream = TokenStream::new(&tokens, src);
         let end = stream.line_end(0);
         stream.skip_until(end);
@@ -98,7 +98,7 @@ mod tests {
     ///
     /// ```no_run
     /// let src = "typedef A = string\nnext";
-    /// let tokens = tokenize(src);
+    /// let tokens = tokenize_with_trivia(src);
     /// let stream = TokenStream::new(&tokens, src);
     /// let start = 1; // token after 'typedef'
     /// let end = stream.line_end(start);
@@ -108,7 +108,7 @@ mod tests {
     #[rstest]
     fn line_end_returns_span_end() {
         let src = "typedef A = string\nnext";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let stream = TokenStream::new(&tokens, src);
         let start = 1; // token after 'typedef'
         let end = stream.line_end(start);
@@ -122,7 +122,7 @@ mod tests {
     ///
     /// ```no_run
     /// let src = "extern    type Foo";
-    /// let tokens = tokenize(src);
+    /// let tokens = tokenize_with_trivia(src);
     /// let mut stream = TokenStream::new(&tokens, src);
     /// stream.advance();
     /// stream.skip_ws_inline();
@@ -134,7 +134,7 @@ mod tests {
     #[rstest]
     fn skip_ws_inline_skips_spaces() {
         let src = "extern    type Foo";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let mut stream = TokenStream::new(&tokens, src);
         stream.advance();
         stream.skip_ws_inline();
@@ -150,7 +150,7 @@ mod tests {
     ///
     /// ```no_run
     /// let src = "typedef A = string\n";
-    /// let tokens = tokenize(src);
+    /// let tokens = tokenize_with_trivia(src);
     /// let stream = TokenStream::new(&tokens, src);
     /// let start = tokens.len();
     /// assert_eq!(stream.line_end(start), src.len());
@@ -158,7 +158,7 @@ mod tests {
     #[rstest]
     fn line_end_out_of_bounds_returns_len() {
         let src = "typedef A = string\n";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let stream = TokenStream::new(&tokens, src);
         let start = tokens.len();
         assert_eq!(stream.line_end(start), src.len());

@@ -15,10 +15,10 @@ use rowan::SyntaxElement;
 ///
 /// ```
 /// use ddlint::syntax_utils::parse_parenthesized_list;
-/// use ddlint::tokenize;
+/// use ddlint::tokenize_with_trivia;
 ///
 /// let src = "foo(bar, baz)";
-/// let tokens = tokenize(src);
+/// let tokens = tokenize_with_trivia(src);
 /// let result = parse_parenthesized_list(tokens.into_iter());
 /// assert_eq!(result, vec!["bar".into(), "baz".into()]);
 /// ```

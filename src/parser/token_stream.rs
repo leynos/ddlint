@@ -4,11 +4,11 @@
 //! navigation during parsing.
 //!
 //! ```
-//! use ddlint::{tokenize, SyntaxKind};
+//! use ddlint::{tokenize_with_trivia, SyntaxKind};
 //! use ddlint::parser::token_stream::TokenStream;
 //!
 //! let src = "typedef A = string\n";
-//! let tokens = tokenize(src);
+//! let tokens = tokenize_with_trivia(src);
 //! let mut stream = TokenStream::new(&tokens, src);
 //! let end = stream.line_end(0);
 //! stream.skip_until(end);

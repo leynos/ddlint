@@ -192,7 +192,7 @@ sequenceDiagram
     participant SyntaxTree
 
     User->>Parser: parse(source)
-    Parser->>Tokenizer: tokenize(source)
+    Parser->>Tokenizer: tokenize_with_trivia(source)
     Tokenizer-->>Parser: tokens
     Parser->>Parser: build token stream
     Parser->>SyntaxTree: construct green tree from tokens
@@ -411,7 +411,7 @@ lives right next to the code it describes and is never out of sync.
 An example of how a developer would define a new rule using this macro is as
 follows:
 
-````rust
+```rust
 declare_lint! {
     /// ## What it does
     /// Checks for relations that are declared but are never used as input to another rule.
@@ -441,7 +441,7 @@ declare_lint! {
     group: "correctness",
     // The default severity will also be specified here, e.g., level: "warn"
 }
-````
+```
 
 This macro dramatically lowers the barrier to entry for contributing new rules.
 It allows developers to focus on the interesting part—the analysis logic—rather

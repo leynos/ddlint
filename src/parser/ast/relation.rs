@@ -89,7 +89,7 @@ impl Relation {
     #[must_use]
     pub fn primary_key(&self) -> Option<Vec<String>> {
         use super::parse_utils::primary_key_clause;
-        use crate::tokenize;
+        use crate::tokenize_with_trivia;
         use chumsky::Parser as _;
 
         let mut iter = self.syntax.children_with_tokens().peekable();
@@ -104,7 +104,7 @@ impl Relation {
         if rest.is_empty() {
             return None;
         }
-        let tokens = tokenize(&rest);
+        let tokens = tokenize_with_trivia(&rest);
         let stream = chumsky::Stream::from_iter(0..rest.len(), tokens.into_iter());
         let parser = primary_key_clause(&rest);
         let (res, errs) = parser.parse_recovery(stream);
