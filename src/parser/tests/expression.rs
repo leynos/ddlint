@@ -2,7 +2,10 @@
 
 use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
-use crate::test_util::{call, closure, field, lit_bool, lit_num, lit_str, struct_expr, tuple, var};
+use crate::test_util::{
+    bit_slice, call, call_expr, closure, field, field_access, lit_bool, lit_num, lit_str,
+    method_call, struct_expr, tuple, tuple_index, var,
+};
 use rstest::rstest;
 
 #[rstest]
@@ -36,6 +39,17 @@ use rstest::rstest;
     ]),
 )]
 #[case("|x| Point { x: x }", closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])))]
+#[case("(f)(x)", call_expr(Expr::Group(Box::new(var("f"))), vec![var("x")]))]
+#[case("foo.bar(x)", method_call(var("foo"), "bar", vec![var("x")]))]
+#[case("foo.bar", field_access(var("foo"), "bar"))]
+#[case("e[1,0]", bit_slice(var("e"), lit_num("1"), lit_num("0")))]
+#[case("t.0", tuple_index(var("t"), "0"))]
+#[case("x: T", Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) })]
+#[case("x as T", Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) })]
+#[case("a = b = c", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
+#[case("a = b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("a and b => c or d", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("c")), rhs: Box::new(var("d")) }) })]
+#[case("a or b and c", Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
@@ -55,6 +69,11 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case("1 +", 1)]
 #[case("(1 + 2", 1)]
 #[case("1 ? 2", 1)]
+#[case("x :", 1)]
+#[case("x as", 1)]
+#[case("x =", 1)]
+#[case("x ;", 1)]
+#[case("x =>", 1)]
 #[case("", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {

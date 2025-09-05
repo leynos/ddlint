@@ -58,7 +58,7 @@ fn empty_program_has_no_items(empty_prog: &str) {
 
 #[rstest]
 fn error_token_produces_error_node() {
-    let source = "?( relation Foo(";
+    let source = "$( relation Foo(";
     let parsed = parse_err(source);
     let root = parsed.root().syntax();
     let has_error = root

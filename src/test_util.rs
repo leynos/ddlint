@@ -78,7 +78,57 @@ pub fn var(name: impl Into<Name>) -> Expr {
 #[must_use]
 pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     let name: Name = name.into();
-    Expr::Call { name: name.0, args }
+    Expr::Call {
+        callee: Box::new(Expr::Variable(name.0)),
+        args,
+    }
+}
+
+/// Construct a struct literal [`Expr::Struct`].
+#[must_use]
+pub fn call_expr(callee: Expr, args: Vec<Expr>) -> Expr {
+    Expr::Call {
+        callee: Box::new(callee),
+        args,
+    }
+}
+
+pub fn method_call(recv: Expr, name: impl Into<Name>, args: Vec<Expr>) -> Expr {
+    let name: Name = name.into();
+    Expr::MethodCall {
+        recv: Box::new(recv),
+        name: name.0,
+        args,
+    }
+}
+
+/// Construct a field access [`Expr::FieldAccess`].
+#[must_use]
+pub fn field_access(expr: Expr, field: impl Into<Name>) -> Expr {
+    let field: Name = field.into();
+    Expr::FieldAccess {
+        expr: Box::new(expr),
+        field: field.0,
+    }
+}
+
+/// Construct a tuple index [`Expr::TupleIndex`].
+#[must_use]
+pub fn tuple_index(expr: Expr, index: &str) -> Expr {
+    Expr::TupleIndex {
+        expr: Box::new(expr),
+        index: index.to_string(),
+    }
+}
+
+/// Construct a bit slice [`Expr::BitSlice`].
+#[must_use]
+pub fn bit_slice(expr: Expr, hi: Expr, lo: Expr) -> Expr {
+    Expr::BitSlice {
+        expr: Box::new(expr),
+        hi: Box::new(hi),
+        lo: Box::new(lo),
+    }
 }
 
 /// Construct a struct literal [`Expr::Struct`].

@@ -18,6 +18,7 @@ test-support = []
 
 [dev-dependencies]
 rstest = "0.25"
+ddlint = { path = ".", features = ["test-support"] }
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

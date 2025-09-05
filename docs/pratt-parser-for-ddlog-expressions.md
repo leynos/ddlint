@@ -54,8 +54,8 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
-    FunctionCall {
-        name: String,
+    Call {
+        callee: Box<Expr>,
         args: Vec<Expr>,
     },
     Tuple(Vec<Expr>),
@@ -87,6 +87,10 @@ pub enum BinaryOp {
     BitAnd, BitOr, Shl, Shr,
     // Assignment
     Assign,
+    // Type
+    Ascribe, Cast,
+    // Sequencing and control
+    Seq, Imply,
     // Other
     Concat, // '++' in DDlog
 }
@@ -356,11 +360,12 @@ Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
 Variable references are parsed by interpreting identifier tokens as
-`Expr::Variable`. When an identifier is immediately followed by a left
-parenthesis, the parser treats it as a function call, parsing a comma-separated
-list of argument expressions and producing `Expr::Call { name, args }`. This
-postfix form naturally binds tighter than infix operators, so no additional
-precedence entries are required.
+`Expr::Variable`. Postfix operators such as calls, field access, method
+invocations, bit slices, and tuple indexing are handled in a loop at the
+highest precedence. Function calls produce `Expr::Call { callee, args }`, while
+method calls, field access, bit slices, and tuple indices map to dedicated AST
+variants. This design allows chaining like `foo.bar(x).0` without extra
+precedence rules.
 
 Struct literals, tuple literals, and closures extend the prefix grammar. Struct
 construction recognizes `Ident { field: expr, ... }` and records field order in

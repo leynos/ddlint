@@ -40,6 +40,22 @@ const PREFIX_TABLE: &[(SyntaxKind, PrefixEntry)] = &[
 
 const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
     (
+        SyntaxKind::T_COLON,
+        InfixEntry {
+            l_bp: 60,
+            r_bp: 61,
+            op: BinaryOp::Ascribe,
+        },
+    ),
+    (
+        SyntaxKind::K_AS,
+        InfixEntry {
+            l_bp: 60,
+            r_bp: 61,
+            op: BinaryOp::Cast,
+        },
+    ),
+    (
         SyntaxKind::T_STAR,
         InfixEntry {
             l_bp: 50,
@@ -104,11 +120,35 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
         },
     ),
     (
+        SyntaxKind::T_FAT_ARROW,
+        InfixEntry {
+            l_bp: 8,
+            r_bp: 9,
+            op: BinaryOp::Imply,
+        },
+    ),
+    (
         SyntaxKind::K_OR,
         InfixEntry {
             l_bp: 10,
             r_bp: 11,
             op: BinaryOp::Or,
+        },
+    ),
+    (
+        SyntaxKind::T_EQ,
+        InfixEntry {
+            l_bp: 5,
+            r_bp: 4,
+            op: BinaryOp::Assign,
+        },
+    ),
+    (
+        SyntaxKind::T_SEMI,
+        InfixEntry {
+            l_bp: 0,
+            r_bp: 1,
+            op: BinaryOp::Seq,
         },
     ),
 ];

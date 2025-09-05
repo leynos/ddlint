@@ -84,7 +84,6 @@ fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 }
 
 #[rstest]
-#[case("?")]
 #[case("$")]
 fn unknown_character_produces_error(#[case] source: &str) {
     let tokens = tokenize(source);
@@ -148,6 +147,7 @@ fn delimiter_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[case("%", SyntaxKind::T_PERCENT)]
 #[case("*", SyntaxKind::T_STAR)]
 #[case("/", SyntaxKind::T_SLASH)]
+#[case("++", SyntaxKind::T_PLUSPLUS)]
 #[case("+", SyntaxKind::T_PLUS)]
 #[case("-", SyntaxKind::T_MINUS)]
 #[case("->", SyntaxKind::T_ARROW)]
@@ -160,6 +160,7 @@ fn delimiter_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 #[case("!=", SyntaxKind::T_NEQ)]
 #[case(">>", SyntaxKind::T_SHR)]
 #[case("<<", SyntaxKind::T_SHL)]
+#[case("?", SyntaxKind::T_QUESTION)]
 #[case("~", SyntaxKind::T_TILDE)]
 #[case("@", SyntaxKind::T_AT)]
 #[case("#", SyntaxKind::T_HASH)]

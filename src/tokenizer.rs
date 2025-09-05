@@ -63,6 +63,8 @@ enum Token {
     Star,
     #[token("/")]
     Slash,
+    #[token("++")]
+    PlusPlus,
     #[token("+")]
     Plus,
     #[token("-")]
@@ -87,6 +89,8 @@ enum Token {
     Shr,
     #[token("<<")]
     Shl,
+    #[token("?")]
+    Question,
     #[token("~")]
     Tilde,
     #[token("@")]
@@ -186,25 +190,20 @@ fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
     KEYWORDS.get(ident).copied()
 }
 
-/// Tokenise the provided `DDlog` source.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use ddlint::{tokenize, SyntaxKind};
-///
-/// let tokens = tokenize("input relation R(x: u32);");
-/// assert_eq!(tokens.len(), 12);
-/// assert_eq!(tokens[0].0, SyntaxKind::K_INPUT);
-/// ```
 #[must_use]
-pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
+fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
     let mut lexer = Token::lexer(src);
-    let estimated_tokens = src.len() >> 2; // roughly four chars per token
+    #[expect(
+        clippy::integer_division,
+        clippy::integer_division_remainder_used,
+        reason = "rough capacity estimate"
+    )]
+    let estimated_tokens = src.len() / 4; // roughly four chars per token
     let mut out = Vec::with_capacity(estimated_tokens);
     while let Some(result) = lexer.next() {
         let span = lexer.span();
-        let text = src.get(span.clone()).unwrap_or("");
+        #[expect(clippy::expect_used, reason = "invalid span indicates lexer bug")]
+        let text = src.get(span.clone()).expect("lexer produced invalid span");
         let Ok(token) = result else {
             out.push((SyntaxKind::N_ERROR, span));
             continue;
@@ -234,6 +233,7 @@ pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
             Token::Percent => SyntaxKind::T_PERCENT,
             Token::Star => SyntaxKind::T_STAR,
             Token::Slash => SyntaxKind::T_SLASH,
+            Token::PlusPlus => SyntaxKind::T_PLUSPLUS,
             Token::Plus => SyntaxKind::T_PLUS,
             Token::Minus => SyntaxKind::T_MINUS,
             Token::Arrow => SyntaxKind::T_ARROW,
@@ -246,6 +246,7 @@ pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
             Token::Neq => SyntaxKind::T_NEQ,
             Token::Shr => SyntaxKind::T_SHR,
             Token::Shl => SyntaxKind::T_SHL,
+            Token::Question => SyntaxKind::T_QUESTION,
             Token::Tilde => SyntaxKind::T_TILDE,
             Token::At => SyntaxKind::T_AT,
             Token::Hash => SyntaxKind::T_HASH,
@@ -254,4 +255,33 @@ pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
         out.push((kind, span));
     }
     out
+}
+
+/// Tokenise the source, excluding whitespace and comments.
+///
+/// Returns only significant tokens for use in expression parsing.
+#[must_use]
+pub fn tokenize_no_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
+    tokenize_impl(src)
+        .into_iter()
+        .filter(|(k, _)| !matches!(k, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .collect()
+}
+
+/// Tokenise the provided `DDlog` source.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use ddlint::{tokenize, SyntaxKind};
+///
+/// let tokens = tokenize("input relation R(x: u32);");
+/// assert_eq!(tokens.len(), 12);
+/// assert_eq!(tokens[0].0, SyntaxKind::K_INPUT);
+/// ```
+///
+/// This variant retains whitespace and comment tokens.
+#[must_use]
+pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
+    tokenize_impl(src)
 }
