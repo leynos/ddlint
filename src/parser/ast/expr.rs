@@ -167,15 +167,13 @@ impl Expr {
         }
     }
 
-    fn format_sexpr<I>(tag: &str, parts: I) -> String
-    where
-        I: IntoIterator<Item = String>,
-    {
-        let mut buf = String::from("(");
+    fn format_sexpr(tag: &str, parts: impl IntoIterator<Item = String>) -> String {
+        use std::fmt::Write as _;
+        let mut buf = String::with_capacity(2 + tag.len());
+        buf.push('(');
         buf.push_str(tag);
         for part in parts {
-            buf.push(' ');
-            buf.push_str(&part);
+            let _ = write!(&mut buf, " {part}");
         }
         buf.push(')');
         buf
@@ -199,20 +197,19 @@ impl Expr {
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
     fn format_struct_sexpr(&self, name: &str, fields: &[(String, Expr)]) -> String {
-        use std::fmt::Write as _;
         let _ = self;
-        let mut out = String::with_capacity(16);
-        let _ = write!(&mut out, "(struct {name}");
-        for (n, e) in fields {
-            let _ = write!(&mut out, " ({n} {})", e.to_sexpr());
-        }
-        out.push(')');
-        out
+        let parts = std::iter::once(name.to_string()).chain(
+            fields
+                .iter()
+                .map(|(n, e)| format!("({} {})", n, e.to_sexpr())),
+        );
+        Self::format_sexpr("struct", parts)
     }
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
     fn format_tuple_sexpr(&self, items: &[Expr]) -> String {
         let _ = self;
+        // An empty tuple renders as `(tuple)`, matching existing behaviour.
         let parts = items.iter().map(Self::to_sexpr);
         Self::format_sexpr("tuple", parts)
     }
@@ -220,8 +217,9 @@ impl Expr {
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
     fn format_closure_sexpr(&self, params: &[String], body: &Expr) -> String {
         let _ = self;
-        let params = params.join(" ");
-        format!("(closure ({params}) {})", body.to_sexpr())
+        let header = format!("({})", params.join(" "));
+        let parts = std::iter::once(header).chain(std::iter::once(body.to_sexpr()));
+        Self::format_sexpr("closure", parts)
     }
 
     #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
