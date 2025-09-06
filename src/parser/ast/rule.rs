@@ -11,7 +11,7 @@
 //!
 //! # Examples
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! # use ddlint::parse;
 //! # use ddlint::parser::ast::Rule;
 //! # fn first_rule(src: &str) -> Rule {

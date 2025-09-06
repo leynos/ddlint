@@ -1,6 +1,7 @@
 //! Lexical analysis for `DDlog` source.
 //!
-//! This module exposes a `tokenize` function which converts raw source text into
+//! This module exposes `tokenize_with_trivia` and `tokenize_without_trivia`
+//! functions which convert raw source text into
 //! a sequence of `(SyntaxKind, Span)` pairs. It uses the `logos` crate to
 //! recognise tokens so that the CST can mirror the input exactly.
 
@@ -260,8 +261,17 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// Tokenise the source, excluding whitespace and comments.
 ///
 /// Returns only significant tokens for use in expression parsing.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use ddlint::{tokenize_without_trivia, SyntaxKind};
+///
+/// let tokens = tokenize_without_trivia("input R(x: u32);");
+/// assert!(!tokens.iter().any(|(k, _)| *k == SyntaxKind::T_WHITESPACE));
+/// ```
 #[must_use]
-pub fn tokenize_no_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
+pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
     tokenize_impl(src)
         .into_iter()
         .filter(|(k, _)| !matches!(k, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
@@ -273,15 +283,15 @@ pub fn tokenize_no_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::{tokenize, SyntaxKind};
+/// use ddlint::{tokenize_with_trivia, SyntaxKind};
 ///
-/// let tokens = tokenize("input relation R(x: u32);");
+/// let tokens = tokenize_with_trivia("input relation R(x: u32);");
 /// assert_eq!(tokens.len(), 12);
 /// assert_eq!(tokens[0].0, SyntaxKind::K_INPUT);
 /// ```
 ///
 /// This variant retains whitespace and comment tokens.
 #[must_use]
-pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
+pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
     tokenize_impl(src)
 }

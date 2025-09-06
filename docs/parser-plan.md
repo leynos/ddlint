@@ -45,7 +45,7 @@ sequenceDiagram
     participant Tokenizer
     participant LogosLexer
     participant SyntaxKind
-    Client->>Tokenizer: tokenize(src: &str)
+    Client->>Tokenizer: tokenize_with_trivia(src: &str)
     Tokenizer->>LogosLexer: Token::lexer(src)
     loop for each token
         LogosLexer-->>Tokenizer: next() -> Token + span

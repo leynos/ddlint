@@ -17,7 +17,7 @@ use crate::{Span, SyntaxKind};
 /// ```rust,ignore
 /// use chumsky::Parser as _;
 /// let src = "User(id: u32)";
-/// let tokens = crate::tokenize(src);
+/// let tokens = crate::tokenize_with_trivia(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// assert!(relation_columns().parse(stream).is_ok());
 /// ```
@@ -25,7 +25,7 @@ use crate::{Span, SyntaxKind};
 /// ```rust,ignore
 /// use chumsky::Parser as _;
 /// let src = "User"; // Missing column list
-/// let tokens = crate::tokenize(src);
+/// let tokens = crate::tokenize_with_trivia(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// assert!(relation_columns().parse(stream).is_err());
 /// ```
@@ -65,7 +65,7 @@ fn keyword<'a>(
 /// ```rust,ignore
 /// use chumsky::Parser as _;
 /// let src = "primary key(id, other)";
-/// let tokens = crate::tokenize(src);
+/// let tokens = crate::tokenize_with_trivia(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// let keys = primary_key_clause(src)
 ///     .parse(stream)
@@ -76,7 +76,7 @@ fn keyword<'a>(
 /// ```rust,ignore
 /// use chumsky::Parser as _;
 /// let src = "primary key"; // Missing column list
-/// let tokens = crate::tokenize(src);
+/// let tokens = crate::tokenize_with_trivia(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// assert!(primary_key_clause(src).parse(stream).is_err());
 /// ```

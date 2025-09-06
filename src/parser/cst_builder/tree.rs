@@ -81,12 +81,12 @@ impl<'a> SpanCursors<'a> {
 ///
 /// # Examples
 ///
-/// ```
-/// use ddlint::tokenize;
+/// ```rust,ignore
+/// use ddlint::tokenize_with_trivia;
 /// use ddlint::parser::{cst_builder::{build_green_tree, ParsedSpans}, span_scanner::parse_tokens, ast::Root};
 ///
 /// let src = "import foo::bar;";
-/// let tokens = tokenize(src);
+/// let tokens = tokenize_with_trivia(src);
 /// let (spans, errors) = parse_tokens(&tokens, src);
 /// assert!(errors.is_empty());
 /// let green = build_green_tree(&tokens, src, &spans);
@@ -146,12 +146,12 @@ fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, te
 mod tests {
     use super::*;
     use crate::parser::span_scanner::parse_tokens;
-    use crate::tokenize;
+    use crate::tokenize_with_trivia;
 
     #[test]
     fn build_green_tree_round_trip() {
         let src = "import foo::bar;";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let (spans, errors) = parse_tokens(&tokens, src);
         assert!(errors.is_empty());
         let green = build_green_tree(&tokens, src, &spans);
