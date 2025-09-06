@@ -13,13 +13,13 @@ use rowan::SyntaxElement;
 ///
 /// # Examples
 ///
-/// ```
-/// use ddlint::syntax_utils::parse_parenthesized_list;
-/// use ddlint::tokenize;
+/// ```rust,no_run
+/// use ddlint::{parse, syntax_utils::parse_parenthesized_list};
 ///
-/// let src = "foo(bar, baz)";
-/// let tokens = tokenize(src);
-/// let result = parse_parenthesized_list(tokens.into_iter());
+/// let src = "relation R(x: u32) // context to build a CST\nfoo(bar, baz)";
+/// let parsed = parse(src);
+/// let elements = parsed.root().syntax().children_with_tokens();
+/// let result = parse_parenthesized_list(elements);
 /// assert_eq!(result, vec!["bar".into(), "baz".into()]);
 /// ```
 #[must_use]
