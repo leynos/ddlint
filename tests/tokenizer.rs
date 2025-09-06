@@ -89,7 +89,9 @@ mod expect_used {
 
     #[rstest]
     #[case("$")]
+    #[case("!")] // incomplete != token should error
     fn unknown_character_produces_error(#[case] source: &str) {
+        // Use the trivia-preserving tokenizer to keep tests consistent with the suite.
         let tokens = tokenize_with_trivia(source);
         assert_eq!(tokens.len(), 1);
         let first = tokens
@@ -97,6 +99,17 @@ mod expect_used {
             .cloned()
             .expect("tokenizer should produce at least one token");
         assert_eq!(first.0, SyntaxKind::N_ERROR);
+    }
+
+    // Malformed multi-character operators should surface an error token.
+    #[rstest]
+    #[case("!+")]
+    #[case("++!")]
+    #[case("?!")]
+    fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
+        // Align with the suite by using trivia-aware tokenisation.
+        let tokens = tokenize_with_trivia(source);
+        assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::N_ERROR));
     }
 
     #[test]
