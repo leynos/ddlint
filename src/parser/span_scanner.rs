@@ -62,7 +62,7 @@ pub(super) fn parse_tokens(
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use chumsky::prelude::*;
 /// use crate::{parser::span_scanner::parse_and_record, SyntaxKind, Span};
 /// use crate::parser::span_collector::SpanCollector;

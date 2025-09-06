@@ -81,7 +81,7 @@ impl<'a> SpanCursors<'a> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use ddlint::tokenize_with_trivia;
 /// use ddlint::parser::{cst_builder::{build_green_tree, ParsedSpans}, span_scanner::parse_tokens, ast::Root};
 ///

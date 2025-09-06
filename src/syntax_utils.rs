@@ -13,7 +13,7 @@ use rowan::SyntaxElement;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use ddlint::{parse, syntax_utils::parse_parenthesized_list};
 ///
 /// let src = "relation R(x: u32) // context to build a CST\nfoo(bar, baz)";

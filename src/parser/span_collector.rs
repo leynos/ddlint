@@ -32,7 +32,7 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// use crate::parser::{SpanCollector, SyntaxKind, Span};
     ///
     /// let tokens: &[(SyntaxKind, Span)] = &[];

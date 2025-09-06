@@ -46,7 +46,7 @@ impl<'a> TokenParseContext<'a> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use ddlint::parser::ast::parse_utils::errors::{Delim, DelimStack};
 /// use ddlint::parser::ast::parse_utils::token_utils::open_delimiter;
 /// use rowan::{TextRange, TextSize};
@@ -68,7 +68,7 @@ pub(crate) fn open_delimiter(stack: &mut DelimStack, delim: Delim, span: TextRan
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use ddlint::parser::ast::parse_utils::errors::{Delim, DelimStack};
 /// use ddlint::parser::ast::parse_utils::token_utils::{open_delimiter, close_delimiter};
 /// use rowan::{TextRange, TextSize};

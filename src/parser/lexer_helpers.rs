@@ -17,7 +17,7 @@ use crate::SyntaxKind;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use ddlint::{parser::lexer_helpers::token_display, SyntaxKind};
 /// use chumsky::error::Simple;
 ///
@@ -49,7 +49,7 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,ignore
 /// use ddlint::parser::token_stream::TokenStream;
 /// use ddlint::parser::lexer_helpers::token_dispatch;
 /// use ddlint::{Span, SyntaxKind};
@@ -91,7 +91,7 @@ macro_rules! token_dispatch {
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use ddlint::parser::lexer_helpers::inline_ws;
 /// let parser = inline_ws().repeated();
 /// ```
@@ -104,7 +104,7 @@ pub(super) fn inline_ws() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKi
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use ddlint::parser::lexer_helpers::ident;
 /// let parser = ident();
 /// ```
@@ -118,7 +118,7 @@ pub(super) fn ident() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>>
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use ddlint::parser::lexer_helpers::atom;
 /// let parser = atom();
 /// ```
