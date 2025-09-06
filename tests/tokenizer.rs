@@ -85,6 +85,7 @@ fn trivia_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
 
 #[rstest]
 #[case("$")]
+#[case("!")] // incomplete != token
 fn unknown_character_produces_error(#[case] source: &str) {
     let tokens = tokenize(source);
     assert_eq!(tokens.len(), 1);
@@ -93,6 +94,16 @@ fn unknown_character_produces_error(#[case] source: &str) {
         .cloned()
         .expect("tokenizer should produce at least one token");
     assert_eq!(first.0, SyntaxKind::N_ERROR);
+}
+
+// Malformed multi-character operators should surface an error token.
+#[rstest]
+#[case("!+")]
+#[case("++!")]
+#[case("?!")]
+fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
+    let tokens = tokenize(source);
+    assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::N_ERROR));
 }
 
 #[test]
