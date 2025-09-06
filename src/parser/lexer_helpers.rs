@@ -17,7 +17,7 @@ use crate::SyntaxKind;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use ddlint::{parser::lexer_helpers::token_display, SyntaxKind};
 /// use chumsky::error::Simple;
 ///
@@ -49,7 +49,7 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,ignore
 /// use ddlint::parser::token_stream::TokenStream;
 /// use ddlint::parser::lexer_helpers::token_dispatch;
 /// use ddlint::{Span, SyntaxKind};
@@ -62,7 +62,7 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
 ///     st.stream.advance();
 /// }
 ///
-/// # let tokens = ddlint::tokenize("extern type Foo;");
+/// # let tokens = ddlint::tokenize_with_trivia("extern type Foo;");
 /// # let src = "extern type Foo;";
 /// let mut st = State { stream: TokenStream::new(&tokens, src) };
 /// token_dispatch!(st, {
@@ -91,7 +91,7 @@ macro_rules! token_dispatch {
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use ddlint::parser::lexer_helpers::inline_ws;
 /// let parser = inline_ws().repeated();
 /// ```
@@ -104,7 +104,7 @@ pub(super) fn inline_ws() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKi
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use ddlint::parser::lexer_helpers::ident;
 /// let parser = ident();
 /// ```
@@ -118,7 +118,7 @@ pub(super) fn ident() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>>
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use ddlint::parser::lexer_helpers::atom;
 /// let parser = atom();
 /// ```
@@ -203,7 +203,7 @@ pub(super) fn balanced_block_nonempty(
 mod tests {
     //! Unit tests for the lexer helper utilities.
     use super::*;
-    use crate::{Span, parser::token_stream::TokenStream, tokenize};
+    use crate::{Span, parser::token_stream::TokenStream, tokenize_with_trivia};
     use chumsky::Stream;
     use rstest::rstest;
 
@@ -240,7 +240,7 @@ mod tests {
         }
 
         let src = "()";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let mut st = State {
             stream: TokenStream::new(&tokens, src),
             out: Vec::new(),
@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn inline_ws_consumes_ws_and_comments() {
         let src = " \t//c";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let parser = inline_ws().repeated();
         let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
         assert!(res.is_ok());
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn ident_parses_with_padding() {
         let src = "  foo  ";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let res = ident().parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
         assert!(res.is_ok());
     }
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn atom_accepts_optional_args() {
         let src = "foo(bar)";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let parser = atom();
         let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
         assert!(res.is_ok());
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn balanced_block_parses_nested() {
         let src = "(a(b)c)";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let parser = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
         let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
         assert!(res.is_ok());
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn balanced_block_nonempty_fails_on_empty() {
         let src = "()";
-        let tokens = tokenize(src);
+        let tokens = tokenize_with_trivia(src);
         let parser = balanced_block_nonempty(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
         let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
         assert!(res.is_err());

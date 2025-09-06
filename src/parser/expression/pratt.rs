@@ -7,7 +7,7 @@
 use chumsky::error::Simple;
 
 use crate::parser::ast::Expr;
-use crate::{Span, SyntaxKind, tokenize_no_trivia};
+use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
 
@@ -27,7 +27,7 @@ where
 /// Returns a vector of [`Simple`] errors when parsing fails.
 #[must_use = "discarding the Result will ignore parse errors"]
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
-    let mut parser = Pratt::new(tokenize_no_trivia(src).into_iter(), src);
+    let mut parser = Pratt::new(tokenize_without_trivia(src).into_iter(), src);
     let expr = parser.parse_expr(0);
     if let Some(expr_val) = expr {
         for (kind, sp) in parser.ts.drain_unexpected_tokens() {

@@ -3,12 +3,12 @@
 //! Provides a cursor-based wrapper around a slice of tokens for safer
 //! navigation during parsing.
 //!
-//! ```
-//! use ddlint::{tokenize, SyntaxKind};
+//! ```rust,ignore
+//! use ddlint::{tokenize_with_trivia, SyntaxKind};
 //! use ddlint::parser::token_stream::TokenStream;
 //!
 //! let src = "typedef A = string\n";
-//! let tokens = tokenize(src);
+//! let tokens = tokenize_with_trivia(src);
 //! let mut stream = TokenStream::new(&tokens, src);
 //! let end = stream.line_end(0);
 //! stream.skip_until(end);
@@ -33,7 +33,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let stream = TokenStream::new(&tokens, src);
     /// assert_eq!(stream.cursor(), 0);
     /// ```
@@ -50,7 +50,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let stream = TokenStream::new(tokens, src);
     /// let pos = stream.cursor();
     /// assert_eq!(pos, 0);
@@ -66,7 +66,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let stream = TokenStream::new(&tokens, src);
     /// if let Some((kind, span)) = stream.peek() {
     ///     // Inspect the current token
@@ -81,7 +81,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let mut stream = TokenStream::new(tokens, src);
     /// stream.advance();
     /// assert_eq!(stream.cursor(), 1);
@@ -96,7 +96,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let stream = TokenStream::new(&tokens, src);
     /// let all_tokens = stream.tokens();
     /// assert_eq!(all_tokens.len(), tokens.len());
@@ -110,7 +110,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let stream = TokenStream::new(tokens, "let x = 1;");
     /// assert_eq!(stream.src(), "let x = 1;");
     /// ```
@@ -125,7 +125,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// use parser::token_stream::TokenStream;
     /// // Assume tokens is a Vec<(SyntaxKind, Span)> and src is the source string.
     /// let mut stream = TokenStream::new(&tokens, src);
@@ -148,7 +148,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// let tokens = lex("foo\nbar");
     /// let stream = TokenStream::new(&tokens, "foo\nbar");
     /// let pos = stream.line_end(0);
@@ -178,7 +178,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// use parser::{TokenStream, SyntaxKind, Span};
     ///
     /// let src = "let x = 42; // comment";

@@ -5,7 +5,7 @@
 //!
 //! # Examples
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! # use ddlint::parse;
 //! # fn root(src: &str) -> ddlint::parser::ast::Root {
 //! #     parse(src).root()

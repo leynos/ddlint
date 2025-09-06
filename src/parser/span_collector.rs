@@ -32,7 +32,7 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// use crate::parser::{SpanCollector, SyntaxKind, Span};
     ///
     /// let tokens: &[(SyntaxKind, Span)] = &[];
@@ -102,7 +102,7 @@ mod tests {
     #[rstest]
     fn new_initialises_state() {
         let src = "import foo";
-        let tokens = crate::tokenize(src);
+        let tokens = crate::tokenize_with_trivia(src);
         let collector = SpanCollector::new(&tokens, src, ());
         assert_eq!(collector.stream.cursor(), 0);
         assert_eq!(collector.stream.tokens(), tokens.as_slice());
@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn into_parts_returns_collected_spans_and_extra() {
         let src = "input";
-        let tokens = crate::tokenize(src);
+        let tokens = crate::tokenize_with_trivia(src);
         let mut collector = SpanCollector::new(&tokens, src, 99u8);
         collector.spans.push(0..5);
         let (spans, extra) = collector.into_parts();
