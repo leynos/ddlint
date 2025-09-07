@@ -623,7 +623,8 @@ To make assertions easier, it's common to represent the expected expression
 tree in a simple, readable format like S-expressions.
 
 ```rust
-// A helper to pretty-print an expression AST as an S-expression.
+// In ddlint, prefer: expr.to_sexpr().
+// The helper below is illustrative for this guide.
 fn to_sexpr(expr: &Expr) -> String {
     //... implementation...
     // e.g., Add(Box(Literal(1)), Box(Literal(2))) -> "(+ 1 2)"
@@ -642,7 +643,7 @@ fn test_pratt_parser_expressions(#[case] input: &str, #[case] expected: &str) {
 
     assert!(errs.is_empty(), "Parse errors found: {:?}", errs);
     assert!(ast.is_some(), "Parser did not produce an AST");
-    assert_eq!(to_sexpr(&ast.unwrap()), expected);
+    assert_eq!(ast.unwrap().to_sexpr(), expected);
 }
 ```
 
@@ -968,7 +969,7 @@ operator precedence by adding parentheses where necessary to preserve the AST's
 structure.
 
 ```rust
-// A simple pretty-printer for our Expr AST.
+// A simple pretty-printer for our Expr AST (illustrative).
 fn to_sexpr(expr: &Expr) -> String {
     match expr {
         Expr::Literal(n) => n.to_string(),
@@ -999,7 +1000,7 @@ proptest! {
     #[test]
     fn ast_round_trip(ast in any::<Expr>()) {
         // 1. Pretty-print the generated AST to a string.
-        let code = to_sexpr(&ast);
+        let code = ast.to_sexpr();
 
         // 2. Parse the string back into an AST.
         let parsed_result = my_language_parser::parse_expr(&code);

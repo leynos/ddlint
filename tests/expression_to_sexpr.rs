@@ -31,3 +31,24 @@ fn struct_field_order_is_stable(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr.to_sexpr(), expected);
 }
+
+#[rstest]
+#[case("-5 + 2", "(+ (- 5) 2)")]
+#[case("1 * 2 + 3", "(+ (* 1 2) 3)")]
+#[case("a.b.c", "(field (field a b) c)")]
+#[case("(x)", "(group x)")]
+#[case("(x, 1)", "(tuple x 1)")]
+#[case("f()", "(call f)")]
+#[case("f(1, 2)", "(call f 1 2)")]
+#[case("a.b(1).c[7,0]", "(bitslice (field (method a b 1) c) 7 0)")]
+fn more_variants(#[case] src: &str, #[case] expected: &str) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr.to_sexpr(), expected);
+}
+
+#[rstest]
+#[case("|x, y| x + y", "(closure (x y) (+ x y))")]
+fn closures_format(#[case] src: &str, #[case] expected: &str) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr.to_sexpr(), expected);
+}

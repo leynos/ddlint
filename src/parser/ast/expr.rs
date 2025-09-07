@@ -202,11 +202,8 @@ impl Expr {
             }
             Self::Struct { name, fields } => format_nary(
                 "struct",
-                std::iter::once(name.clone()).chain(
-                    fields
-                        .iter()
-                        .map(|(n, e)| format!("({} {})", n, e.to_sexpr())),
-                ),
+                std::iter::once(name.clone())
+                    .chain(fields.iter().map(|(n, e)| format_field(n, &e.to_sexpr()))),
             ),
             Self::Tuple(items) => format_nary("tuple", items.iter().map(Self::to_sexpr)),
             Self::Closure { params, body } => format_nary(
@@ -222,13 +219,27 @@ impl Expr {
     }
 }
 
+#[inline]
+fn format_field(name: &str, value: &str) -> String {
+    let mut s = String::with_capacity(name.len() + value.len() + 3);
+    s.push('(');
+    s.push_str(name);
+    s.push(' ');
+    s.push_str(value);
+    s.push(')');
+    s
+}
+
 fn format_nary<I>(label: &str, parts: I) -> String
 where
     I: IntoIterator<Item = String>,
 {
-    let mut out = String::from("(");
+    let parts_vec: Vec<String> = parts.into_iter().collect();
+    let cap = 2 + label.len() + parts_vec.iter().map(|p| 1 + p.len()).sum::<usize>();
+    let mut out = String::with_capacity(cap);
+    out.push('(');
     out.push_str(label);
-    for part in parts {
+    for part in parts_vec {
         out.push(' ');
         out.push_str(&part);
     }
