@@ -119,10 +119,10 @@ fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
 }
 
 #[rstest]
-#[case("foo.bar(", "invalid expression", 8, 8, true)]
-#[case("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
-#[case("e[1]", "expected T_COMMA", 3, 4, false)]
-#[case("e[1,0", "expected T_RBRACKET", 5, 5, true)]
+#[case::unclosed_call("foo.bar(", "invalid expression", 8, 8, true)]
+#[case::trailing_dot("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
+#[case::bit_slice_missing_comma("e[1]", "expected T_COMMA", 3, 4, false)]
+#[case::bit_slice_unclosed("e[1,0", "expected T_RBRACKET", 5, 5, true)]
 fn postfix_expression_errors(
     #[case] src: &str,
     #[case] msg: &str,
