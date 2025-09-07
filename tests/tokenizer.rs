@@ -99,6 +99,12 @@ mod expect_used {
             .cloned()
             .expect("tokenizer should produce at least one token");
         assert_eq!(first.0, SyntaxKind::N_ERROR);
+        // Harden the check: the error span should map precisely
+        // to the offending lexeme. For single-char invalid inputs
+        // like "$" or a stray "!", this must equal the source.
+        let span = first.1.clone();
+        let slice = source.get(span).expect("span should be valid for source");
+        assert_eq!(slice, source);
     }
 
     // Malformed multi-character operators should surface an error token.
