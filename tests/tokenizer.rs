@@ -101,73 +101,53 @@ mod expect_used {
         assert_eq!(first.0, SyntaxKind::N_ERROR);
     }
 
-<<<<<<< HEAD
     // Malformed multi-character operators should surface an error token.
+    // When users type a stray '!' not forming '!=', the lexer must
+    // emit a single error token covering only '!'. Whitespace or
+    // newlines between '!' and '=' must not merge into a valid token.
     #[rstest]
     #[case("!+")]
     #[case("++!")]
     #[case("?!")]
+    #[case("! =")]
+    #[case("!\n=")]
+    #[case("!\t=")]
+    #[case("!\r\n=")]
     fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
-        // Align with the suite by using trivia-aware tokenisation.
         let tokens = tokenize_with_trivia(source);
-        assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::N_ERROR));
+        let errors: Vec<_> = tokens
+            .iter()
+            .filter(|(k, _)| *k == SyntaxKind::N_ERROR)
+            .collect();
+        assert_eq!(errors.len(), 1);
+        let span = errors.first().expect("error token should exist").1.clone();
+        let slice = source.get(span).expect("span should be valid for source");
+        assert_eq!(slice, "!");
     }
-||||||| parent of 09a05ac (Assert malformed operator error spans)
-// Malformed multi-character operators should surface an error token.
-#[rstest]
-#[case("!+")]
-#[case("++!")]
-#[case("?!")]
-fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
-    let tokens = tokenize(source);
-    assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::N_ERROR));
-}
-=======
-// Malformed multi-character operators should surface an error token.
-#[rstest]
-#[case("!+")]
-#[case("++!")]
-#[case("?!")]
-#[case("! =")]
-#[case("!\n=")]
-#[case("!\t=")]
-#[case("!\r\n=")]
-fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
-    let tokens = tokenize(source);
-    let errors: Vec<_> = tokens
-        .iter()
-        .filter(|(k, _)| *k == SyntaxKind::N_ERROR)
-        .collect();
-    assert_eq!(errors.len(), 1);
-    let span = errors.first().expect("error token should exist").1.clone();
-    let slice = source.get(span).expect("span should be valid for source");
-    assert_eq!(slice, "!");
-}
 
-#[rstest]
-#[case("!=", SyntaxKind::T_NEQ)]
-#[case(">=", SyntaxKind::T_GTE)]
-fn valid_multi_character_tokens_do_not_produce_error(
-    #[case] source: &str,
-    #[case] expected: SyntaxKind,
-) {
-    let tokens = tokenize(source);
-    assert_eq!(tokens.len(), 1);
-    let lexemes: Vec<(SyntaxKind, &str)> = tokens
-        .iter()
-        .map(|(k, span)| {
-            (
-                *k,
-                source
-                    .get(span.clone())
-                    .expect("span should be valid for source"),
-            )
-        })
-        .collect();
-    assert_eq!(lexemes, vec![(expected, source)]);
-    assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
-}
->>>>>>> 09a05ac (Assert malformed operator error spans)
+    #[rstest]
+    #[case("!=", SyntaxKind::T_NEQ)]
+    #[case(">=", SyntaxKind::T_GTE)]
+    fn valid_multi_character_tokens_do_not_produce_error(
+        #[case] source: &str,
+        #[case] expected: SyntaxKind,
+    ) {
+        let tokens = tokenize_with_trivia(source);
+        assert_eq!(tokens.len(), 1);
+        let lexemes: Vec<(SyntaxKind, &str)> = tokens
+            .iter()
+            .map(|(k, span)| {
+                (
+                    *k,
+                    source
+                        .get(span.clone())
+                        .expect("span should be valid for source"),
+                )
+            })
+            .collect();
+        assert_eq!(lexemes, vec![(expected, source)]);
+        assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
+    }
 
     #[test]
     fn unterminated_string_is_error() {
