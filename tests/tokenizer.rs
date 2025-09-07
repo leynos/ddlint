@@ -90,6 +90,7 @@ mod expect_used {
     #[rstest]
     #[case("$")]
     fn unknown_character_produces_error(#[case] source: &str) {
+        // Use the trivia-preserving tokenizer to keep tests consistent with the suite.
         let tokens = tokenize_with_trivia(source);
         assert_eq!(tokens.len(), 1);
         let first = tokens
@@ -97,7 +98,39 @@ mod expect_used {
             .cloned()
             .expect("tokenizer should produce at least one token");
         assert_eq!(first.0, SyntaxKind::N_ERROR);
+        // Harden the check: the error span should map precisely
+        // to the offending lexeme. For single-char invalid inputs
+        // like "$" or a stray "!", this must equal the source.
+        let span = first.1.clone();
+        let slice = source.get(span).expect("span should be valid for source");
+        assert_eq!(slice, source);
     }
+
+    // Malformed multi-character operators should surface an error token.
+    // When users type a stray '!' not forming '!=', the lexer must
+    // emit a single error token covering only '!'. Whitespace or
+    // newlines between '!' and '=' must not merge into a valid token.
+    #[rstest]
+    #[case("!+")]
+    #[case("++!")]
+    #[case("?!")]
+    #[case("! =")]
+    #[case("!\n=")]
+    #[case("!\t=")]
+    #[case("!\r\n=")]
+    fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
+        let tokens = tokenize_with_trivia(source);
+        let errors: Vec<_> = tokens
+            .iter()
+            .filter(|(k, _)| *k == SyntaxKind::N_ERROR)
+            .collect();
+        assert_eq!(errors.len(), 1);
+        let span = errors.first().expect("error token should exist").1.clone();
+        let slice = source.get(span).expect("span should be valid for source");
+        assert_eq!(slice, "!");
+    }
+
+    // Removed duplicate multi-character lexeme test; covered by operator_tokens.
 
     #[test]
     fn unterminated_string_is_error() {
@@ -176,7 +209,13 @@ mod expect_used {
             .first()
             .cloned()
             .expect("tokenizer should produce at least one token");
+        // Assert the kind matches and the span maps exactly to the
+        // full input lexeme. Also ensure no error tokens are present.
         assert_eq!(first.0, expected);
+        let span = first.1.clone();
+        let slice = source.get(span).expect("span should be valid for source");
+        assert_eq!(slice, source);
+        assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
     }
 
     #[test]
