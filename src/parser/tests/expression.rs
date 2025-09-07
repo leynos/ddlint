@@ -42,6 +42,15 @@ use rstest::rstest;
 #[case("(f)(x)", call_expr(Expr::Group(Box::new(var("f"))), vec![var("x")]))]
 #[case("foo.bar(x)", method_call(var("foo"), "bar", vec![var("x")]))]
 #[case("foo.bar", field_access(var("foo"), "bar"))]
+#[case("foo.bar.baz(x)", method_call(
+    field_access(var("foo"), "bar"),
+    "baz",
+    vec![var("x")]
+))]
+#[case("foo.bar.baz().qux", field_access(
+    method_call(field_access(var("foo"), "bar"), "baz", vec![]),
+    "qux"
+))]
 #[case("foo.bar().baz(x)", method_call(
     method_call(var("foo"), "bar", vec![]),
     "baz",
