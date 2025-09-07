@@ -128,6 +128,13 @@ mod expect_used {
     #[rstest]
     #[case("!=", SyntaxKind::T_NEQ)]
     #[case(">=", SyntaxKind::T_GTE)]
+    #[case("==", SyntaxKind::T_EQEQ)]
+    #[case("<=", SyntaxKind::T_LTE)]
+    #[case("->", SyntaxKind::T_ARROW)]
+    #[case("=>", SyntaxKind::T_FAT_ARROW)]
+    #[case("::", SyntaxKind::T_COLON_COLON)]
+    #[case("++", SyntaxKind::T_PLUSPLUS)]
+    #[case("<=>", SyntaxKind::T_SPACESHIP)]
     fn valid_multi_character_tokens_do_not_produce_error(
         #[case] source: &str,
         #[case] expected: SyntaxKind,
