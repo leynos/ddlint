@@ -3,6 +3,8 @@
 //! Provides a minimal structured representation of parsed expressions.
 //! This is used by the Pratt parser to build a tree that higher layers
 //! can inspect without re-parsing tokens.
+use std::fmt;
+
 /// Literal values that can appear in expressions.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
@@ -21,6 +23,22 @@ pub enum UnaryOp {
     /// Arithmetic negation.
     Neg,
 }
+
+impl UnaryOp {
+    fn symbol(self) -> &'static str {
+        match self {
+            Self::Not => "not",
+            Self::Neg => "-",
+        }
+    }
+}
+
+impl fmt::Display for UnaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.symbol())
+    }
+}
+
 /// Binary operators in expressions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
@@ -53,6 +71,34 @@ pub enum BinaryOp {
     /// Logical implication operator.
     Imply,
 }
+
+impl BinaryOp {
+    fn symbol(self) -> &'static str {
+        match self {
+            Self::Add => "+",
+            Self::Sub => "-",
+            Self::Mul => "*",
+            Self::Div => "/",
+            Self::Mod => "%",
+            Self::Eq => "==",
+            Self::Neq => "!=",
+            Self::And => "and",
+            Self::Or => "or",
+            Self::Ascribe => ":",
+            Self::Cast => "as",
+            Self::Assign => "=",
+            Self::Seq => ";",
+            Self::Imply => "=>",
+        }
+    }
+}
+
+impl fmt::Display for BinaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.symbol())
+    }
+}
+
 /// Parsed expression tree.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -132,7 +178,7 @@ impl Expr {
     pub fn to_sexpr(&self) -> String {
         match self {
             Self::Literal(Literal::Number(n)) => n.clone(),
-            Self::Literal(Literal::String(s)) => s.clone(),
+            Self::Literal(Literal::String(s)) => format!("{s:?}"),
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
             Self::Call { callee, args } => format_nary(
@@ -145,9 +191,11 @@ impl Expr {
                     .chain(std::iter::once(name.clone()))
                     .chain(args.iter().map(Self::to_sexpr)),
             ),
-            Self::FieldAccess { expr, field } => format!("(field {} {})", expr.to_sexpr(), field),
+            Self::FieldAccess { expr, field } => {
+                format_nary("field", [expr.to_sexpr(), field.clone()])
+            }
             Self::TupleIndex { expr, index } => {
-                format!("(tuple-index {} {index})", expr.to_sexpr())
+                format_nary("tuple-index", [expr.to_sexpr(), index.clone()])
             }
             Self::BitSlice { expr, hi, lo } => {
                 format_nary("bitslice", [expr.to_sexpr(), hi.to_sexpr(), lo.to_sexpr()])
@@ -161,36 +209,15 @@ impl Expr {
                 ),
             ),
             Self::Tuple(items) => format_nary("tuple", items.iter().map(Self::to_sexpr)),
-            Self::Closure { params, body } => {
-                format!("(closure ({}) {})", params.join(" "), body.to_sexpr(),)
-            }
-            Self::Unary { op, expr } => {
-                let op_str = match op {
-                    UnaryOp::Not => "not",
-                    UnaryOp::Neg => "-",
-                };
-                format_nary(op_str, std::iter::once(expr.to_sexpr()))
-            }
+            Self::Closure { params, body } => format_nary(
+                "closure",
+                [format!("({})", params.join(" ")), body.to_sexpr()],
+            ),
+            Self::Unary { op, expr } => format_nary(op.symbol(), std::iter::once(expr.to_sexpr())),
             Self::Binary { op, lhs, rhs } => {
-                let op_str = match op {
-                    BinaryOp::Add => "+",
-                    BinaryOp::Sub => "-",
-                    BinaryOp::Mul => "*",
-                    BinaryOp::Div => "/",
-                    BinaryOp::Mod => "%",
-                    BinaryOp::Eq => "==",
-                    BinaryOp::Neq => "!=",
-                    BinaryOp::And => "and",
-                    BinaryOp::Or => "or",
-                    BinaryOp::Ascribe => ":",
-                    BinaryOp::Cast => "as",
-                    BinaryOp::Assign => "=",
-                    BinaryOp::Seq => ";",
-                    BinaryOp::Imply => "=>",
-                };
-                format_nary(op_str, [lhs.to_sexpr(), rhs.to_sexpr()])
+                format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
             }
-            Self::Group(e) => format!("(group {})", e.to_sexpr()),
+            Self::Group(e) => format_nary("group", std::iter::once(e.to_sexpr())),
         }
     }
 }
