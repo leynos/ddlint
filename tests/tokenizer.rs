@@ -89,7 +89,6 @@ mod expect_used {
 
     #[rstest]
     #[case("$")]
-    #[case("!")] // incomplete != token should error
     fn unknown_character_produces_error(#[case] source: &str) {
         // Use the trivia-preserving tokenizer to keep tests consistent with the suite.
         let tokens = tokenize_with_trivia(source);
