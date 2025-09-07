@@ -50,6 +50,10 @@ use rstest::rstest;
 #[case("a = b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
 #[case("a and b => c or d", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("c")), rhs: Box::new(var("d")) }) })]
 #[case("a or b and c", Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
+#[case("a + b: T", Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("T")) })]
+#[case("x: T = y", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
+#[case("x as T = y", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
+#[case("a => b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);

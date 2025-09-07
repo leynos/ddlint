@@ -359,6 +359,10 @@ Operator precedence is centralised in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
+The precedence for type and control operators is, from highest to lowest: `:`
+and `as`, `=`, `=>`, `;`. Ascription and cast bind more tightly than assignment
+but looser than arithmetic operators.
+
 Variable references are parsed by interpreting identifier tokens as
 `Expr::Variable`. Postfix operators such as calls, field access, method
 invocations, bit slices, and tuple indexing are handled in a loop at the

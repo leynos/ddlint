@@ -25,73 +25,77 @@ const PREFIX_TABLE: &[(SyntaxKind, PrefixEntry)] = &[
     (
         SyntaxKind::T_MINUS,
         PrefixEntry {
-            bp: 60,
+            bp: 80,
             op: UnaryOp::Neg,
         },
     ),
     (
         SyntaxKind::K_NOT,
         PrefixEntry {
-            bp: 60,
+            bp: 80,
             op: UnaryOp::Not,
         },
     ),
 ];
 
 const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
+    // Operator precedence rationale:
+    // Ascribe (:) and Cast (as) should bind tighter than Assign (=), but looser than arithmetic.
+    // Assign (=) should be lower than Ascribe/Cast, but higher than Seq (;).
+    // Seq (;) should be lowest, and Imply (=>) should be just above Seq.
     (
         SyntaxKind::T_COLON,
         InfixEntry {
-            l_bp: 60,
-            r_bp: 61,
+            l_bp: 50, // Ascribe binds tighter than assign, looser than arithmetic
+            r_bp: 51,
             op: BinaryOp::Ascribe,
         },
     ),
     (
         SyntaxKind::K_AS,
         InfixEntry {
-            l_bp: 60,
-            r_bp: 61,
+            l_bp: 50, // Cast matches Ascribe
+            r_bp: 51,
             op: BinaryOp::Cast,
         },
     ),
     (
         SyntaxKind::T_STAR,
         InfixEntry {
-            l_bp: 50,
-            r_bp: 51,
+            l_bp: 70,
+            r_bp: 71,
             op: BinaryOp::Mul,
         },
     ),
     (
         SyntaxKind::T_SLASH,
         InfixEntry {
-            l_bp: 50,
-            r_bp: 51,
+            l_bp: 70,
+            r_bp: 71,
             op: BinaryOp::Div,
         },
     ),
     (
         SyntaxKind::T_PERCENT,
         InfixEntry {
-            l_bp: 50,
-            r_bp: 51,
+            l_bp: 70,
+            r_bp: 71,
             op: BinaryOp::Mod,
         },
     ),
     (
         SyntaxKind::T_PLUS,
         InfixEntry {
-            l_bp: 40,
-            r_bp: 41,
+            l_bp: 60,
+            r_bp: 61,
             op: BinaryOp::Add,
         },
     ),
     (
         SyntaxKind::T_MINUS,
         InfixEntry {
-            l_bp: 40,
-            r_bp: 41,
+            l_bp: 60,
+            r_bp: 61,
             op: BinaryOp::Sub,
         },
     ),
@@ -122,8 +126,8 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
     (
         SyntaxKind::T_FAT_ARROW,
         InfixEntry {
-            l_bp: 8,
-            r_bp: 9,
+            l_bp: 5, // Imply is above Seq, below Assign
+            r_bp: 4,
             op: BinaryOp::Imply,
         },
     ),
@@ -138,15 +142,15 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
     (
         SyntaxKind::T_EQ,
         InfixEntry {
-            l_bp: 5,
-            r_bp: 4,
+            l_bp: 30, // Assign is lower than Ascribe/Cast
+            r_bp: 29,
             op: BinaryOp::Assign,
         },
     ),
     (
         SyntaxKind::T_SEMI,
         InfixEntry {
-            l_bp: 0,
+            l_bp: 0, // Seq is lowest
             r_bp: 1,
             op: BinaryOp::Seq,
         },

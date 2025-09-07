@@ -170,7 +170,7 @@ where
         }
         Some(args)
     }
-    pub(super) fn parse_type(&mut self) -> Option<Expr> {
-        self.parse_expr(0)
+    pub(super) fn parse_type(&mut self, min_bp: u8) -> Option<Expr> {
+        self.parse_expr(min_bp)
     }
 }
