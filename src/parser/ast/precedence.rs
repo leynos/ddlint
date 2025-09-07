@@ -40,9 +40,11 @@ const PREFIX_TABLE: &[(SyntaxKind, PrefixEntry)] = &[
 
 const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
     // Operator precedence rationale:
-    // Ascribe (:) and Cast (as) should bind tighter than Assign (=), but looser than arithmetic.
-    // Assign (=) should be lower than Ascribe/Cast, but higher than Seq (;).
-    // Seq (;) should be lowest, and Imply (=>) should be just above Seq.
+    // Ascribe (:) and Cast (as) bind tighter than logical operators and
+    // assignment yet looser than arithmetic.
+    // Logical operators outrank assignment, which still binds more tightly than
+    // Imply (=>) and Seq (;).
+    // Seq (;) remains lowest, with Imply (=>) just above it.
     (
         SyntaxKind::T_COLON,
         InfixEntry {
@@ -142,8 +144,8 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
     (
         SyntaxKind::T_EQ,
         InfixEntry {
-            l_bp: 30, // Assign is lower than Ascribe/Cast
-            r_bp: 29,
+            l_bp: 8, // Assign binds looser than logical operators but above Imply and Seq
+            r_bp: 7,
             op: BinaryOp::Assign,
         },
     ),
