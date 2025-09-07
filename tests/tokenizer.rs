@@ -130,36 +130,7 @@ mod expect_used {
         assert_eq!(slice, "!");
     }
 
-    #[rstest]
-    #[case("!=", SyntaxKind::T_NEQ)]
-    #[case(">=", SyntaxKind::T_GTE)]
-    #[case("==", SyntaxKind::T_EQEQ)]
-    #[case("<=", SyntaxKind::T_LTE)]
-    #[case("->", SyntaxKind::T_ARROW)]
-    #[case("=>", SyntaxKind::T_FAT_ARROW)]
-    #[case("::", SyntaxKind::T_COLON_COLON)]
-    #[case("++", SyntaxKind::T_PLUSPLUS)]
-    #[case("<=>", SyntaxKind::T_SPACESHIP)]
-    fn valid_multi_character_tokens_do_not_produce_error(
-        #[case] source: &str,
-        #[case] expected: SyntaxKind,
-    ) {
-        let tokens = tokenize_with_trivia(source);
-        assert_eq!(tokens.len(), 1);
-        let lexemes: Vec<(SyntaxKind, &str)> = tokens
-            .iter()
-            .map(|(k, span)| {
-                (
-                    *k,
-                    source
-                        .get(span.clone())
-                        .expect("span should be valid for source"),
-                )
-            })
-            .collect();
-        assert_eq!(lexemes, vec![(expected, source)]);
-        assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
-    }
+    // Removed duplicate multi-character lexeme test; covered by operator_tokens.
 
     #[test]
     fn unterminated_string_is_error() {
@@ -238,7 +209,13 @@ mod expect_used {
             .first()
             .cloned()
             .expect("tokenizer should produce at least one token");
+        // Assert the kind matches and the span maps exactly to the
+        // full input lexeme. Also ensure no error tokens are present.
         assert_eq!(first.0, expected);
+        let span = first.1.clone();
+        let slice = source.get(span).expect("span should be valid for source");
+        assert_eq!(slice, source);
+        assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
     }
 
     #[test]
