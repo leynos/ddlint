@@ -178,7 +178,7 @@ impl Expr {
     pub fn to_sexpr(&self) -> String {
         match self {
             Self::Literal(Literal::Number(n)) => n.clone(),
-            Self::Literal(Literal::String(s)) => format!("{s:?}"),
+            Self::Literal(Literal::String(s)) => s.clone(),
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
             Self::Call { callee, args } => format_nary(
