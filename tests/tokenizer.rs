@@ -130,6 +130,8 @@ fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
 #[case("?!")]
 #[case("! =")]
 #[case("!\n=")]
+#[case("!\t=")]
+#[case("!\r\n=")]
 fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
     let tokens = tokenize(source);
     let errors: Vec<_> = tokens
@@ -151,11 +153,18 @@ fn valid_multi_character_tokens_do_not_produce_error(
 ) {
     let tokens = tokenize(source);
     assert_eq!(tokens.len(), 1);
-    let first = tokens
-        .first()
-        .cloned()
-        .expect("tokenizer should produce at least one token");
-    assert_eq!(first.0, expected);
+    let lexemes: Vec<(SyntaxKind, &str)> = tokens
+        .iter()
+        .map(|(k, span)| {
+            (
+                *k,
+                source
+                    .get(span.clone())
+                    .expect("span should be valid for source"),
+            )
+        })
+        .collect();
+    assert_eq!(lexemes, vec![(expected, source)]);
     assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
 }
 >>>>>>> 09a05ac (Assert malformed operator error spans)
