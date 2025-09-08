@@ -3,6 +3,7 @@
 //! Provides a minimal structured representation of parsed expressions.
 //! This is used by the Pratt parser to build a tree that higher layers
 //! can inspect without re-parsing tokens.
+use std::fmt;
 
 /// Literal values that can appear in expressions.
 #[derive(Debug, Clone, PartialEq)]
@@ -14,7 +15,6 @@ pub enum Literal {
     /// Boolean literal.
     Bool(bool),
 }
-
 /// Unary operators in expressions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
@@ -22,6 +22,21 @@ pub enum UnaryOp {
     Not,
     /// Arithmetic negation.
     Neg,
+}
+
+impl UnaryOp {
+    fn symbol(self) -> &'static str {
+        match self {
+            Self::Not => "not",
+            Self::Neg => "-",
+        }
+    }
+}
+
+impl fmt::Display for UnaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.symbol())
+    }
 }
 
 /// Binary operators in expressions.
@@ -55,6 +70,33 @@ pub enum BinaryOp {
     Seq,
     /// Logical implication operator.
     Imply,
+}
+
+impl BinaryOp {
+    fn symbol(self) -> &'static str {
+        match self {
+            Self::Add => "+",
+            Self::Sub => "-",
+            Self::Mul => "*",
+            Self::Div => "/",
+            Self::Mod => "%",
+            Self::Eq => "==",
+            Self::Neq => "!=",
+            Self::And => "and",
+            Self::Or => "or",
+            Self::Ascribe => ":",
+            Self::Cast => "as",
+            Self::Assign => "=",
+            Self::Seq => ";",
+            Self::Imply => "=>",
+        }
+    }
+}
+
+impl fmt::Display for BinaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.symbol())
+    }
 }
 
 /// Parsed expression tree.
@@ -130,127 +172,77 @@ pub enum Expr {
     /// Grouped expression (parenthesised).
     Group(Box<Expr>),
 }
-
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
     #[must_use]
     pub fn to_sexpr(&self) -> String {
         match self {
             Self::Literal(Literal::Number(n)) => n.clone(),
-            Self::Literal(Literal::String(s)) => format!("{s:?}"),
+            Self::Literal(Literal::String(s)) => format!("{s:?}"), // quote to retain whitespace and delimiters
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
-            Self::Call { callee, args } => self.format_call_sexpr(callee, args),
-            Self::MethodCall { recv, name, args } => {
-                self.format_method_call_sexpr(recv, name, args)
-            }
+            Self::Call { callee, args } => format_nary(
+                "call",
+                std::iter::once(callee.to_sexpr()).chain(args.iter().map(Self::to_sexpr)),
+            ),
+            Self::MethodCall { recv, name, args } => format_nary(
+                "method",
+                std::iter::once(recv.to_sexpr())
+                    .chain(std::iter::once(name.clone()))
+                    .chain(args.iter().map(Self::to_sexpr)),
+            ),
             Self::FieldAccess { expr, field } => {
-                format!("(field {} {})", expr.to_sexpr(), field)
+                format_nary("field", [expr.to_sexpr(), field.clone()])
             }
             Self::TupleIndex { expr, index } => {
-                format!("(tuple-index {} {index})", expr.to_sexpr())
+                format_nary("tuple-index", [expr.to_sexpr(), index.clone()])
             }
             Self::BitSlice { expr, hi, lo } => {
-                format!(
-                    "(bitslice {} {} {})",
-                    expr.to_sexpr(),
-                    hi.to_sexpr(),
-                    lo.to_sexpr()
-                )
+                format_nary("bitslice", [expr.to_sexpr(), hi.to_sexpr(), lo.to_sexpr()])
             }
-            Self::Struct { name, fields } => self.format_struct_sexpr(name, fields),
-            Self::Tuple(items) => self.format_tuple_sexpr(items),
-            Self::Closure { params, body } => self.format_closure_sexpr(params, body),
-            Self::Unary { op, expr } => self.format_unary_sexpr(*op, expr),
-            Self::Binary { op, lhs, rhs } => self.format_binary_sexpr(*op, lhs, rhs),
-            Self::Group(e) => format!("(group {})", e.to_sexpr()),
+            Self::Struct { name, fields } => format_nary(
+                "struct",
+                std::iter::once(name.clone())
+                    .chain(fields.iter().map(|(n, e)| format_field(n, &e.to_sexpr()))),
+            ),
+            Self::Tuple(items) => format_nary("tuple", items.iter().map(Self::to_sexpr)),
+            Self::Closure { params, body } => format_nary(
+                "closure",
+                [format!("({})", params.join(" ")), body.to_sexpr()],
+            ),
+            Self::Unary { op, expr } => format_nary(op.symbol(), std::iter::once(expr.to_sexpr())),
+            Self::Binary { op, lhs, rhs } => {
+                format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
+            }
+            Self::Group(e) => format_nary("group", std::iter::once(e.to_sexpr())),
         }
     }
+}
 
-    fn format_sexpr(tag: &str, parts: impl IntoIterator<Item = String>) -> String {
-        use std::fmt::Write as _;
-        let mut buf = String::with_capacity(2 + tag.len());
-        buf.push('(');
-        buf.push_str(tag);
-        for part in parts {
-            let _ = write!(&mut buf, " {part}");
-        }
-        buf.push(')');
-        buf
-    }
+#[inline]
+fn format_field(name: &str, value: &str) -> String {
+    let mut s = String::with_capacity(name.len() + value.len() + 3);
+    s.push('(');
+    s.push_str(name);
+    s.push(' ');
+    s.push_str(value);
+    s.push(')');
+    s
+}
 
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_call_sexpr(&self, callee: &Expr, args: &[Expr]) -> String {
-        let _ = self;
-        let parts = std::iter::once(callee.to_sexpr()).chain(args.iter().map(Self::to_sexpr));
-        Self::format_sexpr("call", parts)
+fn format_nary<I>(label: &str, parts: I) -> String
+where
+    I: IntoIterator<Item = String>,
+{
+    let parts_vec: Vec<String> = parts.into_iter().collect();
+    let cap = 2 + label.len() + parts_vec.iter().map(|p| 1 + p.len()).sum::<usize>();
+    let mut out = String::with_capacity(cap);
+    out.push('(');
+    out.push_str(label);
+    for part in parts_vec {
+        out.push(' ');
+        out.push_str(&part);
     }
-
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_method_call_sexpr(&self, recv: &Expr, name: &str, args: &[Expr]) -> String {
-        let _ = self;
-        let parts = std::iter::once(recv.to_sexpr())
-            .chain(std::iter::once(name.to_string()))
-            .chain(args.iter().map(Self::to_sexpr));
-        Self::format_sexpr("method", parts)
-    }
-
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_struct_sexpr(&self, name: &str, fields: &[(String, Expr)]) -> String {
-        let _ = self;
-        let parts = std::iter::once(name.to_string()).chain(
-            fields
-                .iter()
-                .map(|(n, e)| format!("({} {})", n, e.to_sexpr())),
-        );
-        Self::format_sexpr("struct", parts)
-    }
-
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_tuple_sexpr(&self, items: &[Expr]) -> String {
-        let _ = self;
-        // An empty tuple renders as `(tuple)`, matching existing behaviour.
-        let parts = items.iter().map(Self::to_sexpr);
-        Self::format_sexpr("tuple", parts)
-    }
-
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_closure_sexpr(&self, params: &[String], body: &Expr) -> String {
-        let _ = self;
-        let header = format!("({})", params.join(" "));
-        let parts = std::iter::once(header).chain(std::iter::once(body.to_sexpr()));
-        Self::format_sexpr("closure", parts)
-    }
-
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_unary_sexpr(&self, op: UnaryOp, expr: &Expr) -> String {
-        let _ = self;
-        let op_str = match op {
-            UnaryOp::Not => "not",
-            UnaryOp::Neg => "-",
-        };
-        Self::format_sexpr(op_str, [expr.to_sexpr()])
-    }
-
-    #[expect(clippy::use_self, reason = "signature uses Expr to match API")]
-    fn format_binary_sexpr(&self, op: BinaryOp, lhs: &Expr, rhs: &Expr) -> String {
-        let _ = self;
-        let op_str = match op {
-            BinaryOp::Add => "+",
-            BinaryOp::Sub => "-",
-            BinaryOp::Mul => "*",
-            BinaryOp::Div => "/",
-            BinaryOp::Mod => "%",
-            BinaryOp::Eq => "==",
-            BinaryOp::Neq => "!=",
-            BinaryOp::And => "and",
-            BinaryOp::Or => "or",
-            BinaryOp::Ascribe => ":",
-            BinaryOp::Cast => "as",
-            BinaryOp::Assign => "=",
-            BinaryOp::Seq => ";",
-            BinaryOp::Imply => "=>",
-        };
-        Self::format_sexpr(op_str, [lhs.to_sexpr(), rhs.to_sexpr()])
-    }
+    out.push(')');
+    out
 }
