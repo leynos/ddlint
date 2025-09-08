@@ -19,6 +19,7 @@ fn parses_vars_and_calls(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+#[derive(Debug, Copy, Clone)]
 enum Kind {
     Unclosed,
     Mismatch,
