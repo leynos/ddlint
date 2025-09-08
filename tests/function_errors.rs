@@ -8,8 +8,8 @@ use ddlint::test_util::assert_delimiter_error;
 use rstest::rstest;
 
 #[rstest]
-#[case("function f(x: int {", "T_RPAREN", 0, 19)]
-#[case("function f[x: int) {}", "T_LPAREN", 10, 11)]
+#[case("function f(x: int {", "right paren", 0, 19)]
+#[case("function f[x: int) {}", "left paren", 10, 11)]
 fn function_parameter_errors(
     #[case] src: &str,
     #[case] msg: &str,

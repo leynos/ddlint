@@ -51,9 +51,39 @@ pub enum ErrorPattern {
     Custom(String),
 }
 
+/// Map parser token identifiers to readable names.
+const TOKEN_MAP: &[(&str, &str)] = &[
+    ("T_LPAREN", "left paren"),
+    ("T_RPAREN", "right paren"),
+    ("T_LBRACKET", "left bracket"),
+    ("T_RBRACKET", "right bracket"),
+    ("T_LBRACE", "left brace"),
+    ("T_RBRACE", "right brace"),
+    ("T_COMMA", "comma"),
+    ("T_SEMI", "semicolon"),
+    ("T_PIPE", "pipe"),
+    ("T_DOT", "dot"),
+    ("T_COLON", "colon"),
+    ("T_IDENT", "identifier"),
+    ("T_NUMBER", "number"),
+];
+
+/// Replace internal token names with human-readable forms.
+fn normalise_tokens(s: &str) -> String {
+    TOKEN_MAP
+        .iter()
+        .fold(s.to_string(), |acc, (raw, human)| acc.replace(raw, human))
+}
+
 impl ErrorPattern {
     fn contains_message(&self, rendered: &str) -> bool {
-        matches!(self, Self::Custom(msg) if rendered.contains(msg))
+        let rendered = normalise_tokens(rendered);
+        match self {
+            Self::Custom(msg) => {
+                let msg = normalise_tokens(msg);
+                rendered.contains(&msg)
+            }
+        }
     }
 }
 
@@ -102,7 +132,7 @@ pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     }
 }
 
-/// Construct a struct literal [`Expr::Struct`].
+/// Construct a call expression [`Expr::Call`].
 #[must_use]
 pub fn call_expr(callee: Expr, args: Vec<Expr>) -> Expr {
     Expr::Call {
@@ -149,7 +179,7 @@ pub fn bit_slice(expr: Expr, hi: Expr, lo: Expr) -> Expr {
     }
 }
 
-/// Construct a struct literal [`Expr::Struct`].
+/// Construct a call expression [`Expr::Call`].
 #[must_use]
 pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
     let name: Name = name.into();
@@ -267,10 +297,11 @@ enum DelimiterErrorKind {
 impl DelimiterErrorKind {
     fn reason_check(self, reason: &SimpleReason<SyntaxKind, Range<usize>>) -> bool {
         match self {
-            Self::Mismatch => {
-                matches!(reason, SimpleReason::Unexpected | SimpleReason::Custom(_))
-            }
-            Self::Unclosed => matches!(reason, SimpleReason::Unclosed { .. }),
+            Self::Mismatch => matches!(reason, SimpleReason::Unexpected),
+            Self::Unclosed => matches!(
+                reason,
+                SimpleReason::Unclosed { .. } | SimpleReason::Custom(_)
+            ),
         }
     }
 

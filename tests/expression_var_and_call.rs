@@ -5,7 +5,9 @@
 
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{assert_delimiter_error, assert_parse_error, call, lit_num, var};
+use ddlint::test_util::{
+    assert_delimiter_error, assert_parse_error, assert_unclosed_delimiter_error, call, lit_num, var,
+};
 use rstest::rstest;
 
 #[rstest]
@@ -19,9 +21,9 @@ fn parses_vars_and_calls(#[case] src: &str, #[case] expected: Expr) {
 
 #[rstest]
 #[case("foo(", "invalid expression", 4, 4, "unclosed")]
-#[case("foo(]", "unexpected token", 4, 5, "mismatch")]
+#[case("foo(]", "unexpected token", 4, 5, "other")]
 #[case("foo(x,)", "unexpected trailing comma in argument list", 6, 7, "other")]
-#[case("foo(1 2)", "expected T_RPAREN", 6, 7, "other")]
+#[case("foo(1 2)", "expected right paren", 6, 7, "other")]
 fn call_parsing_errors(
     #[case] src: &str,
     #[case] msg: &str,
@@ -33,7 +35,8 @@ fn call_parsing_errors(
         panic!("expected error");
     };
     match kind {
-        "unclosed" | "mismatch" => assert_delimiter_error(&errors, msg, start, end),
+        "unclosed" => assert_unclosed_delimiter_error(&errors, msg, start, end),
+        "mismatch" => assert_delimiter_error(&errors, msg, start, end),
         _ => assert_parse_error(&errors, msg, start, end),
     }
 }

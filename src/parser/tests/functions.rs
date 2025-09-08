@@ -104,13 +104,13 @@ fn function_unclosed_params() -> &'static str {
 #[rstest]
 fn extern_function_missing_colon_is_error(extern_function_missing_colon: &str) {
     let parsed = crate::parse(extern_function_missing_colon);
-    assert_parse_error(parsed.errors(), "T_LPAREN", 30, 33);
+    assert_parse_error(parsed.errors(), "left paren", 30, 33);
     assert!(parsed.root().functions().is_empty());
 }
 
 #[rstest]
-#[case(function_unterminated_body(), "T_RBRACE", function_unterminated_body().len())]
-#[case(function_unclosed_params(), "T_RPAREN", function_unclosed_params().len())]
+#[case(function_unterminated_body(), "right brace", function_unterminated_body().len())]
+#[case(function_unclosed_params(), "right paren", function_unclosed_params().len())]
 fn function_error_cases(#[case] src: &str, #[case] token: &str, #[case] end: usize) {
     let parsed = crate::parse(src);
     assert_parse_error(parsed.errors(), token, 0, end);
