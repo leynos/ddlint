@@ -62,7 +62,7 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
 ///     st.stream.advance();
 /// }
 ///
-/// # let tokens = ddlint::tokenize_with_trivia("extern type Foo;");
+/// # let tokens = crate::test_util::tokenize("extern type Foo;");
 /// # let src = "extern type Foo;";
 /// let mut st = State { stream: TokenStream::new(&tokens, src) };
 /// token_dispatch!(st, {

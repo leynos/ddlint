@@ -68,7 +68,7 @@ pub(super) fn parse_tokens(
 /// use crate::parser::span_collector::SpanCollector;
 ///
 /// let src = "import foo\n";
-/// let tokens = crate::tokenize_with_trivia(src);
+/// let tokens = crate::test_util::tokenize(src);
 /// let mut st = SpanCollector::new(&tokens, src, Vec::new());
 /// let ident = just(SyntaxKind::T_IDENT).map_with_span(|_, sp: Span| sp);
 /// let (span, errs) = parse_and_record(&mut st, 0, ident);
@@ -222,7 +222,7 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 /// ```rust,ignore
 /// use chumsky::Parser as _;
 /// let src = "User(id: u32)";
-/// let tokens = crate::tokenize_with_trivia(src);
+/// let tokens = crate::test_util::tokenize(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// assert!(relation_columns().parse(stream).is_ok());
 /// ```
