@@ -13,6 +13,8 @@ release: target/release/$(APP) ## Build release binary
 
 all: release ## Default target builds release binary
 
+check: check-fmt lint test
+
 clean: ## Remove build artifacts
 	$(CARGO) clean
 
