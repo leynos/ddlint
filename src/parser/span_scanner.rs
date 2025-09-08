@@ -68,7 +68,7 @@ pub(super) fn parse_tokens(
 /// use crate::parser::span_collector::SpanCollector;
 ///
 /// let src = "import foo\n";
-/// let tokens = crate::tokenize_with_trivia(src);
+/// let tokens = crate::test_util::tokenize(src);
 /// let mut st = SpanCollector::new(&tokens, src, Vec::new());
 /// let ident = just(SyntaxKind::T_IDENT).map_with_span(|_, sp: Span| sp);
 /// let (span, errs) = parse_and_record(&mut st, 0, ident);
@@ -222,7 +222,7 @@ fn collect_typedef_spans(tokens: &[(SyntaxKind, Span)], src: &str) -> Vec<Span> 
 /// ```rust,ignore
 /// use chumsky::Parser as _;
 /// let src = "User(id: u32)";
-/// let tokens = crate::tokenize_with_trivia(src);
+/// let tokens = crate::test_util::tokenize(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
 /// assert!(relation_columns().parse(stream).is_ok());
 /// ```
@@ -594,7 +594,7 @@ fn collect_rule_spans(
 mod tests {
     //! Tests for the span scanner helper utilities.
     use super::*;
-    use crate::tokenize_with_trivia;
+    use crate::test_util::tokenize;
     use rstest::rstest;
 
     #[rstest]
@@ -605,7 +605,7 @@ mod tests {
         #[case] expected: Vec<Span>,
         #[case] errs_empty: bool,
     ) {
-        let tokens = tokenize_with_trivia(src);
+        let tokens = tokenize(src);
         let (spans, errs) = collect_import_spans(&tokens, src);
         assert_eq!(spans, expected);
         assert_eq!(errs.is_empty(), errs_empty);
