@@ -58,6 +58,11 @@ use rstest::rstest;
 #[case("x as T + y", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
 #[case("x + y as T", Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }), rhs: Box::new(var("T")) })]
 #[case("x as T = y", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
+#[case("not x and y", Expr::Binary { op: BinaryOp::And, lhs: Box::new(Expr::Unary { op: UnaryOp::Not, expr: Box::new(var("x")) }), rhs: Box::new(var("y")) })]
+#[case("not (x and y)", Expr::Unary { op: UnaryOp::Not, expr: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }))) })]
+#[case("-(x as T)", Expr::Unary { op: UnaryOp::Neg, expr: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))) })]
+#[case("-x as T", Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(Expr::Unary { op: UnaryOp::Neg, expr: Box::new(var("x")) }), rhs: Box::new(var("T")) })]
+#[case("a => b => c", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
 #[case("a => b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
@@ -83,14 +88,24 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case("x =", 1)]
 #[case("x ;", 1)]
 #[case("x =>", 1)]
-#[case("x: T: U", 1)]
-#[case("x as T as U", 1)]
-#[case("x: T as U", 1)]
-#[case("x as T: U", 1)]
 #[case("", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
         Err(errs) => assert!(errs.len() >= min_errs),
+    }
+}
+
+fn reports_exactly_one_error(src: &str) {
+    match parse_expression(src) {
+        Ok(_) => panic!("expected parse error"),
+        Err(errs) => assert_eq!(errs.len(), 1, "expected exactly one error, got {errs:?}"),
+    }
+}
+
+#[test]
+fn rejects_chained_type_ops_with_single_diag() {
+    for src in ["x: T: U", "x as T as U", "x: T as U", "x as T: U"] {
+        reports_exactly_one_error(src);
     }
 }
