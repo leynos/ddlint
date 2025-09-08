@@ -33,7 +33,7 @@ fn parses_binary_precedence_chain() {
 
 #[rstest]
 #[case("", "invalid expression", 0, 0)]
-#[case("1 2", "unexpected token: T_NUMBER", 2, 3)]
+#[case("1 2", "unexpected token: number", 2, 3)]
 fn parse_expression_errors(
     #[case] src: &str,
     #[case] msg: &str,

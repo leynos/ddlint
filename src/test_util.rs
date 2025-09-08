@@ -45,6 +45,8 @@ fn normalise_tokens(s: &str) -> String {
         ("T_COMMA", "comma"),
         ("T_SEMI", "semicolon"),
         ("T_PIPE", "pipe"),
+        ("T_IDENT", "identifier"),
+        ("T_NUMBER", "number"),
     ]
     .into_iter()
     .fold(s.to_string(), |acc, (raw, human)| acc.replace(raw, human))
