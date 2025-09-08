@@ -85,6 +85,8 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case("x =>", 1)]
 #[case("x: T: U", 1)]
 #[case("x as T as U", 1)]
+#[case("x: T as U", 1)]
+#[case("x as T: U", 1)]
 #[case("", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
