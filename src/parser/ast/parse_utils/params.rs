@@ -298,7 +298,7 @@ where
         if self.handle_missing_colon() {
             return None;
         }
-        let ty = self.parse_type();
+        let ty = self.parse_type(0);
         self.validate_parameter(&ty);
         if self.name.is_empty() || ty.is_empty() {
             None
@@ -337,7 +337,7 @@ where
         true
     }
 
-    fn parse_type(&mut self) -> String {
+    fn parse_type(&mut self, _min_bp: u8) -> String {
         skip_whitespace_and_comments(self.iter);
         if matches!(
             self.iter.peek().map(SyntaxElement::kind),

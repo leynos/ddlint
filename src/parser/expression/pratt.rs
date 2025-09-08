@@ -170,7 +170,22 @@ where
         }
         Some(args)
     }
+
+    /// Parse a type expression following `:` or `as`.
+    ///
+    /// The RHS of ascriptions and casts should not consume infix operators
+    /// belonging to the outer expression. Parsing the type with the highest
+    /// possible binding power ensures only atomic type expressions are captured.
     pub(super) fn parse_type(&mut self) -> Option<Expr> {
-        self.parse_expr(0)
+        let ty = self.parse_expr(u8::MAX)?;
+        if matches!(
+            self.ts.peek_kind(),
+            Some(SyntaxKind::T_COLON | SyntaxKind::K_AS)
+        ) {
+            let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts
+                .push_error(sp, "chained type operators are not allowed");
+        }
+        Some(ty)
     }
 }
