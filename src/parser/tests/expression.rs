@@ -41,7 +41,34 @@ use rstest::rstest;
 #[case("|x| Point { x: x }", closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])))]
 #[case("(f)(x)", call_expr(Expr::Group(Box::new(var("f"))), vec![var("x")]))]
 #[case("foo.bar(x)", method_call(var("foo"), "bar", vec![var("x")]))]
+#[case("foo.bar(x).baz", field_access(
+    method_call(var("foo"), "bar", vec![var("x")]),
+    "baz"
+))]
 #[case("foo.bar", field_access(var("foo"), "bar"))]
+#[case("foo.bar.baz(x)", method_call(
+    field_access(var("foo"), "bar"),
+    "baz",
+    vec![var("x")]
+))]
+#[case("foo.bar.baz().qux", field_access(
+    method_call(field_access(var("foo"), "bar"), "baz", vec![]),
+    "qux"
+))]
+#[case("foo.bar().baz(x)", method_call(
+    method_call(var("foo"), "bar", vec![]),
+    "baz",
+    vec![var("x")]
+))]
+#[case("foo.bar.baz", field_access(field_access(var("foo"), "bar"), "baz"))]
+#[case("foo.bar().baz.qux(x)", method_call(
+    field_access(
+        method_call(var("foo"), "bar", vec![]),
+        "baz"
+    ),
+    "qux",
+    vec![var("x")]
+))]
 #[case("e[1,0]", bit_slice(var("e"), lit_num("1"), lit_num("0")))]
 #[case("t.0", tuple_index(var("t"), "0"))]
 #[case("x: T", Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) })]
