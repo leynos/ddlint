@@ -5,11 +5,29 @@
 //! verifying that parsing failures surface precise spans and messages.
 
 use crate::{
-    SyntaxKind,
+    Span, SyntaxKind,
     parser::ast::{Expr, Literal},
+    tokenize_with_trivia,
 };
 use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
+
+/// Tokenise `src` into `(SyntaxKind, Span)` pairs using
+/// [`tokenize_with_trivia`].
+///
+/// # Examples
+///
+/// ```
+/// # #[cfg(feature = "test-support")]
+/// # {
+/// use ddlint::test_util::tokenize;
+/// assert!(tokenize("input relation R(x: u32);").len() > 0);
+/// # }
+/// ```
+#[must_use]
+pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
+    tokenize_with_trivia(src)
+}
 
 /// Typed wrapper for variable and function names.
 #[derive(Debug, Clone)]

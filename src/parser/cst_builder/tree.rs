@@ -146,12 +146,12 @@ fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, te
 mod tests {
     use super::*;
     use crate::parser::span_scanner::parse_tokens;
-    use crate::tokenize_with_trivia;
+    use crate::test_util::tokenize;
 
     #[test]
     fn build_green_tree_round_trip() {
         let src = "import foo::bar;";
-        let tokens = tokenize_with_trivia(src);
+        let tokens = tokenize(src);
         let (spans, errors) = parse_tokens(&tokens, src);
         assert!(errors.is_empty());
         let green = build_green_tree(&tokens, src, &spans);

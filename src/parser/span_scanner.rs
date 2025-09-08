@@ -594,7 +594,7 @@ fn collect_rule_spans(
 mod tests {
     //! Tests for the span scanner helper utilities.
     use super::*;
-    use crate::tokenize_with_trivia;
+    use crate::test_util::tokenize;
     use rstest::rstest;
 
     #[rstest]
@@ -605,7 +605,7 @@ mod tests {
         #[case] expected: Vec<Span>,
         #[case] errs_empty: bool,
     ) {
-        let tokens = tokenize_with_trivia(src);
+        let tokens = tokenize(src);
         let (spans, errs) = collect_import_spans(&tokens, src);
         assert_eq!(spans, expected);
         assert_eq!(errs.is_empty(), errs_empty);
