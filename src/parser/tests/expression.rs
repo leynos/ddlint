@@ -168,7 +168,7 @@ fn postfix_expression_errors(
         panic!("expected error");
     };
     if unclosed {
-        assert_unclosed_delimiter_error(&errors, msg, start, end);
+        assert_unclosed_delimiter_error(&errors, "expected right bracket", start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);
     }

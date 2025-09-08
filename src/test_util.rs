@@ -69,7 +69,7 @@ const TOKEN_MAP: &[(&str, &str)] = &[
 ];
 
 /// Replace internal token names with human-readable forms.
-fn normalise_tokens(s: &str) -> String {
+pub(crate) fn normalise_tokens(s: &str) -> String {
     TOKEN_MAP
         .iter()
         .fold(s.to_string(), |acc, (raw, human)| acc.replace(raw, human))
@@ -297,7 +297,11 @@ enum DelimiterErrorKind {
 impl DelimiterErrorKind {
     fn reason_check(self, reason: &SimpleReason<SyntaxKind, Range<usize>>) -> bool {
         match self {
-            Self::Mismatch => matches!(reason, SimpleReason::Unexpected),
+            Self::Mismatch => match reason {
+                SimpleReason::Unexpected => true,
+                SimpleReason::Custom(msg) if msg.starts_with("unexpected token") => true,
+                _ => false,
+            },
             Self::Unclosed => matches!(
                 reason,
                 SimpleReason::Unclosed { .. } | SimpleReason::Custom(_)

@@ -25,6 +25,9 @@ fn parses_postfix_expressions(#[case] src: &str, #[case] expected: Expr) {
 
 #[rstest]
 #[case::unclosed_call("foo.bar(", "invalid expression", 8, 8, true)]
+#[case::trailing_dot("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
+#[case::bit_slice_missing_comma("e[1]", "expected comma", 3, 4, false)]
+#[case::bit_slice_unclosed("e[1,0", "expected right bracket", 5, 5, true)]
 fn postfix_expression_errors(
     #[case] src: &str,
     #[case] msg: &str,
