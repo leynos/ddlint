@@ -64,6 +64,13 @@ use rstest::rstest;
 #[case("-x as T", Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(Expr::Unary { op: UnaryOp::Neg, expr: Box::new(var("x")) }), rhs: Box::new(var("T")) })]
 #[case("a => b => c", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }) })]
 #[case("a => b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("(a and b) = c", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }))), rhs: Box::new(var("c")) })]
+#[case("a and (b = c)", Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }))) })]
+#[case("(x: T) + y", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))), rhs: Box::new(var("y")) })]
+#[case("a + (b: T)", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("b")), rhs: Box::new(var("T")) }))) })]
+#[case("a + (x as T)", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))) })]
+#[case("(a => b); c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }))), rhs: Box::new(var("c")) })]
+#[case("a => (b; c)", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }))) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
