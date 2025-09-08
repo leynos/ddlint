@@ -53,7 +53,10 @@ use rstest::rstest;
 #[case("a and b = c", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
 #[case("a or b = c", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
 #[case("a + b: T", Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("T")) })]
+#[case("x: T + y", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
 #[case("x: T = y", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::Ascribe, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
+#[case("x as T + y", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
+#[case("x + y as T", Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("x")), rhs: Box::new(var("y")) }), rhs: Box::new(var("T")) })]
 #[case("x as T = y", Expr::Binary { op: BinaryOp::Assign, lhs: Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }), rhs: Box::new(var("y")) })]
 #[case("a => b; c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
@@ -80,6 +83,8 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case("x =", 1)]
 #[case("x ;", 1)]
 #[case("x =>", 1)]
+#[case("x: T: U", 1)]
+#[case("x as T as U", 1)]
 #[case("", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {

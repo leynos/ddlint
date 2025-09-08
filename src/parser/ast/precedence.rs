@@ -21,18 +21,29 @@ pub(super) struct InfixEntry {
     pub op: BinaryOp,
 }
 
+const BP_PREFIX: u8 = 80;
+const BP_MUL_DIV_MOD: u8 = 70;
+const BP_ADD_SUB: u8 = 60;
+const BP_TYPE: u8 = 50;
+const BP_CMP: u8 = 30;
+const BP_AND: u8 = 20;
+const BP_OR: u8 = 10;
+const BP_ASSIGN: u8 = 8;
+const BP_IMPLY: u8 = 5;
+const BP_SEQ: u8 = 0;
+
 const PREFIX_TABLE: &[(SyntaxKind, PrefixEntry)] = &[
     (
         SyntaxKind::T_MINUS,
         PrefixEntry {
-            bp: 80,
+            bp: BP_PREFIX,
             op: UnaryOp::Neg,
         },
     ),
     (
         SyntaxKind::K_NOT,
         PrefixEntry {
-            bp: 80,
+            bp: BP_PREFIX,
             op: UnaryOp::Not,
         },
     ),
@@ -48,112 +59,112 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
     (
         SyntaxKind::T_COLON,
         InfixEntry {
-            l_bp: 50, // Ascribe binds tighter than assign, looser than arithmetic
-            r_bp: 51,
+            l_bp: BP_TYPE, // Ascribe binds tighter than assign, looser than arithmetic
+            r_bp: BP_TYPE + 1,
             op: BinaryOp::Ascribe,
         },
     ),
     (
         SyntaxKind::K_AS,
         InfixEntry {
-            l_bp: 50, // Cast matches Ascribe
-            r_bp: 51,
+            l_bp: BP_TYPE, // Cast matches Ascribe
+            r_bp: BP_TYPE + 1,
             op: BinaryOp::Cast,
         },
     ),
     (
         SyntaxKind::T_STAR,
         InfixEntry {
-            l_bp: 70,
-            r_bp: 71,
+            l_bp: BP_MUL_DIV_MOD,
+            r_bp: BP_MUL_DIV_MOD + 1,
             op: BinaryOp::Mul,
         },
     ),
     (
         SyntaxKind::T_SLASH,
         InfixEntry {
-            l_bp: 70,
-            r_bp: 71,
+            l_bp: BP_MUL_DIV_MOD,
+            r_bp: BP_MUL_DIV_MOD + 1,
             op: BinaryOp::Div,
         },
     ),
     (
         SyntaxKind::T_PERCENT,
         InfixEntry {
-            l_bp: 70,
-            r_bp: 71,
+            l_bp: BP_MUL_DIV_MOD,
+            r_bp: BP_MUL_DIV_MOD + 1,
             op: BinaryOp::Mod,
         },
     ),
     (
         SyntaxKind::T_PLUS,
         InfixEntry {
-            l_bp: 60,
-            r_bp: 61,
+            l_bp: BP_ADD_SUB,
+            r_bp: BP_ADD_SUB + 1,
             op: BinaryOp::Add,
         },
     ),
     (
         SyntaxKind::T_MINUS,
         InfixEntry {
-            l_bp: 60,
-            r_bp: 61,
+            l_bp: BP_ADD_SUB,
+            r_bp: BP_ADD_SUB + 1,
             op: BinaryOp::Sub,
         },
     ),
     (
         SyntaxKind::T_EQEQ,
         InfixEntry {
-            l_bp: 30,
-            r_bp: 31,
+            l_bp: BP_CMP,
+            r_bp: BP_CMP + 1,
             op: BinaryOp::Eq,
         },
     ),
     (
         SyntaxKind::T_NEQ,
         InfixEntry {
-            l_bp: 30,
-            r_bp: 31,
+            l_bp: BP_CMP,
+            r_bp: BP_CMP + 1,
             op: BinaryOp::Neq,
         },
     ),
     (
         SyntaxKind::K_AND,
         InfixEntry {
-            l_bp: 20,
-            r_bp: 21,
+            l_bp: BP_AND,
+            r_bp: BP_AND + 1,
             op: BinaryOp::And,
         },
     ),
     (
         SyntaxKind::T_FAT_ARROW,
         InfixEntry {
-            l_bp: 5, // Imply is above Seq, below Assign
-            r_bp: 4,
+            l_bp: BP_IMPLY, // Imply is above Seq, below Assign
+            r_bp: BP_IMPLY - 1,
             op: BinaryOp::Imply,
         },
     ),
     (
         SyntaxKind::K_OR,
         InfixEntry {
-            l_bp: 10,
-            r_bp: 11,
+            l_bp: BP_OR,
+            r_bp: BP_OR + 1,
             op: BinaryOp::Or,
         },
     ),
     (
         SyntaxKind::T_EQ,
         InfixEntry {
-            l_bp: 8, // Assign binds looser than logical operators but above Imply and Seq
-            r_bp: 7,
+            l_bp: BP_ASSIGN, // Assign binds looser than logical operators but above Imply and Seq
+            r_bp: BP_ASSIGN - 1,
             op: BinaryOp::Assign,
         },
     ),
     (
         SyntaxKind::T_SEMI,
         InfixEntry {
-            l_bp: 0, // Seq is lowest
-            r_bp: 1,
+            l_bp: BP_SEQ, // Seq is lowest
+            r_bp: BP_SEQ + 1,
             op: BinaryOp::Seq,
         },
     ),
