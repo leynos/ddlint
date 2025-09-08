@@ -41,6 +41,10 @@ use rstest::rstest;
 #[case("|x| Point { x: x }", closure(vec!["x"], struct_expr("Point", vec![field("x", var("x"))])))]
 #[case("(f)(x)", call_expr(Expr::Group(Box::new(var("f"))), vec![var("x")]))]
 #[case("foo.bar(x)", method_call(var("foo"), "bar", vec![var("x")]))]
+#[case("foo.bar(x).baz", field_access(
+    method_call(var("foo"), "bar", vec![var("x")]),
+    "baz"
+))]
 #[case("foo.bar", field_access(var("foo"), "bar"))]
 #[case("foo.bar.baz(x)", method_call(
     field_access(var("foo"), "bar"),
