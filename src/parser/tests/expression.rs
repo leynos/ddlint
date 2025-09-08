@@ -3,8 +3,8 @@
 use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
-    assert_delimiter_error, assert_parse_error, bit_slice, call, call_expr, closure, field, field_access,
-    lit_bool, lit_num, lit_str, method_call, struct_expr, tuple, tuple_index, var,
+    assert_delimiter_error, assert_parse_error, bit_slice, call, call_expr, closure, field,
+    field_access, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple, tuple_index, var,
 };
 use rstest::rstest;
 
