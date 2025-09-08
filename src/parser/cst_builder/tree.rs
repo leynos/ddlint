@@ -82,11 +82,11 @@ impl<'a> SpanCursors<'a> {
 /// # Examples
 ///
 /// ```ignore
-/// use ddlint::tokenize_with_trivia;
+/// use ddlint::test_util::tokenize;
 /// use ddlint::parser::{cst_builder::{build_green_tree, ParsedSpans}, span_scanner::parse_tokens, ast::Root};
 ///
 /// let src = "import foo::bar;";
-/// let tokens = tokenize_with_trivia(src);
+/// let tokens = tokenize(src);
 /// let (spans, errors) = parse_tokens(&tokens, src);
 /// assert!(errors.is_empty());
 /// let green = build_green_tree(&tokens, src, &spans);
