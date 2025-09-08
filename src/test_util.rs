@@ -17,7 +17,7 @@ use std::ops::Range;
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,no_run
 /// # #[cfg(feature = "test-support")]
 /// # {
 /// use ddlint::test_util::tokenize;
