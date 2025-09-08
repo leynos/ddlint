@@ -130,7 +130,7 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case::bit_slice_extra_comma("e[1,,0]", 1)]
 #[case::tuple_index_missing_digits("t.", 1)]
 #[case::tuple_index_negative("t.-1", 1)]
-#[case::tuple_index_plus("t.+1)", 1)]
+#[case::tuple_index_plus("t.+1", 1)]
 #[case::tuple_index_double_dot("t..0", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
