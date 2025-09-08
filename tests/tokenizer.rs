@@ -4,7 +4,7 @@
 //! code into `(SyntaxKind, Span)` pairs, covering keywords, literals, trivia,
 //! and error cases.
 
-use ddlint::{SyntaxKind, test_util::tokenize, tokenize_with_trivia};
+use ddlint::{SyntaxKind, test_util::tokenize};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -91,7 +91,7 @@ mod expect_used {
     #[case("$")]
     fn unknown_character_produces_error(#[case] source: &str) {
         // Use the trivia-preserving tokenizer to keep tests consistent with the suite.
-        let tokens = tokenize_with_trivia(source);
+        let tokens = tokenize(source);
         assert_eq!(tokens.len(), 1);
         let first = tokens
             .first()
@@ -119,7 +119,7 @@ mod expect_used {
     #[case("!\t=")]
     #[case("!\r\n=")]
     fn malformed_multi_character_tokens_produce_error(#[case] source: &str) {
-        let tokens = tokenize_with_trivia(source);
+        let tokens = tokenize(source);
         let errors: Vec<_> = tokens
             .iter()
             .filter(|(k, _)| *k == SyntaxKind::N_ERROR)
