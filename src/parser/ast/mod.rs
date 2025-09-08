@@ -149,6 +149,8 @@ pub use type_def::TypeDef;
 #[cfg(test)]
 mod tests {
 
+    mod precedence;
+
     use crate::parse;
 
     #[test]
