@@ -21,7 +21,7 @@ where
                 unreachable!("peeked operator");
             };
             let rhs = match op_kind {
-                SyntaxKind::T_COLON | SyntaxKind::K_AS => self.parse_type(r_bp),
+                SyntaxKind::T_COLON | SyntaxKind::K_AS => self.parse_type(),
                 _ => self.parse_expr(r_bp),
             };
             let Some(rhs) = rhs else {

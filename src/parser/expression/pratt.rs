@@ -174,9 +174,9 @@ where
     /// Parse a type expression following `:` or `as`.
     ///
     /// The RHS of ascriptions and casts should not consume infix operators
-    /// belonging to the outer expression. Parsing with `u8::MAX` as the
-    /// minimum binding power ensures only atomic type expressions are captured.
-    pub(super) fn parse_type(&mut self, _min_bp: u8) -> Option<Expr> {
+    /// belonging to the outer expression. Parsing the type with the highest
+    /// possible binding power ensures only atomic type expressions are captured.
+    pub(super) fn parse_type(&mut self) -> Option<Expr> {
         let ty = self.parse_expr(u8::MAX)?;
         if matches!(
             self.ts.peek_kind(),
