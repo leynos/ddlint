@@ -33,9 +33,32 @@ pub enum ErrorPattern {
     Custom(String),
 }
 
+/// Replace internal token names with human-readable forms.
+fn normalise_tokens(s: &str) -> String {
+    [
+        ("T_LPAREN", "left paren"),
+        ("T_RPAREN", "right paren"),
+        ("T_LBRACKET", "left bracket"),
+        ("T_RBRACKET", "right bracket"),
+        ("T_LBRACE", "left brace"),
+        ("T_RBRACE", "right brace"),
+        ("T_COMMA", "comma"),
+        ("T_SEMI", "semicolon"),
+        ("T_PIPE", "pipe"),
+    ]
+    .into_iter()
+    .fold(s.to_string(), |acc, (raw, human)| acc.replace(raw, human))
+}
+
 impl ErrorPattern {
     fn contains_message(&self, rendered: &str) -> bool {
-        matches!(self, Self::Custom(msg) if rendered.contains(msg))
+        let rendered = normalise_tokens(rendered);
+        match self {
+            Self::Custom(msg) => {
+                let msg = normalise_tokens(msg);
+                rendered.contains(&msg)
+            }
+        }
     }
 }
 
