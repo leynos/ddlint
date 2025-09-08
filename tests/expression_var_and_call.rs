@@ -26,7 +26,7 @@ enum Kind {
 }
 
 #[rstest]
-#[case("foo(", "invalid expression", 4, 4, Kind::Unclosed)]
+#[case("foo(", "right paren", 4, 4, Kind::Unclosed)]
 #[case("foo(]", "unexpected token", 4, 5, Kind::Mismatch)]
 #[case(
     "foo(x,)",

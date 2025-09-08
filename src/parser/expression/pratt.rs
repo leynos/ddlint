@@ -155,6 +155,10 @@ where
             return Some(args);
         }
         loop {
+            if self.ts.peek_kind().is_none() {
+                self.ts.expect(SyntaxKind::T_RPAREN);
+                return None;
+            }
             let expr = self.parse_expr(0)?;
             args.push(expr);
             if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
