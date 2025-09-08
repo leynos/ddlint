@@ -30,7 +30,7 @@ fn import_statement_parses(#[case] src: &str, #[case] path: &str, #[case] alias:
 fn import_statement_invalid_missing_path() {
     let src = "import as missing_path";
     let parsed = parse(src);
-    assert_parse_error(parsed.errors(), "T_IDENT", 7, 9);
+    assert_parse_error(parsed.errors(), "identifier", 7, 9);
     let imports = parsed.root().imports();
     assert!(imports.is_empty());
 }

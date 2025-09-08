@@ -68,7 +68,7 @@ fn index_missing_on_is_error(index_invalid_missing_on: &str) {
 fn index_unbalanced_parentheses_is_error(index_unbalanced_parentheses: &str) {
     let parsed = crate::parse(index_unbalanced_parentheses);
     let len = index_unbalanced_parentheses.len();
-    assert_delimiter_error(parsed.errors(), "T_RPAREN", 0, len);
+    assert_delimiter_error(parsed.errors(), "right paren", 0, len);
     assert!(parsed.root().indexes().is_empty());
 }
 
