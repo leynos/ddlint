@@ -4,7 +4,7 @@
 //! code into `(SyntaxKind, Span)` pairs, covering keywords, literals, trivia,
 //! and error cases.
 
-use ddlint::{SyntaxKind, test_util::{tokenize, tokenize_with_trivia}};
+use ddlint::{SyntaxKind, test_util::tokenize, tokenize_with_trivia};
 use rstest::{fixture, rstest};
 
 #[fixture]
