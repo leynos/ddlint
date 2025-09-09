@@ -132,7 +132,7 @@ pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     }
 }
 
-/// Construct a call expression [`Expr::Call`].
+/// Construct a struct literal [`Expr::Struct`].
 #[must_use]
 pub fn call_expr(callee: Expr, args: Vec<Expr>) -> Expr {
     Expr::Call {
@@ -179,7 +179,7 @@ pub fn bit_slice(expr: Expr, hi: Expr, lo: Expr) -> Expr {
     }
 }
 
-/// Construct a call expression [`Expr::Call`].
+/// Construct a struct literal [`Expr::Struct`].
 #[must_use]
 pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
     let name: Name = name.into();

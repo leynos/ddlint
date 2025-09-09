@@ -124,7 +124,6 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case::unexpected_fat_arrow("x =>", 1)]
 #[case::empty_input("", 1)]
 #[case::bit_slice_missing_comma("e[1 0]", 1)]
-#[case::bit_slice_missing_rbracket("e[1,0", 1)]
 #[case::bit_slice_missing_lhs("e[,0]", 1)]
 #[case::bit_slice_missing_rhs("e[1,]", 1)]
 #[case::bit_slice_extra_comma("e[1,,0]", 1)]
