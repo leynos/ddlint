@@ -51,9 +51,43 @@ pub enum ErrorPattern {
     Custom(String),
 }
 
+/// Replace internal token names with human-readable forms.
+pub(crate) fn normalise_tokens(s: &str) -> String {
+    // Build replacements from SyntaxKind debug names to human-friendly labels.
+    // This avoids a hand-maintained token map drifting from the parser.
+    use SyntaxKind as K;
+    let keys = [
+        (K::T_LPAREN, "left paren"),
+        (K::T_RPAREN, "right paren"),
+        (K::T_LBRACKET, "left bracket"),
+        (K::T_RBRACKET, "right bracket"),
+        (K::T_LBRACE, "left brace"),
+        (K::T_RBRACE, "right brace"),
+        (K::T_COMMA, "comma"),
+        (K::T_SEMI, "semicolon"),
+        (K::T_PIPE, "pipe"),
+        (K::T_DOT, "dot"),
+        (K::T_COLON, "colon"),
+        (K::T_IDENT, "identifier"),
+        (K::T_NUMBER, "number"),
+    ];
+    let mut out = s.to_string();
+    for (k, human) in keys {
+        let raw = format!("{k:?}");
+        out = out.replace(&raw, human);
+    }
+    out
+}
+
 impl ErrorPattern {
     fn contains_message(&self, rendered: &str) -> bool {
-        matches!(self, Self::Custom(msg) if rendered.contains(msg))
+        let rendered = normalise_tokens(rendered);
+        match self {
+            Self::Custom(msg) => {
+                let msg = normalise_tokens(msg);
+                rendered.contains(&msg)
+            }
+        }
     }
 }
 
@@ -267,10 +301,15 @@ enum DelimiterErrorKind {
 impl DelimiterErrorKind {
     fn reason_check(self, reason: &SimpleReason<SyntaxKind, Range<usize>>) -> bool {
         match self {
-            Self::Mismatch => {
-                matches!(reason, SimpleReason::Unexpected | SimpleReason::Custom(_))
-            }
-            Self::Unclosed => matches!(reason, SimpleReason::Unclosed { .. }),
+            Self::Mismatch => match reason {
+                SimpleReason::Unexpected => true,
+                SimpleReason::Custom(msg) if msg.starts_with("unexpected token") => true,
+                _ => false,
+            },
+            Self::Unclosed => matches!(
+                reason,
+                SimpleReason::Unclosed { .. } | SimpleReason::Custom(_)
+            ),
         }
     }
 

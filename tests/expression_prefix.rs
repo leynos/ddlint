@@ -32,7 +32,7 @@ fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
 
 #[rstest]
 #[case("{}", "expected expression", 1, 2, false)]
-#[case("|x x", "expected T_PIPE", 3, 4, false)]
+#[case("|x x", "expected pipe", 3, 4, false)]
 fn prefix_form_errors(
     #[case] src: &str,
     #[case] msg: &str,

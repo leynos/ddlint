@@ -5,7 +5,9 @@
 
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{assert_delimiter_error, assert_parse_error, lit_bool, lit_num, lit_str};
+use ddlint::test_util::{
+    assert_parse_error, assert_unclosed_delimiter_error, lit_bool, lit_num, lit_str,
+};
 use rstest::rstest;
 
 #[rstest]
@@ -32,7 +34,7 @@ fn literal_parsing_errors(
         panic!("expected error");
     };
     if unclosed {
-        assert_delimiter_error(&errors, msg, start, end);
+        assert_unclosed_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);
     }

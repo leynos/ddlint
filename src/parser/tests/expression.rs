@@ -3,8 +3,9 @@
 use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
-    bit_slice, call, call_expr, closure, field, field_access, lit_bool, lit_num, lit_str,
-    method_call, struct_expr, tuple, tuple_index, var,
+    assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
+    field, field_access, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple, tuple_index,
+    var,
 };
 use rstest::rstest;
 
@@ -114,17 +115,16 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 }
 
 #[rstest]
-#[case("1 +", 1)]
-#[case("(1 + 2", 1)]
-#[case("1 ? 2", 1)]
-#[case("x :", 1)]
-#[case("x as", 1)]
-#[case("x =", 1)]
-#[case("x ;", 1)]
-#[case("x =>", 1)]
-#[case("", 1)]
+#[case::addition_missing_rhs("1 +", 1)]
+#[case::unclosed_parenthesis("(1 + 2", 1)]
+#[case::unexpected_question_mark("1 ? 2", 1)]
+#[case::trailing_colon("x :", 1)]
+#[case::incomplete_as_cast("x as", 1)]
+#[case::assignment_missing_rhs("x =", 1)]
+#[case::extraneous_semicolon("x ;", 1)]
+#[case::unexpected_fat_arrow("x =>", 1)]
+#[case::empty_input("", 1)]
 #[case::bit_slice_missing_comma("e[1 0]", 1)]
-#[case::bit_slice_missing_rbracket("e[1,0", 1)]
 #[case::bit_slice_missing_lhs("e[,0]", 1)]
 #[case::bit_slice_missing_rhs("e[1,]", 1)]
 #[case::bit_slice_extra_comma("e[1,,0]", 1)]
@@ -150,5 +150,26 @@ fn reports_exactly_one_error(src: &str) {
 fn rejects_chained_type_ops_with_single_diag() {
     for src in ["x: T: U", "x as T as U", "x: T as U", "x as T: U"] {
         reports_exactly_one_error(src);
+    }
+}
+
+#[rstest]
+#[case::trailing_dot("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
+#[case::bit_slice_missing_comma("e[1]", "expected comma", 3, 4, false)]
+#[case::bit_slice_unclosed("e[1,0", "expected right bracket", 5, 5, true)]
+fn postfix_expression_errors(
+    #[case] src: &str,
+    #[case] msg: &str,
+    #[case] start: usize,
+    #[case] end: usize,
+    #[case] unclosed: bool,
+) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    if unclosed {
+        assert_unclosed_delimiter_error(&errors, "expected right bracket", start, end);
+    } else {
+        assert_parse_error(&errors, msg, start, end);
     }
 }
