@@ -33,23 +33,27 @@ pub enum ErrorPattern {
     Custom(String),
 }
 
+const TOKEN_MAP: [(&str, &str); 13] = [
+    ("T_LPAREN", "left paren"),
+    ("T_RPAREN", "right paren"),
+    ("T_LBRACKET", "left bracket"),
+    ("T_RBRACKET", "right bracket"),
+    ("T_LBRACE", "left brace"),
+    ("T_RBRACE", "right brace"),
+    ("T_COMMA", "comma"),
+    ("T_SEMI", "semicolon"),
+    ("T_COLON", "colon"),
+    ("T_DOT", "dot"),
+    ("T_PIPE", "pipe"),
+    ("T_IDENT", "identifier"),
+    ("T_NUMBER", "number"),
+];
+
 /// Replace internal token names with human-readable forms.
 fn normalise_tokens(s: &str) -> String {
-    [
-        ("T_LPAREN", "left paren"),
-        ("T_RPAREN", "right paren"),
-        ("T_LBRACKET", "left bracket"),
-        ("T_RBRACKET", "right bracket"),
-        ("T_LBRACE", "left brace"),
-        ("T_RBRACE", "right brace"),
-        ("T_COMMA", "comma"),
-        ("T_SEMI", "semicolon"),
-        ("T_PIPE", "pipe"),
-        ("T_IDENT", "identifier"),
-        ("T_NUMBER", "number"),
-    ]
-    .into_iter()
-    .fold(s.to_string(), |acc, (raw, human)| acc.replace(raw, human))
+    TOKEN_MAP
+        .iter()
+        .fold(s.to_string(), |acc, &(raw, human)| acc.replace(raw, human))
 }
 
 impl ErrorPattern {
