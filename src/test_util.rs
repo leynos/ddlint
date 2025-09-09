@@ -51,28 +51,32 @@ pub enum ErrorPattern {
     Custom(String),
 }
 
-/// Map parser token identifiers to readable names.
-const TOKEN_MAP: &[(&str, &str)] = &[
-    ("T_LPAREN", "left paren"),
-    ("T_RPAREN", "right paren"),
-    ("T_LBRACKET", "left bracket"),
-    ("T_RBRACKET", "right bracket"),
-    ("T_LBRACE", "left brace"),
-    ("T_RBRACE", "right brace"),
-    ("T_COMMA", "comma"),
-    ("T_SEMI", "semicolon"),
-    ("T_PIPE", "pipe"),
-    ("T_DOT", "dot"),
-    ("T_COLON", "colon"),
-    ("T_IDENT", "identifier"),
-    ("T_NUMBER", "number"),
-];
-
 /// Replace internal token names with human-readable forms.
 pub(crate) fn normalise_tokens(s: &str) -> String {
-    TOKEN_MAP
-        .iter()
-        .fold(s.to_string(), |acc, (raw, human)| acc.replace(raw, human))
+    // Build replacements from SyntaxKind debug names to human-friendly labels.
+    // This avoids a hand-maintained token map drifting from the parser.
+    use SyntaxKind as K;
+    let keys = [
+        (K::T_LPAREN, "left paren"),
+        (K::T_RPAREN, "right paren"),
+        (K::T_LBRACKET, "left bracket"),
+        (K::T_RBRACKET, "right bracket"),
+        (K::T_LBRACE, "left brace"),
+        (K::T_RBRACE, "right brace"),
+        (K::T_COMMA, "comma"),
+        (K::T_SEMI, "semicolon"),
+        (K::T_PIPE, "pipe"),
+        (K::T_DOT, "dot"),
+        (K::T_COLON, "colon"),
+        (K::T_IDENT, "identifier"),
+        (K::T_NUMBER, "number"),
+    ];
+    let mut out = s.to_string();
+    for (k, human) in keys {
+        let raw = format!("{k:?}");
+        out = out.replace(&raw, human);
+    }
+    out
 }
 
 impl ErrorPattern {
