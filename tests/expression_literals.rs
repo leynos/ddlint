@@ -5,7 +5,9 @@
 
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{assert_parse_error, assert_unclosed_delimiter_error, lit_bool, lit_num, lit_str};
+use ddlint::test_util::{
+    assert_parse_error, assert_unclosed_delimiter_error, lit_bool, lit_num, lit_str,
+};
 use rstest::rstest;
 
 #[rstest]
