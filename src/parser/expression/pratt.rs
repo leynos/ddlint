@@ -16,6 +16,37 @@ where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
     pub(super) ts: TokenStream<'a, I>,
+    pub(super) expr_depth: usize,
+    pub(super) struct_literal_guard: StructLiteralGuard,
+}
+
+#[derive(Default)]
+pub(super) struct StructLiteralGuard {
+    depth: Option<usize>,
+}
+
+impl StructLiteralGuard {
+    pub(super) fn disallow_at_depth(&mut self, depth: usize) {
+        self.depth = Some(depth);
+    }
+
+    pub(super) fn should_parse_struct_literal(&mut self, current_depth: usize) -> bool {
+        if self.depth == Some(current_depth) {
+            self.depth = None;
+            return false;
+        }
+        true
+    }
+
+    pub(super) fn consume_without_struct(&mut self, current_depth: usize) {
+        if matches!(self.depth, Some(depth) if depth == current_depth) {
+            self.depth = None;
+        }
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.depth = None;
+    }
 }
 
 /// Parse a source string into an [`Expr`].
@@ -54,13 +85,20 @@ where
     pub(super) fn new(tokens: I, src: &str) -> Pratt<'_, I> {
         Pratt {
             ts: TokenStream::new(tokens, src),
+            expr_depth: 0,
+            struct_literal_guard: StructLiteralGuard::default(),
         }
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        let lhs = self.parse_prefix()?;
-        let lhs = self.parse_postfix(lhs)?;
-        self.parse_infix(lhs, min_bp)
+        self.expr_depth += 1;
+        let result = (|| {
+            let lhs = self.parse_prefix()?;
+            let lhs = self.parse_postfix(lhs)?;
+            self.parse_infix(lhs, min_bp)
+        })();
+        self.expr_depth -= 1;
+        result
     }
 
     // Parse highest-precedence postfix operators, delegating each operation to a dedicated helper.

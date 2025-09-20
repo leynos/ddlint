@@ -269,6 +269,31 @@ pub fn expression_parser() -> impl Parser<SyntaxKind, ast::Expr, Error = Simple<
 carefully chosen to exactly match the precedence rules specified in the Haskell
 parser analysis (`docs/haskell-parser-analysis.md`).
 
+### Handling `if`/`else` expressions
+
+Control-flow expressions rely on prefix parsing rather than the Pratt operator
+table. The parser consumes the `if` keyword and delegates to
+`parse_if_expression`, which parses the condition, `then` branch, and an
+optional `else` branch using the existing `parse_expr` entry point. When the
+`else` clause is omitted we model the fallback value as the unit tuple `()`,
+matching the behaviour of the reference Haskell implementation. This ensures
+that downstream analyses always observe a concrete expression tree.
+
+Error recovery follows the same pattern as other prefix forms: if a branch is
+missing, the parser emits a targeted diagnostic at the offending token (or the
+end of the input) while preserving the token stream for subsequent parsing. The
+helper guards against the "dangling else" scenario by treating a bare `else`
+token as evidence that the `then` branch was absent, producing a clear
+`expected expression for 'then' branch of 'if'` message.
+
+A subtle ambiguity arises from the shared `IDENT {` token sequence used by
+struct literals. When an `if` condition is followed immediately by a brace we
+treat the brace as the start of the `then` branch rather than a struct literal.
+This matches the intent of inputs such as `if flag { ... }` and avoids spurious
+`expected T_COLON` diagnostics. Developers can still use a struct literal as
+the condition by wrapping it in parentheses (`if (Point { x: 1 }) { ... }`),
+which disambiguates the syntax without complicating the Pratt parser.
+
 ______________________________________________________________________
 
 ## 4. CST integration

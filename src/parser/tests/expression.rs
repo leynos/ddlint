@@ -4,8 +4,8 @@ use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
-    field, field_access, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple, tuple_index,
-    var,
+    field, field_access, if_expr, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple,
+    tuple_index, var,
 };
 use rstest::rstest;
 
@@ -99,6 +99,38 @@ use rstest::rstest;
 #[case("a + (x as T)", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))) })]
 #[case("(a => b); c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }))), rhs: Box::new(var("c")) })]
 #[case("a => (b; c)", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }))) })]
+#[case(
+    "if x { y } else { z }",
+    if_expr(
+        var("x"),
+        Expr::Group(Box::new(var("y"))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if (Point { x: 1 }) { y } else { z }",
+    if_expr(
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Expr::Group(Box::new(var("y"))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case("if flag value", if_expr(var("flag"), var("value"), None))]
+#[case(
+    "if cond { left } else if other { mid } else { right }",
+    if_expr(
+        var("cond"),
+        Expr::Group(Box::new(var("left"))),
+        Some(if_expr(
+            var("other"),
+            Expr::Group(Box::new(var("mid"))),
+            Some(Expr::Group(Box::new(var("right")))),
+        )),
+    )
+)]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
     assert_eq!(expr, expected);
@@ -132,6 +164,9 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case::tuple_index_negative("t.-1", 1)]
 #[case::tuple_index_plus("t.+1", 1)]
 #[case::tuple_index_double_dot("t..0", 1)]
+#[case::if_missing_then("if cond else value", 1)]
+#[case::if_missing_else_expr("if cond value else", 1)]
+#[case::if_missing_condition("if", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
