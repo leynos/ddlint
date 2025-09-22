@@ -15,7 +15,7 @@ where
 {
     iter: Peekable<I>,
     src: &'a str,
-    pub(super) errors: Vec<Simple<SyntaxKind>>,
+    errors: Vec<Simple<SyntaxKind>>,
 }
 
 impl<'a, I> TokenStream<'a, I>
@@ -64,6 +64,14 @@ where
 
     pub(super) fn error_count(&self) -> usize {
         self.errors.len()
+    }
+
+    pub(super) fn has_errors(&self) -> bool {
+        self.error_count() > 0
+    }
+
+    pub(super) fn take_errors(&mut self) -> Vec<Simple<SyntaxKind>> {
+        std::mem::take(&mut self.errors)
     }
 
     pub(super) fn push_error(&mut self, span: Span, msg: impl Into<String>) {

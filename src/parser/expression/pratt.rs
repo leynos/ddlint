@@ -156,15 +156,15 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
                 .ts
                 .push_error(sp, format!("unexpected token: {kind:?}"));
         }
-        if parser.ts.errors.is_empty() {
+        if !parser.ts.has_errors() {
             return Ok(expr_val);
         }
-    } else if parser.ts.errors.is_empty() {
+    } else if !parser.ts.has_errors() {
         parser
             .ts
             .push_error(parser.ts.eof_span(), "invalid expression");
     }
-    Err(parser.ts.errors)
+    Err(parser.ts.take_errors())
 }
 
 impl<I> Pratt<'_, I>
