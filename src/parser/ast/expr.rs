@@ -161,6 +161,15 @@ pub enum Expr {
         /// Body expression executed when invoked.
         body: Box<Expr>,
     },
+    /// If expression with an optional `else` branch.
+    IfElse {
+        /// Condition controlling the selected branch.
+        condition: Box<Expr>,
+        /// Expression evaluated when the condition is truthy.
+        then_branch: Box<Expr>,
+        /// Expression evaluated when the condition is falsy.
+        else_branch: Box<Expr>,
+    },
     /// Unary operation expression.
     Unary { op: UnaryOp, expr: Box<Expr> },
     /// Binary operation expression.
@@ -209,6 +218,18 @@ impl Expr {
             Self::Closure { params, body } => format_nary(
                 "closure",
                 [format!("({})", params.join(" ")), body.to_sexpr()],
+            ),
+            Self::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+            } => format_nary(
+                "if",
+                [
+                    condition.to_sexpr(),
+                    then_branch.to_sexpr(),
+                    else_branch.to_sexpr(),
+                ],
             ),
             Self::Unary { op, expr } => format_nary(op.symbol(), std::iter::once(expr.to_sexpr())),
             Self::Binary { op, lhs, rhs } => {

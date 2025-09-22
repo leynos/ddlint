@@ -62,6 +62,10 @@ where
         rest
     }
 
+    pub(super) fn error_count(&self) -> usize {
+        self.errors.len()
+    }
+
     pub(super) fn push_error(&mut self, span: Span, msg: impl Into<String>) {
         self.errors.push(Simple::custom(span, msg.into()));
     }

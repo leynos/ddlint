@@ -6,8 +6,8 @@
 use ddlint::parser::ast::{BinaryOp, Expr};
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, closure, field, lit_num, struct_expr,
-    tuple, var,
+    assert_parse_error, assert_unclosed_delimiter_error, closure, field, if_expr, lit_num,
+    struct_expr, tuple, var,
 };
 use rstest::rstest;
 
@@ -59,4 +59,96 @@ fn compound_expression_errors(
     } else {
         assert_parse_error(&errors, msg, start, end);
     }
+}
+
+#[rstest]
+#[case(
+    "if x { y } else { z }",
+    if_expr(
+        var("x"),
+        Expr::Group(Box::new(var("y"))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if (Point { x: 1 }) { y } else { z }",
+    if_expr(
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Expr::Group(Box::new(var("y"))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if flag { Point { x: 1 } } else { z }",
+    if_expr(
+        var("flag"),
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if a and b { x } else { y }",
+    if_expr(
+        Expr::Binary {
+            op: BinaryOp::And,
+            lhs: Box::new(var("a")),
+            rhs: Box::new(var("b")),
+        },
+        Expr::Group(Box::new(var("x"))),
+        Some(Expr::Group(Box::new(var("y")))),
+    )
+)]
+#[case("if flag value", if_expr(var("flag"), var("value"), None))]
+fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case(
+    "if flag { Point { x: 1 } } else { z }",
+    if_expr(
+        var("flag"),
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+fn parses_if_then_with_struct_literal(#[case] src: &str, #[case] expected: Expr) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case(
+    "if cond else value",
+    "expected expression for 'then' branch of 'if'",
+    8,
+    12
+)]
+#[case(
+    "if cond value else",
+    "expected expression for 'else' branch of 'if'",
+    14,
+    18
+)]
+#[case("if", "expected condition expression after 'if'", 2, 2)]
+fn if_expression_errors(
+    #[case] src: &str,
+    #[case] msg: &str,
+    #[case] start: usize,
+    #[case] end: usize,
+) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    assert_parse_error(&errors, msg, start, end);
 }
