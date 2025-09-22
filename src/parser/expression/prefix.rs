@@ -7,7 +7,7 @@ use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where
-    I: Iterator<Item = (SyntaxKind, Span)>,
+    I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.ts.next_tok()?;
@@ -37,12 +37,23 @@ where
 
     fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
         let name = self.ts.slice(span);
-        self.parse_ident_expression(name)
+        self.parse_ident_expression(name, span)
     }
 
-    fn parse_ident_expression(&mut self, name: String) -> Option<Expr> {
+    fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
             if !self.struct_guard().allows_struct_literal() {
+                let next_kind = self.ts.peek_nth_kind(1);
+                let colon_kind = self.ts.peek_nth_kind(2);
+                let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
+                    || matches!(colon_kind, Some(SyntaxKind::T_COLON));
+                if looks_like_struct {
+                    self.ts.push_error(
+                        span.clone(),
+                        "struct literal syntax is not allowed in this context",
+                    );
+                    return None;
+                }
                 return Some(Expr::Variable(name));
             }
             self.ts.next_tok();
@@ -61,8 +72,8 @@ where
             self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
-        let _guard = self.suspend_struct_literals();
-        (|| {
+        {
+            let _guard = self.suspend_struct_literals();
             let first = self.parse_expr(0)?;
             let mut items = vec![first];
             let mut is_tuple = false;
@@ -87,7 +98,7 @@ where
                 let item = items.pop().expect("expected one item in group");
                 Some(Expr::Group(Box::new(item)))
             }
-        })()
+        }
     }
 
     fn parse_brace_group(&mut self) -> Option<Expr> {
@@ -97,14 +108,14 @@ where
             self.ts.push_error(sp, "expected expression");
             return None;
         }
-        let _guard = self.suspend_struct_literals();
-        (|| {
+        {
+            let _guard = self.suspend_struct_literals();
             let inner = self.parse_expr(0)?;
             if !self.ts.expect(SyntaxKind::T_RBRACE) {
                 return None;
             }
             Some(Expr::Group(Box::new(inner)))
-        })()
+        }
     }
 
     fn parse_closure_literal(&mut self) -> Option<Expr> {

@@ -275,9 +275,19 @@ Control-flow expressions rely on prefix parsing rather than the Pratt operator
 table. The parser consumes the `if` keyword and delegates to
 `parse_if_expression`, which parses the condition, `then` branch, and an
 optional `else` branch using the existing `parse_expr` entry point. When the
-`else` clause is omitted we model the fallback value as the unit tuple `()`,
-matching the behaviour of the reference Haskell implementation. This ensures
-that downstream analyses always observe a concrete expression tree.
+`else` clause is omitted the parser produces the unit tuple `()`, represented
+internally as `Expr::Tuple(Vec::new())`, matching the semantics of the
+reference Haskell implementation. This ensures that downstream analyses always
+observe a concrete expression tree.
+
+Chained `else if` clauses become nested `Expr::IfElse` nodes so that each
+predicate retains its own branch. For example,
+`if cond { a } else if other { b } else { c }` is represented as an
+`Expr::IfElse` whose `else_branch` contains another `Expr::IfElse`.
+
+To guard against stack exhaustion the parser caps expression nesting at 256
+levels. Inputs that exceed this limit raise an `"expression nesting too deep"`
+diagnostic anchored at the token that would push the depth over the limit.
 
 Error recovery follows the same pattern as other prefix forms: if a branch is
 missing, the parser emits a targeted diagnostic at the offending token (or the

@@ -155,7 +155,8 @@ use rstest::rstest;
     )
 )]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
-    let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected);
 }
 
@@ -165,8 +166,19 @@ fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("false", lit_bool(false))]
 #[case("42", lit_num("42"))]
 fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
-    let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected);
+}
+
+#[test]
+fn rejects_expression_exceeding_max_depth() {
+    let depth = 257;
+    let source = format!("{}0{}", "(".repeat(depth), ")".repeat(depth));
+    let Err(errors) = parse_expression(&source) else {
+        panic!("expected depth error");
+    };
+    assert_parse_error(&errors, "expression nesting too deep", depth - 1, depth);
 }
 
 #[rstest]

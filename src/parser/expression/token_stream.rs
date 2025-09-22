@@ -42,6 +42,14 @@ where
         self.iter.peek().map(|(_, sp)| sp.clone())
     }
 
+    pub(super) fn peek_nth_kind(&mut self, n: usize) -> Option<SyntaxKind>
+    where
+        I: Clone,
+    {
+        let mut iter = self.iter.clone();
+        iter.nth(n).map(|(kind, _)| kind)
+    }
+
     pub(super) fn expect(&mut self, kind: SyntaxKind) -> bool {
         if self.peek_kind() == Some(kind) {
             self.next_tok();

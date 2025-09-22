@@ -13,12 +13,16 @@ use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
 
+const MAX_EXPR_DEPTH: usize = 256;
+
 pub(super) struct Pratt<'a, I>
 where
-    I: Iterator<Item = (SyntaxKind, Span)>,
+    I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) ts: TokenStream<'a, I>,
+    /// Shared via `Rc` so depth guards can drop after recursive calls without holding a borrow on `self`.
     expr_depth: Rc<Cell<usize>>,
+    /// Shared via `Rc` so suspension guards survive nested parsing while `self` continues to mutate the stream.
     struct_literal_guard: Rc<StructLiteralGuard>,
 }
 
@@ -169,7 +173,7 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
 
 impl<I> Pratt<'_, I>
 where
-    I: Iterator<Item = (SyntaxKind, Span)>,
+    I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     #[must_use]
     pub(super) fn new(tokens: I, src: &str) -> Pratt<'_, I> {
@@ -195,6 +199,11 @@ where
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
+        if self.expr_depth.get() >= MAX_EXPR_DEPTH {
+            let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(sp, "expression nesting too deep");
+            return None;
+        }
         let _depth_guard = ExprDepthGuard::new(Rc::clone(&self.expr_depth));
         let lhs = self.parse_prefix()?;
         let lhs = self.parse_postfix(lhs)?;
@@ -224,8 +233,8 @@ where
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         self.ts.next_tok(); // '[' already peeked
-        let _guard = self.suspend_struct_literals();
-        (|| {
+        {
+            let _guard = self.suspend_struct_literals();
             let hi = self.parse_expr(0)?;
             if !self.ts.expect(SyntaxKind::T_COMMA) {
                 return None;
@@ -239,7 +248,7 @@ where
                 hi: Box::new(hi),
                 lo: Box::new(lo),
             })
-        })()
+        }
     }
 
     fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
@@ -283,14 +292,14 @@ where
 
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
         self.ts.next_tok(); // '(' already peeked
-        let _guard = self.suspend_struct_literals();
-        (|| {
+        {
+            let _guard = self.suspend_struct_literals();
             let args = self.parse_args()?;
             if !self.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
             }
             Some(args)
-        })()
+        }
     }
 
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {
