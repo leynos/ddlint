@@ -18,8 +18,8 @@ where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
     pub(super) ts: TokenStream<'a, I>,
-    pub(super) expr_depth: Rc<Cell<usize>>,
-    pub(super) struct_literal_guard: StructLiteralGuard,
+    expr_depth: Rc<Cell<usize>>,
+    struct_literal_guard: Rc<StructLiteralGuard>,
 }
 
 #[derive(Default)]
@@ -36,11 +36,15 @@ impl StructLiteralGuard {
     }
 
     pub(super) fn deactivate(&self) {
+        #[expect(
+            clippy::expect_used,
+            reason = "struct literal guard depth must not underflow"
+        )]
         let remaining = self
             .active
             .get()
             .checked_sub(1)
-            .unwrap_or_else(|| panic!("struct literal guard underflow"));
+            .expect("struct literal guard underflow");
         self.active.set(remaining);
         if remaining == 0 {
             self.suspension.set(0);
@@ -56,16 +60,40 @@ impl StructLiteralGuard {
     }
 
     pub(super) fn resume(&self) {
+        #[expect(
+            clippy::expect_used,
+            reason = "struct literal guard suspension depth must not underflow"
+        )]
         let remaining = self
             .suspension
             .get()
             .checked_sub(1)
-            .unwrap_or_else(|| panic!("struct literal guard suspension underflow"));
+            .expect("struct literal guard suspension underflow");
         self.suspension.set(remaining);
     }
 
     pub(super) fn allows_struct_literal(&self) -> bool {
         self.active.get() == 0 || self.suspension.get() > 0
+    }
+}
+
+pub(super) struct SuspensionGuard {
+    guard: Rc<StructLiteralGuard>,
+    active: bool,
+}
+
+impl SuspensionGuard {
+    fn new(guard: Rc<StructLiteralGuard>) -> Self {
+        let active = guard.suspend();
+        Self { guard, active }
+    }
+}
+
+impl Drop for SuspensionGuard {
+    fn drop(&mut self) {
+        if self.active {
+            self.guard.resume();
+        }
     }
 }
 
@@ -128,8 +156,16 @@ where
         Pratt {
             ts: TokenStream::new(tokens, src),
             expr_depth: Rc::new(Cell::new(0)),
-            struct_literal_guard: StructLiteralGuard::default(),
+            struct_literal_guard: Rc::new(StructLiteralGuard::default()),
         }
+    }
+
+    pub(super) fn struct_guard(&self) -> &StructLiteralGuard {
+        self.struct_literal_guard.as_ref()
+    }
+
+    pub(super) fn suspend_struct_literals(&self) -> SuspensionGuard {
+        SuspensionGuard::new(Rc::clone(&self.struct_literal_guard))
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
@@ -162,8 +198,8 @@ where
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         self.ts.next_tok(); // '[' already peeked
-        let suspended = self.struct_literal_guard.suspend();
-        let result = (|| {
+        let _guard = self.suspend_struct_literals();
+        (|| {
             let hi = self.parse_expr(0)?;
             if !self.ts.expect(SyntaxKind::T_COMMA) {
                 return None;
@@ -177,11 +213,7 @@ where
                 hi: Box::new(hi),
                 lo: Box::new(lo),
             })
-        })();
-        if suspended {
-            self.struct_literal_guard.resume();
-        }
-        result
+        })()
     }
 
     fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
@@ -225,18 +257,14 @@ where
 
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
         self.ts.next_tok(); // '(' already peeked
-        let suspended = self.struct_literal_guard.suspend();
-        let result = (|| {
+        let _guard = self.suspend_struct_literals();
+        (|| {
             let args = self.parse_args()?;
             if !self.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
             }
             Some(args)
-        })();
-        if suspended {
-            self.struct_literal_guard.resume();
-        }
-        result
+        })()
     }
 
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {
