@@ -77,6 +77,7 @@ impl StructLiteralGuard {
     }
 }
 
+#[must_use = "bind this guard to keep struct-literal suspension active for the scope"]
 pub(super) struct SuspensionGuard {
     guard: Rc<StructLiteralGuard>,
     active: bool,
@@ -97,6 +98,24 @@ impl Drop for SuspensionGuard {
     }
 }
 
+#[must_use = "bind this guard to keep struct-literal activation active for the scope"]
+pub(super) struct ActivationGuard {
+    guard: Rc<StructLiteralGuard>,
+}
+
+impl ActivationGuard {
+    fn new(guard: Rc<StructLiteralGuard>) -> Self {
+        guard.activate();
+        Self { guard }
+    }
+}
+
+impl Drop for ActivationGuard {
+    fn drop(&mut self) {
+        self.guard.deactivate();
+    }
+}
+
 struct ExprDepthGuard {
     depth: Rc<Cell<usize>>,
 }
@@ -111,11 +130,12 @@ impl ExprDepthGuard {
 impl Drop for ExprDepthGuard {
     fn drop(&mut self) {
         let current = self.depth.get();
-        self.depth.set(
-            current
-                .checked_sub(1)
-                .unwrap_or_else(|| panic!("expression depth underflow")),
-        );
+        #[expect(
+            clippy::expect_used,
+            reason = "expression depth guard must not underflow"
+        )]
+        self.depth
+            .set(current.checked_sub(1).expect("expression depth underflow"));
     }
 }
 
@@ -164,8 +184,14 @@ where
         self.struct_literal_guard.as_ref()
     }
 
+    #[must_use = "bind the guard to keep struct-literal suspension active for the scope"]
     pub(super) fn suspend_struct_literals(&self) -> SuspensionGuard {
         SuspensionGuard::new(Rc::clone(&self.struct_literal_guard))
+    }
+
+    #[must_use = "bind the guard to keep struct-literal activation active for the scope"]
+    pub(super) fn activate_struct_literal_guard(&self) -> ActivationGuard {
+        ActivationGuard::new(Rc::clone(&self.struct_literal_guard))
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {

@@ -144,10 +144,8 @@ where
     }
 
     fn parse_if_condition(&mut self) -> Option<Expr> {
-        self.struct_guard().activate();
-        let result = self.parse_if_clause("expected condition expression after 'if'", None);
-        self.struct_guard().deactivate();
-        result
+        let _active = self.activate_struct_literal_guard();
+        self.parse_if_clause("expected condition expression after 'if'", None)
     }
 
     fn parse_if_clause(&mut self, expectation: &str, fallback: Option<Span>) -> Option<Expr> {
