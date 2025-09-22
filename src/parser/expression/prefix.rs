@@ -42,10 +42,7 @@ where
 
     fn parse_ident_expression(&mut self, name: String) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
-            if !self
-                .struct_literal_guard
-                .should_parse_struct_literal(self.expr_depth)
-            {
+            if !self.struct_literal_guard.allows_struct_literal() {
                 return Some(Expr::Variable(name));
             }
             self.ts.next_tok();
@@ -55,8 +52,6 @@ where
             }
             Some(Expr::Struct { name, fields })
         } else {
-            self.struct_literal_guard
-                .consume_without_struct(self.expr_depth);
             Some(Expr::Variable(name))
         }
     }
@@ -66,30 +61,37 @@ where
             self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
-        let first = self.parse_expr(0)?;
-        let mut items = vec![first];
-        let mut is_tuple = false;
-        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-            is_tuple = true;
-            self.ts.next_tok();
-            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
-                break;
+        let suspended = self.struct_literal_guard.suspend();
+        let result = (|| {
+            let first = self.parse_expr(0)?;
+            let mut items = vec![first];
+            let mut is_tuple = false;
+            while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+                is_tuple = true;
+                self.ts.next_tok();
+                if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
+                    break;
+                }
+                items.push(self.parse_expr(0)?);
             }
-            items.push(self.parse_expr(0)?);
+            if !self.ts.expect(SyntaxKind::T_RPAREN) {
+                return None;
+            }
+            if is_tuple {
+                Some(Expr::Tuple(items))
+            } else {
+                #[expect(
+                    clippy::expect_used,
+                    reason = "parser invariant: group contains exactly one item"
+                )]
+                let item = items.pop().expect("expected one item in group");
+                Some(Expr::Group(Box::new(item)))
+            }
+        })();
+        if suspended {
+            self.struct_literal_guard.resume();
         }
-        if !self.ts.expect(SyntaxKind::T_RPAREN) {
-            return None;
-        }
-        if is_tuple {
-            Some(Expr::Tuple(items))
-        } else {
-            #[expect(
-                clippy::expect_used,
-                reason = "parser invariant: group contains exactly one item"
-            )]
-            let item = items.pop().expect("expected one item in group");
-            Some(Expr::Group(Box::new(item)))
-        }
+        result
     }
 
     fn parse_brace_group(&mut self) -> Option<Expr> {
@@ -99,11 +101,18 @@ where
             self.ts.push_error(sp, "expected expression");
             return None;
         }
-        let inner = self.parse_expr(0)?;
-        if !self.ts.expect(SyntaxKind::T_RBRACE) {
-            return None;
+        let suspended = self.struct_literal_guard.suspend();
+        let result = (|| {
+            let inner = self.parse_expr(0)?;
+            if !self.ts.expect(SyntaxKind::T_RBRACE) {
+                return None;
+            }
+            Some(Expr::Group(Box::new(inner)))
+        })();
+        if suspended {
+            self.struct_literal_guard.resume();
         }
-        Some(Expr::Group(Box::new(inner)))
+        result
     }
 
     fn parse_closure_literal(&mut self) -> Option<Expr> {
@@ -111,7 +120,12 @@ where
         if !self.ts.expect(SyntaxKind::T_PIPE) {
             return None;
         }
-        let body = self.parse_expr(0)?;
+        let suspended = self.struct_literal_guard.suspend();
+        let result = self.parse_expr(0);
+        if suspended {
+            self.struct_literal_guard.resume();
+        }
+        let body = result?;
         Some(Expr::Closure {
             params,
             body: Box::new(body),
@@ -142,10 +156,9 @@ where
     }
 
     fn parse_if_condition(&mut self) -> Option<Expr> {
-        self.struct_literal_guard
-            .disallow_at_depth(self.expr_depth + 1);
+        self.struct_literal_guard.activate();
         let result = self.parse_if_clause("expected condition expression after 'if'", None);
-        self.struct_literal_guard.reset();
+        self.struct_literal_guard.deactivate();
         result
     }
 

@@ -287,12 +287,14 @@ token as evidence that the `then` branch was absent, producing a clear
 `expected expression for 'then' branch of 'if'` message.
 
 A subtle ambiguity arises from the shared `IDENT {` token sequence used by
-struct literals. When an `if` condition is followed immediately by a brace we
-treat the brace as the start of the `then` branch rather than a struct literal.
-This matches the intent of inputs such as `if flag { ... }` and avoids spurious
-`expected T_COLON` diagnostics. Developers can still use a struct literal as
-the condition by wrapping it in parentheses (`if (Point { x: 1 }) { ... }`),
-which disambiguates the syntax without complicating the Pratt parser.
+struct literals. To resolve this we activate a struct-literal guard for the
+duration of the condition parse. While active it interprets `IDENT {` as a
+variable followed by the branch, preventing the condition from consuming the
+branch braces. The guard automatically suspends inside parentheses, brace
+groups, and closure bodies so expressions such as `if (Point { x: 1 }) { ... }`
+or `if cond { Point { x: 1 } }` continue to parse as intended. This strategy
+eliminates spurious `expected T_COLON` diagnostics without restricting
+legitimate struct literal usage.
 
 ______________________________________________________________________
 

@@ -81,8 +81,48 @@ fn compound_expression_errors(
         Some(Expr::Group(Box::new(var("z")))),
     )
 )]
+#[case(
+    "if flag { Point { x: 1 } } else { z }",
+    if_expr(
+        var("flag"),
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if a and b { x } else { y }",
+    if_expr(
+        Expr::Binary {
+            op: BinaryOp::And,
+            lhs: Box::new(var("a")),
+            rhs: Box::new(var("b")),
+        },
+        Expr::Group(Box::new(var("x"))),
+        Some(Expr::Group(Box::new(var("y")))),
+    )
+)]
 #[case("if flag value", if_expr(var("flag"), var("value"), None))]
 fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case(
+    "if flag { Point { x: 1 } } else { z }",
+    if_expr(
+        var("flag"),
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+fn parses_if_then_with_struct_literal(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);
 }

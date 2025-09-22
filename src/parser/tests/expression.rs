@@ -118,6 +118,29 @@ use rstest::rstest;
         Some(Expr::Group(Box::new(var("z")))),
     )
 )]
+#[case(
+    "if flag { Point { x: 1 } } else { z }",
+    if_expr(
+        var("flag"),
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if a and b { x } else { y }",
+    if_expr(
+        Expr::Binary {
+            op: BinaryOp::And,
+            lhs: Box::new(var("a")),
+            rhs: Box::new(var("b")),
+        },
+        Expr::Group(Box::new(var("x"))),
+        Some(Expr::Group(Box::new(var("y")))),
+    )
+)]
 #[case("if flag value", if_expr(var("flag"), var("value"), None))]
 #[case(
     "if cond { left } else if other { mid } else { right }",

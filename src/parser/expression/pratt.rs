@@ -4,6 +4,8 @@
 //! [`parse_expression`] function which tokenises the source and builds
 //! expression trees.
 
+use std::{cell::Cell, rc::Rc};
+
 use chumsky::error::Simple;
 
 use crate::parser::ast::Expr;
@@ -16,36 +18,76 @@ where
     I: Iterator<Item = (SyntaxKind, Span)>,
 {
     pub(super) ts: TokenStream<'a, I>,
-    pub(super) expr_depth: usize,
+    pub(super) expr_depth: Rc<Cell<usize>>,
     pub(super) struct_literal_guard: StructLiteralGuard,
 }
 
 #[derive(Default)]
 pub(super) struct StructLiteralGuard {
-    depth: Option<usize>,
+    /// Active contexts where bare struct literals must be disabled (for example `if` conditions).
+    active: Cell<usize>,
+    /// Nesting depth that temporarily suspends the guard for disambiguated sub-expressions.
+    suspension: Cell<usize>,
 }
 
 impl StructLiteralGuard {
-    pub(super) fn disallow_at_depth(&mut self, depth: usize) {
-        self.depth = Some(depth);
+    pub(super) fn activate(&self) {
+        self.active.set(self.active.get() + 1);
     }
 
-    pub(super) fn should_parse_struct_literal(&mut self, current_depth: usize) -> bool {
-        if self.depth == Some(current_depth) {
-            self.depth = None;
+    pub(super) fn deactivate(&self) {
+        let remaining = self
+            .active
+            .get()
+            .checked_sub(1)
+            .unwrap_or_else(|| panic!("struct literal guard underflow"));
+        self.active.set(remaining);
+        if remaining == 0 {
+            self.suspension.set(0);
+        }
+    }
+
+    pub(super) fn suspend(&self) -> bool {
+        if self.active.get() == 0 {
             return false;
         }
+        self.suspension.set(self.suspension.get() + 1);
         true
     }
 
-    pub(super) fn consume_without_struct(&mut self, current_depth: usize) {
-        if matches!(self.depth, Some(depth) if depth == current_depth) {
-            self.depth = None;
-        }
+    pub(super) fn resume(&self) {
+        let remaining = self
+            .suspension
+            .get()
+            .checked_sub(1)
+            .unwrap_or_else(|| panic!("struct literal guard suspension underflow"));
+        self.suspension.set(remaining);
     }
 
-    pub(super) fn reset(&mut self) {
-        self.depth = None;
+    pub(super) fn allows_struct_literal(&self) -> bool {
+        self.active.get() == 0 || self.suspension.get() > 0
+    }
+}
+
+struct ExprDepthGuard {
+    depth: Rc<Cell<usize>>,
+}
+
+impl ExprDepthGuard {
+    fn new(depth: Rc<Cell<usize>>) -> Self {
+        depth.set(depth.get() + 1);
+        Self { depth }
+    }
+}
+
+impl Drop for ExprDepthGuard {
+    fn drop(&mut self) {
+        let current = self.depth.get();
+        self.depth.set(
+            current
+                .checked_sub(1)
+                .unwrap_or_else(|| panic!("expression depth underflow")),
+        );
     }
 }
 
@@ -85,20 +127,16 @@ where
     pub(super) fn new(tokens: I, src: &str) -> Pratt<'_, I> {
         Pratt {
             ts: TokenStream::new(tokens, src),
-            expr_depth: 0,
+            expr_depth: Rc::new(Cell::new(0)),
             struct_literal_guard: StructLiteralGuard::default(),
         }
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        self.expr_depth += 1;
-        let result = (|| {
-            let lhs = self.parse_prefix()?;
-            let lhs = self.parse_postfix(lhs)?;
-            self.parse_infix(lhs, min_bp)
-        })();
-        self.expr_depth -= 1;
-        result
+        let _depth_guard = ExprDepthGuard::new(Rc::clone(&self.expr_depth));
+        let lhs = self.parse_prefix()?;
+        let lhs = self.parse_postfix(lhs)?;
+        self.parse_infix(lhs, min_bp)
     }
 
     // Parse highest-precedence postfix operators, delegating each operation to a dedicated helper.
@@ -124,19 +162,26 @@ where
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         self.ts.next_tok(); // '[' already peeked
-        let hi = self.parse_expr(0)?;
-        if !self.ts.expect(SyntaxKind::T_COMMA) {
-            return None;
+        let suspended = self.struct_literal_guard.suspend();
+        let result = (|| {
+            let hi = self.parse_expr(0)?;
+            if !self.ts.expect(SyntaxKind::T_COMMA) {
+                return None;
+            }
+            let lo = self.parse_expr(0)?;
+            if !self.ts.expect(SyntaxKind::T_RBRACKET) {
+                return None;
+            }
+            Some(Expr::BitSlice {
+                expr: Box::new(lhs),
+                hi: Box::new(hi),
+                lo: Box::new(lo),
+            })
+        })();
+        if suspended {
+            self.struct_literal_guard.resume();
         }
-        let lo = self.parse_expr(0)?;
-        if !self.ts.expect(SyntaxKind::T_RBRACKET) {
-            return None;
-        }
-        Some(Expr::BitSlice {
-            expr: Box::new(lhs),
-            hi: Box::new(hi),
-            lo: Box::new(lo),
-        })
+        result
     }
 
     fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
@@ -180,11 +225,18 @@ where
 
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
         self.ts.next_tok(); // '(' already peeked
-        let args = self.parse_args()?;
-        if !self.ts.expect(SyntaxKind::T_RPAREN) {
-            return None;
+        let suspended = self.struct_literal_guard.suspend();
+        let result = (|| {
+            let args = self.parse_args()?;
+            if !self.ts.expect(SyntaxKind::T_RPAREN) {
+                return None;
+            }
+            Some(args)
+        })();
+        if suspended {
+            self.struct_literal_guard.resume();
         }
-        Some(args)
+        result
     }
 
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {
