@@ -42,7 +42,7 @@ where
 
     fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
-            if !self.struct_guard().allows_struct_literal() {
+            if !self.allows_struct_literals() {
                 let next_kind = self.ts.peek_nth_kind(1);
                 let colon_kind = self.ts.peek_nth_kind(2);
                 let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
@@ -72,20 +72,19 @@ where
             self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
-        {
-            let _guard = self.suspend_struct_literals();
-            let first = self.parse_expr(0)?;
+        self.with_struct_literals_suspended(|this| {
+            let first = this.parse_expr(0)?;
             let mut items = vec![first];
             let mut is_tuple = false;
-            while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            while matches!(this.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
                 is_tuple = true;
-                self.ts.next_tok();
-                if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
+                this.ts.next_tok();
+                if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
                     break;
                 }
-                items.push(self.parse_expr(0)?);
+                items.push(this.parse_expr(0)?);
             }
-            if !self.ts.expect(SyntaxKind::T_RPAREN) {
+            if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
             }
             if is_tuple {
@@ -98,7 +97,7 @@ where
                 let item = items.pop().expect("expected one item in group");
                 Some(Expr::Group(Box::new(item)))
             }
-        }
+        })
     }
 
     fn parse_brace_group(&mut self) -> Option<Expr> {
@@ -108,14 +107,13 @@ where
             self.ts.push_error(sp, "expected expression");
             return None;
         }
-        {
-            let _guard = self.suspend_struct_literals();
-            let inner = self.parse_expr(0)?;
-            if !self.ts.expect(SyntaxKind::T_RBRACE) {
+        self.with_struct_literals_suspended(|this| {
+            let inner = this.parse_expr(0)?;
+            if !this.ts.expect(SyntaxKind::T_RBRACE) {
                 return None;
             }
             Some(Expr::Group(Box::new(inner)))
-        }
+        })
     }
 
     fn parse_closure_literal(&mut self) -> Option<Expr> {
@@ -123,8 +121,7 @@ where
         if !self.ts.expect(SyntaxKind::T_PIPE) {
             return None;
         }
-        let _guard = self.suspend_struct_literals();
-        let body = self.parse_expr(0)?;
+        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
         Some(Expr::Closure {
             params,
             body: Box::new(body),
@@ -155,8 +152,9 @@ where
     }
 
     fn parse_if_condition(&mut self) -> Option<Expr> {
-        let _active = self.activate_struct_literal_guard();
-        self.parse_if_clause("expected condition expression after 'if'", None)
+        self.with_struct_literal_activation(|this| {
+            this.parse_if_clause("expected condition expression after 'if'", None)
+        })
     }
 
     fn parse_if_clause(&mut self, expectation: &str, fallback: Option<Span>) -> Option<Expr> {

@@ -4,8 +4,6 @@
 //! [`parse_expression`] function which tokenises the source and builds
 //! expression trees.
 
-use std::{cell::Cell, rc::Rc};
-
 use chumsky::error::Simple;
 
 use crate::parser::ast::Expr;
@@ -20,126 +18,62 @@ where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) ts: TokenStream<'a, I>,
-    /// Shared via `Rc` so depth guards can drop after recursive calls without holding a borrow on `self`.
-    expr_depth: Rc<Cell<usize>>,
-    /// Shared via `Rc` so suspension guards survive nested parsing while `self` continues to mutate the stream.
-    struct_literal_guard: Rc<StructLiteralGuard>,
+    /// Tracks recursion depth to reject pathologically nested expressions.
+    expr_depth: usize,
+    /// Records contexts where bare struct literals should be disallowed or temporarily re-enabled.
+    struct_literals: StructLiteralState,
 }
 
 #[derive(Default)]
-pub(super) struct StructLiteralGuard {
+struct StructLiteralState {
     /// Active contexts where bare struct literals must be disabled (for example `if` conditions).
-    active: Cell<usize>,
+    active: usize,
     /// Nesting depth that temporarily suspends the guard for disambiguated sub-expressions.
-    suspension: Cell<usize>,
+    suspension: usize,
 }
 
-impl StructLiteralGuard {
-    pub(super) fn activate(&self) {
-        self.active.set(self.active.get() + 1);
+impl StructLiteralState {
+    fn activate(&mut self) {
+        self.active += 1;
     }
 
-    pub(super) fn deactivate(&self) {
+    fn deactivate(&mut self) {
         #[expect(
             clippy::expect_used,
             reason = "struct literal guard depth must not underflow"
         )]
         let remaining = self
             .active
-            .get()
             .checked_sub(1)
             .expect("struct literal guard underflow");
-        self.active.set(remaining);
+        self.active = remaining;
         if remaining == 0 {
-            self.suspension.set(0);
+            self.suspension = 0;
         }
     }
 
-    pub(super) fn suspend(&self) -> bool {
-        if self.active.get() == 0 {
+    fn suspend(&mut self) -> bool {
+        if self.active == 0 {
             return false;
         }
-        self.suspension.set(self.suspension.get() + 1);
+        self.suspension += 1;
         true
     }
 
-    pub(super) fn resume(&self) {
+    fn resume(&mut self) {
         #[expect(
             clippy::expect_used,
             reason = "struct literal guard suspension depth must not underflow"
         )]
         let remaining = self
             .suspension
-            .get()
             .checked_sub(1)
             .expect("struct literal guard suspension underflow");
-        self.suspension.set(remaining);
+        self.suspension = remaining;
     }
 
-    pub(super) fn allows_struct_literal(&self) -> bool {
-        self.active.get() == 0 || self.suspension.get() > 0
-    }
-}
-
-#[must_use = "bind this guard to keep struct-literal suspension active for the scope"]
-pub(super) struct SuspensionGuard {
-    guard: Rc<StructLiteralGuard>,
-    active: bool,
-}
-
-impl SuspensionGuard {
-    fn new(guard: Rc<StructLiteralGuard>) -> Self {
-        let active = guard.suspend();
-        Self { guard, active }
-    }
-}
-
-impl Drop for SuspensionGuard {
-    fn drop(&mut self) {
-        if self.active {
-            self.guard.resume();
-        }
-    }
-}
-
-#[must_use = "bind this guard to keep struct-literal activation active for the scope"]
-pub(super) struct ActivationGuard {
-    guard: Rc<StructLiteralGuard>,
-}
-
-impl ActivationGuard {
-    fn new(guard: Rc<StructLiteralGuard>) -> Self {
-        guard.activate();
-        Self { guard }
-    }
-}
-
-impl Drop for ActivationGuard {
-    fn drop(&mut self) {
-        self.guard.deactivate();
-    }
-}
-
-struct ExprDepthGuard {
-    depth: Rc<Cell<usize>>,
-}
-
-impl ExprDepthGuard {
-    fn new(depth: Rc<Cell<usize>>) -> Self {
-        depth.set(depth.get() + 1);
-        Self { depth }
-    }
-}
-
-impl Drop for ExprDepthGuard {
-    fn drop(&mut self) {
-        let current = self.depth.get();
-        #[expect(
-            clippy::expect_used,
-            reason = "expression depth guard must not underflow"
-        )]
-        self.depth
-            .set(current.checked_sub(1).expect("expression depth underflow"));
+    fn allows_struct_literal(&self) -> bool {
+        self.active == 0 || self.suspension > 0
     }
 }
 
@@ -179,32 +113,50 @@ where
     pub(super) fn new(tokens: I, src: &str) -> Pratt<'_, I> {
         Pratt {
             ts: TokenStream::new(tokens, src),
-            expr_depth: Rc::new(Cell::new(0)),
-            struct_literal_guard: Rc::new(StructLiteralGuard::default()),
+            expr_depth: 0,
+            struct_literals: StructLiteralState::default(),
         }
     }
 
-    pub(super) fn struct_guard(&self) -> &StructLiteralGuard {
-        self.struct_literal_guard.as_ref()
+    pub(super) fn allows_struct_literals(&self) -> bool {
+        self.struct_literals.allows_struct_literal()
     }
 
-    #[must_use = "bind the guard to keep struct-literal suspension active for the scope"]
-    pub(super) fn suspend_struct_literals(&self) -> SuspensionGuard {
-        SuspensionGuard::new(Rc::clone(&self.struct_literal_guard))
+    pub(super) fn with_struct_literals_suspended<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        if !self.struct_literals.suspend() {
+            return f(self);
+        }
+        let result = f(self);
+        self.struct_literals.resume();
+        result
     }
 
-    #[must_use = "bind the guard to keep struct-literal activation active for the scope"]
-    pub(super) fn activate_struct_literal_guard(&self) -> ActivationGuard {
-        ActivationGuard::new(Rc::clone(&self.struct_literal_guard))
+    pub(super) fn with_struct_literal_activation<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        self.struct_literals.activate();
+        let result = f(self);
+        self.struct_literals.deactivate();
+        result
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        if self.expr_depth.get() >= MAX_EXPR_DEPTH {
+        if self.expr_depth >= MAX_EXPR_DEPTH {
             let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
             self.ts.push_error(sp, "expression nesting too deep");
             return None;
         }
-        let _depth_guard = ExprDepthGuard::new(Rc::clone(&self.expr_depth));
+        self.expr_depth += 1;
+        let result = self.parse_expr_inner(min_bp);
+        self.expr_depth -= 1;
+        result
+    }
+
+    fn parse_expr_inner(&mut self, min_bp: u8) -> Option<Expr> {
         let lhs = self.parse_prefix()?;
         let lhs = self.parse_postfix(lhs)?;
         self.parse_infix(lhs, min_bp)
@@ -232,15 +184,14 @@ where
     }
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
-        self.ts.next_tok(); // '[' already peeked
-        {
-            let _guard = self.suspend_struct_literals();
-            let hi = self.parse_expr(0)?;
-            if !self.ts.expect(SyntaxKind::T_COMMA) {
+        self.ts.next_tok(); // opening bracket already peeked
+        self.with_struct_literals_suspended(move |this| {
+            let hi = this.parse_expr(0)?;
+            if !this.ts.expect(SyntaxKind::T_COMMA) {
                 return None;
             }
-            let lo = self.parse_expr(0)?;
-            if !self.ts.expect(SyntaxKind::T_RBRACKET) {
+            let lo = this.parse_expr(0)?;
+            if !this.ts.expect(SyntaxKind::T_RBRACKET) {
                 return None;
             }
             Some(Expr::BitSlice {
@@ -248,7 +199,7 @@ where
                 hi: Box::new(hi),
                 lo: Box::new(lo),
             })
-        }
+        })
     }
 
     fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
@@ -291,15 +242,14 @@ where
     }
 
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
-        self.ts.next_tok(); // '(' already peeked
-        {
-            let _guard = self.suspend_struct_literals();
-            let args = self.parse_args()?;
-            if !self.ts.expect(SyntaxKind::T_RPAREN) {
+        self.ts.next_tok(); // opening parenthesis already peeked
+        self.with_struct_literals_suspended(|this| {
+            let args = this.parse_args()?;
+            if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
             }
             Some(args)
-        }
+        })
     }
 
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {
