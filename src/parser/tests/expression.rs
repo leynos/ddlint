@@ -130,6 +130,58 @@ use rstest::rstest;
     )
 )]
 #[case(
+    "if cond { Outer { inner: Inner { a: 1, b: 2 }, flag: true } } else { fallback }",
+    if_expr(
+        var("cond"),
+        Expr::Group(Box::new(struct_expr(
+            "Outer",
+            vec![
+                field(
+                    "inner",
+                    struct_expr(
+                        "Inner",
+                        vec![
+                            field("a", lit_num("1")),
+                            field("b", lit_num("2")),
+                        ],
+                    ),
+                ),
+                field("flag", lit_bool(true)),
+            ],
+        ))),
+        Some(Expr::Group(Box::new(var("fallback")))),
+    )
+)]
+#[case(
+    "if ok { S { f: T { x: 1, y: U { z: 2 } }, g: 3 } } else { alt }",
+    if_expr(
+        var("ok"),
+        Expr::Group(Box::new(struct_expr(
+            "S",
+            vec![
+                field(
+                    "f",
+                    struct_expr(
+                        "T",
+                        vec![
+                            field("x", lit_num("1")),
+                            field(
+                                "y",
+                                struct_expr(
+                                    "U",
+                                    vec![field("z", lit_num("2"))],
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+                field("g", lit_num("3")),
+            ],
+        ))),
+        Some(Expr::Group(Box::new(var("alt")))),
+    )
+)]
+#[case(
     "if a and b { x } else { y }",
     if_expr(
         Expr::Binary {

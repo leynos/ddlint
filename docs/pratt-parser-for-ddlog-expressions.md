@@ -276,14 +276,30 @@ table. The parser consumes the `if` keyword and delegates to
 `parse_if_expression`, which parses the condition, `then` branch, and an
 optional `else` branch using the existing `parse_expr` entry point. When the
 `else` clause is omitted the parser produces the unit tuple `()`, represented
-internally as `Expr::Tuple(Vec::new())`, matching the semantics of the
-reference Haskell implementation. This ensures that downstream analyses always
-observe a concrete expression tree.
+internally as `Expr::Tuple(vec![])`, matching the semantics of the reference
+Haskell implementation. This ensures that downstream analyses always observe a
+concrete expression tree.
 
 Chained `else if` clauses become nested `Expr::IfElse` nodes so that each
-predicate retains its own branch. For example,
-`if cond { a } else if other { b } else { c }` is represented as an
-`Expr::IfElse` whose `else_branch` contains another `Expr::IfElse`.
+predicate retains its own branch. For example, parsing
+
+```text
+if cond { left } else if other { mid } else { right }
+```
+
+yields
+
+```text
+Expr::IfElse {
+    condition: var("cond"),
+    then_branch: Box::new(var("left")),
+    else_branch: Some(Box::new(Expr::IfElse {
+        condition: var("other"),
+        then_branch: Box::new(var("mid")),
+        else_branch: Some(Box::new(var("right"))),
+    })),
+}
+```
 
 To guard against stack exhaustion the parser caps expression nesting at 256
 levels. Inputs that exceed this limit raise an `"expression nesting too deep"`

@@ -122,18 +122,6 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
         Some(Expr::Group(Box::new(var("z")))),
     )
 )]
-#[rstest]
-#[case(
-    "if flag { Point { x: 1 } } else { z }",
-    if_expr(
-        var("flag"),
-        Expr::Group(Box::new(struct_expr(
-            "Point",
-            vec![field("x", lit_num("1"))],
-        ))),
-        Some(Expr::Group(Box::new(var("z")))),
-    )
-)]
 #[case(
     "if cond { Outer { inner: Inner { a: 1, b: 2 }, flag: true } } else { fallback }",
     if_expr(
