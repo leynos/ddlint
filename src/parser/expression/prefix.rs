@@ -41,30 +41,30 @@ where
     }
 
     fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
-        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
-            if !self.allows_struct_literals() {
-                let next_kind = self.ts.peek_nth_kind(1);
-                let colon_kind = self.ts.peek_nth_kind(2);
-                let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
-                    || matches!(colon_kind, Some(SyntaxKind::T_COLON));
-                if looks_like_struct {
-                    self.ts.push_error(
-                        span.clone(),
-                        "struct literal syntax is not allowed in this context",
-                    );
-                    return None;
-                }
-                return Some(Expr::Variable(name));
-            }
-            self.ts.next_tok();
-            let fields = self.parse_struct_fields()?;
-            if !self.ts.expect(SyntaxKind::T_RBRACE) {
-                return None;
-            }
-            Some(Expr::Struct { name, fields })
-        } else {
-            Some(Expr::Variable(name))
+        if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
+            return Some(Expr::Variable(name));
         }
+
+        if !self.allows_struct_literals() {
+            let next_kind = self.ts.peek_nth_kind(1);
+            let colon_kind = self.ts.peek_nth_kind(2);
+            let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
+                || matches!(colon_kind, Some(SyntaxKind::T_COLON));
+            if looks_like_struct {
+                self.ts.push_error(
+                    span.clone(),
+                    "struct literal syntax is not allowed in this context",
+                );
+            }
+            return Some(Expr::Variable(name));
+        }
+
+        self.ts.next_tok();
+        let fields = self.parse_struct_fields()?;
+        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+            return None;
+        }
+        Some(Expr::Struct { name, fields })
     }
 
     fn parse_parenthesized_expr(&mut self) -> Option<Expr> {

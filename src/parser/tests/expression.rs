@@ -233,6 +233,19 @@ fn rejects_expression_exceeding_max_depth() {
     assert_parse_error(&errors, "expression nesting too deep", depth - 1, depth);
 }
 
+#[test]
+fn reports_struct_literal_disallowed_in_if_condition() {
+    let Err(errors) = parse_expression("if Point { x: 1 } else { y }") else {
+        panic!("expected parse error");
+    };
+    assert_parse_error(
+        &errors,
+        "struct literal syntax is not allowed in this context",
+        3,
+        8,
+    );
+}
+
 #[rstest]
 #[case::addition_missing_rhs("1 +", 1)]
 #[case::unclosed_parenthesis("(1 + 2", 1)]
