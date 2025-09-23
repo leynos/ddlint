@@ -42,10 +42,10 @@ where
         self.iter.peek().map(|(_, sp)| sp.clone())
     }
 
-    /// Return the syntax kind of the nth token without consuming it.
+    /// Performs an O(n) traversal by cloning the iterator and using `nth`.
     ///
-    /// Clones the iterator, so the cost grows linearly with `n`. Prefer small
-    /// lookahead values on hot parsing paths.
+    /// Avoid large lookaheads on hot paths; prefer caching or specialised
+    /// peekers for repeated deep inspection.
     pub(super) fn peek_nth_kind(&mut self, n: usize) -> Option<SyntaxKind>
     where
         I: Clone,

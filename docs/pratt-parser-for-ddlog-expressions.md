@@ -277,28 +277,15 @@ table. The parser consumes the `if` keyword and delegates to
 optional `else` branch using the existing `parse_expr` entry point. When the
 `else` clause is omitted the parser produces the unit tuple `()`, represented
 internally as `Expr::Tuple(vec![])`, matching the semantics of the reference
-Haskell implementation. This ensures that downstream analyses always observe a
-concrete expression tree.
+Haskell implementation. In the AST this omission appears as `Tuple([])`,
+ensuring that downstream analyses always observe a concrete expression tree.
 
 Chained `else if` clauses become nested `Expr::IfElse` nodes so that each
-predicate retains its own branch. For example, parsing
+predicate retains its own branch:
 
 ```text
-if cond { left } else if other { mid } else { right }
-```
-
-yields
-
-```text
-Expr::IfElse {
-    condition: var("cond"),
-    then_branch: Box::new(var("left")),
-    else_branch: Some(Box::new(Expr::IfElse {
-        condition: var("other"),
-        then_branch: Box::new(var("mid")),
-        else_branch: Some(Box::new(var("right"))),
-    })),
-}
+if a { x } else if b { y } else { z } ->
+    IfElse(cond=a, then=x, else=IfElse(cond=b, then=y, else=z))
 ```
 
 To guard against stack exhaustion the parser caps expression nesting at 256
