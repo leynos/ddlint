@@ -269,6 +269,46 @@ pub fn expression_parser() -> impl Parser<SyntaxKind, ast::Expr, Error = Simple<
 carefully chosen to exactly match the precedence rules specified in the Haskell
 parser analysis (`docs/haskell-parser-analysis.md`).
 
+### Handling `if`/`else` expressions
+
+Control-flow expressions rely on prefix parsing rather than the Pratt operator
+table. The parser consumes the `if` keyword and delegates to
+`parse_if_expression`, which parses the condition, `then` branch, and an
+optional `else` branch using the existing `parse_expr` entry point. When the
+`else` clause is omitted the parser produces the unit tuple `()`, represented
+internally as `Expr::Tuple(vec![])`, matching the semantics of the reference
+Haskell implementation. In the AST this omission appears as `Tuple([])`,
+ensuring that downstream analyses always observe a concrete expression tree.
+
+Chained `else if` clauses become nested `Expr::IfElse` nodes so that each
+predicate retains its own branch:
+
+```text
+if a { x } else if b { y } else { z } ->
+    IfElse(cond=a, then=x, else=IfElse(cond=b, then=y, else=z))
+```
+
+To guard against stack exhaustion the parser caps expression nesting at 256
+levels. Inputs that exceed this limit raise an `"expression nesting too deep"`
+diagnostic anchored at the token that would push the depth over the limit.
+
+Error recovery follows the same pattern as other prefix forms: if a branch is
+missing, the parser emits a targeted diagnostic at the offending token (or the
+end of the input) while preserving the token stream for subsequent parsing. The
+helper guards against the "dangling else" scenario by treating a bare `else`
+token as evidence that the `then` branch was absent, producing a clear
+`expected expression for 'then' branch of 'if'` message.
+
+A subtle ambiguity arises from the shared `IDENT {` token sequence used by
+struct literals. To resolve this we activate a struct-literal guard for the
+duration of the condition parse. While active it interprets `IDENT {` as a
+variable followed by the branch, preventing the condition from consuming the
+branch braces. The guard automatically suspends inside parentheses, brace
+groups, and closure bodies so expressions such as `if (Point { x: 1 }) { ... }`
+or `if cond { Point { x: 1 } }` continue to parse as intended. This strategy
+eliminates spurious `expected T_COLON` diagnostics without restricting
+legitimate struct literal usage.
+
 ______________________________________________________________________
 
 ## 4. CST integration

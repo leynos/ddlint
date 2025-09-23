@@ -7,7 +7,7 @@ use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where
-    I: Iterator<Item = (SyntaxKind, Span)>,
+    I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.ts.next_tok()?;
@@ -19,6 +19,7 @@ where
             SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACE => self.parse_brace_group(),
+            SyntaxKind::K_IF => self.parse_if_expression(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
                     self.ts
@@ -36,20 +37,34 @@ where
 
     fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
         let name = self.ts.slice(span);
-        self.parse_ident_expression(name)
+        self.parse_ident_expression(name, span)
     }
 
-    fn parse_ident_expression(&mut self, name: String) -> Option<Expr> {
-        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
-            self.ts.next_tok();
-            let fields = self.parse_struct_fields()?;
-            if !self.ts.expect(SyntaxKind::T_RBRACE) {
-                return None;
-            }
-            Some(Expr::Struct { name, fields })
-        } else {
-            Some(Expr::Variable(name))
+    fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
+        if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
+            return Some(Expr::Variable(name));
         }
+
+        if !self.allows_struct_literals() {
+            let next_kind = self.ts.peek_nth_kind(1);
+            let colon_kind = self.ts.peek_nth_kind(2);
+            let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
+                || matches!(colon_kind, Some(SyntaxKind::T_COLON));
+            if looks_like_struct {
+                self.ts.push_error(
+                    span.clone(),
+                    "struct literal syntax is not allowed in this context",
+                );
+            }
+            return Some(Expr::Variable(name));
+        }
+
+        self.ts.next_tok();
+        let fields = self.parse_struct_fields()?;
+        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+            return None;
+        }
+        Some(Expr::Struct { name, fields })
     }
 
     fn parse_parenthesized_expr(&mut self) -> Option<Expr> {
@@ -57,30 +72,32 @@ where
             self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
-        let first = self.parse_expr(0)?;
-        let mut items = vec![first];
-        let mut is_tuple = false;
-        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-            is_tuple = true;
-            self.ts.next_tok();
-            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
-                break;
+        self.with_struct_literals_suspended(|this| {
+            let first = this.parse_expr(0)?;
+            let mut items = vec![first];
+            let mut is_tuple = false;
+            while matches!(this.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+                is_tuple = true;
+                this.ts.next_tok();
+                if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
+                    break;
+                }
+                items.push(this.parse_expr(0)?);
             }
-            items.push(self.parse_expr(0)?);
-        }
-        if !self.ts.expect(SyntaxKind::T_RPAREN) {
-            return None;
-        }
-        if is_tuple {
-            Some(Expr::Tuple(items))
-        } else {
-            #[expect(
-                clippy::expect_used,
-                reason = "parser invariant: group contains exactly one item"
-            )]
-            let item = items.pop().expect("expected one item in group");
-            Some(Expr::Group(Box::new(item)))
-        }
+            if !this.ts.expect(SyntaxKind::T_RPAREN) {
+                return None;
+            }
+            if is_tuple {
+                Some(Expr::Tuple(items))
+            } else {
+                #[expect(
+                    clippy::expect_used,
+                    reason = "parser invariant: group contains exactly one item"
+                )]
+                let item = items.pop().expect("expected one item in group");
+                Some(Expr::Group(Box::new(item)))
+            }
+        })
     }
 
     fn parse_brace_group(&mut self) -> Option<Expr> {
@@ -90,11 +107,13 @@ where
             self.ts.push_error(sp, "expected expression");
             return None;
         }
-        let inner = self.parse_expr(0)?;
-        if !self.ts.expect(SyntaxKind::T_RBRACE) {
-            return None;
-        }
-        Some(Expr::Group(Box::new(inner)))
+        self.with_struct_literals_suspended(|this| {
+            let inner = this.parse_expr(0)?;
+            if !this.ts.expect(SyntaxKind::T_RBRACE) {
+                return None;
+            }
+            Some(Expr::Group(Box::new(inner)))
+        })
     }
 
     fn parse_closure_literal(&mut self) -> Option<Expr> {
@@ -102,11 +121,59 @@ where
         if !self.ts.expect(SyntaxKind::T_PIPE) {
             return None;
         }
-        let body = self.parse_expr(0)?;
+        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
         Some(Expr::Closure {
             params,
             body: Box::new(body),
         })
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expr> {
+        let condition = self.parse_if_condition()?;
+        let then_branch =
+            self.parse_if_clause("expected expression for 'then' branch of 'if'", None)?;
+        let else_branch = if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_ELSE)) {
+            let else_span = self
+                .ts
+                .next_tok()
+                .map_or_else(|| self.ts.eof_span(), |(_, span)| span);
+            self.parse_if_clause(
+                "expected expression for 'else' branch of 'if'",
+                Some(else_span),
+            )?
+        } else {
+            Expr::Tuple(Vec::new())
+        };
+        Some(Expr::IfElse {
+            condition: Box::new(condition),
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
+        })
+    }
+
+    fn parse_if_condition(&mut self) -> Option<Expr> {
+        self.with_struct_literal_activation(|this| {
+            this.parse_if_clause("expected condition expression after 'if'", None)
+        })
+    }
+
+    fn parse_if_clause(&mut self, expectation: &str, fallback: Option<Span>) -> Option<Expr> {
+        if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_ELSE)) {
+            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, expectation.to_string());
+            return None;
+        }
+        let error_count = self.ts.error_count();
+        let expr = self.parse_expr(0);
+        if expr.is_none() && self.ts.error_count() == error_count {
+            let span = self
+                .ts
+                .peek_span()
+                .or(fallback)
+                .unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, expectation.to_string());
+        }
+        expr
     }
 
     /// Parse a comma-separated list of identifiers up to (but not consuming) `terminator`.

@@ -7,7 +7,7 @@ use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where
-    I: Iterator<Item = (SyntaxKind, Span)>,
+    I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) fn parse_infix(&mut self, mut lhs: Expr, min_bp: u8) -> Option<Expr> {
         while let Some(op_kind) = self.ts.peek_kind() {

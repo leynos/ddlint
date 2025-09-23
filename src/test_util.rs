@@ -221,6 +221,19 @@ where
     }
 }
 
+/// Construct an `if` expression with an optional `else` branch.
+///
+/// Passing `None` for `else_branch` defaults to the unit `()` expression.
+#[must_use]
+pub fn if_expr(condition: Expr, then_branch: Expr, else_branch: Option<Expr>) -> Expr {
+    Expr::IfElse {
+        condition: Box::new(condition),
+        then_branch: Box::new(then_branch),
+        // Default to unit `()` when no else is provided.
+        else_branch: Box::new(else_branch.unwrap_or_else(|| tuple(Vec::new()))),
+    }
+}
+
 /// Assert that a parser produced no errors.
 ///
 /// # Examples

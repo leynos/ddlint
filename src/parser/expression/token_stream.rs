@@ -15,7 +15,7 @@ where
 {
     iter: Peekable<I>,
     src: &'a str,
-    pub(super) errors: Vec<Simple<SyntaxKind>>,
+    errors: Vec<Simple<SyntaxKind>>,
 }
 
 impl<'a, I> TokenStream<'a, I>
@@ -42,6 +42,18 @@ where
         self.iter.peek().map(|(_, sp)| sp.clone())
     }
 
+    /// Performs an O(n) traversal by cloning the iterator and using `nth`.
+    ///
+    /// Avoid large lookaheads on hot paths; prefer caching or specialised
+    /// peekers for repeated deep inspection.
+    pub(super) fn peek_nth_kind(&mut self, n: usize) -> Option<SyntaxKind>
+    where
+        I: Clone,
+    {
+        let mut iter = self.iter.clone();
+        iter.nth(n).map(|(kind, _)| kind)
+    }
+
     pub(super) fn expect(&mut self, kind: SyntaxKind) -> bool {
         if self.peek_kind() == Some(kind) {
             self.next_tok();
@@ -60,6 +72,18 @@ where
             rest.push(tok);
         }
         rest
+    }
+
+    pub(super) fn error_count(&self) -> usize {
+        self.errors.len()
+    }
+
+    pub(super) fn has_errors(&self) -> bool {
+        self.error_count() > 0
+    }
+
+    pub(super) fn take_errors(&mut self) -> Vec<Simple<SyntaxKind>> {
+        std::mem::take(&mut self.errors)
     }
 
     pub(super) fn push_error(&mut self, span: Span, msg: impl Into<String>) {

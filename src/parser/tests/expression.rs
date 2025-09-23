@@ -4,8 +4,8 @@ use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
-    field, field_access, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple, tuple_index,
-    var,
+    field, field_access, if_expr, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple,
+    tuple_index, var,
 };
 use rstest::rstest;
 
@@ -99,8 +99,116 @@ use rstest::rstest;
 #[case("a + (x as T)", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))) })]
 #[case("(a => b); c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }))), rhs: Box::new(var("c")) })]
 #[case("a => (b; c)", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }))) })]
+#[case(
+    "if x { y } else { z }",
+    if_expr(
+        var("x"),
+        Expr::Group(Box::new(var("y"))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if (Point { x: 1 }) { y } else { z }",
+    if_expr(
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Expr::Group(Box::new(var("y"))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if flag { Point { x: 1 } } else { z }",
+    if_expr(
+        var("flag"),
+        Expr::Group(Box::new(struct_expr(
+            "Point",
+            vec![field("x", lit_num("1"))],
+        ))),
+        Some(Expr::Group(Box::new(var("z")))),
+    )
+)]
+#[case(
+    "if cond { Outer { inner: Inner { a: 1, b: 2 }, flag: true } } else { fallback }",
+    if_expr(
+        var("cond"),
+        Expr::Group(Box::new(struct_expr(
+            "Outer",
+            vec![
+                field(
+                    "inner",
+                    struct_expr(
+                        "Inner",
+                        vec![
+                            field("a", lit_num("1")),
+                            field("b", lit_num("2")),
+                        ],
+                    ),
+                ),
+                field("flag", lit_bool(true)),
+            ],
+        ))),
+        Some(Expr::Group(Box::new(var("fallback")))),
+    )
+)]
+#[case(
+    "if ok { S { f: T { x: 1, y: U { z: 2 } }, g: 3 } } else { alt }",
+    if_expr(
+        var("ok"),
+        Expr::Group(Box::new(struct_expr(
+            "S",
+            vec![
+                field(
+                    "f",
+                    struct_expr(
+                        "T",
+                        vec![
+                            field("x", lit_num("1")),
+                            field(
+                                "y",
+                                struct_expr(
+                                    "U",
+                                    vec![field("z", lit_num("2"))],
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+                field("g", lit_num("3")),
+            ],
+        ))),
+        Some(Expr::Group(Box::new(var("alt")))),
+    )
+)]
+#[case(
+    "if a and b { x } else { y }",
+    if_expr(
+        Expr::Binary {
+            op: BinaryOp::And,
+            lhs: Box::new(var("a")),
+            rhs: Box::new(var("b")),
+        },
+        Expr::Group(Box::new(var("x"))),
+        Some(Expr::Group(Box::new(var("y")))),
+    )
+)]
+#[case("if flag value", if_expr(var("flag"), var("value"), None))]
+#[case(
+    "if cond { left } else if other { mid } else { right }",
+    if_expr(
+        var("cond"),
+        Expr::Group(Box::new(var("left"))),
+        Some(if_expr(
+            var("other"),
+            Expr::Group(Box::new(var("mid"))),
+            Some(Expr::Group(Box::new(var("right")))),
+        )),
+    )
+)]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
-    let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected);
 }
 
@@ -110,8 +218,32 @@ fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("false", lit_bool(false))]
 #[case("42", lit_num("42"))]
 fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
-    let expr = parse_expression(src).unwrap_or_else(|errs| panic!("errors: {errs:?}"));
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected);
+}
+
+#[test]
+fn rejects_expression_exceeding_max_depth() {
+    let depth = 257;
+    let source = format!("{}0{}", "(".repeat(depth), ")".repeat(depth));
+    let Err(errors) = parse_expression(&source) else {
+        panic!("expected depth error");
+    };
+    assert_parse_error(&errors, "expression nesting too deep", depth - 1, depth);
+}
+
+#[test]
+fn reports_struct_literal_disallowed_in_if_condition() {
+    let Err(errors) = parse_expression("if Point { x: 1 } else { y }") else {
+        panic!("expected parse error");
+    };
+    assert_parse_error(
+        &errors,
+        "struct literal syntax is not allowed in this context",
+        3,
+        8,
+    );
 }
 
 #[rstest]
@@ -132,6 +264,9 @@ fn parses_literals(#[case] src: &str, #[case] expected: Expr) {
 #[case::tuple_index_negative("t.-1", 1)]
 #[case::tuple_index_plus("t.+1", 1)]
 #[case::tuple_index_double_dot("t..0", 1)]
+#[case::if_missing_then("if cond else value", 1)]
+#[case::if_missing_else_expr("if cond value else", 1)]
+#[case::if_missing_condition("if", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
