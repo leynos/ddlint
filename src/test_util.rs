@@ -200,6 +200,22 @@ pub fn field(name: impl Into<Name>, expr: Expr) -> (String, Expr) {
     (name.0, expr)
 }
 
+/// Construct a for-loop expression node.
+#[must_use]
+pub fn for_loop(
+    pattern: impl Into<String>,
+    iterable: Expr,
+    guard: Option<Expr>,
+    body: Expr,
+) -> Expr {
+    Expr::ForLoop {
+        pattern: pattern.into(),
+        iterable: Box::new(iterable),
+        guard: guard.map(Box::new),
+        body: Box::new(body),
+    }
+}
+
 /// Construct a tuple literal [`Expr::Tuple`].
 #[must_use]
 pub fn tuple(items: Vec<Expr>) -> Expr {

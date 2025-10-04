@@ -479,17 +479,17 @@ fn collect_transformer_spans(
 type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-    let ws = inline_ws().repeated();
+    let ws = inline_ws().repeated().ignored();
 
     let atom_p = atom();
 
-    let literal = atom_p.clone();
+    let statement = rule_statement(ws.clone());
 
-    let body = literal
-        .clone()
+    let body = statement
         .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
         .allow_trailing()
-        .at_least(1);
+        .at_least(1)
+        .ignored();
 
     atom_p
         .then(
@@ -502,6 +502,99 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
         .then_ignore(just(SyntaxKind::T_DOT))
         .padded_by(ws)
         .map_with_span(|_, sp: Span| sp)
+}
+
+fn rule_statement(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    recursive(|stmt| {
+        let ws = ws.clone();
+        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE);
+        let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
+        let atom_stmt = atom();
+
+        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
+
+        let if_stmt = just(SyntaxKind::K_IF)
+            .padded_by(ws.clone())
+            .ignore_then(condition.clone())
+            .then(stmt.clone().padded_by(ws.clone()))
+            .then(
+                just(SyntaxKind::K_ELSE)
+                    .padded_by(ws.clone())
+                    .ignore_then(stmt.clone())
+                    .or_not(),
+            )
+            .ignored();
+
+        let guard_expr = for_guard_expr(ws.clone());
+
+        let header_expr = for_header(ws.clone(), guard_expr.clone());
+
+        let for_stmt = just(SyntaxKind::K_FOR)
+            .padded_by(ws.clone())
+            .ignore_then(header_expr)
+            .then(stmt.clone().padded_by(ws.clone()))
+            .ignored();
+
+        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt))
+            .padded_by(ws.clone())
+            .ignored()
+    })
+}
+
+fn for_header(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+    guard: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    just(SyntaxKind::T_LPAREN)
+        .padded_by(ws.clone())
+        .ignore_then(for_binding(ws.clone()))
+        .then(guard.or_not())
+        .then_ignore(just(SyntaxKind::T_RPAREN))
+        .padded_by(ws)
+        .ignored()
+}
+
+fn for_binding(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    let nested = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+    ));
+
+    nested
+        .or(
+            filter(|kind: &SyntaxKind| !matches!(kind, SyntaxKind::T_RPAREN | SyntaxKind::K_IF))
+                .ignored(),
+        )
+        .padded_by(ws)
+        .repeated()
+        .at_least(1)
+        .ignored()
+}
+
+fn for_guard_expr(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    let nested = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+    ));
+
+    just(SyntaxKind::K_IF)
+        .padded_by(ws.clone())
+        .ignore_then(
+            nested
+                .or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored())
+                .padded_by(ws)
+                .repeated()
+                .at_least(1),
+        )
+        .ignored()
 }
 
 /// Return `true` if `span` begins a new line in the source.

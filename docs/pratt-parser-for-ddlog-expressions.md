@@ -309,6 +309,27 @@ or `if cond { Point { x: 1 } }` continue to parse as intended. This strategy
 eliminates spurious `expected T_COLON` diagnostics without restricting
 legitimate struct literal usage.
 
+### Handling `for` loop expressions
+
+Rules may contain `for` loops with optional guards. The Pratt parser recognises
+the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
+node. The header is handled in three parts:
+
+- **Pattern extraction:** tokens before `in` are sliced directly from the source
+  so destructuring patterns remain verbatim. The range is trimmed to remove
+  surrounding whitespace but the inner formatting is untouched.
+- **Iterable expression:** parsed with struct literals temporarily re-enabled so
+  constructs like `for (row in Rows { ... })` continue to work.
+- **Guard:** if the header contains `if`, the guard expression reuses
+  `parse_if_clause` which already implements precise diagnostics for missing or
+  malformed expressions. Guards are stored as `Option<Box<Expr>>` and omitted
+  when absent.
+
+The loop body is parsed using the standard expression entry point, allowing
+single atoms or grouped blocks. Treating loops as expressions means
+`rule_body_span` can continue validating rule bodies by invoking the Pratt
+parser; control-flow errors surface alongside other expression diagnostics.
+
 ______________________________________________________________________
 
 ## 4. CST integration

@@ -182,3 +182,17 @@ fn string_literal_renders() {
     let expected = format!("{:?}", "a \"b\" (c)");
     assert_eq!(expr.to_sexpr(), expected);
 }
+
+#[test]
+fn for_loop_renders() {
+    let expr = Expr::ForLoop {
+        pattern: "item".into(),
+        iterable: Box::new(var("items")),
+        guard: Some(Box::new(var("ready"))),
+        body: Box::new(Expr::Call {
+            callee: Box::new(var("emit")),
+            args: vec![var("item")],
+        }),
+    };
+    assert_eq!(expr.to_sexpr(), "(for item items ready (call emit item))");
+}

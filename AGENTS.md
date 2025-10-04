@@ -118,14 +118,14 @@ project:
   behaviour and policy enforced:
   - `make check-fmt` executes:
 
-    ```
+    ```bash
     cargo fmt --workspace -- --check
     ```
 
     validating formatting across the entire workspace without modifying files.
   - `make lint` executes:
 
-    ```
+    ```bash
     cargo clippy --workspace --all-targets --all-features -- -D warnings
     ```
 
@@ -133,13 +133,13 @@ project:
     warnings.
   - `make test` executes:
 
-    ```
+    ```bash
     cargo test --workspace
     ```
 
-    running the full workspace test suite.
-  Use `make fmt` (`cargo fmt --workspace`) to apply formatting fixes reported
-  by the formatter check.
+    running the full workspace test suite. Use `make fmt`
+    (`cargo fmt --workspace`) to apply formatting fixes reported by the
+    formatter check.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.
@@ -174,13 +174,13 @@ project:
   with a backslash.
 - Prefer single line versions of functions where appropriate. I.e.,
 
-  ```
+  ```rust
   pub fn new(id: u64) -> Self { Self(id) }
   ```
 
   Instead of:
 
-  ```
+  ```rust
   pub fn new(id: u64) -> Self {
       Self(id)
   }
