@@ -1,4 +1,4 @@
-# Assistant instructions
+# Assistant Instructions
 
 ## Code Style and Structure
 
@@ -29,7 +29,7 @@
   documentation should omit examples where the example serves only to reiterate
   the test logic.
 - **Keep file size manageable.** No single code file may be longer than 400
-  lines. Long switch statements or dispatch tables should be broken up by
+  lines.  Long switch statements or dispatch tables should be broken up by
   feature and constituents colocated with targets. Large blocks of test data
   should be moved to external data files.
 
@@ -53,11 +53,11 @@
 - **Quality Gates:** Before considering a change complete or proposing a commit,
   ensure it meets the following criteria:
   - New functionality or changes in behaviour are fully validated by relevant
-    unittests and behavioural tests.
+    unit tests and behavioural tests.
   - Where a bug is being fixed, a unittest has been provided demonstrating the
     behaviour being corrected both to validate the fix and to guard against
     regression.
-  - Passes all relevant unit and behavioral tests according to the guidelines
+  - Passes all relevant unit and behavioural tests according to the guidelines
     above.
   - Passes lint checks
   - Adheres to formatting standards tested using a formatting validator.
@@ -113,8 +113,33 @@ This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
 project:
 
-- Run `make fmt`, `make lint`, and `make test` before committing. These targets
-  wrap `cargo fmt`, `cargo clippy`, and `cargo test` with the appropriate flags.
+- Run `make check-fmt`, `make lint`, and `make test` before committing. These
+  targets wrap the following commands so contributors understand the exact
+  behaviour and policy enforced:
+  - `make check-fmt` executes:
+
+    ```
+    cargo fmt --workspace -- --check
+    ```
+
+    validating formatting across the entire workspace without modifying files.
+  - `make lint` executes:
+
+    ```
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    ```
+
+    linting every target with all features enabled and denying all Clippy
+    warnings.
+  - `make test` executes:
+
+    ```
+    cargo test --workspace
+    ```
+
+    running the full workspace test suite.
+  Use `make fmt` (`cargo fmt --workspace`) to apply formatting fixes reported
+  by the formatter check.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.
@@ -147,6 +172,34 @@ project:
 - Prefer `.expect()` over `.unwrap()`.
 - Use `concat!()` to combine long string literals rather than escaping newlines
   with a backslash.
+- Prefer single line versions of functions where appropriate. I.e.,
+
+  ```
+  pub fn new(id: u64) -> Self { Self(id) }
+  ```
+
+  Instead of:
+
+  ```
+  pub fn new(id: u64) -> Self {
+      Self(id)
+  }
+  ```
+
+- Use NewTypes to model domain values and eliminate "integer soup". Reach for
+  `newt-hype` when introducing many homogeneous wrappers that share behaviour;
+  add small shims such as `From<&str>` and `AsRef<str>` for string-backed
+  wrappers. For path-centric wrappers implement `AsRef<Path>` alongside
+  `into_inner()` and `to_path_buf()`; avoid attempting
+  `impl From<Wrapper> for PathBuf` because of the orphan rule. Prefer explicit
+  tuple structs whenever bespoke validation or tailored trait surfaces are
+  required, customising `Deref`, `AsRef`, and `TryFrom` per type. Use
+  `the-newtype` when defining traits and needing blanket implementations that
+  apply across wrappers satisfying `Newtype + AsRef/AsMut<Inner>`, or when
+  establishing a coherent internal convention that keeps trait forwarding
+  consistent without per-type boilerplate. Combine approaches: lean on
+  `newt-hype` for the common case, tuple structs for outliers, and
+  `the-newtype` to unify behaviour when you own the trait definitions.
 
 ### Dependency Management
 
@@ -156,8 +209,8 @@ project:
   non-breaking updates to minor and patch versions while preventing breaking
   changes from new major versions. This approach is critical for ensuring build
   stability and reproducibility.
-- **Prohibit unstable version specifiers.** The use of wildcard (`*`), or
-  open-ended inequality (`>=`) version requirements are strictly forbidden, as
+- **Prohibit unstable version specifiers.** The use of wildcard (`*`) or
+  open-ended inequality (`>=`) version requirements is strictly forbidden as
   they introduce unacceptable risk and unpredictability. Tilde requirements
   (`~`) should only be used where a dependency must be locked to patch-level
   updates for a specific, documented reason.
@@ -185,6 +238,45 @@ project:
 - Use dashes (`-`) for list bullets.
 - Use GitHub-flavoured Markdown footnotes (`[^1]`) for references and
   footnotes.
+
+## Additional tooling
+
+The following tooling is available in this environment:
+
+- `mbake` – A Makefile validator. Run using `mbake validate Makefile`.
+- `strace` – Traces system calls and signals made by a process; useful for
+  debugging runtime behaviour and syscalls.
+- `gdb` – The GNU Debugger, for inspecting and controlling programs as they
+  execute (or post-mortem via core dumps).
+- `ripgrep` – Fast, recursive text search tool (`grep` alternative) that
+  respects `.gitignore` files.
+- `ltrace` – Traces calls to dynamic library functions made by a process.
+- `valgrind` – Suite for detecting memory leaks, profiling, and debugging
+  low-level memory errors.
+- `bpftrace` – High-level tracing tool for eBPF, using a custom scripting
+  language for kernel and application tracing.
+- `lsof` – Lists open files and the processes using them.
+- `htop` – Interactive process viewer (visual upgrade to `top`).
+- `iotop` – Displays and monitors I/O usage by processes.
+- `ncdu` – NCurses-based disk usage viewer for finding large files/folders.
+- `tree` – Displays directory structure as a tree.
+- `bat` – `cat` clone with syntax highlighting, Git integration, and paging.
+- `delta` – Syntax-highlighted pager for Git and diff output.
+- `tcpdump` – Captures and analyses network traffic at the packet level.
+- `nmap` – Network scanner for host discovery, port scanning, and service
+  identification.
+- `lldb` – LLVM debugger, alternative to `gdb`.
+- `eza` – Modern `ls` replacement with more features and better defaults.
+- `fzf` – Interactive fuzzy finder for selecting files, commands, etc.
+- `hyperfine` – Command-line benchmarking tool with statistical output.
+- `shellcheck` – Linter for shell scripts, identifying errors and bad practices.
+- `fd` – Fast, user-friendly `find` alternative with sensible defaults.
+- `checkmake` – Linter for `Makefile`s, ensuring they follow best practices and
+  conventions.
+- `srgn` – [Structural grep](https://github.com/alexpovel/srgn), searches code
+  and enables editing by syntax tree patterns.
+- `difft` **(Difftastic)** – Semantic diff tool that compares code structure
+  rather than just text differences.
 
 ## Key Takeaway
 
