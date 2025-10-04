@@ -20,6 +20,7 @@ where
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACE => self.parse_brace_group(),
             SyntaxKind::K_IF => self.parse_if_expression(),
+            SyntaxKind::K_FOR => self.parse_for_expression(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
                     self.ts
@@ -151,6 +152,52 @@ where
         })
     }
 
+    fn parse_for_expression(&mut self) -> Option<Expr> {
+        if !self.ts.expect(SyntaxKind::T_LPAREN) {
+            return None;
+        }
+
+        let (pattern, pattern_span) = self.collect_for_pattern()?;
+        if pattern.is_empty() {
+            self.ts.push_error(
+                pattern_span,
+                "expected binding before 'in' in for-loop header",
+            );
+            return None;
+        }
+
+        let iterable = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+
+        let guard = if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_IF)) {
+            let (_, if_span) = self
+                .ts
+                .next_tok()
+                .unwrap_or_else(|| (SyntaxKind::K_IF, self.ts.eof_span()));
+            let guard_expr = self.with_struct_literal_activation(|this| {
+                this.parse_if_clause(
+                    "expected guard expression after 'if' in for-loop header",
+                    Some(if_span.clone()),
+                )
+            })?;
+            Some(Box::new(guard_expr))
+        } else {
+            None
+        };
+
+        if !self.ts.expect(SyntaxKind::T_RPAREN) {
+            return None;
+        }
+
+        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+
+        Some(Expr::ForLoop {
+            pattern,
+            iterable: Box::new(iterable),
+            guard,
+            body: Box::new(body),
+        })
+    }
+
     fn parse_if_condition(&mut self) -> Option<Expr> {
         self.with_struct_literal_activation(|this| {
             this.parse_if_clause("expected condition expression after 'if'", None)
@@ -174,6 +221,96 @@ where
             self.ts.push_error(span, expectation.to_string());
         }
         expr
+    }
+
+    fn collect_for_pattern(&mut self) -> Option<(String, Span)> {
+        let mut paren_depth = 0usize;
+        let mut brace_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut start = None;
+        let mut end = None;
+
+        while let Some((kind, span)) = self.ts.next_tok() {
+            match kind {
+                SyntaxKind::K_IN if paren_depth == 0 && brace_depth == 0 && bracket_depth == 0 => {
+                    let (Some(s), Some(e)) = (start, end) else {
+                        self.ts.push_error(
+                            span.clone(),
+                            "expected binding before 'in' in for-loop header",
+                        );
+                        return None;
+                    };
+                    let span = s..e;
+                    let text = self.ts.slice(&span);
+                    let trimmed = text.trim();
+                    if trimmed.is_empty() {
+                        self.ts.push_error(
+                            span.clone(),
+                            "expected binding before 'in' in for-loop header",
+                        );
+                        return None;
+                    }
+                    return Some((trimmed.to_string(), span));
+                }
+                SyntaxKind::T_LPAREN => {
+                    paren_depth += 1;
+                    start.get_or_insert(span.start);
+                    end = Some(span.end);
+                }
+                SyntaxKind::T_RPAREN => {
+                    if paren_depth > 0 {
+                        paren_depth -= 1;
+                        end = Some(span.end);
+                    } else if brace_depth == 0 && bracket_depth == 0 {
+                        self.ts.push_error(
+                            span.clone(),
+                            "expected 'in' before ')' in for-loop header",
+                        );
+                        return None;
+                    } else {
+                        self.ts
+                            .push_error(span.clone(), "unexpected ')' in for-loop header");
+                        return None;
+                    }
+                }
+                SyntaxKind::T_LBRACE => {
+                    brace_depth += 1;
+                    start.get_or_insert(span.start);
+                    end = Some(span.end);
+                }
+                SyntaxKind::T_RBRACE => {
+                    if brace_depth == 0 {
+                        self.ts
+                            .push_error(span.clone(), "unexpected '}' in for-loop header");
+                        return None;
+                    }
+                    brace_depth -= 1;
+                    end = Some(span.end);
+                }
+                SyntaxKind::T_LBRACKET => {
+                    bracket_depth += 1;
+                    start.get_or_insert(span.start);
+                    end = Some(span.end);
+                }
+                SyntaxKind::T_RBRACKET => {
+                    if bracket_depth == 0 {
+                        self.ts
+                            .push_error(span.clone(), "unexpected ']' in for-loop header");
+                        return None;
+                    }
+                    bracket_depth -= 1;
+                    end = Some(span.end);
+                }
+                _ => {
+                    start.get_or_insert(span.start);
+                    end = Some(span.end);
+                }
+            }
+        }
+
+        self.ts
+            .push_error(self.ts.eof_span(), "expected 'in' in for-loop header");
+        None
     }
 
     /// Parse a comma-separated list of identifiers up to (but not consuming) `terminator`.
