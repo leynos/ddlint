@@ -9,6 +9,10 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
+    fn is_at_top_level(paren_depth: usize, brace_depth: usize, bracket_depth: usize) -> bool {
+        paren_depth == 0 && brace_depth == 0 && bracket_depth == 0
+    }
+
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {
@@ -232,7 +236,9 @@ where
 
         while let Some((kind, span)) = self.ts.next_tok() {
             match kind {
-                SyntaxKind::K_IN if paren_depth == 0 && brace_depth == 0 && bracket_depth == 0 => {
+                SyntaxKind::K_IN
+                    if Self::is_at_top_level(paren_depth, brace_depth, bracket_depth) =>
+                {
                     let (Some(s), Some(e)) = (start, end) else {
                         self.ts.push_error(
                             span.clone(),
