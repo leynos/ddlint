@@ -13,6 +13,86 @@ where
         paren_depth == 0 && brace_depth == 0 && bracket_depth == 0
     }
 
+    fn handle_open_delimiter(
+        start: &mut Option<usize>,
+        end: &mut Option<usize>,
+        depth: &mut usize,
+        span: &Span,
+    ) {
+        *depth += 1;
+        start.get_or_insert(span.start);
+        *end = Some(span.end);
+    }
+
+    fn handle_close_delimiter(
+        &mut self,
+        span: &Span,
+        depth: &mut usize,
+        end: &mut Option<usize>,
+        unexpected_msg: &'static str,
+    ) -> Option<()> {
+        if *depth == 0 {
+            self.ts.push_error(span.clone(), unexpected_msg);
+            return None;
+        }
+        *depth -= 1;
+        *end = Some(span.end);
+        Some(())
+    }
+
+    fn handle_close_paren(
+        &mut self,
+        span: &Span,
+        paren_depth: &mut usize,
+        brace_depth: usize,
+        bracket_depth: usize,
+        end: &mut Option<usize>,
+    ) -> Option<()> {
+        if *paren_depth > 0 {
+            *paren_depth -= 1;
+            *end = Some(span.end);
+            return Some(());
+        }
+
+        if Self::is_at_top_level(*paren_depth, brace_depth, bracket_depth) {
+            self.ts
+                .push_error(span.clone(), "expected 'in' before ')' in for-loop header");
+        } else {
+            self.ts
+                .push_error(span.clone(), "unexpected ')' in for-loop header");
+        }
+
+        None
+    }
+
+    fn extract_pattern_text(
+        &mut self,
+        start: Option<usize>,
+        end: Option<usize>,
+        in_span: Span,
+    ) -> Option<(String, Span)> {
+        let (Some(s), Some(e)) = (start, end) else {
+            self.ts.push_error(
+                in_span.clone(),
+                "expected binding before 'in' in for-loop header",
+            );
+            return None;
+        };
+
+        let span = s..e;
+        let text = self.ts.slice(&span);
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            self.ts.push_error(
+                span.clone(),
+                "expected binding before 'in' in for-loop header",
+            );
+            return None;
+        }
+
+        Some((trimmed.to_string(), span))
+    }
+
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {
@@ -239,73 +319,41 @@ where
                 SyntaxKind::K_IN
                     if Self::is_at_top_level(paren_depth, brace_depth, bracket_depth) =>
                 {
-                    let (Some(s), Some(e)) = (start, end) else {
-                        self.ts.push_error(
-                            span.clone(),
-                            "expected binding before 'in' in for-loop header",
-                        );
-                        return None;
-                    };
-                    let span = s..e;
-                    let text = self.ts.slice(&span);
-                    let trimmed = text.trim();
-                    if trimmed.is_empty() {
-                        self.ts.push_error(
-                            span.clone(),
-                            "expected binding before 'in' in for-loop header",
-                        );
-                        return None;
-                    }
-                    return Some((trimmed.to_string(), span));
+                    return self.extract_pattern_text(start, end, span);
                 }
                 SyntaxKind::T_LPAREN => {
-                    paren_depth += 1;
-                    start.get_or_insert(span.start);
-                    end = Some(span.end);
+                    Self::handle_open_delimiter(&mut start, &mut end, &mut paren_depth, &span);
                 }
                 SyntaxKind::T_RPAREN => {
-                    if paren_depth > 0 {
-                        paren_depth -= 1;
-                        end = Some(span.end);
-                    } else if brace_depth == 0 && bracket_depth == 0 {
-                        self.ts.push_error(
-                            span.clone(),
-                            "expected 'in' before ')' in for-loop header",
-                        );
-                        return None;
-                    } else {
-                        self.ts
-                            .push_error(span.clone(), "unexpected ')' in for-loop header");
-                        return None;
-                    }
+                    self.handle_close_paren(
+                        &span,
+                        &mut paren_depth,
+                        brace_depth,
+                        bracket_depth,
+                        &mut end,
+                    )?;
                 }
                 SyntaxKind::T_LBRACE => {
-                    brace_depth += 1;
-                    start.get_or_insert(span.start);
-                    end = Some(span.end);
+                    Self::handle_open_delimiter(&mut start, &mut end, &mut brace_depth, &span);
                 }
                 SyntaxKind::T_RBRACE => {
-                    if brace_depth == 0 {
-                        self.ts
-                            .push_error(span.clone(), "unexpected '}' in for-loop header");
-                        return None;
-                    }
-                    brace_depth -= 1;
-                    end = Some(span.end);
+                    self.handle_close_delimiter(
+                        &span,
+                        &mut brace_depth,
+                        &mut end,
+                        "unexpected '}' in for-loop header",
+                    )?;
                 }
                 SyntaxKind::T_LBRACKET => {
-                    bracket_depth += 1;
-                    start.get_or_insert(span.start);
-                    end = Some(span.end);
+                    Self::handle_open_delimiter(&mut start, &mut end, &mut bracket_depth, &span);
                 }
                 SyntaxKind::T_RBRACKET => {
-                    if bracket_depth == 0 {
-                        self.ts
-                            .push_error(span.clone(), "unexpected ']' in for-loop header");
-                        return None;
-                    }
-                    bracket_depth -= 1;
-                    end = Some(span.end);
+                    self.handle_close_delimiter(
+                        &span,
+                        &mut bracket_depth,
+                        &mut end,
+                        "unexpected ']' in for-loop header",
+                    )?;
                 }
                 _ => {
                     start.get_or_insert(span.start);
