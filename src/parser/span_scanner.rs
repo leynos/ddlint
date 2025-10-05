@@ -527,9 +527,7 @@ fn rule_statement(
             )
             .ignored();
 
-        let guard_expr = for_guard_expr(ws.clone());
-
-        let header_expr = for_header(ws.clone(), guard_expr.clone());
+        let header_expr = for_header(ws.clone());
 
         let for_stmt = just(SyntaxKind::K_FOR)
             .padded_by(ws.clone())
@@ -545,18 +543,16 @@ fn rule_statement(
 
 fn for_header(
     ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
-    guard: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
     just(SyntaxKind::T_LPAREN)
         .padded_by(ws.clone())
-        .ignore_then(for_binding(ws.clone()))
-        .then(guard.or_not())
+        .ignore_then(for_binding_complete(ws.clone()))
         .then_ignore(just(SyntaxKind::T_RPAREN))
         .padded_by(ws)
         .ignored()
 }
 
-fn for_binding(
+fn for_binding_complete(
     ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
     let nested = choice((
@@ -566,34 +562,10 @@ fn for_binding(
     ));
 
     nested
-        .or(
-            filter(|kind: &SyntaxKind| !matches!(kind, SyntaxKind::T_RPAREN | SyntaxKind::K_IF))
-                .ignored(),
-        )
+        .or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored())
         .padded_by(ws)
         .repeated()
         .at_least(1)
-        .ignored()
-}
-
-fn for_guard_expr(
-    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
-) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    let nested = choice((
-        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
-        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
-        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
-    ));
-
-    just(SyntaxKind::K_IF)
-        .padded_by(ws.clone())
-        .ignore_then(
-            nested
-                .or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored())
-                .padded_by(ws)
-                .repeated()
-                .at_least(1),
-        )
         .ignored()
 }
 
