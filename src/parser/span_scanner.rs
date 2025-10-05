@@ -660,7 +660,16 @@ mod tests {
     //! Tests for the span scanner helper utilities.
     use super::*;
     use crate::test_util::tokenize;
+    use chumsky::Stream;
     use rstest::rstest;
+
+    fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<Simple<SyntaxKind>>) {
+        let tokens = tokenize(src);
+        let ws = inline_ws().repeated().ignored();
+        let parser = rule_statement(ws);
+        let stream = Stream::from_iter(0..src.len(), tokens.into_iter());
+        parser.parse_recovery(stream)
+    }
 
     #[rstest]
     #[case("import foo\n", vec![0..11], true)]
@@ -674,5 +683,38 @@ mod tests {
         let (spans, errs) = collect_import_spans(&tokens, src);
         assert_eq!(spans, expected);
         assert_eq!(errs.is_empty(), errs_empty);
+    }
+
+    #[rstest]
+    #[case("if (cond) if (nested) Process(nested) else Skip() else Handle()")]
+    #[case("for (a in A(a)) for (b in B(b)) ProcessPair(a, b)")]
+    #[case("for (item in Items(item)) if (item > 10) Process(item)")]
+    #[case("for (item in Items(item) if item.active) Process(item)")]
+    #[case(
+        "if (outer) { for (item in Items(item)) if (should(item)) Process(item) } else { Skip() }"
+    )]
+    fn rule_statement_parses_control_flow(#[case] src: &str) {
+        let (res, errs) = parse_rule_statement_input(src);
+        assert!(res.is_some(), "expected successful parse for {src}");
+        assert!(errs.is_empty(), "unexpected errors for {src:?}: {errs:?}");
+    }
+
+    #[rstest]
+    #[case("if (cond { Process(cond) }")]
+    #[case("for (item in Items(item) Process(item)")]
+    #[case("for (item in Items(item) if item > 10 Process(item)")]
+    fn rule_statement_reports_errors(#[case] src: &str) {
+        let (res, errs) = parse_rule_statement_input(src);
+        if res.is_some() {
+            assert!(
+                !errs.is_empty(),
+                "expected errors for {src}, but parser recovered without diagnostics",
+            );
+        } else {
+            assert!(
+                !errs.is_empty(),
+                "expected errors for {src}, but parser reported none",
+            );
+        }
     }
 }

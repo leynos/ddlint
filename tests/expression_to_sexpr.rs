@@ -55,6 +55,10 @@ fn struct_field_order_is_stable(#[case] src: &str, #[case] expected: &str) {
     "for (entry in items if entry.active) process(entry)",
     "(for entry items (field entry active) (call process entry))"
 )]
+#[case(
+    "for (entry in items(entry) if entry.active) process(entry)",
+    "(for entry (call items entry) (field entry active) (call process entry))"
+)]
 fn more_variants(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
     assert_eq!(expr.to_sexpr(), expected);
