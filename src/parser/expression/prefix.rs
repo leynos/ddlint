@@ -28,16 +28,14 @@ where
         &mut self,
         span: &Span,
         depth: &mut usize,
-        end: &mut Option<usize>,
         unexpected_msg: &'static str,
-    ) -> Option<()> {
+    ) -> Option<usize> {
         if *depth == 0 {
             self.ts.push_error(span.clone(), unexpected_msg);
             return None;
         }
         *depth -= 1;
-        *end = Some(span.end);
-        Some(())
+        Some(span.end)
     }
 
     fn handle_close_paren(
@@ -377,23 +375,21 @@ where
                     Self::handle_open_delimiter(&mut start, &mut end, &mut brace_depth, &span);
                 }
                 SyntaxKind::T_RBRACE => {
-                    self.handle_close_delimiter(
+                    end = Some(self.handle_close_delimiter(
                         &span,
                         &mut brace_depth,
-                        &mut end,
                         "unmatched closing brace in for-loop pattern",
-                    )?;
+                    )?);
                 }
                 SyntaxKind::T_LBRACKET => {
                     Self::handle_open_delimiter(&mut start, &mut end, &mut bracket_depth, &span);
                 }
                 SyntaxKind::T_RBRACKET => {
-                    self.handle_close_delimiter(
+                    end = Some(self.handle_close_delimiter(
                         &span,
                         &mut bracket_depth,
-                        &mut end,
                         "unmatched closing bracket in for-loop pattern",
-                    )?;
+                    )?);
                 }
                 _ => {
                     start.get_or_insert(span.start);
