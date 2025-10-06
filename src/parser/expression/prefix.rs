@@ -51,14 +51,14 @@ where
             return Some(());
         }
 
-        if !other_delimiters_open {
-            self.ts
-                .push_error(span.clone(), "expected 'in' before ')' in for-loop header");
-        } else {
+        if other_delimiters_open {
             self.ts.push_error(
                 span.clone(),
                 "unmatched closing parenthesis in for-loop pattern",
             );
+        } else {
+            self.ts
+                .push_error(span.clone(), "expected 'in' before ')' in for-loop header");
         }
 
         None
