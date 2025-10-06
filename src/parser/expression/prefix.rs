@@ -67,6 +67,42 @@ where
         None
     }
 
+    fn validate_delimiter_balance(
+        &mut self,
+        paren_depth: usize,
+        brace_depth: usize,
+        bracket_depth: usize,
+        last_span: Option<Span>,
+    ) -> bool {
+        if paren_depth > 0 {
+            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(
+                span,
+                format!(
+                    "unmatched opening parenthesis in for-loop pattern: {paren_depth} unclosed"
+                ),
+            );
+            return false;
+        }
+        if brace_depth > 0 {
+            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(
+                span,
+                format!("unmatched opening brace in for-loop pattern: {brace_depth} unclosed"),
+            );
+            return false;
+        }
+        if bracket_depth > 0 {
+            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(
+                span,
+                format!("unmatched opening bracket in for-loop pattern: {bracket_depth} unclosed"),
+            );
+            return false;
+        }
+        true
+    }
+
     fn extract_pattern_text(
         &mut self,
         start: Option<usize>,
@@ -366,30 +402,7 @@ where
             }
         }
 
-        if paren_depth > 0 {
-            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(
-                span,
-                format!(
-                    "unmatched opening parenthesis in for-loop pattern: {paren_depth} unclosed"
-                ),
-            );
-            return None;
-        }
-        if brace_depth > 0 {
-            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(
-                span,
-                format!("unmatched opening brace in for-loop pattern: {brace_depth} unclosed"),
-            );
-            return None;
-        }
-        if bracket_depth > 0 {
-            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(
-                span,
-                format!("unmatched opening bracket in for-loop pattern: {bracket_depth} unclosed"),
-            );
+        if !self.validate_delimiter_balance(paren_depth, brace_depth, bracket_depth, last_span) {
             return None;
         }
 
