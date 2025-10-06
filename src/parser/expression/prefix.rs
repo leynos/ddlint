@@ -41,14 +41,11 @@ where
     fn handle_close_paren(
         &mut self,
         span: &Span,
-        paren_depth: &mut usize,
+        paren_depth: usize,
         other_delimiters_open: bool,
-        end: &mut Option<usize>,
-    ) -> Option<()> {
-        if *paren_depth > 0 {
-            *paren_depth -= 1;
-            *end = Some(span.end);
-            return Some(());
+    ) -> Option<(usize, usize)> {
+        if paren_depth > 0 {
+            return Some((paren_depth - 1, span.end));
         }
 
         if other_delimiters_open {
@@ -361,12 +358,13 @@ where
                     Self::handle_open_delimiter(&mut start, &mut end, &mut paren_depth, &span);
                 }
                 SyntaxKind::T_RPAREN => {
-                    self.handle_close_paren(
+                    let (new_depth, new_end) = self.handle_close_paren(
                         &span,
-                        &mut paren_depth,
+                        paren_depth,
                         brace_depth > 0 || bracket_depth > 0,
-                        &mut end,
                     )?;
+                    paren_depth = new_depth;
+                    end = Some(new_end);
                 }
                 SyntaxKind::T_LBRACE => {
                     Self::handle_open_delimiter(&mut start, &mut end, &mut brace_depth, &span);
