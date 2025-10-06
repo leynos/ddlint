@@ -42,8 +42,7 @@ where
         &mut self,
         span: &Span,
         paren_depth: &mut usize,
-        brace_depth: usize,
-        bracket_depth: usize,
+        other_delimiters_open: bool,
         end: &mut Option<usize>,
     ) -> Option<()> {
         if *paren_depth > 0 {
@@ -52,7 +51,7 @@ where
             return Some(());
         }
 
-        if Self::is_at_top_level(*paren_depth, brace_depth, bracket_depth) {
+        if !other_delimiters_open {
             self.ts
                 .push_error(span.clone(), "expected 'in' before ')' in for-loop header");
         } else {
@@ -366,8 +365,7 @@ where
                     self.handle_close_paren(
                         &span,
                         &mut paren_depth,
-                        brace_depth,
-                        bracket_depth,
+                        brace_depth > 0 || bracket_depth > 0,
                         &mut end,
                     )?;
                 }
