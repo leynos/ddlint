@@ -66,11 +66,10 @@ where
 
     fn validate_delimiter_balance(
         &mut self,
-        paren_depth: usize,
-        brace_depth: usize,
-        bracket_depth: usize,
+        depths: (usize, usize, usize),
         last_span: Option<Span>,
     ) -> bool {
+        let (paren_depth, brace_depth, bracket_depth) = depths;
         if paren_depth > 0 {
             let span = last_span.unwrap_or_else(|| self.ts.eof_span());
             self.ts.push_error(
@@ -396,7 +395,7 @@ where
             }
         }
 
-        if !self.validate_delimiter_balance(paren_depth, brace_depth, bracket_depth, last_span) {
+        if !self.validate_delimiter_balance((paren_depth, brace_depth, bracket_depth), last_span) {
             return None;
         }
 
