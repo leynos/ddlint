@@ -226,6 +226,21 @@ fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
 }
 
 #[rstest]
+#[case("for item in items) item")]
+#[case("for (in items) item")]
+#[case("for (item items) item")]
+#[case("for (item in items if) item")]
+fn rejects_invalid_for_loop_syntax(#[case] src: &str) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected parse failure for {src}");
+    };
+    assert!(
+        !errors.is_empty(),
+        "parser returned Err but without diagnostics for {src}"
+    );
+}
+
+#[rstest]
 #[case("\"hi\"", lit_str("hi"))]
 #[case("true", lit_bool(true))]
 #[case("false", lit_bool(false))]

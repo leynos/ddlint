@@ -561,11 +561,33 @@ fn for_binding_complete(
         balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
     ));
 
-    nested
-        .or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored())
-        .padded_by(ws)
+    let binding_token = nested.clone().or(filter(|kind: &SyntaxKind| {
+        matches!(
+            kind,
+            SyntaxKind::T_IDENT
+                | SyntaxKind::K_UNDERSCORE
+                | SyntaxKind::T_COMMA
+                | SyntaxKind::T_COLON
+                | SyntaxKind::T_COLON_COLON
+                | SyntaxKind::T_DOT
+                | SyntaxKind::T_AT
+                | SyntaxKind::T_HASH
+                | SyntaxKind::T_NUMBER
+                | SyntaxKind::T_STRING
+                | SyntaxKind::T_APOSTROPHE
+        )
+    })
+    .ignored());
+
+    let header_token =
+        nested.or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored());
+
+    binding_token
+        .padded_by(ws.clone())
         .repeated()
         .at_least(1)
+        .then_ignore(just(SyntaxKind::K_IN).padded_by(ws.clone()))
+        .then(header_token.padded_by(ws).repeated().at_least(1))
         .ignored()
 }
 

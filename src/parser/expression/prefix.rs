@@ -58,8 +58,10 @@ where
             self.ts
                 .push_error(span.clone(), "expected 'in' before ')' in for-loop header");
         } else {
-            self.ts
-                .push_error(span.clone(), "unexpected ')' in for-loop header");
+            self.ts.push_error(
+                span.clone(),
+                "unmatched closing parenthesis in for-loop pattern",
+            );
         }
 
         None
@@ -313,8 +315,10 @@ where
         let mut bracket_depth = 0usize;
         let mut start = None;
         let mut end = None;
+        let mut last_span: Option<Span> = None;
 
         while let Some((kind, span)) = self.ts.next_tok() {
+            last_span = Some(span.clone());
             match kind {
                 SyntaxKind::K_IN
                     if Self::is_at_top_level(paren_depth, brace_depth, bracket_depth) =>
@@ -341,7 +345,7 @@ where
                         &span,
                         &mut brace_depth,
                         &mut end,
-                        "unexpected '}' in for-loop header",
+                        "unmatched closing brace in for-loop pattern",
                     )?;
                 }
                 SyntaxKind::T_LBRACKET => {
@@ -352,7 +356,7 @@ where
                         &span,
                         &mut bracket_depth,
                         &mut end,
-                        "unexpected ']' in for-loop header",
+                        "unmatched closing bracket in for-loop pattern",
                     )?;
                 }
                 _ => {
@@ -360,6 +364,33 @@ where
                     end = Some(span.end);
                 }
             }
+        }
+
+        if paren_depth > 0 {
+            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(
+                span,
+                format!(
+                    "unmatched opening parenthesis in for-loop pattern: {paren_depth} unclosed"
+                ),
+            );
+            return None;
+        }
+        if brace_depth > 0 {
+            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(
+                span,
+                format!("unmatched opening brace in for-loop pattern: {brace_depth} unclosed"),
+            );
+            return None;
+        }
+        if bracket_depth > 0 {
+            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(
+                span,
+                format!("unmatched opening bracket in for-loop pattern: {bracket_depth} unclosed"),
+            );
+            return None;
         }
 
         self.ts
