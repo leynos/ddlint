@@ -61,39 +61,34 @@ where
         None
     }
 
-    fn validate_delimiter_balance(
+    fn validate_single_delimiter(
         &mut self,
-        depths: (usize, usize, usize),
-        last_span: Option<Span>,
+        depth: usize,
+        delimiter_name: &str,
+        last_span: Option<&Span>,
     ) -> bool {
-        let (paren_depth, brace_depth, bracket_depth) = depths;
-        if paren_depth > 0 {
-            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
+        if depth > 0 {
+            let span = last_span.cloned().unwrap_or_else(|| self.ts.eof_span());
             self.ts.push_error(
                 span,
-                format!(
-                    "unmatched opening parenthesis in for-loop pattern: {paren_depth} unclosed"
-                ),
-            );
-            return false;
-        }
-        if brace_depth > 0 {
-            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(
-                span,
-                format!("unmatched opening brace in for-loop pattern: {brace_depth} unclosed"),
-            );
-            return false;
-        }
-        if bracket_depth > 0 {
-            let span = last_span.unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(
-                span,
-                format!("unmatched opening bracket in for-loop pattern: {bracket_depth} unclosed"),
+                format!("unmatched opening {delimiter_name} in for-loop pattern: {depth} unclosed"),
             );
             return false;
         }
         true
+    }
+
+    fn validate_delimiter_balance(
+        &mut self,
+        paren_depth: usize,
+        brace_depth: usize,
+        bracket_depth: usize,
+        last_span: Option<Span>,
+    ) -> bool {
+        let span_ref = last_span.as_ref();
+        self.validate_single_delimiter(paren_depth, "parenthesis", span_ref)
+            && self.validate_single_delimiter(brace_depth, "brace", span_ref)
+            && self.validate_single_delimiter(bracket_depth, "bracket", span_ref)
     }
 
     fn extract_pattern_text(
@@ -393,7 +388,7 @@ where
             }
         }
 
-        if !self.validate_delimiter_balance((paren_depth, brace_depth, bracket_depth), last_span) {
+        if !self.validate_delimiter_balance(paren_depth, brace_depth, bracket_depth, last_span) {
             return None;
         }
 
