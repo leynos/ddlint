@@ -710,6 +710,7 @@ mod tests {
     #[rstest]
     #[case("if (cond) if (nested) Process(nested) else Skip() else Handle()")]
     #[case("for (a in A(a)) for (b in B(b)) ProcessPair(a, b)")]
+    #[case("for (item in if cond { Items(item) } else { Others(item) }) Process(item)")]
     #[case("for (item in Items(item)) if (item > 10) Process(item)")]
     #[case("for (item in Items(item) if item.active) Process(item)")]
     #[case(
