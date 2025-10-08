@@ -83,12 +83,11 @@ where
         paren_depth: usize,
         brace_depth: usize,
         bracket_depth: usize,
-        last_span: Option<Span>,
+        last_span: Option<&Span>,
     ) -> bool {
-        let span_ref = last_span.as_ref();
-        self.validate_single_delimiter(paren_depth, "parenthesis", span_ref)
-            && self.validate_single_delimiter(brace_depth, "brace", span_ref)
-            && self.validate_single_delimiter(bracket_depth, "bracket", span_ref)
+        self.validate_single_delimiter(paren_depth, "parenthesis", last_span)
+            && self.validate_single_delimiter(brace_depth, "brace", last_span)
+            && self.validate_single_delimiter(bracket_depth, "bracket", last_span)
     }
 
     fn extract_pattern_text(
@@ -388,7 +387,12 @@ where
             }
         }
 
-        if !self.validate_delimiter_balance(paren_depth, brace_depth, bracket_depth, last_span) {
+        if !self.validate_delimiter_balance(
+            paren_depth,
+            brace_depth,
+            bracket_depth,
+            last_span.as_ref(),
+        ) {
             return None;
         }
 
