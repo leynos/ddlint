@@ -80,11 +80,10 @@ where
 
     fn validate_delimiter_balance(
         &mut self,
-        paren_depth: usize,
-        brace_depth: usize,
-        bracket_depth: usize,
+        depths: (usize, usize, usize),
         last_span: Option<&Span>,
     ) -> bool {
+        let (paren_depth, brace_depth, bracket_depth) = depths;
         self.validate_single_delimiter(paren_depth, "parenthesis", last_span)
             && self.validate_single_delimiter(brace_depth, "brace", last_span)
             && self.validate_single_delimiter(bracket_depth, "bracket", last_span)
@@ -388,9 +387,7 @@ where
         }
 
         if !self.validate_delimiter_balance(
-            paren_depth,
-            brace_depth,
-            bracket_depth,
+            (paren_depth, brace_depth, bracket_depth),
             last_span.as_ref(),
         ) {
             return None;
