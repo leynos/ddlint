@@ -112,7 +112,7 @@ control flow. This phase aims to build a complete grammar.
 
   - [x] Implement a parser for `if`/`else` expressions (`e_ite`).
 
-  - [ ] Implement a parser for `for` loops within rules, including optional
+  - [x] Implement a parser for `for` loops within rules, including optional
     `if` guards (`parseForStatement` from the Haskell analysis).
 
   - [ ] Implement a parser for `match` expressions (`e_match`).

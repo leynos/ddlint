@@ -180,6 +180,17 @@ pub enum Expr {
     },
     /// Grouped expression (parenthesised).
     Group(Box<Expr>),
+    /// For-loop expression with optional guard.
+    ForLoop {
+        /// Pattern introduced by the loop header.
+        pattern: String,
+        /// Iterable expression supplying loop items.
+        iterable: Box<Expr>,
+        /// Optional guard expression restricting iterations.
+        guard: Option<Box<Expr>>,
+        /// Statement executed for each matching element.
+        body: Box<Expr>,
+    },
 }
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
@@ -236,6 +247,19 @@ impl Expr {
                 format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
             }
             Self::Group(e) => format_nary("group", std::iter::once(e.to_sexpr())),
+            Self::ForLoop {
+                pattern,
+                iterable,
+                guard,
+                body,
+            } => {
+                let mut parts = vec![pattern.clone(), iterable.to_sexpr()];
+                if let Some(cond) = guard {
+                    parts.push(cond.to_sexpr());
+                }
+                parts.push(body.to_sexpr());
+                format_nary("for", parts)
+            }
         }
     }
 }

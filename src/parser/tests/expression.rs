@@ -4,8 +4,8 @@ use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
-    field, field_access, if_expr, lit_bool, lit_num, lit_str, method_call, struct_expr, tuple,
-    tuple_index, var,
+    field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, method_call, struct_expr,
+    tuple, tuple_index, var,
 };
 use rstest::rstest;
 
@@ -206,10 +206,38 @@ use rstest::rstest;
         )),
     )
 )]
+#[case(
+    "for (item in items) item",
+    for_loop("item", var("items"), None, var("item"))
+)]
+#[case(
+    "for (entry in items if entry.active) process(entry)",
+    for_loop(
+        "entry",
+        var("items"),
+        Some(field_access(var("entry"), "active")),
+        call("process", vec![var("entry")]),
+    ),
+)]
 fn parses_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr =
         parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case("for item in items) item")]
+#[case("for (in items) item")]
+#[case("for (item items) item")]
+#[case("for (item in items if) item")]
+fn rejects_invalid_for_loop_syntax(#[case] src: &str) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected parse failure for {src}");
+    };
+    assert!(
+        !errors.is_empty(),
+        "parser returned Err but without diagnostics for {src}"
+    );
 }
 
 #[rstest]

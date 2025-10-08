@@ -479,17 +479,17 @@ fn collect_transformer_spans(
 type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-    let ws = inline_ws().repeated();
+    let ws = inline_ws().repeated().ignored();
 
     let atom_p = atom();
 
-    let literal = atom_p.clone();
+    let statement = rule_statement(ws.clone());
 
-    let body = literal
-        .clone()
+    let body = statement
         .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
         .allow_trailing()
-        .at_least(1);
+        .at_least(1)
+        .ignored();
 
     atom_p
         .then(
@@ -502,6 +502,93 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
         .then_ignore(just(SyntaxKind::T_DOT))
         .padded_by(ws)
         .map_with_span(|_, sp: Span| sp)
+}
+
+fn rule_statement(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    recursive(|stmt| {
+        let ws = ws.clone();
+        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE);
+        let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
+        let atom_stmt = atom();
+
+        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
+
+        let if_stmt = just(SyntaxKind::K_IF)
+            .padded_by(ws.clone())
+            .ignore_then(condition.clone())
+            .then(stmt.clone().padded_by(ws.clone()))
+            .then(
+                just(SyntaxKind::K_ELSE)
+                    .padded_by(ws.clone())
+                    .ignore_then(stmt.clone())
+                    .or_not(),
+            )
+            .ignored();
+
+        let header_expr = for_header(ws.clone());
+
+        let for_stmt = just(SyntaxKind::K_FOR)
+            .padded_by(ws.clone())
+            .ignore_then(header_expr)
+            .then(stmt.clone().padded_by(ws.clone()))
+            .ignored();
+
+        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt))
+            .padded_by(ws.clone())
+            .ignored()
+    })
+}
+
+fn for_header(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    just(SyntaxKind::T_LPAREN)
+        .padded_by(ws.clone())
+        .ignore_then(for_binding_complete(ws.clone()))
+        .then_ignore(just(SyntaxKind::T_RPAREN))
+        .padded_by(ws)
+        .ignored()
+}
+
+fn for_binding_complete(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    let nested = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+    ));
+
+    let binding_token = nested.clone().or(filter(|kind: &SyntaxKind| {
+        matches!(
+            kind,
+            SyntaxKind::T_IDENT
+                | SyntaxKind::K_UNDERSCORE
+                | SyntaxKind::T_COMMA
+                | SyntaxKind::T_COLON
+                | SyntaxKind::T_COLON_COLON
+                | SyntaxKind::T_DOT
+                | SyntaxKind::T_AT
+                | SyntaxKind::T_HASH
+                | SyntaxKind::T_NUMBER
+                | SyntaxKind::T_STRING
+                | SyntaxKind::T_APOSTROPHE
+        )
+    })
+    .ignored());
+
+    let header_token =
+        nested.or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored());
+
+    binding_token
+        .padded_by(ws.clone())
+        .repeated()
+        .at_least(1)
+        .then_ignore(just(SyntaxKind::K_IN).padded_by(ws.clone()))
+        .then(header_token.padded_by(ws).repeated().at_least(1))
+        .ignored()
 }
 
 /// Return `true` if `span` begins a new line in the source.
@@ -595,7 +682,16 @@ mod tests {
     //! Tests for the span scanner helper utilities.
     use super::*;
     use crate::test_util::tokenize;
+    use chumsky::Stream;
     use rstest::rstest;
+
+    fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<Simple<SyntaxKind>>) {
+        let tokens = tokenize(src);
+        let ws = inline_ws().repeated().ignored();
+        let parser = rule_statement(ws);
+        let stream = Stream::from_iter(0..src.len(), tokens.into_iter());
+        parser.parse_recovery(stream)
+    }
 
     #[rstest]
     #[case("import foo\n", vec![0..11], true)]
@@ -609,5 +705,39 @@ mod tests {
         let (spans, errs) = collect_import_spans(&tokens, src);
         assert_eq!(spans, expected);
         assert_eq!(errs.is_empty(), errs_empty);
+    }
+
+    #[rstest]
+    #[case("if (cond) if (nested) Process(nested) else Skip() else Handle()")]
+    #[case("for (a in A(a)) for (b in B(b)) ProcessPair(a, b)")]
+    #[case("for (item in if cond { Items(item) } else { Others(item) }) Process(item)")]
+    #[case("for (item in Items(item)) if (item > 10) Process(item)")]
+    #[case("for (item in Items(item) if item.active) Process(item)")]
+    #[case(
+        "if (outer) { for (item in Items(item)) if (should(item)) Process(item) } else { Skip() }"
+    )]
+    fn rule_statement_parses_control_flow(#[case] src: &str) {
+        let (res, errs) = parse_rule_statement_input(src);
+        assert!(res.is_some(), "expected successful parse for {src}");
+        assert!(errs.is_empty(), "unexpected errors for {src:?}: {errs:?}");
+    }
+
+    #[rstest]
+    #[case("if (cond { Process(cond) }")]
+    #[case("for (item in Items(item) Process(item)")]
+    #[case("for (item in Items(item) if item > 10 Process(item)")]
+    fn rule_statement_reports_errors(#[case] src: &str) {
+        let (res, errs) = parse_rule_statement_input(src);
+        if res.is_some() {
+            assert!(
+                !errs.is_empty(),
+                "expected errors for {src}, but parser recovered without diagnostics",
+            );
+        } else {
+            assert!(
+                !errs.is_empty(),
+                "expected errors for {src}, but parser reported none",
+            );
+        }
     }
 }
