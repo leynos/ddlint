@@ -135,7 +135,7 @@ mod rule;
 mod transformer;
 mod type_def;
 
-pub use expr::{BinaryOp, Expr, Literal, UnaryOp};
+pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;
 pub use index::Index;

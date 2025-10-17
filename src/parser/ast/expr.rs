@@ -99,6 +99,15 @@ impl fmt::Display for BinaryOp {
     }
 }
 
+/// Pattern arm inside a [`Expr::Match`] expression.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatchArm {
+    /// Pattern text matched against the scrutinee.
+    pub pattern: String,
+    /// Expression evaluated when the pattern matches.
+    pub body: Expr,
+}
+
 /// Parsed expression tree.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -191,6 +200,13 @@ pub enum Expr {
         /// Statement executed for each matching element.
         body: Box<Expr>,
     },
+    /// Match expression with one or more pattern arms.
+    Match {
+        /// Expression being scrutinised.
+        scrutinee: Box<Expr>,
+        /// Pattern arms evaluated in order.
+        arms: Vec<MatchArm>,
+    },
 }
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
@@ -259,6 +275,15 @@ impl Expr {
                 }
                 parts.push(body.to_sexpr());
                 format_nary("for", parts)
+            }
+            Self::Match { scrutinee, arms } => {
+                let arm_parts = arms
+                    .iter()
+                    .map(|arm| format_nary("arm", [arm.pattern.clone(), arm.body.to_sexpr()]));
+                format_nary(
+                    "match",
+                    std::iter::once(scrutinee.to_sexpr()).chain(arm_parts),
+                )
             }
         }
     }

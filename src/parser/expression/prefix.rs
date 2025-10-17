@@ -1,6 +1,6 @@
 //! Parsing of prefix expressions and literals for the Pratt parser.
 
-use crate::parser::ast::{Expr, Literal, prefix_binding_power};
+use crate::parser::ast::{Expr, Literal, MatchArm, prefix_binding_power};
 use crate::{Span, SyntaxKind};
 
 use super::pratt::Pratt;
@@ -128,6 +128,7 @@ where
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACE => self.parse_brace_group(),
             SyntaxKind::K_IF => self.parse_if_expression(),
+            SyntaxKind::K_MATCH => self.parse_match_expression(),
             SyntaxKind::K_FOR => self.parse_for_expression(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
@@ -258,6 +259,188 @@ where
             then_branch: Box::new(then_branch),
             else_branch: Box::new(else_branch),
         })
+    }
+
+    fn parse_match_expression(&mut self) -> Option<Expr> {
+        if !self.ts.expect(SyntaxKind::T_LPAREN) {
+            return None;
+        }
+
+        let scrutinee = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+
+        if !self.ts.expect(SyntaxKind::T_RPAREN) {
+            return None;
+        }
+
+        if !self.ts.expect(SyntaxKind::T_LBRACE) {
+            return None;
+        }
+
+        let Some(arms) = self.parse_match_arms() else {
+            let _ = self.ts.expect(SyntaxKind::T_RBRACE);
+            return None;
+        };
+
+        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+            return None;
+        }
+
+        Some(Expr::Match {
+            scrutinee: Box::new(scrutinee),
+            arms,
+        })
+    }
+
+    fn parse_match_arms(&mut self) -> Option<Vec<MatchArm>> {
+        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, "expected at least one match arm");
+            return None;
+        }
+
+        let mut arms = Vec::new();
+        loop {
+            let (pattern, _) = self.collect_match_pattern()?;
+            if !self.ts.expect(SyntaxKind::T_ARROW) {
+                return None;
+            }
+            let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+            arms.push(MatchArm { pattern, body });
+
+            match self.ts.peek_kind() {
+                Some(SyntaxKind::T_COMMA) => {
+                    self.ts.next_tok();
+                    if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+                        break;
+                    }
+                }
+                Some(SyntaxKind::T_RBRACE) => break,
+                None => {
+                    self.ts
+                        .push_error(self.ts.eof_span(), "expected ',' or '}' after match arm");
+                    return None;
+                }
+                _ => {
+                    let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+                    self.ts
+                        .push_error(span, "expected ',' or '}' after match arm");
+                    return None;
+                }
+            }
+        }
+
+        Some(arms)
+    }
+
+    fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
+        let mut paren_depth = 0usize;
+        let mut brace_depth = 0usize;
+        let mut bracket_depth = 0usize;
+        let mut start = None;
+        let mut end = None;
+        let mut last_span: Option<Span> = None;
+
+        loop {
+            let Some(kind) = self.ts.peek_kind() else {
+                self.ts
+                    .push_error(self.ts.eof_span(), "expected '->' in match arm");
+                return None;
+            };
+
+            if kind == SyntaxKind::T_ARROW
+                && Self::is_at_top_level(paren_depth, brace_depth, bracket_depth)
+            {
+                break;
+            }
+
+            if Self::is_at_top_level(paren_depth, brace_depth, bracket_depth)
+                && matches!(kind, SyntaxKind::T_RBRACE | SyntaxKind::T_COMMA)
+            {
+                let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+                self.ts.push_error(span, "expected '->' in match arm");
+                return None;
+            }
+
+            let Some((kind, span)) = self.ts.next_tok() else {
+                self.ts.push_error(
+                    self.ts.eof_span(),
+                    "unexpected end of input in match pattern",
+                );
+                return None;
+            };
+            last_span = Some(span.clone());
+
+            match kind {
+                SyntaxKind::T_LPAREN => {
+                    Self::handle_open_delimiter(&mut start, &mut end, &mut paren_depth, &span);
+                }
+                SyntaxKind::T_RPAREN => {
+                    end = Some(self.handle_close_delimiter(
+                        &span,
+                        &mut paren_depth,
+                        "unmatched closing parenthesis in match pattern",
+                    )?);
+                }
+                SyntaxKind::T_LBRACE => {
+                    Self::handle_open_delimiter(&mut start, &mut end, &mut brace_depth, &span);
+                }
+                SyntaxKind::T_RBRACE => {
+                    end = Some(self.handle_close_delimiter(
+                        &span,
+                        &mut brace_depth,
+                        "unmatched closing brace in match pattern",
+                    )?);
+                }
+                SyntaxKind::T_LBRACKET => {
+                    Self::handle_open_delimiter(&mut start, &mut end, &mut bracket_depth, &span);
+                }
+                SyntaxKind::T_RBRACKET => {
+                    end = Some(self.handle_close_delimiter(
+                        &span,
+                        &mut bracket_depth,
+                        "unmatched closing bracket in match pattern",
+                    )?);
+                }
+                _ => {
+                    start.get_or_insert(span.start);
+                    end = Some(span.end);
+                }
+            }
+        }
+
+        if !self.validate_delimiter_balance(
+            (paren_depth, brace_depth, bracket_depth),
+            last_span.as_ref(),
+        ) {
+            return None;
+        }
+
+        let arrow_span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+        let Some(s) = start else {
+            self.ts.push_error(
+                arrow_span.clone(),
+                "expected pattern before '->' in match arm",
+            );
+            return None;
+        };
+        let Some(e) = end else {
+            self.ts.push_error(
+                arrow_span.clone(),
+                "expected pattern before '->' in match arm",
+            );
+            return None;
+        };
+
+        let span = s..e;
+        let text = self.ts.slice(&span);
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            self.ts
+                .push_error(span.clone(), "expected pattern before '->' in match arm");
+            return None;
+        }
+
+        Some((trimmed.to_string(), span))
     }
 
     fn parse_for_expression(&mut self) -> Option<Expr> {
