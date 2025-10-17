@@ -309,6 +309,29 @@ or `if cond { Point { x: 1 } }` continue to parse as intended. This strategy
 eliminates spurious `expected T_COLON` diagnostics without restricting
 legitimate struct literal usage.
 
+### Handling `match` expressions
+
+`match` expressions reuse a dedicated prefix parser. The Rust implementation
+mirrors the Haskell grammar, expecting `match (expr) { pattern -> expr, ... }`.
+The scrutinee must be parenthesised; `parse_match_expression` temporarily
+suspends the struct-literal guard so constructs like
+`match (Point { x: 1 }) { ... }` remain valid.
+
+Arms are parsed in `parse_match_arms`, which requires at least one arm and
+accepts an optional trailing comma, matching `commaSepEnd1` from the reference
+parser. Each arm delegates to `collect_match_pattern`, which slices the source
+text between the arm start and the top-level `->`, balancing parentheses,
+braces, and brackets. The captured substring is trimmed so nested patterns such
+as `Point { field: Some(x) }` round-trip without losing formatting.
+
+If the parser encounters a comma or closing brace before a top-level `->`, it
+emits `expected '->' in match arm` and stops, preventing the following body
+from being misinterpreted as part of the pattern. Empty bodies (for example,
+`match (x) { }`) raise `expected at least one match arm`, with the diagnostic
+anchored on the closing brace. Arm bodies execute under
+`with_struct_literals_suspended`, so users can build struct literals inside
+arms without triggering the guard.
+
 ### Handling `for` loop expressions
 
 Rules may contain `for` loops with optional guards. The Pratt parser recognises

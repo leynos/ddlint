@@ -115,7 +115,7 @@ control flow. This phase aims to build a complete grammar.
   - [x] Implement a parser for `for` loops within rules, including optional
     `if` guards (`parseForStatement` from the Haskell analysis).
 
-  - [ ] Implement a parser for `match` expressions (`e_match`).
+  - [x] Implement a parser for `match` expressions (`e_match`).
 
   - [ ] Implement parsers for imperative statements like `break`, `continue`,
     and `return`.

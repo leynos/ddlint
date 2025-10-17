@@ -4,8 +4,8 @@ use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
-    field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, method_call, struct_expr,
-    tuple, tuple_index, var,
+    field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, match_arm, match_expr,
+    method_call, struct_expr, tuple, tuple_index, var,
 };
 use rstest::rstest;
 
@@ -207,6 +207,26 @@ use rstest::rstest;
     )
 )]
 #[case(
+    "match (flag) { true -> false, false -> true }",
+    match_expr(
+        var("flag"),
+        vec![
+            match_arm("true", lit_bool(false)),
+            match_arm("false", lit_bool(true)),
+        ],
+    )
+)]
+#[case(
+    "match (value) { Point { field: Some(x) } -> x, _ -> 0, }",
+    match_expr(
+        var("value"),
+        vec![
+            match_arm("Point { field: Some(x) }", var("x")),
+            match_arm("_", lit_num("0")),
+        ],
+    )
+)]
+#[case(
     "for (item in items) item",
     for_loop("item", var("items"), None, var("item"))
 )]
@@ -295,6 +315,9 @@ fn reports_struct_literal_disallowed_in_if_condition() {
 #[case::if_missing_then("if cond else value", 1)]
 #[case::if_missing_else_expr("if cond value else", 1)]
 #[case::if_missing_condition("if", 1)]
+#[case::match_missing_arrow("match (x) { _ => x }", 1)]
+#[case::match_missing_arm("match (x) {}", 1)]
+#[case::match_missing_paren("match x { _ -> x }", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
