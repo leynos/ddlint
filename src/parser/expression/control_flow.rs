@@ -5,6 +5,32 @@ use crate::{Span, SyntaxKind};
 
 use super::pratt::Pratt;
 
+/// Tracks delimiter depth and pattern span during pattern collection.
+struct DelimiterState {
+    paren_depth: usize,
+    brace_depth: usize,
+    bracket_depth: usize,
+    start: Option<usize>,
+    end: Option<usize>,
+}
+
+impl DelimiterState {
+    fn new() -> Self {
+        Self {
+            paren_depth: 0,
+            brace_depth: 0,
+            bracket_depth: 0,
+            start: None,
+            end: None,
+        }
+    }
+
+    fn is_at_top_level(&self) -> bool {
+        type EmptyIter = std::iter::Empty<(SyntaxKind, Span)>;
+        Pratt::<EmptyIter>::is_at_top_level(self.paren_depth, self.brace_depth, self.bracket_depth)
+    }
+}
+
 impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
@@ -141,11 +167,7 @@ where
     }
 
     fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
-        let mut paren_depth = 0usize;
-        let mut brace_depth = 0usize;
-        let mut bracket_depth = 0usize;
-        let mut start = None;
-        let mut end = None;
+        let mut state = DelimiterState::new();
         let mut last_span: Option<Span> = None;
 
         loop {
@@ -155,14 +177,11 @@ where
                 return None;
             };
 
-            if kind == SyntaxKind::T_ARROW
-                && Self::is_at_top_level(paren_depth, brace_depth, bracket_depth)
-            {
+            if kind == SyntaxKind::T_ARROW && state.is_at_top_level() {
                 break;
             }
 
-            if Self::is_at_top_level(paren_depth, brace_depth, bracket_depth)
-                && matches!(kind, SyntaxKind::T_RBRACE | SyntaxKind::T_COMMA)
+            if state.is_at_top_level() && matches!(kind, SyntaxKind::T_RBRACE | SyntaxKind::T_COMMA)
             {
                 let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
                 self.ts.push_error(span, "expected '->' in match arm");
@@ -178,79 +197,78 @@ where
             };
             last_span = Some(span.clone());
 
-            self.process_delimiter_token(
-                kind,
-                &span,
-                &mut start,
-                &mut end,
-                &mut paren_depth,
-                &mut brace_depth,
-                &mut bracket_depth,
-            )?;
+            self.process_delimiter_token(kind, &span, &mut state)?;
         }
 
         if !self.validate_delimiter_balance(
-            (paren_depth, brace_depth, bracket_depth),
+            (state.paren_depth, state.brace_depth, state.bracket_depth),
             last_span.as_ref(),
         ) {
             return None;
         }
 
         let arrow_span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-        self.validate_pattern_text(start, end, arrow_span)
+        self.validate_pattern_text(state.start, state.end, arrow_span)
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "helper mutates each delimiter depth without introducing an intermediate struct"
-    )]
     fn process_delimiter_token(
         &mut self,
         kind: SyntaxKind,
         span: &Span,
-        start: &mut Option<usize>,
-        end: &mut Option<usize>,
-        paren_depth: &mut usize,
-        brace_depth: &mut usize,
-        bracket_depth: &mut usize,
+        state: &mut DelimiterState,
     ) -> Option<()> {
         match kind {
             SyntaxKind::T_LPAREN => {
-                Self::handle_open_delimiter(start, end, paren_depth, span);
+                Self::handle_open_delimiter(
+                    &mut state.start,
+                    &mut state.end,
+                    &mut state.paren_depth,
+                    span,
+                );
             }
             SyntaxKind::T_RPAREN => {
                 let new_end = self.handle_close_delimiter(
                     span,
-                    paren_depth,
+                    &mut state.paren_depth,
                     "unmatched closing parenthesis in match pattern",
                 )?;
-                *end = Some(new_end);
+                state.end = Some(new_end);
             }
             SyntaxKind::T_LBRACE => {
-                Self::handle_open_delimiter(start, end, brace_depth, span);
+                Self::handle_open_delimiter(
+                    &mut state.start,
+                    &mut state.end,
+                    &mut state.brace_depth,
+                    span,
+                );
             }
             SyntaxKind::T_RBRACE => {
                 let new_end = self.handle_close_delimiter(
                     span,
-                    brace_depth,
+                    &mut state.brace_depth,
                     "unmatched closing brace in match pattern",
                 )?;
-                *end = Some(new_end);
+                state.end = Some(new_end);
             }
             SyntaxKind::T_LBRACKET => {
-                Self::handle_open_delimiter(start, end, bracket_depth, span);
+                Self::handle_open_delimiter(
+                    &mut state.start,
+                    &mut state.end,
+                    &mut state.bracket_depth,
+                    span,
+                );
             }
             SyntaxKind::T_RBRACKET => {
                 let new_end = self.handle_close_delimiter(
                     span,
-                    bracket_depth,
+                    &mut state.bracket_depth,
                     "unmatched closing bracket in match pattern",
                 )?;
-                *end = Some(new_end);
+                state.end = Some(new_end);
             }
             _ => {
-                start.get_or_insert(span.start);
-                *end = Some(span.end);
+                state.start.get_or_insert(span.start);
+                state.end = Some(span.end);
             }
         }
 
