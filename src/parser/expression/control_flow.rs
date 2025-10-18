@@ -166,42 +166,15 @@ where
             };
             last_span = Some(span.clone());
 
-            match kind {
-                SyntaxKind::T_LPAREN => {
-                    Self::handle_open_delimiter(&mut start, &mut end, &mut paren_depth, &span);
-                }
-                SyntaxKind::T_RPAREN => {
-                    end = Some(self.handle_close_delimiter(
-                        &span,
-                        &mut paren_depth,
-                        "unmatched closing parenthesis in match pattern",
-                    )?);
-                }
-                SyntaxKind::T_LBRACE => {
-                    Self::handle_open_delimiter(&mut start, &mut end, &mut brace_depth, &span);
-                }
-                SyntaxKind::T_RBRACE => {
-                    end = Some(self.handle_close_delimiter(
-                        &span,
-                        &mut brace_depth,
-                        "unmatched closing brace in match pattern",
-                    )?);
-                }
-                SyntaxKind::T_LBRACKET => {
-                    Self::handle_open_delimiter(&mut start, &mut end, &mut bracket_depth, &span);
-                }
-                SyntaxKind::T_RBRACKET => {
-                    end = Some(self.handle_close_delimiter(
-                        &span,
-                        &mut bracket_depth,
-                        "unmatched closing bracket in match pattern",
-                    )?);
-                }
-                _ => {
-                    start.get_or_insert(span.start);
-                    end = Some(span.end);
-                }
-            }
+            self.process_delimiter_token(
+                kind,
+                &span,
+                &mut start,
+                &mut end,
+                &mut paren_depth,
+                &mut brace_depth,
+                &mut bracket_depth,
+            )?;
         }
 
         if !self.validate_delimiter_balance(
@@ -212,6 +185,72 @@ where
         }
 
         let arrow_span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+        self.validate_pattern_text(start, end, arrow_span)
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "helper mutates each delimiter depth without introducing an intermediate struct",
+    )]
+    fn process_delimiter_token(
+        &mut self,
+        kind: SyntaxKind,
+        span: &Span,
+        start: &mut Option<usize>,
+        end: &mut Option<usize>,
+        paren_depth: &mut usize,
+        brace_depth: &mut usize,
+        bracket_depth: &mut usize,
+    ) -> Option<()> {
+        match kind {
+            SyntaxKind::T_LPAREN => {
+                Self::handle_open_delimiter(start, end, paren_depth, span);
+            }
+            SyntaxKind::T_RPAREN => {
+                let new_end = self.handle_close_delimiter(
+                    span,
+                    paren_depth,
+                    "unmatched closing parenthesis in match pattern",
+                )?;
+                *end = Some(new_end);
+            }
+            SyntaxKind::T_LBRACE => {
+                Self::handle_open_delimiter(start, end, brace_depth, span);
+            }
+            SyntaxKind::T_RBRACE => {
+                let new_end = self.handle_close_delimiter(
+                    span,
+                    brace_depth,
+                    "unmatched closing brace in match pattern",
+                )?;
+                *end = Some(new_end);
+            }
+            SyntaxKind::T_LBRACKET => {
+                Self::handle_open_delimiter(start, end, bracket_depth, span);
+            }
+            SyntaxKind::T_RBRACKET => {
+                let new_end = self.handle_close_delimiter(
+                    span,
+                    bracket_depth,
+                    "unmatched closing bracket in match pattern",
+                )?;
+                *end = Some(new_end);
+            }
+            _ => {
+                start.get_or_insert(span.start);
+                *end = Some(span.end);
+            }
+        }
+
+        Some(())
+    }
+
+    fn validate_pattern_text(
+        &mut self,
+        start: Option<usize>,
+        end: Option<usize>,
+        arrow_span: Span,
+    ) -> Option<(String, Span)> {
         let Some(s) = start else {
             self.ts.push_error(
                 arrow_span.clone(),
