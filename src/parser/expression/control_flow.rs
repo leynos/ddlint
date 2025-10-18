@@ -96,36 +96,48 @@ where
 
         let mut arms = Vec::new();
         loop {
-            let (pattern, _) = self.collect_match_pattern()?;
-            if !self.ts.expect(SyntaxKind::T_ARROW) {
-                return None;
-            }
-            let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
-            arms.push(MatchArm { pattern, body });
+            let arm = self.parse_single_match_arm()?;
+            arms.push(arm);
 
-            match self.ts.peek_kind() {
-                Some(SyntaxKind::T_COMMA) => {
-                    self.ts.next_tok();
-                    if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-                        break;
-                    }
-                }
-                Some(SyntaxKind::T_RBRACE) => break,
-                None => {
-                    self.ts
-                        .push_error(self.ts.eof_span(), "expected ',' or '}' after match arm");
-                    return None;
-                }
-                _ => {
-                    let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-                    self.ts
-                        .push_error(span, "expected ',' or '}' after match arm");
-                    return None;
-                }
+            if !self.should_continue_parsing_arms()? {
+                break;
             }
         }
 
         Some(arms)
+    }
+
+    fn parse_single_match_arm(&mut self) -> Option<MatchArm> {
+        let (pattern, _) = self.collect_match_pattern()?;
+        if !self.ts.expect(SyntaxKind::T_ARROW) {
+            return None;
+        }
+        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        Some(MatchArm { pattern, body })
+    }
+
+    fn should_continue_parsing_arms(&mut self) -> Option<bool> {
+        match self.ts.peek_kind() {
+            Some(SyntaxKind::T_COMMA) => {
+                self.ts.next_tok();
+                if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+                    return Some(false);
+                }
+                Some(true)
+            }
+            Some(SyntaxKind::T_RBRACE) => Some(false),
+            None => {
+                self.ts
+                    .push_error(self.ts.eof_span(), "expected ',' or '}' after match arm");
+                None
+            }
+            _ => {
+                let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+                self.ts
+                    .push_error(span, "expected ',' or '}' after match arm");
+                None
+            }
+        }
     }
 
     fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
@@ -190,7 +202,7 @@ where
 
     #[expect(
         clippy::too_many_arguments,
-        reason = "helper mutates each delimiter depth without introducing an intermediate struct",
+        reason = "helper mutates each delimiter depth without introducing an intermediate struct"
     )]
     fn process_delimiter_token(
         &mut self,
