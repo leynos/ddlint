@@ -223,6 +223,15 @@ pub fn tuple(items: Vec<Expr>) -> Expr {
 }
 
 /// Construct a `match` arm with the provided pattern and body expression.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{lit_num, match_arm};
+///
+/// let arm = match_arm("Some(x)", lit_num("1"));
+/// assert_eq!(arm.pattern, "Some(x)");
+/// ```
 #[must_use]
 pub fn match_arm(pattern: impl Into<String>, body: Expr) -> MatchArm {
     MatchArm {

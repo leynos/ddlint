@@ -41,6 +41,11 @@ where
         Some(span.end)
     }
 
+    /// Handles a closing parenthesis while collecting a for-loop pattern.
+    ///
+    /// Returns the updated depth and span end when the parenthesis matches,
+    /// or `None` if the parser emits a diagnostic for an unmatched token or a
+    /// missing `in` keyword.
     pub(super) fn handle_close_paren(
         &mut self,
         span: &Span,
@@ -81,6 +86,12 @@ where
         true
     }
 
+    /// Validates that parenthesis, brace, and bracket depths have all returned
+    /// to zero.
+    ///
+    /// Returns `true` when every delimiter type is balanced; otherwise emits a
+    /// diagnostic anchored at the most recent span (or EOF) and returns
+    /// `false`.
     pub(super) fn validate_delimiter_balance(
         &mut self,
         depths: (usize, usize, usize),
@@ -92,6 +103,11 @@ where
             && self.validate_single_delimiter(bracket_depth, "bracket", last_span)
     }
 
+    /// Extracts and trims the binding pattern text from a `for` loop header.
+    ///
+    /// Returns the trimmed binding and its span when present; otherwise emits
+    /// diagnostics anchored at the recorded span (or the `in` keyword when no
+    /// span exists) and returns `None`.
     pub(super) fn extract_pattern_text(
         &mut self,
         start: Option<usize>,

@@ -44,6 +44,13 @@ fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
 #[case("{}", "expected expression", 1, 2, false)]
 #[case("|x x", "expected pipe", 3, 4, false)]
 #[case("match (x) {}", "expected at least one match arm", 11, 12, false)]
+#[case(
+    "match (x) { _ -> x",
+    "expected ',' or '}' after match arm",
+    18,
+    18,
+    false
+)]
 fn prefix_form_errors(
     #[case] src: &str,
     #[case] msg: &str,
@@ -57,6 +64,10 @@ fn prefix_form_errors(
     if unclosed {
         assert_delimiter_error(&errors, msg, start, end);
     } else {
-        assert_parse_error(&errors, msg, start, end);
+        let Some(error) = errors.first() else {
+            panic!("error missing");
+        };
+        let single = vec![error.clone()];
+        assert_parse_error(&single, msg, start, end);
     }
 }

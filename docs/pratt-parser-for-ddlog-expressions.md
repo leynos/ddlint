@@ -312,10 +312,10 @@ legitimate struct literal usage.
 ### Handling `match` expressions
 
 `match` expressions reuse a dedicated prefix parser. The Rust implementation
-mirrors the Haskell grammar, expecting `match (expr) { pattern -> expr, ... }`.
-The scrutinee must be parenthesised; `parse_match_expression` temporarily
-suspends the struct-literal guard so constructs like
-`match (Point { x: 1 }) { ... }` remain valid.
+mirrors the Haskell grammar, expecting `match (expr) { pattern -> expr, … }`.
+The scrutinee must appear within parentheses; `parse_match_expression`
+temporarily suspends the struct-literal guard, so constructs like
+`match (Point { x: 1 }) { … }` remain valid.
 
 Arms are parsed in `parse_match_arms`, which requires at least one arm and
 accepts an optional trailing comma, matching `commaSepEnd1` from the reference

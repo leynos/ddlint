@@ -217,12 +217,21 @@ use rstest::rstest;
     )
 )]
 #[case(
-    "match (value) { Point { field: Some(x) } -> x, _ -> 0, }",
+    "match (value) { Point { field: Some((x, [y])) } -> x, _ -> 0, }",
     match_expr(
         var("value"),
         vec![
-            match_arm("Point { field: Some(x) }", var("x")),
+            match_arm("Point { field: Some((x, [y])) }", var("x")),
             match_arm("_", lit_num("0")),
+        ],
+    )
+)]
+#[case(
+    "match (x) { _ -> x, }",
+    match_expr(
+        var("x"),
+        vec![
+            match_arm("_", var("x")),
         ],
     )
 )]
@@ -318,11 +327,53 @@ fn reports_struct_literal_disallowed_in_if_condition() {
 #[case::match_missing_arrow("match (x) { _ => x }", 1)]
 #[case::match_missing_arm("match (x) {}", 1)]
 #[case::match_missing_paren("match x { _ -> x }", 1)]
+#[case::match_unmatched_paren("match (x) { ) -> x }", 1)]
+#[case::match_unmatched_brace("match (x) { } -> x }", 1)]
+#[case::match_unmatched_bracket("match (x) { ] -> x }", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
         Err(errs) => assert!(errs.len() >= min_errs),
     }
+}
+
+#[rstest]
+#[case(
+    "match (x) { ) -> x }",
+    "unmatched closing parenthesis in match pattern",
+    12,
+    13
+)]
+#[case(
+    "match (x) { ( } -> x }",
+    "unmatched closing brace in match pattern",
+    14,
+    15
+)]
+#[case(
+    "match (x) { ] -> x }",
+    "unmatched closing bracket in match pattern",
+    12,
+    13
+)]
+fn match_pattern_delimiter_errors(
+    #[case] src: &str,
+    #[case] msg: &str,
+    #[case] start: usize,
+    #[case] end: usize,
+) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    let Some(first) = errors.first() else {
+        panic!("error missing");
+    };
+    let rendered = format!("{first:?}");
+    assert!(
+        rendered.contains(msg),
+        "expected error to contain pattern '{msg}', got '{rendered}'",
+    );
+    assert_eq!(first.span(), start..end);
 }
 
 fn reports_exactly_one_error(src: &str) {

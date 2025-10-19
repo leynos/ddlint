@@ -250,14 +250,7 @@ impl Expr {
                 condition,
                 then_branch,
                 else_branch,
-            } => format_nary(
-                "if",
-                [
-                    condition.to_sexpr(),
-                    then_branch.to_sexpr(),
-                    else_branch.to_sexpr(),
-                ],
-            ),
+            } => format_if_else(condition, then_branch, else_branch),
             Self::Unary { op, expr } => format_nary(op.symbol(), std::iter::once(expr.to_sexpr())),
             Self::Binary { op, lhs, rhs } => {
                 format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
@@ -268,23 +261,8 @@ impl Expr {
                 iterable,
                 guard,
                 body,
-            } => {
-                let mut parts = vec![pattern.clone(), iterable.to_sexpr()];
-                if let Some(cond) = guard {
-                    parts.push(cond.to_sexpr());
-                }
-                parts.push(body.to_sexpr());
-                format_nary("for", parts)
-            }
-            Self::Match { scrutinee, arms } => {
-                let arm_parts = arms
-                    .iter()
-                    .map(|arm| format_nary("arm", [arm.pattern.clone(), arm.body.to_sexpr()]));
-                format_nary(
-                    "match",
-                    std::iter::once(scrutinee.to_sexpr()).chain(arm_parts),
-                )
-            }
+            } => format_for_loop(pattern, iterable, guard.as_deref(), body),
+            Self::Match { scrutinee, arms } => format_match(scrutinee, arms),
         }
     }
 }
@@ -315,4 +293,34 @@ where
     }
     out.push(')');
     out
+}
+
+fn format_if_else(condition: &Expr, then_branch: &Expr, else_branch: &Expr) -> String {
+    format_nary(
+        "if",
+        [
+            condition.to_sexpr(),
+            then_branch.to_sexpr(),
+            else_branch.to_sexpr(),
+        ],
+    )
+}
+
+fn format_for_loop(pattern: &str, iterable: &Expr, guard: Option<&Expr>, body: &Expr) -> String {
+    let mut parts = vec![pattern.to_string(), iterable.to_sexpr()];
+    if let Some(cond) = guard {
+        parts.push(cond.to_sexpr());
+    }
+    parts.push(body.to_sexpr());
+    format_nary("for", parts)
+}
+
+fn format_match(scrutinee: &Expr, arms: &[MatchArm]) -> String {
+    let arm_parts = arms
+        .iter()
+        .map(|arm| format_nary("arm", [arm.pattern.clone(), arm.body.to_sexpr()]));
+    format_nary(
+        "match",
+        std::iter::once(scrutinee.to_sexpr()).chain(arm_parts),
+    )
 }
