@@ -1,4 +1,7 @@
-//! Utilities for tracking delimiters while parsing composite prefix forms.
+//! Utilities for tracking delimiters whilst parsing composite prefix forms.
+//!
+//! Provides depth tracking for parentheses, braces, and brackets; validates
+//! delimiter balance; and extracts pattern text for `for` loop headers.
 
 use crate::{Span, SyntaxKind};
 
@@ -105,9 +108,18 @@ where
 
     /// Extracts and trims the binding pattern text from a `for` loop header.
     ///
-    /// Returns the trimmed binding and its span when present; otherwise emits
-    /// diagnostics anchored at the recorded span (or the `in` keyword when no
-    /// span exists) and returns `None`.
+    /// # Parameters
+    ///
+    /// - `start`: the starting position of the binding pattern, when tracked.
+    /// - `end`: the final byte offset of the binding pattern, when tracked.
+    /// - `in_span`: span of the `in` keyword used for diagnostics when the
+    ///   binding is missing or empty.
+    ///
+    /// # Returns
+    ///
+    /// `Some((trimmed_text, span))` when a non-empty binding was located;
+    /// `None` otherwise, after emitting diagnostics anchored to the recorded
+    /// span or the `in` keyword.
     pub(super) fn extract_pattern_text(
         &mut self,
         start: Option<usize>,

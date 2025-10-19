@@ -135,6 +135,10 @@ mod rule;
 mod transformer;
 mod type_def;
 
+/// Expression AST nodes and helpers used across tests and fixtures.
+///
+/// Re-exports [`MatchArm`] so callers can assemble match expressions without
+/// reaching into private modules.
 pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;
