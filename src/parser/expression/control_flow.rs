@@ -291,7 +291,18 @@ where
         )
     }
 
-    fn process_delimiter_token(
+    fn process_opening_delimiter(kind: SyntaxKind, span: &Span, state: &mut DelimiterState) {
+        let depth = match kind {
+            SyntaxKind::T_LPAREN => &mut state.paren_depth,
+            SyntaxKind::T_LBRACE => &mut state.brace_depth,
+            SyntaxKind::T_LBRACKET => &mut state.bracket_depth,
+            _ => unreachable!("process_opening_delimiter called with non-opening delimiter"),
+        };
+
+        Self::handle_open_delimiter(&mut state.start, &mut state.end, depth, span);
+    }
+
+    fn process_closing_delimiter(
         &mut self,
         kind: SyntaxKind,
         span: &Span,
@@ -299,14 +310,6 @@ where
         context: &PatternContext,
     ) -> Option<()> {
         match kind {
-            SyntaxKind::T_LPAREN => {
-                Self::handle_open_delimiter(
-                    &mut state.start,
-                    &mut state.end,
-                    &mut state.paren_depth,
-                    span,
-                );
-            }
             SyntaxKind::T_RPAREN => {
                 if context.use_for_paren {
                     let other_open = state.brace_depth > 0 || state.bracket_depth > 0;
@@ -323,14 +326,6 @@ where
                     state.end = Some(new_end);
                 }
             }
-            SyntaxKind::T_LBRACE => {
-                Self::handle_open_delimiter(
-                    &mut state.start,
-                    &mut state.end,
-                    &mut state.brace_depth,
-                    span,
-                );
-            }
             SyntaxKind::T_RBRACE => {
                 let new_end = self.handle_close_delimiter(
                     span,
@@ -339,14 +334,6 @@ where
                 )?;
                 state.end = Some(new_end);
             }
-            SyntaxKind::T_LBRACKET => {
-                Self::handle_open_delimiter(
-                    &mut state.start,
-                    &mut state.end,
-                    &mut state.bracket_depth,
-                    span,
-                );
-            }
             SyntaxKind::T_RBRACKET => {
                 let new_end = self.handle_close_delimiter(
                     span,
@@ -354,6 +341,26 @@ where
                     context.unmatched_bracket_msg,
                 )?;
                 state.end = Some(new_end);
+            }
+            _ => unreachable!("process_closing_delimiter called with non-closing delimiter"),
+        }
+
+        Some(())
+    }
+
+    fn process_delimiter_token(
+        &mut self,
+        kind: SyntaxKind,
+        span: &Span,
+        state: &mut DelimiterState,
+        context: &PatternContext,
+    ) -> Option<()> {
+        match kind {
+            SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACE | SyntaxKind::T_LBRACKET => {
+                Self::process_opening_delimiter(kind, span, state);
+            }
+            SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACE | SyntaxKind::T_RBRACKET => {
+                self.process_closing_delimiter(kind, span, state, context)?;
             }
             _ => {
                 state.start.get_or_insert(span.start);
