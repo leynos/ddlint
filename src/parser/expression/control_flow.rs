@@ -31,6 +31,17 @@ impl DelimiterState {
     }
 }
 
+/// Describes context-specific diagnostics for pattern collection.
+struct PatternContext {
+    missing_terminator_msg: &'static str,
+    unmatched_paren_msg: &'static str,
+    unmatched_brace_msg: &'static str,
+    unmatched_bracket_msg: &'static str,
+    unexpected_end_msg: &'static str,
+    validate_on_eof: bool,
+    use_for_paren: bool,
+}
+
 impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
@@ -120,14 +131,21 @@ where
             return None;
         }
 
-        let mut arms = Vec::new();
-        loop {
-            let arm = self.parse_single_match_arm()?;
-            arms.push(arm);
+        let first_arm = self.parse_single_match_arm()?;
+        let mut arms = Vec::with_capacity(1);
+        arms.push(first_arm);
 
+        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+            return Some(arms);
+        }
+
+        loop {
             if !self.should_continue_parsing_arms()? {
                 break;
             }
+
+            let arm = self.parse_single_match_arm()?;
+            arms.push(arm);
         }
 
         Some(arms)
@@ -184,44 +202,93 @@ where
         Some(())
     }
 
-    fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
+    fn collect_pattern_until<Terminator, PreCheck, Finalise>(
+        &mut self,
+        mut should_terminate: Terminator,
+        context: &PatternContext,
+        mut pre_check: PreCheck,
+        consume_terminator: bool,
+        finalise: Finalise,
+    ) -> Option<(String, Span)>
+    where
+        Terminator: FnMut(&Self, SyntaxKind, &DelimiterState) -> bool,
+        PreCheck: FnMut(&mut Self, SyntaxKind, &DelimiterState) -> Option<()>,
+        Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
+    {
         let mut state = DelimiterState::new();
         let mut last_span: Option<Span> = None;
 
         loop {
             let Some(kind) = self.ts.peek_kind() else {
-                self.ts
-                    .push_error(self.ts.eof_span(), "expected '->' in match arm");
+                if context.validate_on_eof
+                    && !self.validate_delimiter_balance(
+                        (state.paren_depth, state.brace_depth, state.bracket_depth),
+                        last_span.as_ref(),
+                    )
+                {
+                    return None;
+                }
+                self.ts.push_error(
+                    self.ts.eof_span(),
+                    context.missing_terminator_msg.to_string(),
+                );
                 return None;
             };
 
-            if self.should_terminate_at_arrow(kind, &state) {
-                break;
+            if should_terminate(&*self, kind, &state) {
+                if !self.validate_delimiter_balance(
+                    (state.paren_depth, state.brace_depth, state.bracket_depth),
+                    last_span.as_ref(),
+                ) {
+                    return None;
+                }
+
+                let terminator_span = if consume_terminator {
+                    let (_, span) = self
+                        .ts
+                        .next_tok()
+                        .unwrap_or_else(|| (kind, self.ts.eof_span()));
+                    span
+                } else {
+                    self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span())
+                };
+
+                return finalise(self, state, terminator_span);
             }
 
-            self.check_for_invalid_pattern_terminator(kind, &state)?;
+            pre_check(self, kind, &state)?;
 
             let Some((kind, span)) = self.ts.next_tok() else {
-                self.ts.push_error(
-                    self.ts.eof_span(),
-                    "unexpected end of input in match pattern",
-                );
+                self.ts
+                    .push_error(self.ts.eof_span(), context.unexpected_end_msg.to_string());
                 return None;
             };
             last_span = Some(span.clone());
 
-            self.process_delimiter_token(kind, &span, &mut state)?;
+            self.process_delimiter_token(kind, &span, &mut state, context)?;
         }
+    }
 
-        if !self.validate_delimiter_balance(
-            (state.paren_depth, state.brace_depth, state.bracket_depth),
-            last_span.as_ref(),
-        ) {
-            return None;
-        }
+    fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
+        let context = PatternContext {
+            missing_terminator_msg: "expected '->' in match arm",
+            unmatched_paren_msg: "unmatched closing parenthesis in match pattern",
+            unmatched_brace_msg: "unmatched closing brace in match pattern",
+            unmatched_bracket_msg: "unmatched closing bracket in match pattern",
+            unexpected_end_msg: "unexpected end of input in match pattern",
+            validate_on_eof: false,
+            use_for_paren: false,
+        };
 
-        let arrow_span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-        self.validate_pattern_text(state.start, state.end, arrow_span)
+        self.collect_pattern_until(
+            Self::should_terminate_at_arrow,
+            &context,
+            Self::check_for_invalid_pattern_terminator,
+            false,
+            |this, state, arrow_span| {
+                this.validate_pattern_text(state.start, state.end, arrow_span)
+            },
+        )
     }
 
     fn process_delimiter_token(
@@ -229,6 +296,7 @@ where
         kind: SyntaxKind,
         span: &Span,
         state: &mut DelimiterState,
+        context: &PatternContext,
     ) -> Option<()> {
         match kind {
             SyntaxKind::T_LPAREN => {
@@ -240,12 +308,20 @@ where
                 );
             }
             SyntaxKind::T_RPAREN => {
-                let new_end = self.handle_close_delimiter(
-                    span,
-                    &mut state.paren_depth,
-                    "unmatched closing parenthesis in match pattern",
-                )?;
-                state.end = Some(new_end);
+                if context.use_for_paren {
+                    let other_open = state.brace_depth > 0 || state.bracket_depth > 0;
+                    let (new_depth, new_end) =
+                        self.handle_close_paren(span, state.paren_depth, other_open)?;
+                    state.paren_depth = new_depth;
+                    state.end = Some(new_end);
+                } else {
+                    let new_end = self.handle_close_delimiter(
+                        span,
+                        &mut state.paren_depth,
+                        context.unmatched_paren_msg,
+                    )?;
+                    state.end = Some(new_end);
+                }
             }
             SyntaxKind::T_LBRACE => {
                 Self::handle_open_delimiter(
@@ -259,7 +335,7 @@ where
                 let new_end = self.handle_close_delimiter(
                     span,
                     &mut state.brace_depth,
-                    "unmatched closing brace in match pattern",
+                    context.unmatched_brace_msg,
                 )?;
                 state.end = Some(new_end);
             }
@@ -275,7 +351,7 @@ where
                 let new_end = self.handle_close_delimiter(
                     span,
                     &mut state.bracket_depth,
-                    "unmatched closing bracket in match pattern",
+                    context.unmatched_bracket_msg,
                 )?;
                 state.end = Some(new_end);
             }
@@ -368,69 +444,22 @@ where
     }
 
     fn collect_for_pattern(&mut self) -> Option<(String, Span)> {
-        let mut paren_depth = 0usize;
-        let mut brace_depth = 0usize;
-        let mut bracket_depth = 0usize;
-        let mut start = None;
-        let mut end = None;
-        let mut last_span: Option<Span> = None;
+        let context = PatternContext {
+            missing_terminator_msg: "expected 'in' in for-loop header",
+            unmatched_paren_msg: "unmatched closing parenthesis in for-loop pattern",
+            unmatched_brace_msg: "unmatched closing brace in for-loop pattern",
+            unmatched_bracket_msg: "unmatched closing bracket in for-loop pattern",
+            unexpected_end_msg: "unexpected end of input in for-loop pattern",
+            validate_on_eof: true,
+            use_for_paren: true,
+        };
 
-        while let Some((kind, span)) = self.ts.next_tok() {
-            last_span = Some(span.clone());
-            match kind {
-                SyntaxKind::K_IN
-                    if Self::is_at_top_level(paren_depth, brace_depth, bracket_depth) =>
-                {
-                    return self.extract_pattern_text(start, end, span);
-                }
-                SyntaxKind::T_LPAREN => {
-                    Self::handle_open_delimiter(&mut start, &mut end, &mut paren_depth, &span);
-                }
-                SyntaxKind::T_RPAREN => {
-                    let (new_depth, new_end) = self.handle_close_paren(
-                        &span,
-                        paren_depth,
-                        brace_depth > 0 || bracket_depth > 0,
-                    )?;
-                    paren_depth = new_depth;
-                    end = Some(new_end);
-                }
-                SyntaxKind::T_LBRACE => {
-                    Self::handle_open_delimiter(&mut start, &mut end, &mut brace_depth, &span);
-                }
-                SyntaxKind::T_RBRACE => {
-                    end = Some(self.handle_close_delimiter(
-                        &span,
-                        &mut brace_depth,
-                        "unmatched closing brace in for-loop pattern",
-                    )?);
-                }
-                SyntaxKind::T_LBRACKET => {
-                    Self::handle_open_delimiter(&mut start, &mut end, &mut bracket_depth, &span);
-                }
-                SyntaxKind::T_RBRACKET => {
-                    end = Some(self.handle_close_delimiter(
-                        &span,
-                        &mut bracket_depth,
-                        "unmatched closing bracket in for-loop pattern",
-                    )?);
-                }
-                _ => {
-                    start.get_or_insert(span.start);
-                    end = Some(span.end);
-                }
-            }
-        }
-
-        if !self.validate_delimiter_balance(
-            (paren_depth, brace_depth, bracket_depth),
-            last_span.as_ref(),
-        ) {
-            return None;
-        }
-
-        self.ts
-            .push_error(self.ts.eof_span(), "expected 'in' in for-loop header");
-        None
+        self.collect_pattern_until(
+            |_, kind, state| kind == SyntaxKind::K_IN && state.is_at_top_level(),
+            &context,
+            |_, _, _| Some(()),
+            true,
+            |this, state, in_span| this.extract_pattern_text(state.start, state.end, in_span),
+        )
     }
 }
