@@ -110,16 +110,16 @@ where
     ///
     /// # Parameters
     ///
-    /// - `start`: the starting position of the binding pattern, when tracked.
-    /// - `end`: the final byte offset of the binding pattern, when tracked.
-    /// - `in_span`: span of the `in` keyword used for diagnostics when the
+    /// - `start`: the starting position of the binding pattern, if recorded.
+    /// - `end`: the ending position of the binding pattern, if recorded.
+    /// - `in_span`: the span of the `in` keyword; used for diagnostics when the
     ///   binding is missing or empty.
     ///
     /// # Returns
     ///
-    /// `Some((trimmed_text, span))` when a non-empty binding was located;
-    /// `None` otherwise, after emitting diagnostics anchored to the recorded
-    /// span or the `in` keyword.
+    /// `Some((trimmed_text, span))` when a non-empty binding was found; `None`
+    /// when the binding is missing or empty (emitting diagnostics in both
+    /// cases).
     pub(super) fn extract_pattern_text(
         &mut self,
         start: Option<usize>,
