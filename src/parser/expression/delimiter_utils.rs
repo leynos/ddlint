@@ -107,19 +107,19 @@ where
             && self.validate_single_delimiter(bracket_depth, "bracket", last_span)
     }
 
-    /// Extracts and trims the binding pattern text from a `for`-loop header.
+    /// Extracts and trims the binding pattern text from a for-loop header.
     ///
     /// # Parameters
     ///
-    /// - `start`: the starting offset of the binding pattern, if recorded.
-    /// - `end`: the ending offset of the binding pattern, if recorded.
-    /// - `in_span`: the span of the `in` keyword; used for diagnostics when the
-    ///   binding is missing or empty.
+    /// - `start`: the starting position of the binding pattern, if recorded.
+    /// - `end`: the ending position of the binding pattern, if recorded.
+    /// - `in_span`: the span of the 'in' keyword; used for error reporting if
+    ///   the binding is missing or empty.
     ///
     /// # Returns
     ///
-    /// `Some((trimmed_text, span))` when a non-empty binding was found; `None`
-    /// when the binding is missing or empty (emitting diagnostics in both
+    /// `Some((trimmed_text, span))` if a non-empty binding pattern was found;
+    /// `None` if the binding is missing or empty (errors are emitted in both
     /// cases).
     pub(super) fn extract_pattern_text(
         &mut self,
