@@ -166,6 +166,24 @@ where
         }
     }
 
+    fn should_terminate_at_arrow(&self, kind: SyntaxKind, state: &DelimiterState) -> bool {
+        let _ = self;
+        kind == SyntaxKind::T_ARROW && state.is_at_top_level()
+    }
+
+    fn check_for_invalid_pattern_terminator(
+        &mut self,
+        kind: SyntaxKind,
+        state: &DelimiterState,
+    ) -> Option<()> {
+        if state.is_at_top_level() && matches!(kind, SyntaxKind::T_RBRACE | SyntaxKind::T_COMMA) {
+            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, "expected '->' in match arm");
+            return None;
+        }
+        Some(())
+    }
+
     fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
         let mut state = DelimiterState::new();
         let mut last_span: Option<Span> = None;
@@ -177,16 +195,11 @@ where
                 return None;
             };
 
-            if kind == SyntaxKind::T_ARROW && state.is_at_top_level() {
+            if self.should_terminate_at_arrow(kind, &state) {
                 break;
             }
 
-            if state.is_at_top_level() && matches!(kind, SyntaxKind::T_RBRACE | SyntaxKind::T_COMMA)
-            {
-                let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-                self.ts.push_error(span, "expected '->' in match arm");
-                return None;
-            }
+            self.check_for_invalid_pattern_terminator(kind, &state)?;
 
             let Some((kind, span)) = self.ts.next_tok() else {
                 self.ts.push_error(
