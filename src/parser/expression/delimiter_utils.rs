@@ -92,9 +92,10 @@ where
     /// Validates that parenthesis, brace, and bracket depths have all returned
     /// to zero.
     ///
-    /// Returns `true` when every delimiter type is balanced; otherwise emits a
-    /// diagnostic anchored at the most recent span (or EOF) and returns
-    /// `false`.
+    /// `true` if all delimiters are balanced (all depths are zero); `false` if
+    /// any are unmatched.
+    /// Emits diagnostics anchored at the most recent span (or EOF) when
+    /// imbalance is detected.
     pub(super) fn validate_delimiter_balance(
         &mut self,
         depths: (usize, usize, usize),
@@ -106,12 +107,12 @@ where
             && self.validate_single_delimiter(bracket_depth, "bracket", last_span)
     }
 
-    /// Extracts and trims the binding pattern text from a `for` loop header.
+    /// Extracts and trims the binding pattern text from a `for`-loop header.
     ///
     /// # Parameters
     ///
-    /// - `start`: the starting position of the binding pattern, if recorded.
-    /// - `end`: the ending position of the binding pattern, if recorded.
+    /// - `start`: the starting offset of the binding pattern, if recorded.
+    /// - `end`: the ending offset of the binding pattern, if recorded.
     /// - `in_span`: the span of the `in` keyword; used for diagnostics when the
     ///   binding is missing or empty.
     ///
