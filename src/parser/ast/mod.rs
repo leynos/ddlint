@@ -4,6 +4,10 @@
 //! These wrappers expose typed navigation over the CST produced by the parser.
 //! They stay intentionally small so that higher layers can interact with the
 //! tree without depending on a fully fledged semantic model.
+//!
+//! The façade re-exports expression helpers, including [`MatchArm`], so tests
+//! and fixtures can assemble match expressions without dipping into private
+//! modules.
 
 use rowan::SyntaxElement;
 
