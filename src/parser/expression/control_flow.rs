@@ -95,6 +95,21 @@ impl<Finalise> TerminationHandler<Finalise> {
     }
 }
 
+/// Complete configuration for pattern collection including strategy and context.
+struct PatternCollectionConfig<Terminator, PreCheck, Finalise> {
+    strategy: PatternCollectionStrategy<Terminator, PreCheck, Finalise>,
+    context: PatternContext,
+}
+
+impl<Terminator, PreCheck, Finalise> PatternCollectionConfig<Terminator, PreCheck, Finalise> {
+    fn new(
+        strategy: PatternCollectionStrategy<Terminator, PreCheck, Finalise>,
+        context: PatternContext,
+    ) -> Self {
+        Self { strategy, context }
+    }
+}
+
 impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
@@ -314,14 +329,14 @@ where
 
     fn collect_pattern_until<Terminator, PreCheck, Finalise>(
         &mut self,
-        strategy: PatternCollectionStrategy<Terminator, PreCheck, Finalise>,
-        context: &PatternContext,
+        config: PatternCollectionConfig<Terminator, PreCheck, Finalise>,
     ) -> Option<(String, Span)>
     where
         Terminator: FnMut(&Self, SyntaxKind, &DelimiterState) -> bool,
         PreCheck: FnMut(&mut Self, SyntaxKind, &DelimiterState) -> Option<()>,
         Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
     {
+        let PatternCollectionConfig { strategy, context } = config;
         let PatternCollectionStrategy {
             mut should_terminate,
             mut pre_check,
@@ -335,7 +350,7 @@ where
 
         loop {
             let Some(kind) = self.ts.peek_kind() else {
-                return self.handle_eof_in_pattern_collection(&state, last_span.as_ref(), context);
+                return self.handle_eof_in_pattern_collection(&state, last_span.as_ref(), &context);
             };
 
             if should_terminate(&*self, kind, &state) {
@@ -359,7 +374,7 @@ where
             last_span = Some(span.clone());
 
             let token = DelimiterToken::new(kind, span);
-            self.process_delimiter_token(&token, &mut state, context)?;
+            self.process_delimiter_token(&token, &mut state, &context)?;
         }
     }
 
@@ -374,7 +389,7 @@ where
             use_for_paren: false,
         };
 
-        self.collect_pattern_until(
+        self.collect_pattern_until(PatternCollectionConfig::new(
             PatternCollectionStrategy::new(
                 Self::should_terminate_at_arrow,
                 Self::check_for_invalid_pattern_terminator,
@@ -383,8 +398,8 @@ where
                     this.validate_pattern_text(state.start, state.end, arrow_span)
                 },
             ),
-            &context,
-        )
+            context,
+        ))
     }
 
     fn process_opening_delimiter(kind: SyntaxKind, span: &Span, state: &mut DelimiterState) {
@@ -559,7 +574,7 @@ where
             use_for_paren: true,
         };
 
-        self.collect_pattern_until(
+        self.collect_pattern_until(PatternCollectionConfig::new(
             PatternCollectionStrategy::new(
                 |_this: &Self, kind, state: &DelimiterState| {
                     kind == SyntaxKind::K_IN && state.is_at_top_level()
@@ -570,7 +585,7 @@ where
                     this.extract_pattern_text(state.start, state.end, in_span)
                 },
             ),
-            &context,
-        )
+            context,
+        ))
     }
 }
