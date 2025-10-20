@@ -11,6 +11,11 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
+    /// Determines whether all delimiter depths are at the top level (zero).
+    ///
+    /// # Returns
+    ///
+    /// `true` if all delimiter depths are zero; `false` otherwise.
     pub(super) fn is_at_top_level(
         paren_depth: usize,
         brace_depth: usize,
@@ -19,6 +24,10 @@ where
         paren_depth == 0 && brace_depth == 0 && bracket_depth == 0
     }
 
+    /// Records the first and most recent span for an opening delimiter.
+    ///
+    /// Increments the provided depth counter and captures the start and end of
+    /// the delimiter so later diagnostics can refer to the original location.
     pub(super) fn handle_open_delimiter(
         start: &mut Option<usize>,
         end: &mut Option<usize>,
@@ -30,6 +39,11 @@ where
         *end = Some(span.end);
     }
 
+    /// Applies delimiter depth tracking for a closing token.
+    ///
+    /// Returns the span end when the closing token matches an outstanding
+    /// delimiter. Emits a diagnostic and returns `None` when the close is
+    /// unmatched.
     pub(super) fn handle_close_delimiter(
         &mut self,
         span: &Span,

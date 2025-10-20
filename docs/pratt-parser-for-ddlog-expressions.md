@@ -384,6 +384,15 @@ This way, we get the best of both worlds:
   which can be used for linting rules that care about formatting, or for
   reliable autofixing.
 
+### Public AST helpers
+
+Integration and fixture code build Pratt parser expectations through the
+`parser::ast` façade. The module now re-exports `MatchArm` alongside `Expr` so
+callers can construct match expressions without reaching into the private
+layout of `ast::expr`. Tests should continue using the helpers in `test_util`
+for common patterns, but direct use of `MatchArm` is available whenever bespoke
+arm construction is clearer than chaining builders.
+
 The typed AST wrapper for this new node would look something like this:
 
 ```rust
