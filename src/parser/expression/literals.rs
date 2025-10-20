@@ -21,7 +21,7 @@ where
                 let value = raw
                     .strip_prefix('"')
                     .and_then(|s| s.strip_suffix('"'))
-                    .expect("lexer ensures T_STRING tokens are quoted")
+                    .expect("tokenizer guarantees T_STRING tokens are quoted")
                     .to_string();
                 Some(Expr::Literal(Literal::String(value)))
             }
