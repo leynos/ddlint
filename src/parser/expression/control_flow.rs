@@ -415,11 +415,13 @@ where
 
     fn process_closing_delimiter(
         &mut self,
-        kind: SyntaxKind,
-        span: &Span,
+        token: &DelimiterToken,
         state: &mut DelimiterState,
         context: &PatternContext,
     ) -> Option<()> {
+        let kind = token.kind;
+        let span = &token.span;
+
         match kind {
             SyntaxKind::T_RPAREN => {
                 if context.use_for_paren {
@@ -473,7 +475,7 @@ where
                 Self::process_opening_delimiter(kind, span, state);
             }
             SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACE | SyntaxKind::T_RBRACKET => {
-                self.process_closing_delimiter(kind, span, state, context)?;
+                self.process_closing_delimiter(token, state, context)?;
             }
             _ => {
                 state.start.get_or_insert(span.start);
