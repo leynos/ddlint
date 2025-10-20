@@ -66,6 +66,23 @@ impl<Terminator, PreCheck, Finalise> PatternCollectionStrategy<Terminator, PreCh
     }
 }
 
+/// Encapsulates termination handling for pattern collection.
+struct TerminationHandler<Finalise> {
+    kind: SyntaxKind,
+    consume_terminator: bool,
+    finalise: Finalise,
+}
+
+impl<Finalise> TerminationHandler<Finalise> {
+    fn new(kind: SyntaxKind, consume_terminator: bool, finalise: Finalise) -> Self {
+        Self {
+            kind,
+            consume_terminator,
+            finalise,
+        }
+    }
+}
+
 impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
@@ -250,15 +267,19 @@ where
 
     fn handle_pattern_termination<Finalise>(
         &mut self,
-        kind: SyntaxKind,
+        handler: TerminationHandler<Finalise>,
         state: DelimiterState,
         last_span: Option<&Span>,
-        consume_terminator: bool,
-        finalise: Finalise,
     ) -> Option<(String, Span)>
     where
         Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
     {
+        let TerminationHandler {
+            kind,
+            consume_terminator,
+            finalise,
+        } = handler;
+
         if !self.validate_delimiter_balance(
             (state.paren_depth, state.brace_depth, state.bracket_depth),
             last_span,
@@ -276,7 +297,7 @@ where
             self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span())
         };
 
-        finalise(self, state, terminator_span)
+        (finalise)(self, state, terminator_span)
     }
 
     fn collect_pattern_until<Terminator, PreCheck, Finalise>(
@@ -310,11 +331,9 @@ where
                     unreachable!("pattern finaliser already consumed");
                 };
                 return self.handle_pattern_termination(
-                    kind,
+                    TerminationHandler::new(kind, consume_terminator, finalise),
                     state,
                     last_span.as_ref(),
-                    consume_terminator,
-                    finalise,
                 );
             }
 
