@@ -202,6 +202,59 @@ where
         Some(())
     }
 
+    fn handle_eof_in_pattern_collection(
+        &mut self,
+        state: &DelimiterState,
+        last_span: Option<&Span>,
+        context: &PatternContext,
+    ) -> Option<(String, Span)> {
+        if context.validate_on_eof
+            && !self.validate_delimiter_balance(
+                (state.paren_depth, state.brace_depth, state.bracket_depth),
+                last_span,
+            )
+        {
+            return None;
+        }
+
+        self.ts.push_error(
+            self.ts.eof_span(),
+            context.missing_terminator_msg.to_string(),
+        );
+        None
+    }
+
+    fn handle_pattern_termination<Finalise>(
+        &mut self,
+        kind: SyntaxKind,
+        state: DelimiterState,
+        last_span: Option<&Span>,
+        consume_terminator: bool,
+        finalise: Finalise,
+    ) -> Option<(String, Span)>
+    where
+        Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
+    {
+        if !self.validate_delimiter_balance(
+            (state.paren_depth, state.brace_depth, state.bracket_depth),
+            last_span,
+        ) {
+            return None;
+        }
+
+        let terminator_span = if consume_terminator {
+            let (_, span) = self
+                .ts
+                .next_tok()
+                .unwrap_or_else(|| (kind, self.ts.eof_span()));
+            span
+        } else {
+            self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span())
+        };
+
+        finalise(self, state, terminator_span)
+    }
+
     fn collect_pattern_until<Terminator, PreCheck, Finalise>(
         &mut self,
         mut should_terminate: Terminator,
@@ -220,40 +273,17 @@ where
 
         loop {
             let Some(kind) = self.ts.peek_kind() else {
-                if context.validate_on_eof
-                    && !self.validate_delimiter_balance(
-                        (state.paren_depth, state.brace_depth, state.bracket_depth),
-                        last_span.as_ref(),
-                    )
-                {
-                    return None;
-                }
-                self.ts.push_error(
-                    self.ts.eof_span(),
-                    context.missing_terminator_msg.to_string(),
-                );
-                return None;
+                return self.handle_eof_in_pattern_collection(&state, last_span.as_ref(), context);
             };
 
             if should_terminate(&*self, kind, &state) {
-                if !self.validate_delimiter_balance(
-                    (state.paren_depth, state.brace_depth, state.bracket_depth),
+                return self.handle_pattern_termination(
+                    kind,
+                    state,
                     last_span.as_ref(),
-                ) {
-                    return None;
-                }
-
-                let terminator_span = if consume_terminator {
-                    let (_, span) = self
-                        .ts
-                        .next_tok()
-                        .unwrap_or_else(|| (kind, self.ts.eof_span()));
-                    span
-                } else {
-                    self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span())
-                };
-
-                return finalise(self, state, terminator_span);
+                    consume_terminator,
+                    finalise,
+                );
             }
 
             pre_check(self, kind, &state)?;
