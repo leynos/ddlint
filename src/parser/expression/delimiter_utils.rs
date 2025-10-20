@@ -158,6 +158,10 @@ where
 
     /// Extracts and trims the binding pattern text from a for-loop header.
     ///
+    /// The method uses the recorded start and end offsets captured whilst
+    /// scanning delimiters to slice the original source text before trimming
+    /// surrounding whitespace.
+    ///
     /// # Parameters
     ///
     /// - `start`: the starting position of the binding pattern, if recorded.

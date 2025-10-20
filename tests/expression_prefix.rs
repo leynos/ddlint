@@ -34,6 +34,26 @@ use rstest::rstest;
     match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
 )]
 #[case(
+    "match (flag) { true -> false, false -> true }",
+    match_expr(
+        var("flag"),
+        vec![
+            match_arm("true", lit_bool(false)),
+            match_arm("false", lit_bool(true)),
+        ],
+    ),
+)]
+#[case(
+    "match (flag) { true -> false, false -> true, }",
+    match_expr(
+        var("flag"),
+        vec![
+            match_arm("true", lit_bool(false)),
+            match_arm("false", lit_bool(true)),
+        ],
+    ),
+)]
+#[case(
     "match (item) { Some(x) -> x, _ -> 0 }",
     match_expr(
         var("item"),
