@@ -42,6 +42,30 @@ struct PatternContext {
     use_for_paren: bool,
 }
 
+/// Encapsulates the collection strategy for pattern parsing.
+struct PatternCollectionStrategy<Terminator, PreCheck, Finalise> {
+    should_terminate: Terminator,
+    pre_check: PreCheck,
+    consume_terminator: bool,
+    finalise: Finalise,
+}
+
+impl<Terminator, PreCheck, Finalise> PatternCollectionStrategy<Terminator, PreCheck, Finalise> {
+    fn new(
+        should_terminate: Terminator,
+        pre_check: PreCheck,
+        consume_terminator: bool,
+        finalise: Finalise,
+    ) -> Self {
+        Self {
+            should_terminate,
+            pre_check,
+            consume_terminator,
+            finalise,
+        }
+    }
+}
+
 impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
@@ -257,17 +281,22 @@ where
 
     fn collect_pattern_until<Terminator, PreCheck, Finalise>(
         &mut self,
-        mut should_terminate: Terminator,
+        strategy: PatternCollectionStrategy<Terminator, PreCheck, Finalise>,
         context: &PatternContext,
-        mut pre_check: PreCheck,
-        consume_terminator: bool,
-        finalise: Finalise,
     ) -> Option<(String, Span)>
     where
         Terminator: FnMut(&Self, SyntaxKind, &DelimiterState) -> bool,
         PreCheck: FnMut(&mut Self, SyntaxKind, &DelimiterState) -> Option<()>,
         Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
     {
+        let PatternCollectionStrategy {
+            mut should_terminate,
+            mut pre_check,
+            consume_terminator,
+            finalise,
+        } = strategy;
+        let mut finalise_fn = Some(finalise);
+
         let mut state = DelimiterState::new();
         let mut last_span: Option<Span> = None;
 
@@ -277,6 +306,9 @@ where
             };
 
             if should_terminate(&*self, kind, &state) {
+                let Some(finalise) = finalise_fn.take() else {
+                    unreachable!("pattern finaliser already consumed");
+                };
                 return self.handle_pattern_termination(
                     kind,
                     state,
@@ -295,7 +327,7 @@ where
             };
             last_span = Some(span.clone());
 
-            self.process_delimiter_token(kind, &span, &mut state, context)?;
+            self.process_delimiter_token((kind, span.clone()), &mut state, context)?;
         }
     }
 
@@ -311,13 +343,15 @@ where
         };
 
         self.collect_pattern_until(
-            Self::should_terminate_at_arrow,
+            PatternCollectionStrategy::new(
+                Self::should_terminate_at_arrow,
+                Self::check_for_invalid_pattern_terminator,
+                false,
+                |this: &mut Self, state: DelimiterState, arrow_span: Span| {
+                    this.validate_pattern_text(state.start, state.end, arrow_span)
+                },
+            ),
             &context,
-            Self::check_for_invalid_pattern_terminator,
-            false,
-            |this, state, arrow_span| {
-                this.validate_pattern_text(state.start, state.end, arrow_span)
-            },
         )
     }
 
@@ -380,17 +414,18 @@ where
 
     fn process_delimiter_token(
         &mut self,
-        kind: SyntaxKind,
-        span: &Span,
+        token: (SyntaxKind, Span),
         state: &mut DelimiterState,
         context: &PatternContext,
     ) -> Option<()> {
+        let (kind, span) = token;
+
         match kind {
             SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACE | SyntaxKind::T_LBRACKET => {
-                Self::process_opening_delimiter(kind, span, state);
+                Self::process_opening_delimiter(kind, &span, state);
             }
             SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACE | SyntaxKind::T_RBRACKET => {
-                self.process_closing_delimiter(kind, span, state, context)?;
+                self.process_closing_delimiter(kind, &span, state, context)?;
             }
             _ => {
                 state.start.get_or_insert(span.start);
@@ -492,11 +527,17 @@ where
         };
 
         self.collect_pattern_until(
-            |_, kind, state| kind == SyntaxKind::K_IN && state.is_at_top_level(),
+            PatternCollectionStrategy::new(
+                |_this: &Self, kind, state: &DelimiterState| {
+                    kind == SyntaxKind::K_IN && state.is_at_top_level()
+                },
+                |_this: &mut Self, _kind: SyntaxKind, _state: &DelimiterState| Some(()),
+                true,
+                |this: &mut Self, state: DelimiterState, in_span: Span| {
+                    this.extract_pattern_text(state.start, state.end, in_span)
+                },
+            ),
             &context,
-            |_, _, _| Some(()),
-            true,
-            |this, state, in_span| this.extract_pattern_text(state.start, state.end, in_span),
         )
     }
 }
