@@ -66,6 +66,18 @@ impl<Terminator, PreCheck, Finalise> PatternCollectionStrategy<Terminator, PreCh
     }
 }
 
+/// A token being processed during delimiter tracking.
+struct DelimiterToken {
+    kind: SyntaxKind,
+    span: Span,
+}
+
+impl DelimiterToken {
+    fn new(kind: SyntaxKind, span: Span) -> Self {
+        Self { kind, span }
+    }
+}
+
 /// Encapsulates termination handling for pattern collection.
 struct TerminationHandler<Finalise> {
     kind: SyntaxKind,
@@ -346,7 +358,8 @@ where
             };
             last_span = Some(span.clone());
 
-            self.process_delimiter_token((kind, span.clone()), &mut state, context)?;
+            let token = DelimiterToken::new(kind, span);
+            self.process_delimiter_token(&token, &mut state, context)?;
         }
     }
 
@@ -433,18 +446,19 @@ where
 
     fn process_delimiter_token(
         &mut self,
-        token: (SyntaxKind, Span),
+        token: &DelimiterToken,
         state: &mut DelimiterState,
         context: &PatternContext,
     ) -> Option<()> {
-        let (kind, span) = token;
+        let kind = token.kind;
+        let span = &token.span;
 
         match kind {
             SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACE | SyntaxKind::T_LBRACKET => {
-                Self::process_opening_delimiter(kind, &span, state);
+                Self::process_opening_delimiter(kind, span, state);
             }
             SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACE | SyntaxKind::T_RBRACKET => {
-                self.process_closing_delimiter(kind, &span, state, context)?;
+                self.process_closing_delimiter(kind, span, state, context)?;
             }
             _ => {
                 state.start.get_or_insert(span.start);
