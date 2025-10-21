@@ -45,6 +45,32 @@ pub(super) struct PatternContext {
     pub(super) use_for_paren: bool,
 }
 
+impl PatternContext {
+    pub(super) fn for_match_pattern() -> Self {
+        Self {
+            missing_terminator_msg: "expected '->' in match arm",
+            unmatched_paren_msg: "unmatched closing parenthesis in match pattern",
+            unmatched_brace_msg: "unmatched closing brace in match pattern",
+            unmatched_bracket_msg: "unmatched closing bracket in match pattern",
+            unexpected_end_msg: "unexpected end of input in match pattern",
+            validate_on_eof: false,
+            use_for_paren: false,
+        }
+    }
+
+    pub(super) fn for_for_loop_pattern() -> Self {
+        Self {
+            missing_terminator_msg: "expected 'in' in for-loop header",
+            unmatched_paren_msg: "unmatched closing parenthesis in for-loop pattern",
+            unmatched_brace_msg: "unmatched closing brace in for-loop pattern",
+            unmatched_bracket_msg: "unmatched closing bracket in for-loop pattern",
+            unexpected_end_msg: "unexpected end of input in for-loop pattern",
+            validate_on_eof: true,
+            use_for_paren: true,
+        }
+    }
+}
+
 /// Encapsulates the collection strategy for pattern parsing.
 struct PatternCollectionStrategy<Terminator, PreCheck, Finalise> {
     should_terminate: Terminator,
@@ -118,16 +144,6 @@ where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
-        let context = PatternContext {
-            missing_terminator_msg: "expected '->' in match arm",
-            unmatched_paren_msg: "unmatched closing parenthesis in match pattern",
-            unmatched_brace_msg: "unmatched closing brace in match pattern",
-            unmatched_bracket_msg: "unmatched closing bracket in match pattern",
-            unexpected_end_msg: "unexpected end of input in match pattern",
-            validate_on_eof: false,
-            use_for_paren: false,
-        };
-
         self.collect_pattern_until(PatternCollectionConfig::new(
             PatternCollectionStrategy::new(
                 Self::should_terminate_at_arrow,
@@ -137,21 +153,11 @@ where
                     this.validate_pattern_text(state.start, state.end, arrow_span)
                 },
             ),
-            context,
+            PatternContext::for_match_pattern(),
         ))
     }
 
     pub(super) fn collect_for_pattern(&mut self) -> Option<(String, Span)> {
-        let context = PatternContext {
-            missing_terminator_msg: "expected 'in' in for-loop header",
-            unmatched_paren_msg: "unmatched closing parenthesis in for-loop pattern",
-            unmatched_brace_msg: "unmatched closing brace in for-loop pattern",
-            unmatched_bracket_msg: "unmatched closing bracket in for-loop pattern",
-            unexpected_end_msg: "unexpected end of input in for-loop pattern",
-            validate_on_eof: true,
-            use_for_paren: true,
-        };
-
         self.collect_pattern_until(PatternCollectionConfig::new(
             PatternCollectionStrategy::new(
                 |_this: &Self, kind, state: &DelimiterState| {
@@ -163,7 +169,7 @@ where
                     this.extract_pattern_text(state.start, state.end, in_span)
                 },
             ),
-            context,
+            PatternContext::for_for_loop_pattern(),
         ))
     }
 
