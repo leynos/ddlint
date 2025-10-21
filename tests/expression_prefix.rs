@@ -29,6 +29,7 @@ use rstest::rstest;
     "match (flag) { true -> 1 }",
     match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
 )]
+// Guard against the single-arm fast path skipping trailing-comma validation.
 #[case(
     "match (flag) { true -> 1, }",
     match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
