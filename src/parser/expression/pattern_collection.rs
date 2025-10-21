@@ -46,28 +46,51 @@ pub(super) struct PatternContext {
 }
 
 impl PatternContext {
-    pub(super) fn for_match_pattern() -> Self {
+    fn new(
+        pattern_type: &'static str,
+        missing_terminator_msg: &'static str,
+        validate_on_eof: bool,
+        use_for_paren: bool,
+    ) -> Self {
+        let (unmatched_paren_msg, unmatched_brace_msg, unmatched_bracket_msg, unexpected_end_msg) =
+            match pattern_type {
+                "match pattern" => (
+                    "unmatched closing parenthesis in match pattern",
+                    "unmatched closing brace in match pattern",
+                    "unmatched closing bracket in match pattern",
+                    "unexpected end of input in match pattern",
+                ),
+                "for-loop pattern" => (
+                    "unmatched closing parenthesis in for-loop pattern",
+                    "unmatched closing brace in for-loop pattern",
+                    "unmatched closing bracket in for-loop pattern",
+                    "unexpected end of input in for-loop pattern",
+                ),
+                _ => unreachable!("unknown pattern context: {pattern_type}"),
+            };
+
         Self {
-            missing_terminator_msg: "expected '->' in match arm",
-            unmatched_paren_msg: "unmatched closing parenthesis in match pattern",
-            unmatched_brace_msg: "unmatched closing brace in match pattern",
-            unmatched_bracket_msg: "unmatched closing bracket in match pattern",
-            unexpected_end_msg: "unexpected end of input in match pattern",
-            validate_on_eof: false,
-            use_for_paren: false,
+            missing_terminator_msg,
+            unmatched_paren_msg,
+            unmatched_brace_msg,
+            unmatched_bracket_msg,
+            unexpected_end_msg,
+            validate_on_eof,
+            use_for_paren,
         }
     }
 
+    pub(super) fn for_match_pattern() -> Self {
+        Self::new("match pattern", "expected '->' in match arm", false, false)
+    }
+
     pub(super) fn for_for_loop_pattern() -> Self {
-        Self {
-            missing_terminator_msg: "expected 'in' in for-loop header",
-            unmatched_paren_msg: "unmatched closing parenthesis in for-loop pattern",
-            unmatched_brace_msg: "unmatched closing brace in for-loop pattern",
-            unmatched_bracket_msg: "unmatched closing bracket in for-loop pattern",
-            unexpected_end_msg: "unexpected end of input in for-loop pattern",
-            validate_on_eof: true,
-            use_for_paren: true,
-        }
+        Self::new(
+            "for-loop pattern",
+            "expected 'in' in for-loop header",
+            true,
+            true,
+        )
     }
 }
 
