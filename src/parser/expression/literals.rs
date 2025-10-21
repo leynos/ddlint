@@ -9,6 +9,23 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
+    /// Parses a recognised literal token into an `Expr::Literal` node.
+    ///
+    /// # Parameters
+    /// - `kind`: The syntax kind returned by the lexer for the current token.
+    /// - `span`: The span identifying where the literal appears in the source.
+    ///
+    /// # Returns
+    /// Returns `Some(Expr)` when the token kind represents a literal supported by
+    /// the Pratt parser, or `None` when the token does not correspond to a
+    /// literal expression.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let span = Span::new(0, 4);
+    /// let expr = parser.parse_literal(SyntaxKind::K_TRUE, &span);
+    /// assert!(matches!(expr, Some(Expr::Literal(_))));
+    /// ```
     #[expect(
         clippy::expect_used,
         reason = "the lexer enforces quoted string tokens"
