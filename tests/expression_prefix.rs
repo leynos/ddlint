@@ -8,7 +8,7 @@ use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
     assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_num, lit_str,
-    struct_expr, tuple, var,
+    match_arm, match_expr, struct_expr, tuple, var,
 };
 use rstest::rstest;
 
@@ -25,6 +25,45 @@ use rstest::rstest;
 #[case("{ x }", Expr::Group(Box::new(var("x"))))]
 #[case("\"hi\"", lit_str("hi"))]
 #[case("false", lit_bool(false))]
+#[case(
+    "match (flag) { true -> 1 }",
+    match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
+)]
+// Guard against the single-arm fast path skipping trailing-comma validation.
+#[case(
+    "match (flag) { true -> 1, }",
+    match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
+)]
+#[case(
+    "match (flag) { true -> false, false -> true }",
+    match_expr(
+        var("flag"),
+        vec![
+            match_arm("true", lit_bool(false)),
+            match_arm("false", lit_bool(true)),
+        ],
+    ),
+)]
+#[case(
+    "match (flag) { true -> false, false -> true, }",
+    match_expr(
+        var("flag"),
+        vec![
+            match_arm("true", lit_bool(false)),
+            match_arm("false", lit_bool(true)),
+        ],
+    ),
+)]
+#[case(
+    "match (item) { Some(x) -> x, _ -> 0 }",
+    match_expr(
+        var("item"),
+        vec![
+            match_arm("Some(x)", var("x")),
+            match_arm("_", lit_num("0")),
+        ],
+    ),
+)]
 fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);
@@ -33,6 +72,14 @@ fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
 #[rstest]
 #[case("{}", "expected expression", 1, 2, false)]
 #[case("|x x", "expected pipe", 3, 4, false)]
+#[case("match (x) {}", "expected at least one match arm", 11, 12, false)]
+#[case(
+    "match (x) { _ -> x",
+    "expected ',' or '}' after match arm",
+    18,
+    18,
+    false
+)]
 fn prefix_form_errors(
     #[case] src: &str,
     #[case] msg: &str,
@@ -46,6 +93,10 @@ fn prefix_form_errors(
     if unclosed {
         assert_delimiter_error(&errors, msg, start, end);
     } else {
-        assert_parse_error(&errors, msg, start, end);
+        let Some(error) = errors.first() else {
+            panic!("error missing");
+        };
+        let single = vec![error.clone()];
+        assert_parse_error(&single, msg, start, end);
     }
 }

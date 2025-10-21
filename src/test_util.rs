@@ -6,7 +6,7 @@
 
 use crate::{
     Span, SyntaxKind,
-    parser::ast::{Expr, Literal},
+    parser::ast::{Expr, Literal, MatchArm},
     tokenize_with_trivia,
 };
 use chumsky::error::{Simple, SimpleReason};
@@ -220,6 +220,33 @@ pub fn for_loop(
 #[must_use]
 pub fn tuple(items: Vec<Expr>) -> Expr {
     Expr::Tuple(items)
+}
+
+/// Construct a `match` arm with the provided pattern and body expression.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{lit_num, match_arm};
+///
+/// let arm = match_arm("Some(x)", lit_num("1"));
+/// assert_eq!(arm.pattern, "Some(x)");
+/// ```
+#[must_use]
+pub fn match_arm(pattern: impl Into<String>, body: Expr) -> MatchArm {
+    MatchArm {
+        pattern: pattern.into(),
+        body,
+    }
+}
+
+/// Construct a `match` expression from a scrutinee and a list of arms.
+#[must_use]
+pub fn match_expr(scrutinee: Expr, arms: Vec<MatchArm>) -> Expr {
+    Expr::Match {
+        scrutinee: Box::new(scrutinee),
+        arms,
+    }
 }
 
 /// Construct a closure literal [`Expr::Closure`].
