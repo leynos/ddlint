@@ -1,7 +1,7 @@
 //! Utilities for tracking delimiters whilst parsing composite prefix forms.
 //!
-//! Provides depth tracking for parentheses, braces, and brackets; validates
-//! delimiter balance; and extracts pattern text for `for` loop headers.
+//! Provides depth tracking for parentheses, braces, and brackets alongside
+//! delimiter-balance validation for composite prefix forms.
 
 use crate::{Span, SyntaxKind};
 
@@ -154,49 +154,5 @@ where
         self.validate_single_delimiter(paren_depth, "parenthesis", last_span)
             && self.validate_single_delimiter(brace_depth, "brace", last_span)
             && self.validate_single_delimiter(bracket_depth, "bracket", last_span)
-    }
-
-    /// Extracts and trims the binding pattern text from a for-loop header.
-    /// Slices the recorded offsets captured during delimiter tracking before
-    /// trimming surrounding whitespace.
-    ///
-    /// # Parameters
-    ///
-    /// - `start`: the starting position of the binding pattern, if recorded.
-    /// - `end`: the ending position of the binding pattern, if recorded.
-    /// - `in_span`: the span of the 'in' keyword; used for error reporting if
-    ///   the binding is missing or empty.
-    ///
-    /// # Returns
-    ///
-    /// `Some((trimmed_text, span))` if a non-empty binding pattern was found;
-    /// `None` if the binding is missing or empty (errors are emitted in both
-    /// cases).
-    pub(super) fn extract_pattern_text(
-        &mut self,
-        start: Option<usize>,
-        end: Option<usize>,
-        in_span: Span,
-    ) -> Option<(String, Span)> {
-        let (Some(s), Some(e)) = (start, end) else {
-            self.ts.push_error(
-                in_span.clone(),
-                "expected binding before 'in' in for-loop header",
-            );
-            return None;
-        };
-
-        let span = s..e;
-        let text = self.ts.slice(&span);
-        let trimmed = text.trim();
-        if trimmed.is_empty() {
-            self.ts.push_error(
-                span.clone(),
-                "expected binding before 'in' in for-loop header",
-            );
-            return None;
-        }
-
-        Some((trimmed.to_string(), span))
     }
 }

@@ -10,9 +10,11 @@
 
 mod control_flow;
 mod data_structures;
+mod delimiter_handling;
 mod delimiter_utils;
 mod infix;
 mod literals;
+mod pattern_collection;
 mod pratt;
 mod prefix;
 mod token_stream;
