@@ -255,6 +255,10 @@ where
             };
 
             if should_terminate(&*self, kind, &state) {
+                #[expect(
+                    clippy::unreachable,
+                    reason = "pattern finaliser consumed exactly once"
+                )]
                 let Some(finalise) = finalise_fn.take() else {
                     unreachable!("pattern finaliser already consumed");
                 };

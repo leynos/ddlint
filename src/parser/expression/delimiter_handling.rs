@@ -38,6 +38,10 @@ where
         Some(())
     }
 
+    #[expect(
+        clippy::unreachable,
+        reason = "caller ensures kind is opening delimiter"
+    )]
     pub(super) fn process_opening_delimiter(
         kind: SyntaxKind,
         span: &Span,
@@ -53,6 +57,10 @@ where
         Self::handle_open_delimiter(&mut state.start, &mut state.end, depth, span);
     }
 
+    #[expect(
+        clippy::unreachable,
+        reason = "caller ensures kind is closing delimiter"
+    )]
     pub(super) fn process_closing_delimiter(
         &mut self,
         token: &DelimiterToken,

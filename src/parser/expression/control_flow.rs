@@ -153,6 +153,9 @@ where
         kind: SyntaxKind,
         state: &DelimiterState,
     ) -> bool {
+        // Retain `self` so this helper can be passed as a method reference,
+        // for example via `Self::should_terminate_at_arrow` in pattern
+        // collection closures.
         let _ = self;
         kind == SyntaxKind::T_ARROW && state.is_at_top_level()
     }
