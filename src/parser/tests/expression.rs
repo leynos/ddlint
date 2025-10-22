@@ -3,9 +3,9 @@
 use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
-    field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, match_arm, match_expr,
-    method_call, struct_expr, tuple, tuple_index, var,
+    assert_parse_error, assert_unclosed_delimiter_error, bit_slice, break_expr, call, call_expr,
+    closure, continue_expr, field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str,
+    match_arm, match_expr, method_call, return_expr, struct_expr, tuple, tuple_index, var,
 };
 use rstest::rstest;
 
@@ -99,6 +99,14 @@ use rstest::rstest;
 #[case("a + (x as T)", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))) })]
 #[case("(a => b); c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }))), rhs: Box::new(var("c")) })]
 #[case("a => (b; c)", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }))) })]
+#[case("break", break_expr())]
+#[case("continue", continue_expr())]
+#[case("return", return_expr(None))]
+#[case("return value", return_expr(Some(var("value"))))]
+#[case(
+    "return (x, y)",
+    return_expr(Some(tuple(vec![var("x"), var("y")])))
+)]
 #[case(
     "if x { y } else { z }",
     if_expr(

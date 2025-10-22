@@ -117,7 +117,7 @@ control flow. This phase aims to build a complete grammar.
 
   - [x] Implement a parser for `match` expressions (`e_match`).
 
-  - [ ] Implement parsers for imperative statements like `break`, `continue`,
+  - [x] Implement parsers for imperative statements like `break`, `continue`,
     and `return`.
 
 - [ ] **Enhance Rule Body Parsing**

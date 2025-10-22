@@ -7,8 +7,8 @@
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_num, lit_str,
-    match_arm, match_expr, struct_expr, tuple, var,
+    assert_delimiter_error, assert_parse_error, break_expr, closure, continue_expr, field,
+    lit_bool, lit_num, lit_str, match_arm, match_expr, return_expr, struct_expr, tuple, var,
 };
 use rstest::rstest;
 
@@ -64,6 +64,10 @@ use rstest::rstest;
         ],
     ),
 )]
+#[case("break", break_expr())]
+#[case("continue", continue_expr())]
+#[case("return", return_expr(None))]
+#[case("return value", return_expr(Some(var("value"))))]
 fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);

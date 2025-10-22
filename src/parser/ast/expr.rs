@@ -207,6 +207,15 @@ pub enum Expr {
         /// Pattern arms evaluated in order.
         arms: Vec<MatchArm>,
     },
+    /// Break expression terminating the innermost loop.
+    Break,
+    /// Continue expression resuming the next loop iteration.
+    Continue,
+    /// Return expression exiting the current function.
+    Return {
+        /// Value returned to the caller (defaults to `()` when omitted).
+        value: Box<Expr>,
+    },
 }
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
@@ -263,6 +272,9 @@ impl Expr {
                 body,
             } => format_for_loop(pattern, iterable, guard.as_deref(), body),
             Self::Match { scrutinee, arms } => format_match(scrutinee, arms),
+            Self::Break => "(break)".to_string(),
+            Self::Continue => "(continue)".to_string(),
+            Self::Return { value } => format_nary("return", [value.to_sexpr()]),
         }
     }
 }

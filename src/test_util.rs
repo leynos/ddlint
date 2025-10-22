@@ -154,6 +154,27 @@ pub fn method_call(recv: Expr, name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     }
 }
 
+/// Construct a `break` [`Expr`].
+#[must_use]
+pub fn break_expr() -> Expr {
+    Expr::Break
+}
+
+/// Construct a `continue` [`Expr`].
+#[must_use]
+pub fn continue_expr() -> Expr {
+    Expr::Continue
+}
+
+/// Construct a `return` [`Expr`].
+#[must_use]
+pub fn return_expr(value: Option<Expr>) -> Expr {
+    let value = value.unwrap_or_else(|| Expr::Tuple(Vec::new()));
+    Expr::Return {
+        value: Box::new(value),
+    }
+}
+
 /// Construct a field access [`Expr::FieldAccess`].
 #[must_use]
 pub fn field_access(expr: Expr, field: impl Into<Name>) -> Expr {
