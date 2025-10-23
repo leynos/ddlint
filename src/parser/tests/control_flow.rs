@@ -7,7 +7,8 @@
 use crate::parser::ast::Expr;
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
-    assert_parse_error, break_expr, continue_expr, for_loop, return_expr, tuple, var,
+    assert_parse_error, break_expr, continue_expr, for_loop, match_arm, match_expr, return_expr,
+    tuple, var,
 };
 use rstest::rstest;
 
@@ -35,6 +36,12 @@ fn parses_continue_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("return (x, y)", return_expr(Some(tuple(vec![var("x"), var("y")]))))]
 #[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
 #[case("(return)", Expr::Group(Box::new(return_expr(None))))]
+// Returning before a terminator (`)`, `}`, `,`, `;`, or `->`) synthesises unit
+// `()` so match arms can elide a value safely.
+#[case(
+    "match (x) { _ -> return }",
+    match_expr(var("x"), vec![match_arm("_", return_expr(None))]),
+)]
 fn parses_return_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);

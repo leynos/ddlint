@@ -8,7 +8,7 @@ use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
     assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_num, lit_str,
-    match_arm, match_expr, struct_expr, tuple, var,
+    match_arm, match_expr, return_expr, struct_expr, tuple, var,
 };
 use rstest::rstest;
 
@@ -65,6 +65,27 @@ use rstest::rstest;
     ),
 )]
 fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case("return", return_expr(None))]
+#[case("return value", return_expr(Some(var("value"))))]
+#[case(
+    "return (x, y)",
+    return_expr(Some(tuple(vec![var("x"), var("y")]))),
+)]
+#[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
+#[case("(return)", Expr::Group(Box::new(return_expr(None))))]
+// Return with no explicit value before a terminator (`)`, `}`, `,`, `;`, or
+// `->`) yields unit `()` so match arms, loop bodies, and grouped expressions can
+// omit it safely.
+#[case(
+    "match (x) { _ -> return }",
+    match_expr(var("x"), vec![match_arm("_", return_expr(None))]),
+)]
+fn parses_return_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);
 }
