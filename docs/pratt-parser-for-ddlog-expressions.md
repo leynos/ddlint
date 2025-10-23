@@ -475,11 +475,11 @@ implemented with small helper routines to keep the main parser readable.
 
 Imperative control-flow tokens (`break`, `continue`, and `return`) now slot
 into the same prefix dispatch. `break` and `continue` build dedicated AST
-markers so later passes can detect loop termination without re-reading the
+markers, so later passes can detect loop termination without re-reading the
 source text. The `return` parser accepts an optional expression: when the next
 token is a terminator such as `)`, `}`, `,`, `;`, or `->`, it emits a unit
-tuple to mirror the Haskell parser's default. Otherwise it parses a full
-expression while respecting the struct-literal suppression guard, surfacing a
+tuple to mirror the Haskell parser's default. Otherwise, it parses a full
+expression, while respecting the struct-literal suppression guard, surfacing a
 targeted diagnostic if the expression is missing. This keeps imperative
 statements usable inside expression contexts and aligns our behaviour with
 upstream DDlog semantics.

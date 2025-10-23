@@ -8,7 +8,8 @@ use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
     assert_delimiter_error, assert_parse_error, break_expr, closure, continue_expr, field,
-    lit_bool, lit_num, lit_str, match_arm, match_expr, return_expr, struct_expr, tuple, var,
+    for_loop, lit_bool, lit_num, lit_str, match_arm, match_expr, return_expr, struct_expr, tuple,
+    var,
 };
 use rstest::rstest;
 
@@ -25,10 +26,6 @@ use rstest::rstest;
 #[case("{ x }", Expr::Group(Box::new(var("x"))))]
 #[case("\"hi\"", lit_str("hi"))]
 #[case("false", lit_bool(false))]
-#[case("{ break }", Expr::Group(Box::new(break_expr())))]
-#[case("{ continue }", Expr::Group(Box::new(continue_expr())))]
-#[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
-#[case("(return)", Expr::Group(Box::new(return_expr(None))))]
 #[case(
     "match (flag) { true -> 1 }",
     match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
@@ -68,13 +65,17 @@ use rstest::rstest;
         ],
     ),
 )]
-#[case("break", break_expr())]
-#[case("continue", continue_expr())]
-#[case("return", return_expr(None))]
-#[case("return value", return_expr(Some(var("value"))))]
 #[case(
-    "return (x, y)",
-    return_expr(Some(tuple(vec![var("x"), var("y")])))
+    "for (item in items) break",
+    for_loop("item", var("items"), None, break_expr())
+)]
+#[case(
+    "for (item in items) continue",
+    for_loop("item", var("items"), None, continue_expr())
+)]
+#[case(
+    "for (item in items) return value",
+    for_loop("item", var("items"), None, return_expr(Some(var("value"))))
 )]
 fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));

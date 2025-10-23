@@ -1,8 +1,8 @@
 //! Focused tests for control-flow expression parsing.
 //!
-//! These ensure dedicated coverage for `break`, `continue`, and `return`
-//! expressions, including contexts where delimiters terminate the return
-//! value.
+//! These cover the direct prefix forms for `break`, `continue`, and `return`
+//! to guarantee that the Pratt parser produces the expected AST nodes even
+//! before the broader integration suite exercises them inside loops.
 
 use crate::parser::ast::Expr;
 use crate::parser::expression::parse_expression;

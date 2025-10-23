@@ -119,6 +119,20 @@ where
         }
     }
 
+    fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
+        matches!(
+            kind,
+            None | Some(
+                SyntaxKind::T_SEMI
+                    | SyntaxKind::T_RBRACE
+                    | SyntaxKind::T_RPAREN
+                    | SyntaxKind::T_RBRACKET
+                    | SyntaxKind::T_COMMA
+                    | SyntaxKind::T_ARROW,
+            )
+        )
+    }
+
     fn parse_match_arms(&mut self) -> Option<Vec<MatchArm>> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
             let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
@@ -305,19 +319,5 @@ where
             guard,
             body: Box::new(body),
         })
-    }
-
-    fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
-        matches!(
-            kind,
-            None | Some(
-                SyntaxKind::T_SEMI
-                    | SyntaxKind::T_RBRACE
-                    | SyntaxKind::T_RPAREN
-                    | SyntaxKind::T_RBRACKET
-                    | SyntaxKind::T_COMMA
-                    | SyntaxKind::T_ARROW,
-            )
-        )
     }
 }
