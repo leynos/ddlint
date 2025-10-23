@@ -6,7 +6,9 @@
 
 use crate::parser::ast::Expr;
 use crate::parser::expression::parse_expression;
-use crate::test_util::{assert_parse_error, break_expr, continue_expr, return_expr, tuple, var};
+use crate::test_util::{
+    assert_parse_error, break_expr, continue_expr, for_loop, return_expr, tuple, var,
+};
 use rstest::rstest;
 
 #[rstest]
@@ -44,4 +46,22 @@ fn return_reports_missing_value_error() {
         panic!("expected parse failure");
     };
     assert_parse_error(&errors, "expected expression after 'return'", 8, 8);
+}
+
+#[rstest]
+#[case(
+    "for (item in items) break",
+    for_loop("item", var("items"), None, break_expr())
+)]
+#[case(
+    "for (item in items) continue",
+    for_loop("item", var("items"), None, continue_expr())
+)]
+#[case(
+    "for (item in items) return value",
+    for_loop("item", var("items"), None, return_expr(Some(var("value"))))
+)]
+fn parses_control_flow_in_for_loops(#[case] src: &str, #[case] expected: Expr) {
+    let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
+    assert_eq!(expr, expected);
 }
