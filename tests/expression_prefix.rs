@@ -25,6 +25,10 @@ use rstest::rstest;
 #[case("{ x }", Expr::Group(Box::new(var("x"))))]
 #[case("\"hi\"", lit_str("hi"))]
 #[case("false", lit_bool(false))]
+#[case("{ break }", Expr::Group(Box::new(break_expr())))]
+#[case("{ continue }", Expr::Group(Box::new(continue_expr())))]
+#[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
+#[case("(return)", Expr::Group(Box::new(return_expr(None))))]
 #[case(
     "match (flag) { true -> 1 }",
     match_expr(var("flag"), vec![match_arm("true", lit_num("1"))]),
@@ -68,6 +72,10 @@ use rstest::rstest;
 #[case("continue", continue_expr())]
 #[case("return", return_expr(None))]
 #[case("return value", return_expr(Some(var("value"))))]
+#[case(
+    "return (x, y)",
+    return_expr(Some(tuple(vec![var("x"), var("y")])))
+)]
 fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);
@@ -84,6 +92,7 @@ fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     18,
     false
 )]
+#[case("return {", "expected expression after 'return'", 8, 8, false)]
 fn prefix_form_errors(
     #[case] src: &str,
     #[case] msg: &str,
