@@ -4,7 +4,7 @@
 //! to guarantee that the Pratt parser produces the expected AST nodes even
 //! before the broader integration suite exercises them inside loops.
 
-use crate::parser::ast::Expr;
+use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, break_expr, continue_expr, for_loop, match_arm, match_expr, return_expr,
@@ -34,8 +34,17 @@ fn parses_continue_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("return", return_expr(None))]
 #[case("return value", return_expr(Some(var("value"))))]
 #[case("return (x, y)", return_expr(Some(tuple(vec![var("x"), var("y")]))))]
+#[case(
+    "return; x",
+    Expr::Binary {
+        op: BinaryOp::Seq,
+        lhs: Box::new(return_expr(None)),
+        rhs: Box::new(var("x")),
+    },
+)]
 #[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
 #[case("(return)", Expr::Group(Box::new(return_expr(None))))]
+#[case("(return,)", tuple(vec![return_expr(None)]))]
 // Returning before a terminator (`)`, `}`, `,`, `;`, or `->`) synthesises unit
 // `()` so match arms can elide a value safely.
 #[case(
