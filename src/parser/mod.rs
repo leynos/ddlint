@@ -54,6 +54,7 @@ pub mod ast;
 mod tests {
     //! Tests for parser components and integration scenarios.
 
+    mod control_flow;
     mod expression;
     mod expression_integration;
     mod expression_span;

@@ -22,6 +22,9 @@ where
             SyntaxKind::K_IF => self.parse_if_expression(),
             SyntaxKind::K_MATCH => self.parse_match_expression(),
             SyntaxKind::K_FOR => self.parse_for_expression(),
+            SyntaxKind::K_BREAK => Some(Self::parse_break_expression()),
+            SyntaxKind::K_CONTINUE => Some(Self::parse_continue_expression()),
+            SyntaxKind::K_RETURN => self.parse_return_expression(),
             k => {
                 let Some((bp, op)) = prefix_binding_power(k) else {
                     self.ts

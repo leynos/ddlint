@@ -88,6 +88,51 @@ where
         })
     }
 
+    pub(super) fn parse_break_expression() -> Expr {
+        Expr::Break
+    }
+
+    pub(super) fn parse_continue_expression() -> Expr {
+        Expr::Continue
+    }
+
+    pub(super) fn parse_return_expression(&mut self) -> Option<Expr> {
+        if Self::is_return_value_terminator(self.ts.peek_kind()) {
+            return Some(Expr::Return {
+                value: Box::new(Expr::Tuple(Vec::new())),
+            });
+        }
+
+        let error_count = self.ts.error_count();
+        let value = self.with_struct_literals_suspended(|this| this.parse_expr(0));
+        if let Some(expr) = value {
+            Some(Expr::Return {
+                value: Box::new(expr),
+            })
+        } else {
+            if self.ts.error_count() == error_count {
+                let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+                self.ts
+                    .push_error(span, "expected expression after 'return'");
+            }
+            None
+        }
+    }
+
+    fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
+        matches!(
+            kind,
+            None | Some(
+                SyntaxKind::T_SEMI
+                    | SyntaxKind::T_RBRACE
+                    | SyntaxKind::T_RPAREN
+                    | SyntaxKind::T_RBRACKET
+                    | SyntaxKind::T_COMMA
+                    | SyntaxKind::T_ARROW,
+            )
+        )
+    }
+
     fn parse_match_arms(&mut self) -> Option<Vec<MatchArm>> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
             let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
