@@ -630,7 +630,7 @@ July 15, 2025, <https://doc.rust-lang.org/rustdoc/documentation-tests.html>
 <https://ebarnard.github.io/2019-06-03-rust-smaller-trait-implementers-docs/rustdoc/documentation-tests.html>
 [^5]: Documentation tests - - MIT, accessed on July 15, 2025,
 <http://web.mit.edu/rust-lang_v1.25/arch/amd64_ubuntu1404/share/doc/rust/html/rustdoc/documentation-tests.html>
-[^6]: LogRocket Blog — Organising Rust tests, accessed on July 15, 2025,
+[^6]: LogRocket Blog — Organizing Rust tests, accessed on July 15, 2025,
 <https://blog.logrocket.com/how-to-organize-rust-tests/>
 <https://www.reddit.com/r/rust/comments/qk77iu/best_way_to_organise_tests_in_rust/>
 [^7]: Writing Rust documentation - Dev Community, accessed on July 15, 2025,
