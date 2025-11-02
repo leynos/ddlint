@@ -52,14 +52,14 @@
   subsequent commit) should represent a single logical unit of work.
 - **Quality Gates:** Before considering a change complete or proposing a commit,
   ensure it meets the following criteria:
-- New functionality or changes in observable system responses are fully
-  validated by relevant unit tests and scenario tests.
-- Where a bug is being fixed, a unittest has been provided demonstrating the
-  scenario being corrected both to validate the fix and to guard against
+  - New functionality or changes in observable system responses are fully
+    validated by relevant unit tests and scenario tests.
+  - Where a bug is being fixed, a unittest has been provided demonstrating the
+    scenario being corrected both to validate the fix and to guard against
     regression.
-- Passes all relevant unit and scenario tests according to the guidelines
+  - Passes all relevant unit and scenario tests according to the guidelines
     above.
-  - Passes lint checks
+  - Passes lint checks.
   - Adheres to formatting standards tested using a formatting validator.
 - **Committing:**
   - Only changes that meet all the quality gates above should be committed.
