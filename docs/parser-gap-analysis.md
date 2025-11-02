@@ -62,10 +62,11 @@
   `tests/expression_var_and_call.rs`, `src/parser/tests/expression.rs`).
   **Action (policy choice):**
 
-  * If you want to **match the spec**: parse `name(…)` as `Variable("name")`
-    followed by **postfix apply** node (or keep `Call` but mark it “unresolved”
-    unless qualified).
-  * Or, update the spec if you prefer the current simpler behaviour.
+  * To match the specification: parse `name(…)` as `Variable("name")`
+    followed by a **postfix apply** node (or keep `Call` but mark it
+    “unresolved” unless qualified).
+  * Alternatively, update the specification to reflect the current simpler
+    behaviour.
 
 ### 3) Expressions and control-flow
 
@@ -208,6 +209,11 @@
 * `group_by` 0/1/2+ cases (success, wrong arity, duplicate).
 * Attribute placement errors and non-extern transformer error.
 * `apply` item basic acceptance.
+
+> **Testing mandate:** Every item above requires both behavioural coverage
+> (end-to-end parser fixtures) and focused unit tests that exercise the
+> relevant lexer, Pratt table, or lowering logic. Any bug fix or spec
+> conformance change must land alongside a demonstrative test.
 
 ## Priority fix plan
 
