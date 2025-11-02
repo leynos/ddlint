@@ -37,7 +37,7 @@
   Spec: width-qualified ints (`8'hFF`, `16'sd-1`) and floats (`…'f32|f64`) with
   **fit checks** . Code: numbers are parsed as **opaque text**
   `Literal::Number` with no width/signedness semantics. **Action:** teach the
-  tokenizer to recognise width/base/signedness; add parse-time validation and
+  tokenizer to recognize width/base/signedness; add parse-time validation and
   shaped AST (or rich literal node) so lints can reason about sizes.
 
 ### 2) Operators and precedence
