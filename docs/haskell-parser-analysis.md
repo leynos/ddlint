@@ -1,4 +1,9 @@
-# Haskell parser analysis
+# Haskell parser analysis (deprecated)
+
+> This document is preserved for historical context only and is no longer a
+> normative source. Please consult the updated syntax specification in
+> `docs/differential-datalog-parser-syntax-spec-updated.md` for authoritative
+> grammar, operator, and compatibility details.
 
 This document summarizes the design of the parser implemented in
 `Language.DifferentialDatalog.Parse`. The original code is written in Haskell
