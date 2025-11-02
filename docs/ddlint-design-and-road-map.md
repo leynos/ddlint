@@ -322,7 +322,7 @@ parsing pipeline and the end-user's experience. A parser that halts on the
 first syntax error relegates the linter to a batch-mode tool, useful only on
 complete, correct programs. In contrast, a parser with robust error recovery
 transforms the linter into an interactive assistant, providing continuous value
-in the most common use case: analyzing code as a developer is actively writing
+in the most common use case: reviewing code as a developer is actively writing
 it.
 
 Consider the typical workflow of a developer using an IDE with an integrated
@@ -330,7 +330,7 @@ linter. The code is in a constant state of flux and is syntactically invalid
 more often than not. If the developer introduces a typo in one rule, a
 traditional, non-recovering parser would stop, report a single "syntax error"
 message, and provide no further information. The linter would receive no syntax
-tree to analyze and would be silent about potential issues in other, perfectly
+tree to evaluate and would be silent about potential issues in other, perfectly
 valid rules within the same file.
 
 A parser built with `chumsky`'s recovery strategies fundamentally changes this
@@ -351,7 +351,7 @@ performs a series of actions:
 The result is that the linter's engine receives a *complete* CST for the entire
 file. This tree contains valid subtrees for all the correctly written code,
 interspersed with `N_ERROR` nodes that mark the locations of syntax errors. The
-linter's rule runner can then traverse this tree, analyzing all the valid nodes
+linter's rule runner can then traverse this tree, examining all the valid nodes
 and simply skipping over the `N_ERROR` nodes.
 
 This elevates the user experience from frustrating to empowering. The developer
@@ -455,16 +455,16 @@ immediate value to users, the following catalog of rules is proposed. This list
 prioritizes correctness checks, followed by performance hints and stylistic
 suggestions, establishing a solid foundation of essential lints.
 
-| Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                       |
-| ---------------------- | ----------- | ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| unused-relation        | correctness | warn          | No          | Detects relations that are defined but never read from.                                                                           |
-| unused-variable        | correctness | warn          | No          | Detects variables bound in a rule head that are not used in the body.                                                             |
-| shadowed-variable      | correctness | warn          | No          | Detects when a variable binding in a literal shadows one from a preceding literal in the same rule body.                          |
-| recursive-negation     | correctness | error         | No          | Detects rules with recursion through negation, which leads to unsafe, non-monotonic programs.                                     |
-| inefficient-join-order | performance | hint          | No          | Analyzes rule bodies and suggests reordering atoms for a more efficient join plan, e.g., placing more restrictive literals first. |
-| superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                   |
-| consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).         |
-| no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                 |
+| Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                        |
+| ---------------------- | ----------- | ------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| unused-relation        | correctness | warn          | No          | Detects relations that are defined but never read from.                                                                            |
+| unused-variable        | correctness | warn          | No          | Detects variables bound in a rule head that are not used in the body.                                                              |
+| shadowed-variable      | correctness | warn          | No          | Detects when a variable binding in a literal shadows one from a preceding literal in the same rule body.                           |
+| recursive-negation     | correctness | error         | No          | Detects rules with recursion through negation, which leads to unsafe, non-monotonic programs.                                      |
+| inefficient-join-order | performance | hint          | No          | Evaluates rule bodies and suggests reordering atoms for a more efficient join plan, e.g., placing more restrictive literals first. |
+| superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                    |
+| consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).          |
+| no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                  |
 
 This table serves as a concrete work breakdown for the engineering team and
 clearly communicates the linter's initial capabilities and priorities to early
