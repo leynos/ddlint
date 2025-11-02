@@ -44,7 +44,7 @@ ______________________________________________________________________
 - Whitespace separates tokens; newlines are not syntactically significant.
 - `//` to end‑of‑line and `/* … */` block comments are supported; nested block
   comments are **not** required.
-- Tabs are normalised to single spaces for position tracking.
+- Tabs are normalized to single spaces for position tracking.
 
 ### 2.2 Identifiers and case classes
 
