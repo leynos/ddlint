@@ -2,7 +2,7 @@
 
 ## Code Style and Structure
 
-- **Code is for humans.** Write your code with clarity and empathy—assume a
+- **Code is for humans.** Write code with clarity and empathy—assume a
   tired teammate will need to debug it at 3 a.m.
 - **Comment *why*, not *what*.** Explain assumptions, edge cases, trade-offs, or
   complexity. Don't echo the obvious.
@@ -79,7 +79,8 @@
 ## Refactoring Heuristics & Workflow
 
 - **Recognizing Refactoring Needs:** Regularly assess the codebase for potential
-  refactoring opportunities. Consider refactoring when you observe:
+  refactoring opportunities. Consider refactoring when the following indicators
+  appear:
   - **Long Methods/Functions:** Functions or methods that are excessively long
     or try to do too many things.
   - **Duplicated Code:** Identical or very similar code blocks appearing in
@@ -173,7 +174,7 @@ project:
 - Prefer `.expect()` over `.unwrap()`.
 - Use `concat!()` to combine long string literals rather than escaping newlines
   with a backslash.
-- Prefer single line versions of functions where appropriate. I.e.,
+- Prefer single line versions of functions where appropriate. For example,
 
   ```rust
   pub fn new(id: u64) -> Self { Self(id) }
@@ -200,7 +201,8 @@ project:
   establishing a coherent internal convention that keeps trait forwarding
   consistent without per-type boilerplate. Combine approaches: lean on
   `newt-hype` for the common case, tuple structs for outliers, and
-  `the-newtype` to unify semantics when you own the trait definitions.
+  `the-newtype` to unify semantics when the maintainers own the trait
+  definitions.
 
 ### Dependency Management
 
