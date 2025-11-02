@@ -3,9 +3,9 @@
 Testing is an indispensable part of modern software development, ensuring code
 reliability, maintainability, and correctness. In the Rust ecosystem, while the
 built-in testing framework provides a solid foundation, managing test
-dependencies and creating parameterized tests can become verbose. The `rstest`
+dependencies, and creating parameterized tests can become verbose. The `rstest`
 crate (<https://github.com/la10736/rstest>) emerges as a powerful solution,
-offering a sophisticated fixture-based and parameterized testing framework that
+offering a sophisticated fixture-based, parameterized testing framework that
 significantly simplifies these tasks through the use of procedural macros. This
 document provides a comprehensive exploration of `rstest`, from fundamental
 concepts to advanced techniques, enabling Rust developers to write cleaner,
@@ -22,8 +22,8 @@ tests are run so that results are repeatable. Test dependencies, such as
 database connections, user objects, or specific configurations, often require
 careful setup before a test can execute and, sometimes, teardown afterward.
 Managing this setup and teardown logic within each test function can lead to
-considerable boilerplate code and repetition, making tests harder to read and
-maintain.
+considerable boilerplate code and repetition, making tests harder to read,
+maintain, and extend.
 
 Fixtures address this by encapsulating these dependencies and their setup
 logic. For instance, if multiple tests require a logged-in user object or a
@@ -37,7 +37,8 @@ the test logic. Traditional testing approaches often intermingle setup, action,
 and assertion logic within a single test function. This can result in lengthy
 and convoluted tests that are difficult to comprehend at a glance. By
 extracting the setup logic into reusable components (fixtures), the actual test
-functions become shorter, more focused, and thus more readable and maintainable.
+functions become shorter, more focused, and thus more readable, maintainable,
+and trustworthy.
 
 ### B. Introducing `rstest`: Simplifying Fixture-Based Testing in Rust
 
@@ -58,12 +59,12 @@ automatically.
 This reliance on procedural macros is a key architectural decision. It enables
 `rstest` to offer a remarkably clean and intuitive syntax at the test-writing
 level. Developers declare the dependencies their tests need, and the macros
-handle the resolution and injection. While this significantly improves the
-developer experience for writing tests, the underlying macro expansion involves
-compile-time code generation. This complexity, though hidden, can have
-implications for build times, particularly in large test suites. Furthermore,
-understanding the macro expansion can sometimes be necessary for debugging
-complex test scenarios or unexpected behaviour.
+handle dependency resolution as well as injection. While this significantly
+improves the developer experience for writing tests, the underlying macro
+expansion involves compile-time code generation. This complexity, though
+hidden, can have implications for build times, particularly in large test
+suites. Furthermore, understanding the macro expansion can sometimes be
+necessary for debugging complex test scenarios or unexpected behaviour.
 
 ### C. Core Benefits: Readability, Reusability, Reduced Boilerplate
 
@@ -102,7 +103,8 @@ adding it to the project dependencies to defining and using basic fixtures.
 
 To begin using `rstest`, it must be added as a development dependency in the
 project's `Cargo.toml` file. This ensures that `rstest` is only compiled and
-linked when running tests, not when building the main application or library.
+linked when running tests rather than when building the main application or
+library.
 
 Add the following lines to the project's `Cargo.toml` under the
 `[dev-dependencies]` section:
@@ -118,8 +120,8 @@ It is advisable to check `crates.io` for the latest stable version of `rstest`
 (and `rstest_macros` if required separately by the version of `rstest` being
 used). Using `dev-dependencies` is a standard practice in Rust for testing
 libraries. This convention prevents testing utilities from being included in
-production binaries, which helps keep them small and reduces compile times for
-non-test builds.
+production binaries, which helps keep them small while reducing compile times
+for non-test builds.
 
 When leveraging Tokio's test utilities—for example `tokio::time::pause` or the
 Input/output helpers in `tokio-test`—enable the `test-util` feature via a
@@ -140,7 +142,7 @@ attribute.
 
 Consider a simple fixture that provides a numeric value:
 
-```rust
+```rust,no_run
 use rstest::fixture; // Or use rstest::*;
 
 #[fixture]
@@ -169,7 +171,7 @@ function.
 
 Here’s how to use the `answer_to_life` fixture in a test:
 
-```rust
+```rust,no_run
 use rstest::{fixture, rstest}; // Or use rstest::*;
 
 #[fixture]
@@ -213,7 +215,7 @@ Here are a few examples illustrating different kinds of fixtures:
 
 - **Fixture returning a primitive data type:**
 
-```rust
+```rust,no_run
 use rstest::*;
 
 #[fixture]
@@ -230,7 +232,7 @@ fn test_username_length(default_username: String) {
 
 - **Fixture returning a struct:**
 
-```rust
+```rust,no_run
 use rstest::*;
 
 struct User {
@@ -256,7 +258,7 @@ fn test_sample_user_id(sample_user: User) {
 - **Fixture performing setup and returning a resource (e.g., a mock
   repository):**
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::collections::HashMap;
 
@@ -313,13 +315,14 @@ within the test body, implying a new call each time.
 Test isolation prevents the state from one test from inadvertently affecting
 another. If fixtures were shared by default, a mutation to a fixture's state in
 one test could lead to unpredictable behaviour or failures in subsequent tests
-that use the same fixture. Such dependencies would make tests order-dependent
-and significantly harder to debug. By providing a fresh instance for each test
-(unless explicitly specified otherwise using `#[once]`), `rstest` upholds this
-cornerstone of reliable testing, ensuring each test operates on a known and
-independent baseline. The `#[once]` attribute, discussed later, provides an
-explicit mechanism to opt into shared fixture state when isolation is not a
-concern or when the cost of fixture creation is prohibitive.
+that use the same fixture. Such dependencies would make tests order-dependent,
+significantly harder to debug, and less trustworthy. By providing a fresh
+instance for each test (unless explicitly specified otherwise using
+`#[once]`), `rstest` upholds this cornerstone of reliable testing, ensuring
+each test operates on a known, independent baseline. The `#[once]` attribute,
+discussed later, provides an explicit mechanism to opt into shared fixture
+state when isolation is not a concern or when the cost of fixture creation is
+prohibitive.
 
 ## IV. Parameterized Tests with `rstest`
 
@@ -336,7 +339,7 @@ values must also be annotated with `#[case]`.
 
 A classic example is testing the Fibonacci sequence:
 
-```rust
+```rust,no_run
 use rstest::rstest;
 
 fn fibonacci(n: u32) -> u32 {
@@ -360,7 +363,7 @@ fn test_fibonacci(#[case] input: u32, #[case] expected: u32) {
 ```
 
 For each `#[case(input_val, expected_val)]` line, `rstest` generates a
-separate, independent test. If one case fails, the others are still executed
+separate, independent test. If one case fails, the others are still executed,
 and reported individually by the test runner. These generated tests are often
 named by appending `::case_N` to the original test function name (e.g.,
 `test_fibonacci::case_1`, `test_fibonacci::case_2`, etc.), which aids in
@@ -379,7 +382,7 @@ states.
 Consider testing a state machine's transition logic based on current state and
 an incoming event:
 
-```rust
+```rust,no_run
 use rstest::rstest;
 
 #
@@ -438,7 +441,7 @@ lists.
 For example, a test might use a fixture to obtain a database connection and
 then use `#[case]` arguments to test operations with different user IDs:
 
-```rust
+```rust,no_run
 use rstest::*;
 
 // Assume UserDb and User types are defined elsewhere
@@ -472,7 +475,7 @@ dependency graph, ensuring that prerequisite fixtures are evaluated first. This
 allows for the construction of complex setup logic from smaller, modular, and
 reusable fixture components.
 
-```rust
+```rust,no_run
 use rstest::*;
 
 #[fixture]
@@ -504,7 +507,7 @@ depends on `derived_value`. When `test_composed_fixture` requests
 `configured_item`, `rstest` first calls `base_value()`, then
 `derived_value(10)`, and finally `configured_item(20, "item_".to_string())`.
 This hierarchical dependency resolution mirrors good software design
-principles, promoting modularity and maintainability in test setups.
+principles, promoting modularity, maintainability, and clarity in test setups.
 
 ### B. Controlling Fixture Initialization: `#[once]` for Shared State
 
@@ -513,7 +516,7 @@ For fixtures that are expensive to create or represent read-only shared data,
 initialized only a single time, and all tests using it will receive a static
 reference to this shared instance.
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -563,12 +566,12 @@ consideration for resource management.
 ### C. Renaming Fixtures for Clarity: The `#[from]` Attribute
 
 Sometimes a fixture's function name might be long and descriptive, but a
-shorter or different name is preferred for the argument in a test or another
+shorter alternative name is preferred for the argument in a test or another
 fixture. The `#[from(original_fixture_name)]` attribute on an argument allows
 renaming. This is particularly useful when destructuring the result of a
 fixture.
 
-```rust
+```rust,no_run
 use rstest::*;
 
 #[fixture]
@@ -589,9 +592,10 @@ fn test_with_destructured_fixture(#[from(complex_user_data_fixture)] (name, _, _
 
 The `#[from]` attribute decouples the fixture's actual function name from the
 variable name used within the consuming function. As shown, if a fixture
-returns a tuple or struct and the test only cares about some parts or needs to
-use more idiomatic names for destructured elements, `#[from]` is essential to
-link the argument pattern to the correct source fixture.
+returns composite data—for instance tuples or structs—and the test only cares
+about a subset of the data or needs to use more idiomatic names for
+destructured elements, `#[from]` is essential to link the argument pattern to
+the correct source fixture.
 
 ### D. Partial Fixture Injection & Default Arguments
 
@@ -604,7 +608,7 @@ override these defaults on a per-test basis.
 - `#[with(…)]`: Applied to a fixture argument in a test (or in another
   fixture) to supply explicit values and override any defaults.
 
-```rust
+```rust,no_run
 use rstest::*;
 
 struct User { name: String, age: u8, role: String }
@@ -665,7 +669,7 @@ can often automatically convert string literals provided in `#[case]` or
 
 An example is converting string literals to `std::net::SocketAddr`:
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::net::SocketAddr;
 
@@ -701,7 +705,7 @@ Creating an asynchronous fixture is straightforward: simply define the fixture
 function as an `async fn`. `rstest` will recognize it as an async fixture and
 handle its execution accordingly when used in an async test.
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::time::Duration;
 
@@ -728,7 +732,7 @@ popular async runtimes like Tokio or Actix. This is typically done by adding
 the runtime's specific test attribute (e.g., `#[tokio::test]` or
 `#[actix_rt::test]`) alongside `#[rstest]`.
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::time::Duration;
 
@@ -771,7 +775,7 @@ To improve the ergonomics of working with async fixtures and values in tests,
   (`#[future(awt)]`), tells `rstest` to automatically insert `.await` calls for
   those futures.
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::time::Duration;
 
@@ -823,7 +827,7 @@ indefinitely. `rstest` provides a `#[timeout(…)]` attribute to set a maximum
 execution time for async tests. This feature typically relies on the
 `async-timeout` feature of `rstest`, which is enabled by default.
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::time::Duration;
 
@@ -864,13 +868,14 @@ resources and test data.
 Managing temporary files and directories is a common requirement for tests that
 involve file input/output. While `rstest` itself doesn't directly provide
 temporary file utilities, its fixture system integrates seamlessly with crates
-like `tempfile` or `test-temp-dir`. A fixture can create a temporary file or
-directory, provide its path or handle to the test, and ensure cleanup (often
-via RAII).
+like `tempfile` or `test-temp-dir`. A fixture can create a temporary file,
+directory, or similar resource, expose whichever locator the test requires, and
+ensure cleanup (often via RAII). That locator might be a filesystem path or an
+open handle depending on the scenario.
 
 Here's an illustrative example using the `tempfile` crate:
 
-```rust
+```rust,no_run
 use rstest::*;
 use tempfile::{tempdir, TempDir}; // Add tempfile = "3" to [dev-dependencies]
 use std::fs::File;
@@ -909,10 +914,10 @@ fn test_read_from_temp_file(temp_file_with_content: PathBuf) {
 ```
 
 By encapsulating temporary resource management within fixtures, tests become
-cleaner and less prone to errors related to resource setup or cleanup. The RAII
-(Resource Acquisition Is Initialization) pattern, common in Rust and
-exemplified by `tempfile::TempDir` (which cleans up the directory when
-dropped), works effectively with `rstest`'s fixture model. When a regular
+cleaner, more predictable, and less prone to errors related to resource setup
+or cleanup. The RAII (Resource Acquisition Is Initialization) pattern, common
+in Rust and exemplified by `tempfile::TempDir` (which cleans up the directory
+when dropped), works effectively with `rstest`'s fixture model. When a regular
 (non-`#[once]`) fixture returns a `TempDir` object, or an object that owns it,
 the resource is typically cleaned up after the test finishes, as the fixture's
 return value goes out of scope. This localizes resource management logic to the
@@ -924,18 +929,18 @@ ensure proper cleanup, as `#[once]` fixtures are never dropped.
 
 For unit and integration tests that depend on external services like databases
 or HTTP APIs, mocking is a crucial technique. Mocks allow tests to run in
-isolation, without relying on real external systems, making them faster and
-more reliable. `rstest` fixtures are an ideal place to encapsulate the setup
-and configuration of mock objects. Crates like `mockall` can be used to create
-mocks, or they can be hand-rolled. The fixture would then provide the
-configured mock instance to the test. General testing advice also strongly
-recommends mocking external dependencies. The `rstest` documentation itself
-shows examples with fakes or mocks like `empty_repository` and
+isolation, without relying on real external systems, making them faster, more
+reliable, and easier to reason about. `rstest` fixtures are an ideal place to
+encapsulate the setup and configuration of mock objects. Crates like `mockall`
+can be used to create mocks, or they can be hand-rolled. The fixture would then
+provide the configured mock instance to the test. General testing advice also
+strongly recommends mocking external dependencies. The `rstest` documentation
+itself shows examples with fakes or mocks like `empty_repository` and
 `string_processor`.
 
 A conceptual example using a hypothetical mocking library:
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::sync::Arc;
 
@@ -1021,7 +1026,7 @@ contents directly as `&str` or `&[u8]` by specifying a mode, e.g.,
 `#[base_dir = "…"]` can specify a base directory for the glob, and
 `#[exclude("regex")]` can filter out paths matching a regular expression.
 
-```rust
+```rust,no_run
 use rstest::*;
 use std::path::PathBuf;
 use std::fs;
@@ -1055,9 +1060,9 @@ significantly increase binary size if used with large data files.
 
 ## VIII. Reusability and Organization
 
-As test suites grow, maintaining reusability and clear organization becomes
-paramount. `rstest` and its ecosystem provide tools and encourage practices
-that support these goals.
+As test suites grow, maintaining reusability, clear organization, and
+predictable execution becomes paramount. `rstest` and its ecosystem provide
+tools and encourage practices that support these goals.
 
 ### A. Leveraging `rstest_reuse` for Test Templates
 
@@ -1073,7 +1078,7 @@ the definition of reusable test templates.
 - `#[apply(template_name)]`: Used on a test function to apply a previously
   defined template, effectively injecting its attributes.
 
-```rust
+```rust,no_run
 // Add to Cargo.toml: rstest_reuse = "0.7" (or latest)
 // In the test module or lib.rs/main.rs for crate-wide visibility if needed:
 // #[cfg(test)]
@@ -1147,8 +1152,9 @@ for maintainability and scalability.
     `#[default]` / `#[with]` for configurable fixtures to enhance the clarity
     of both fixture definitions and their usage in tests.
 
-General testing advice, such as keeping tests small and focused and mocking
-external dependencies, also applies and is well-supported by `rstest`'s design.
+General testing advice, such as keeping tests small, focused, and
+deterministic, and mocking external dependencies, also applies and is
+well-supported by `rstest`'s design.
 
 ## IX. `rstest` in Context: Comparison and Considerations
 
@@ -1187,7 +1193,7 @@ and Parameterization**
 | Reusing Parameter Sets                   | Manual duplication of cases or custom helper macros.          | rstest_reuse crate with #[template] and #[apply] attributes.                     |
 
 This comparison highlights how `rstest`'s attribute-based, declarative approach
-streamlines common testing patterns, reducing manual effort and improving the
+streamlines common testing patterns, reduces manual effort, and improves the
 clarity of test intentions.
 
 ### B. When to Choose `rstest`
@@ -1272,7 +1278,7 @@ logtest = "^2.0"
 
 Start a `Logger` before running the code under test:
 
-```rust
+```rust,no_run
 use logtest::Logger;
 
 let mut logger = Logger::start();
@@ -1286,16 +1292,16 @@ are logged under specific conditions.
 ### C. `test-with`: Conditional Testing with `rstest`
 
 The `test-with` crate allows for conditional execution of tests based on
-various runtime conditions, such as the presence of environment variables, the
-existence of specific files or folders, or the availability of network
-services. It can be used with `rstest`. For example, an `rstest` test could be
-further annotated with `test-with` attributes to ensure it only runs if a
-particular database configuration file exists or if a dependent web service is
-reachable. The order of macros is important: `rstest` should typically generate
-the test cases first, and then `test-with` can apply its conditional execution
-logic to these generated tests. This allows `rstest` to focus on test structure
-and data provision, while `test-with` provides an orthogonal layer of control
-over test execution conditions.
+various runtime conditions, including environment variables; specific files or
+folders; and the availability of network services. It can be used with
+`rstest`. For example, an `rstest` test could be further annotated with
+`test-with` attributes to ensure it only runs if a particular database
+configuration file exists or if a dependent web service is reachable. The order
+of macros is important: `rstest` should typically generate the test cases
+first, and then `test-with` can apply its conditional execution logic to these
+generated tests. This allows `rstest` to focus on test structure and data
+provision, while `test-with` provides an orthogonal layer of control over test
+execution conditions.
 
 ## XI. Conclusion and Further Resources
 
@@ -1361,5 +1367,5 @@ provided by `rstest`:
 | #[files("glob_pattern",…)]   | Injects file paths (or contents, with mode=) matching a glob pattern as test arguments.      |
 
 By mastering `rstest`, Rust developers can significantly elevate the quality
-and efficiency of their testing practices, leading to more reliable and
-maintainable software.
+and efficiency of their testing practices, leading to more reliable,
+maintainable, and predictable software.
