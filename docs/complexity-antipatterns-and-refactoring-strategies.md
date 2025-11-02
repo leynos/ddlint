@@ -845,7 +845,7 @@ and efficient, but also a pleasure to evolve and maintain.
        <https://blog.ndepend.com/cqrs-understanding-first-principles/>
 [^24]: When to use the CQRS design pattern? — architecture — Stack Overflow,
        <https://stackoverflow.com/questions/8820748/when-to-use-the-cqrs-design-pattern>
-[^25]: Another pasta-flavored programming problem is "ravioli code". That …,
+[^25]: Another pasta-themed programming problem is "ravioli code". That …,
        <https://news.ycombinator.com/item?id=4537664>
 [^26]: Ravioli Code — C2 wiki, <https://wiki.c2.com/?RavioliCode>
 [^27]: Ravioli code — why an anti-pattern? — Stack Overflow,
