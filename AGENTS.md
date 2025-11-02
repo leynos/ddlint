@@ -260,7 +260,7 @@ The following tooling is available in this environment:
   language for kernel and application tracing.
 - `lsof` – Lists open files and the processes using them.
 - `htop` – Interactive process viewer (visual upgrade to `top`).
-- `iotop` – Displays and monitors I/O usage by processes.
+- `iotop` – Displays and monitors input/output usage by processes.
 - `ncdu` – NCurses-based disk usage viewer for finding large files/folders.
 - `tree` – Displays directory structure as a tree.
 - `bat` – `cat` clone with syntax highlighting, Git integration, and paging.
