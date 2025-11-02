@@ -40,7 +40,7 @@ mockable = { version = "0.1.4", default-features = false, features = ["clock", "
 Directly calling `std::env` makes it difficult to test all logic paths
 exhaustively.
 
-```rust
+```rust,no_run
 pub fn get_api_key() -> Option<String> {
     match std::env::var("API_KEY") {
         Ok(key) if !key.is_empty() => Some(key),
@@ -54,7 +54,7 @@ pub fn get_api_key() -> Option<String> {
 The function is refactored to accept a generic type that implements the
 `mockable::Env` trait.
 
-```rust
+```rust,no_run
 use mockable::Env;
 
 pub fn get_api_key(env: &impl Env) -> Option<String> {
@@ -73,7 +73,7 @@ environment is now explicit and injectable.
 Tests can use `MockEnv`, an in-memory mock, to simulate any environmental
 condition without touching the actual process environment.
 
-```rust
+```rust,no_run
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,7 +109,7 @@ due to external state.
 In production code, inject the "real" implementation, `RealEnv`, which calls
 the actual `std::env` functions.
 
-```rust
+```rust,no_run
 use mockable::RealEnv;
 
 fn main() {
@@ -132,7 +132,7 @@ trait for this purpose.
 
 ### Untestable Code
 
-```rust
+```rust,no_run
 use std::time::{SystemTime, Duration};
 
 fn is_cache_entry_stale(creation_time: SystemTime) -> bool {
@@ -146,7 +146,7 @@ fn is_cache_entry_stale(creation_time: SystemTime) -> bool {
 
 ### Testable Refactor
 
-```rust
+```rust,no_run
 use mockable::Clock;
 use std::time::{SystemTime, Duration};
 
@@ -161,7 +161,7 @@ fn is_cache_entry_stale(creation_time: SystemTime, clock: &impl Clock) -> bool {
 
 ### Testing with `MockClock`
 
-```rust
+```rust,no_run
 #[cfg(test)]
 mod tests {
     use super::*;
