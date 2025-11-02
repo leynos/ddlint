@@ -69,7 +69,7 @@ ______________________________________________________________________
 
 6) Implementation compatibility notes
 
-- The Haskell analysis spells out pre‑lexing tab normalisation and position
+- The Haskell analysis spells out pre‑lexing tab normalization and position
   mapping. The spec references this but could explicitly tie it to entry points
   and diagnostics guarantees.
 
@@ -116,7 +116,7 @@ document.
 - Document an expression‑only entry point alongside the full‑program entry
   point under “Entry points and products”.
 - Expand “Portability notes” with a compatibility policy and explicit tab
-  normalisation guidance.
+  normalization guidance.
 
 2) Lexer and parser alignment
 
