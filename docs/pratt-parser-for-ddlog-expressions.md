@@ -38,7 +38,7 @@ ______________________________________________________________________
 First, the parser needs a data structure to represent the parsed expressions.
 This will live alongside the other AST definitions in `src/parser/ast/`.
 
-```rust
+```rust,no_run
 // In a new file, e.g., src/parser/ast/expr.rs
 
 #[derive(Debug, Clone, PartialEq)]
@@ -101,13 +101,13 @@ ______________________________________________________________________
 ## 3. Pratt parser implementation with `chumsky`
 
 The heart of the implementation uses `chumsky::pratt`. This requires defining
-the atoms (the simplest parts of an expression, like literals or variables) and
+the atoms—the simplest parts of an expression such as literals or variables—and
 then defining the operators and their binding power (precedence).
 
 This logic would be added to the `span_scanner.rs` or a new module it delegates
 to.
 
-```rust
+```rust,no_run
 // In a parser module, e.g., src/parser/expression_parser.rs
 
 use chumsky::prelude::*;
@@ -348,10 +348,11 @@ node. The header is handled in three parts:
   malformed expressions. Guards are stored as `Option<Box<Expr>>` and omitted
   when absent.
 
-The loop body is parsed using the standard expression entry point, allowing
-single atoms or grouped blocks. Treating loops as expressions means
-`rule_body_span` can continue validating rule bodies by invoking the Pratt
-parser; control-flow errors surface alongside other expression diagnostics.
+The loop body is parsed using the standard expression entry point. That parser
+handles both single atoms and grouped blocks. Treating loops as expressions
+means `rule_body_span` can continue validating rule bodies by invoking the
+Pratt parser; control-flow errors surface alongside other expression
+diagnostics.
 
 ______________________________________________________________________
 
@@ -395,7 +396,7 @@ arm construction is clearer than chaining builders.
 
 The typed AST wrapper for this new node would look something like this:
 
-```rust
+```rust,no_run
 // In src/parser/ast/mod.rs or a new file
 
 pub struct Expression(rowan::SyntaxNode<DdlogLanguage>);
@@ -444,9 +445,9 @@ recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
 Literal tokens are normalized in a dedicated helper so prefix parsing remains
-readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE` and `K_FALSE` to
-`ast::Literal` variants, ensuring numbers, strings and booleans appear directly
-in the resulting AST.
+readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE`, and `K_FALSE` to
+`ast::Literal` variants, ensuring numbers, strings, and booleans appear
+directly in the resulting AST.
 
 Operator precedence is centralised in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
