@@ -3,7 +3,7 @@
 //! This module exposes `tokenize_with_trivia` and `tokenize_without_trivia`
 //! functions which convert raw source text into
 //! a sequence of `(SyntaxKind, Span)` pairs. It uses the `logos` crate to
-//! recognise tokens so that the CST can mirror the input exactly.
+//! recognize tokens so that the CST can mirror the input exactly.
 
 use logos::Logos;
 use phf::phf_map;
@@ -104,7 +104,7 @@ enum Token {
 
 /// Maps identifier strings to their keyword `SyntaxKind`.
 ///
-/// Returns `Some(kind)` if `ident` is a recognised `DDlog` keyword, or `None`
+/// Returns `Some(kind)` if `ident` is a recognized `DDlog` keyword, or `None`
 /// otherwise. A static map avoids a long match statement and allows O(1)
 /// lookups.
 static KEYWORDS: phf::Map<&'static str, SyntaxKind> = phf_map! {
