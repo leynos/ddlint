@@ -51,7 +51,7 @@ ______________________________________________________________________
 
 3) Control‑flow statements: `break`, `continue`, `return`
 
-- The Haskell parser (and our roadmap) recognise these constructs.
+- The Haskell parser (and our roadmap) recognize these constructs.
 - The spec’s Statements grammar covers `for`/`if`/`match`/`skip`/`block` and
   assignments, but does not include `break`, `continue`, or `return`.
 
