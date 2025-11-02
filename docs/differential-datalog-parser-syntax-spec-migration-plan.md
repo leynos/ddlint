@@ -26,8 +26,8 @@ explicitly superseded in the spec:
   does not currently document.
 
 These items should be incorporated into the spec as compatibility and
-clarification notes. Once done, we can deprecate the Haskell analysis document
-as authoritative guidance and retain it only as historical context.
+clarification notes. Once complete, the Haskell analysis document can be
+deprecated as authoritative guidance and retained only as historical context.
 
 ______________________________________________________________________
 
@@ -51,7 +51,7 @@ ______________________________________________________________________
 
 3) Control‑flow statements: `break`, `continue`, `return`
 
-- The Haskell parser (and our roadmap) recognize these constructs.
+- The Haskell parser (and the published roadmap) recognize these constructs.
 - The spec’s Statements grammar covers `for`/`if`/`match`/`skip`/`block` and
   assignments, but does not include `break`, `continue`, or `return`.
 
@@ -121,7 +121,7 @@ document.
 2) Lexer and parser alignment
 
 - Ensure the lexer’s reserved keyword set includes Rust keywords and any
-  legacy tokens we commit to reserve/diagnose.
+  legacy tokens the project commits to reserve/diagnose.
 - Decide fate of `#`/`<=>` and implement consistent errors.
 
 3) Tests and diagnostics
@@ -145,9 +145,9 @@ document.
 
 5) Optional: compatibility mode policy
 
-- If we choose to keep certain legacy spellings temporarily, gate them behind
-  a “compat mode” configuration, documented in the spec’s compatibility
-  appendix. Provide a deprecation timeline.
+- If the project chooses to keep certain legacy spellings temporarily, gate
+  them behind a “compat mode” configuration, documented in the spec’s
+  compatibility appendix. Provide a deprecation timeline.
 
 ______________________________________________________________________
 
