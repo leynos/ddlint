@@ -28,6 +28,13 @@ enforces name‑uniqueness invariants, and records source provenance.
 - **Transformations performed pre‑AST:** `group_by` and `Aggregate` lowering;
   map/vector literal lowering; `&` in rule heads → `ref_new`.
 
+#### 1.1.1 Expression‑only parsing
+
+- Implementations may also expose an expression‑only parser entry point that
+  accepts a single expression and returns an `Expr` AST. This entry point uses
+  the same lexer and operator table as full‑program parsing and is intended for
+  tests and interactive tooling.
+
 ______________________________________________________________________
 
 ## 2. Lexical structure
