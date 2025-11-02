@@ -48,7 +48,7 @@
   (`f(…)`, `e[expr]`, `e.name`) precedence . Code: postfix/index/call/member
   access and most arithmetic/logic exist (see
   `src/parser/expression/infix.rs`, `src/parser/ast/precedence.rs`).
-  Implication `=>` is tokenised (search shows `T_IMPLIES`), but I don’t see
+  Implication `=>` is tokenized (search shows `T_IMPLIES`), but I don’t see
   tests exercising it under Pratt; concat `++`/xor `^` aren’t visible in tests
   either. **Action:** (a) ensure all spec’d tokens are wired into Pratt with
   correct binding power/associativity; (b) add focused tests for `=>`, `^`,
