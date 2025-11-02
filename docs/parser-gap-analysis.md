@@ -49,10 +49,10 @@
   access and most arithmetic/logic exist (see
   `src/parser/expression/infix.rs`, `src/parser/ast/precedence.rs`).
   Implication `=>` is tokenised (search shows `T_IMPLIES`), but tests do not
-  exercise it under Pratt; concat `++`/xor `^` aren’t visible in tests
-  either. **Action:** (a) ensure all spec’d tokens are wired into Pratt with
-  correct binding power/associativity; (b) add focused tests for `=>`, `^`,
-  `++` to lock precedence.
+  exercise it under Pratt; concat `++`/xor `^` aren’t visible in tests either.
+  **Action:** (a) ensure all spec’d tokens are wired into Pratt with correct
+  binding power/associativity; (b) add focused tests for `=>`, `^`, `++` to
+  lock precedence.
 
 * **Call parsing for unqualified names**
   Spec: “Only **fully qualified** `module::func` parses as a function call at
@@ -77,11 +77,11 @@
   `match` is implemented (great!) but **stores arm patterns as raw strings**
   (`MatchArm { pattern: String, body: Expr }` in `src/parser/ast/expr.rs`) and
   collects them via delimiter-balanced slicing
-  (`expression/pattern_collection.rs`). **Deviation:** the current code does not
-  build the **pattern AST** the spec expects. **Action:** add a **pattern
-  parser** that
-  produces nodes like `PVar`, `PTuple`, `PStruct`, `PLit`, `PTyped`, … and use
-  it for **match arms**, **for-loop bindings**, and **RHS flatmap binds**.
+  (`expression/pattern_collection.rs`). **Deviation:** the current code does
+  not build the **pattern AST** the spec expects. **Action:** add a **pattern
+  parser** that produces nodes like
+  `PVar`, `PTuple`, `PStruct`, `PLit`, `PTyped`, … and use it for **match
+  arms**, **for-loop bindings**, and **RHS flatmap binds**.
 
 * **`for` loops**
   Spec: `for (Pattern in Expr) if Guard? Statement` acts as an imperative form
@@ -89,8 +89,8 @@
   supports `for` as an **expression** (`Expr::ForLoop`) with pattern text
   slicing and an optional `if` guard (`src/parser/expression/control_flow.rs`).
   Top-level desugaring is not present. **Action:** (a) add **top-level**
-  desugaring pass (“convertStatement”) to emit rules; (b) once you introduce
-  **pattern AST**, stop storing the binding as string.
+  desugaring pass (“convertStatement”) to emit rules; (b) once the plan
+  introduces a **pattern AST**, stop storing the binding as string.
 
 * **`{ expr }` as grouping**
   Spec doesn’t define braces as an **expression grouping** (braces are for map
@@ -156,9 +156,8 @@
   combine the adornments.
 
 * **`apply` items**
-  Spec includes an `Apply` top-level form . Code: no `apply`
-  parsing/tests are present. **Action:** add `Apply` item parser + AST and a
-  couple of fixtures.
+  Spec includes an `Apply` top-level form . Code: no `apply` parsing/tests are
+  present. **Action:** add `Apply` item parser + AST and a couple of fixtures.
 
 ### 7) Name & scoping rules
 
@@ -166,9 +165,9 @@
   Spec: unique names for type/relation/index/transformer/import; function
   groups overloaded by **arity** only; reserved words not allowed as
   identifiers; attributes only in certain places . Code: tokenizer and AST
-  structure are present, but enforcement tests for **duplicate
-  definitions**, **function (name, arity)** uniqueness, or attribute placement
-  beyond the function/param span tests are absent. **Action:** wire post-parse validation
+  structure are present, but enforcement tests for **duplicate definitions**,
+  **function (name, arity)** uniqueness, or attribute placement beyond the
+  function/param span tests are absent. **Action:** wire post-parse validation
   for uniqueness and produce **spanned diagnostics** per spec.
 
 ## Noteworthy *implementation-only* extensions (consider updating the spec)
