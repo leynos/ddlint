@@ -67,10 +67,21 @@ The following **keywords** and **reserved operators** cannot be used as
 identifiers (final list should be kept 1:1 with the lexer):
 
 - **Keywords:** `type`, `function`, `extern`, `transformer`, `input`, `output`,
-  `internal`,`relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`.
+  `internal`,`relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`,`break`,`continue`.
 - **Special tokens:** `@`, `:-`, `,`, `;`, `:`, `::`, `.`, `&`, `'` (diff
   marker), `-<` (delay introducer), `=>` (implies), brackets and braces
   `()[]{}`.
+
+Reserved but not part of the grammar: `#`, `<=>`. Implementations must reject
+their use with a clear diagnostic.
+
+#### 2.3.1 Host‑language keyword reservation
+
+In addition to DDlog keywords and operators above, implementations must reserve
+Rust keywords as identifiers to avoid conflicts with code generation and
+embedding. The complete reserved set is defined in the lexer; this spec
+requires that using any host keyword as an identifier be rejected with a
+diagnostic. Keep the lexer table as the source of truth.
 
 ______________________________________________________________________
 
@@ -415,6 +426,24 @@ clear diagnostic that includes a span:
 
 ______________________________________________________________________
 
+## 9.1 Legacy and compatibility tokens
+
+Implementations may encounter historical tokens from older DDlog parsers. This
+spec defines their treatment to aid migration:
+
+- `Aggregate(…)`: accepted and lowered to `RHSGroupBy`; emit a deprecation
+  diagnostic.
+- `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
+  binds instead. If used as keywords, reject with a targeted message.
+- `typedef`: not supported; use `type` definitions. Emit an error with a fix
+  hint.
+- Legacy type names such as `bigint`, `bit`, `double`, `float`, `signed`:
+  not in the grammar. Use sized integer types (`iN`/`uN`), and `f32`/`f64` for
+  floating‑point.
+- `as`: not a keyword in the updated grammar; reject its use as a keyword.
+
+______________________________________________________________________
+
 ## 10. AST crosswalk (informative)
 
 This section maps grammar constructs to representative AST node names to aid
@@ -564,6 +593,10 @@ ______________________________________________________________________
   representation (`RHSGroupBy`).
 - **Tabs and positions:** if you normalise tabs, do so before lexing and
   preserve a mapping for accurate diagnostics.
+- **Compatibility policy:** legacy constructs accepted for compatibility must
+  either be lowered to the canonical AST (e.g., `Aggregate`) or rejected with a
+  precise diagnostic and fix hint. Implementations MUST NOT silently accept
+  constructs that are not part of this specification.
 - **Multiple heads:** either preserve the multi‑head form in the AST or expand
   into multiple single‑head rules consistently; this spec treats multi‑head as
   syntactic sugar for multiple rules with a shared body.
