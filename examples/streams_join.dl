@@ -3,4 +3,5 @@ input relation ZipCodes(zip: u32, city: string)
 input stream   Parcel(zip: u32, weight: usize)
 output stream  ParcelCity(zip: u32, city: string, weight: usize)
 
+// Inner join: parcels without a matching zipcode are dropped
 ParcelCity(zip, city, w) :- Parcel(zip, w), ZipCodes(zip, city).
