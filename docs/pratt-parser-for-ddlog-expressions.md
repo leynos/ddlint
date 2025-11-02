@@ -28,8 +28,8 @@ The key steps are:
 3. **Implement the Parser**: Build the `chumsky` parser using `chumsky::pratt`.
 
 4. **Integrate with the CST**: Ensure that when the expression parser is
-   invoked, the resulting AST is correctly represented within a `rowan`
-   `GreenNode`.
+   invoked, the resulting AST is correctly represented within a
+   `rowan` `GreenNode`.
 
 ______________________________________________________________________
 
@@ -452,8 +452,8 @@ Operator precedence is centralised in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
-The precedence for type and control operators is, from highest to lowest: `:`,
-`as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
+The precedence for type and control operators is, from highest to lowest:
+`:`, `as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
 parses as `(a and b) = c`. Ascription and cast bind more tightly than
 assignment but looser than arithmetic operators.
 
