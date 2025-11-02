@@ -1,4 +1,4 @@
-# DON’T panic: a hitchhiker’s guide to building an error-recovering parser with **Chumsky**
+# Don't panic: a hitchhiker’s guide to building an error-recovering parser with **Chumsky**
 
 > *A completely remarkable book. Probably the most remarkable, certainly the
 > most successful book ever to come out of the great publishing corporations of
@@ -7,9 +7,10 @@
 ## 1 Know where your towel (and grammar) is
 
 Before you even think about summoning Chumsky’s combinators, write your grammar
-down — preferably in EBNF, biro on a napkin, or etched into the side of a Vogon
-constructor fleet. Chumsky mirrors whatever you hand it; change the napkin
-later and you’ll be spelunking inside recursive lambdas at 2 a.m.
+down — preferably in Extended Backus–Naur Form, biro on a napkin, or etched
+into the side of a Vogon constructor fleet. Chumsky mirrors whatever you hand
+it; change the napkin later and you’ll be spelunking inside recursive lambdas
+at 2 a.m.
 
 ### Checklist
 
@@ -59,13 +60,13 @@ a couple of bespoke closures and quickly look like you own the place.
 
 Codex is a marvellous companion so long as you:
 
-- **Constrain its universe.** Include the token enums, AST structs, and the
-  precise combinators in the prompt.
+- **Constrain its universe.** Include the token enums, abstract syntax tree
+  structures, and the precise combinators in the prompt.
 - **Ask for one production at a time.** Whole-grammar requests invite
   hallucinations of alternate dimensions.
-- **Round-trip ruthlessly.** Generate random AST → pretty-print → re-parse →
-  assert equality. Failures mean Codex (or you) has mis-remembered the
-  Restaurant at the End of the File.
+- **Round-trip ruthlessly.** Generate random abstract syntax trees →
+  pretty-print → re-parse → assert equality. Failures mean Codex (or you) has
+  mis-remembered the Restaurant at the End of the File.
 
 ### 6 Linting: the first sip of the differential logic engine
 
@@ -83,14 +84,14 @@ IDE feedback faster than a hyperspace bypass.
 
 - **CI Pipeline:** `cargo insta test`, `cargo clippy --deny warnings`, and your
   round-trip parser tests on every push.
-- **Editor integration:** Convert Chumsky’s `Rich` errors into LSP diagnostics;
-  line/column already sorted.
+- **Editor integration:** Convert Chumsky’s `Rich` errors into language server
+  protocol diagnostics; line/column already sorted.
 - **Performance guardrails:** Benchmark on a late-game save. If a commit slows
   parsing or solving by > 20 %, trigger the Heart of Gold and revert reality.
 
 ______________________________________________________________________
 
-### TL;DR (because life is short and full of Thursdays)
+### Too long; didn’t read (because life is short and full of Thursdays)
 
 Write the grammar first, lex separately, tame left-recursion, anchor recovery
 on hard delimiters, keep Codex on a tight leash, and let your linter double as
