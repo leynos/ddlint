@@ -90,8 +90,8 @@ ______________________________________________________________________
 ## **Phase 2: Parser Grammar Expansion**
 
 The current parser excels at identifying top-level statements but has a
-simplified understanding of statement bodies, particularly expressions and
-control flow. This phase aims to build a complete grammar.
+simplified understanding of statement bodies, particularly expressions as well
+as control flow constructs. This phase aims to build a complete grammar.
 
 - [ ] **Implement Detailed Expression Parsing**
 
