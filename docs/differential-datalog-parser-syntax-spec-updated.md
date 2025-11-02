@@ -351,7 +351,7 @@ ______________________________________________________________________
 ### 6.3 Head by‑reference (`&Rel{…}`) → `ref_new`
 
 - In a **rule head**, `&Rel{…}` (or bracket form) is rewritten to a call to
-  **`ref_new(Rel{…})`** so that downstream stages can materialise reference
+  **`ref_new(Rel{…})`** so that downstream stages can materialize reference
   values.
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
