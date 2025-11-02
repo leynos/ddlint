@@ -335,7 +335,7 @@ arms without triggering the guard.
 
 ### Handling `for` loop expressions
 
-Rules may contain `for` loops with optional guards. The Pratt parser recognises
+Rules may contain `for` loops with optional guards. The Pratt parser recognizes
 the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
 node. The header is handled in three parts:
 
