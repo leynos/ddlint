@@ -9,7 +9,7 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
-    /// Parses a recognised literal token into an `Expr::Literal` node.
+    /// Parses a recognized literal token into an `Expr::Literal` node.
     ///
     /// # Parameters
     /// - `kind`: The syntax kind returned by the lexer for the current token.
