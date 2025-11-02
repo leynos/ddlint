@@ -3,14 +3,15 @@
 ## Executive summary
 
 The construction of robust language tooling—compilers, interpreters, static
-analyzers, and formatters—is a formidable engineering challenge. At the core of
-this challenge lies the parser, a component whose correctness and resilience
-dictates the quality and usability of the entire system. In the Rust ecosystem,
-a powerful stack has emerged for this purpose, combining the high-performance
-lexical analysis of `logos`, the expressive, error-recovering parsing of
-`chumsky`, and the lossless, full-fidelity syntax tree representation of
-`rowan`. While these tools provide an exceptional foundation, building a
-production-grade parser requires an equally sophisticated testing strategy.
+analysis tools, and formatters—is a formidable engineering challenge. At the
+core of this challenge lies the parser, a component whose correctness and
+resilience dictates the quality and usability of the entire system. In the Rust
+ecosystem, a powerful stack has emerged for this purpose, combining the
+high-performance lexical analysis of `logos`, the expressive, error-recovering
+parsing of `chumsky`, and the lossless, full-fidelity syntax tree
+representation of `rowan`. While these tools provide an exceptional foundation,
+building a production-grade parser requires an equally sophisticated testing
+strategy.
 
 This report presents a comprehensive, multi-layered guide to testing parsers
 built with this modern Rust stack. It moves beyond rudimentary examples to
