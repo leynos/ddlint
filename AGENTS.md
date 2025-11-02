@@ -52,12 +52,12 @@
   subsequent commit) should represent a single logical unit of work.
 - **Quality Gates:** Before considering a change complete or proposing a commit,
   ensure it meets the following criteria:
-  - New functionality or changes in behaviour are fully validated by relevant
-    unit tests and behavioural tests.
-  - Where a bug is being fixed, a unittest has been provided demonstrating the
-    behaviour being corrected both to validate the fix and to guard against
+- New functionality or changes in observable system responses are fully
+  validated by relevant unit tests and scenario tests.
+- Where a bug is being fixed, a unittest has been provided demonstrating the
+  scenario being corrected both to validate the fix and to guard against
     regression.
-  - Passes all relevant unit and behavioural tests according to the guidelines
+- Passes all relevant unit and scenario tests according to the guidelines
     above.
   - Passes lint checks
   - Adheres to formatting standards tested using a formatting validator.
@@ -103,7 +103,7 @@
 - **Separate Atomic Refactors:** If refactoring is deemed necessary:
   - Perform the refactoring as a **separate, atomic commit** *after* the
     functional change commit.
-  - Ensure the refactoring adheres to the testing guidelines (behavioral tests
+  - Ensure the refactoring adheres to the testing guidelines (behavioural tests
     pass before and after, unit tests added for new units).
   - Ensure the refactoring commit itself passes all quality gates.
 
@@ -114,8 +114,8 @@ management. Contributors should follow these best practices when working on the
 project:
 
 - Run `make check-fmt`, `make lint`, and `make test` before committing. These
-  targets wrap the following commands so contributors understand the exact
-  behaviour and policy enforced:
+  targets wrap the following commands so contributors understand the precise
+  semantics and policy enforced:
   - `make check-fmt` executes:
 
     ```bash
@@ -149,7 +149,7 @@ project:
   meaningfully named structs.
 - Where a function is returning a large error consider using `Arc` to reduce the
   amount of data returned.
-- Write unit and behavioural tests for new functionality. Run both before and
+- Write unit and scenario tests for new functionality. Run both before and
   after making any change.
 - Every module **must** begin with a module level (`//!`) comment explaining the
   module's purpose and utility.
@@ -187,19 +187,19 @@ project:
   ```
 
 - Use NewTypes to model domain values and eliminate "integer soup". Reach for
-  `newt-hype` when introducing many homogeneous wrappers that share behaviour;
+  `newt-hype` when introducing many homogeneous wrappers that share semantics;
   add small shims such as `From<&str>` and `AsRef<str>` for string-backed
   wrappers. For path-centric wrappers implement `AsRef<Path>` alongside
   `into_inner()` and `to_path_buf()`; avoid attempting
   `impl From<Wrapper> for PathBuf` because of the orphan rule. Prefer explicit
   tuple structs whenever bespoke validation or tailored trait surfaces are
-  required, customising `Deref`, `AsRef`, and `TryFrom` per type. Use
+  required, customizing `Deref`, `AsRef`, and `TryFrom` per type. Use
   `the-newtype` when defining traits and needing blanket implementations that
   apply across wrappers satisfying `Newtype + AsRef/AsMut<Inner>`, or when
   establishing a coherent internal convention that keeps trait forwarding
   consistent without per-type boilerplate. Combine approaches: lean on
   `newt-hype` for the common case, tuple structs for outliers, and
-  `the-newtype` to unify behaviour when you own the trait definitions.
+  `the-newtype` to unify semantics when you own the trait definitions.
 
 ### Dependency Management
 
@@ -245,7 +245,7 @@ The following tooling is available in this environment:
 
 - `mbake` – A Makefile validator. Run using `mbake validate Makefile`.
 - `strace` – Traces system calls and signals made by a process; useful for
-  debugging runtime behaviour and syscalls.
+  debugging runtime characteristics and syscalls.
 - `gdb` – The GNU Debugger, for inspecting and controlling programs as they
   execute (or post-mortem via core dumps).
 - `ripgrep` – Fast, recursive text search tool (`grep` alternative) that
