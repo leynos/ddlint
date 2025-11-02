@@ -526,9 +526,9 @@ spaghetti.[^17]
    consolidated.[^10] Pair programming can also help maintain a balanced
    perspective during refactoring.[^21]
 
-6. **The "You Aren't Gonna Need It" Principle:** This principle helps avoid
-   unnecessary abstractions and features, which can contribute to Ravioli code
-   if abstractions are created for anticipated but not actual needs.[^21]
+6. **The "You Aren't Gonna Need It" (YAGNI) principle:** This principle helps
+   avoid unnecessary abstractions and features, which can contribute to Ravioli
+   code if abstractions are created for anticipated but not actual needs.[^21]
 
 7. **Focus on System Flow:** While individual components in Ravioli code might
    be simple, the difficulty lies in tracing the overall execution flow. Ensure
@@ -800,7 +800,7 @@ and efficient, but also a pleasure to evolve and maintain.
 
 ## Works Cited
 
-[^1]: How to Identify and Reduce Cognitive Complexity in Your Codebase — Axify,
+[^1]: How to Identify and Reduce Cognitive Complexity in a Codebase — Axify,
       <https://axify.io/blog/cognitive-complexity>
 [^2]: Top 5 Software Anti Patterns to Avoid for Better Development Outcomes |
       BairesDev, <https://www.bairesdev.com/blog/software-anti-patterns/>
@@ -824,16 +824,16 @@ and efficient, but also a pleasure to evolve and maintain.
       <https://codescene.com/engineering-blog/bumpy-road-code-complexity-in-context/>
 [^10]: Bumpy Road — Samman Technical Coaching,
       <https://sammancoaching.org/code_smells/bumpy_road.html>
-[^11]: Your Code as a Crime Scene, Second Edition,
+[^11]: Adam Tornhill, *Code as a Crime Scene*, Second Edition,
        <https://media.pragprog.com/titles/atcrime2/logic.pdf>
 [^12]: The software anti patterns that are killing development speed | Okoone,
        <https://www.okoone.com/spark/strategy-transformation/the-software-anti-patterns-that-are-killing-development-speed/>
 [^13]: How to *resist* refactoring a large spaghetti codebase? :
        r/SoftwareEngineering — Reddit,
        <https://www.reddit.com/r/SoftwareEngineering/comments/11smgtp/how_to_resist_refactoring_a_large_spaghetti/>
-[^14]: How would you refactor nested if statements? — Software Engineering
+[^14]: Refactoring nested conditional statements — Software Engineering
        Stack Exchange,
-       <https://softwareengineering.stackexchange.com/questions/47789/how-would-you-refactor-nested-if-statements>
+       <https://softwareengineering.stackexchange.com/questions/47789/>
 [^15]: CodeScene Automatic Code Evolution (ACE): Auto-Refactor Code,
        <https://codescene.io/docs/auto-refactor/index.html>
 [^16]: Code Smells — Samman Technical Coaching,
@@ -850,8 +850,8 @@ and efficient, but also a pleasure to evolve and maintain.
 [^21]: Implementing Command Query Responsibility Segregation in the dotnet
        ecosystem — Dev Community,
        <https://dev.to/moh_moh701/enhancing-net-applications-with-cqrs-and-solid-principles-30i8>
-[^22]: How do you refactor a God class? — Stack Overflow,
-       <https://stackoverflow.com/questions/14870377/how-do-you-refactor-a-god-class>
+[^22]: Refactoring a God class — Stack Overflow,
+       <https://stackoverflow.com/questions/14870377/>
 [^23]: Command Query Responsibility Segregation: Understanding From First
        Principles — NDepend Blog,
        <https://blog.ndepend.com/cqrs-understanding-first-principles/>
