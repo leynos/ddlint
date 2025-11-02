@@ -3,7 +3,10 @@ input stream S(x: u32)
 relation     Acc(x: u32)
 output relation Total(x: u32)
 
+// Accumulate previous total
 Acc(x) :- Total-1(x).
+// Accumulate new stream deltas
 Acc(x) :- S'(x).
 
+// Emit accumulated result
 Total(x) :- Acc(x).
