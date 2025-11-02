@@ -13,7 +13,7 @@ Apply these rules to keep the documentation clear and consistent for developers.
   - suffix ‑lyse in words not traced to the Greek ‑izo, ‑izein suffixes,
      such as _analyse_, _paralyse_ and _catalyse_,
   - suffix -our in words such as _colour_, _behaviour_ and _neighbour_,
-  - suffix -re in words such as _calibre_, _centre_ and fibre,
+  - suffix -re in words such as _calibre_, _centre_ and _fibre_,
   - double "l" in words such as _cancelled_, _counsellor_ and _cruellest_,
   - maintain the "e" in words such as _likeable_, _liveable_ and _rateable_,
   - suffix -ogue in words such as _analogue_ and _catalogue_,
