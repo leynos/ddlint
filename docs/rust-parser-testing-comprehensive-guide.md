@@ -97,7 +97,7 @@ serves as a mental model for selecting the right tool for a given testing task.
 
 The main strategies and tools are:
 
-- **Example-Based Testing** with `rstest`: Verifies specific behaviours and
+- **Example-Based Testing** with `rstest`: Verifies specific scenarios and
   handles edge cases or known bugs. Best used for token validation, precedence
   rules and edge case handling.
 - **Snapshot Testing** using `insta`: Detects regressions in full syntax trees
@@ -238,7 +238,7 @@ where one token is a prefix of another. A classic example is the set of tokens
 for single-character operators versus their two-character counterparts (e.g.,
 `+` vs. `++`, `!` vs. `!=`). `logos` resolves this ambiguity by always
 preferring the longest possible match.1 Test cases must be explicitly designed
-to verify this behavior.
+to verify this outcome.
 
 Another related issue, highlighted in a user forum post, occurs when multiple
 regexes can match at the same position, such as `r"\\"` and `r"\\begin"`.1 The
@@ -442,8 +442,8 @@ small parser can be tested in isolation.
 
 To unit test a specific parser rule, one should feed it a pre-tokenized slice
 (`&`) rather than a raw string. This isolates the parser logic from the lexer,
-ensuring that the test is focused solely on the behavior of the combinators.
-The parser's `parse` method returns a `ParseResult`, which contains either the
+ensuring that the test is focused solely on how the combinators operate. The
+parser's `parse` method returns a `ParseResult`, which contains either the
 output AST and a vector of non-fatal errors, or just a vector of fatal
 errors.27 Tests should assert against both the output and the error vector.
 
@@ -583,7 +583,7 @@ inputs. For each invalid input, the test must verify two critical properties:
    produce a useful partial AST for the valid parts of the code.
 
 Snapshot testing is the perfect tool for this. By snapshotting both the error
-vector and the resulting partial AST, we can validate the entire behavior of
+vector and the resulting partial AST, we can validate the overall semantics of
 the error recovery mechanism.
 
 ```rust
@@ -606,7 +606,7 @@ The resulting snapshot should show an error message like "Expected semicolon"
 and an AST that contains *both* the `let x = 1` and `let y = 2;` statements,
 proving that recovery was successful. Experimenting with different recovery
 strategies (e.g., `recover_with(skip_then_retry_until(...))`) and snapshotting
-the results is the most effective way to fine-tune the parser's behavior on
+the results is the most effective way to fine-tune how the parser responds on
 invalid input.23
 
 ### 3.4 Validating Pratt parsers (expression parsing)
@@ -648,7 +648,7 @@ fn test_pratt_parser_expressions(#[case] input: &str, #[case] expected: &str) {
 ```
 
 This suite of tests ensures that the core expression parsing logic, a
-notoriously tricky part of any language, is behaving exactly as specified.
+notoriously tricky part of any language, matches the specification precisely.
 
 ## Section 4: Ensuring the integrity of `rowan` lossless syntax trees
 
@@ -816,7 +816,7 @@ fn test_typed_ast_navigation_on_malformed_input() {
     // The name should still be parseable
     assert_eq!(func.name().unwrap().text(), "my_func");
     // But the body, which depends on elements after the name, might not be found.
-    // The exact behavior depends on the parser's recovery strategy.
+    // The exact outcome depends on the parser's recovery strategy.
     assert!(func.body().is_none());
 }
 ```
@@ -827,7 +827,7 @@ tree itself, providing a safe and ergonomic API for later compiler stages.
 ## Section 5: advanced strategies with property-based testing (`proptest`)
 
 The testing strategies discussed so far—example-based and snapshot—are
-excellent for verifying known behaviors and preventing regressions. However,
+excellent for verifying known scenarios and preventing regressions. However,
 they are limited by the developer's ability to imagine all possible edge cases.
 Property-based testing, implemented in Rust by crates like `proptest`, offers a
 powerful solution to this problem. Instead of testing against specific inputs,
