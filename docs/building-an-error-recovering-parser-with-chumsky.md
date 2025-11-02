@@ -4,13 +4,12 @@
 > most successful book ever to come out of the great publishing corporations of
 > Ursa Minor.*
 
-## 1 Know where your towel (and grammar) is
+## 1 Know where the towel (and grammar) is
 
-Before you even think about summoning Chumsky’s combinators, write your grammar
-down — preferably in Extended Backus–Naur Form, biro on a napkin, or etched
-into the side of a Vogon constructor fleet. Chumsky mirrors whatever you hand
-it; change the napkin later and you’ll be spelunking inside recursive lambdas
-at 2 a.m.
+Before summoning Chumsky’s combinators, capture the grammar — preferably in
+Extended Backus–Naur Form, biro on a napkin, or etched into the side of a Vogon
+constructor fleet. Chumsky mirrors whatever it receives; revise the napkin
+later and the team will be spelunking inside recursive lambdas at 2 a.m.
 
 ### Checklist
 
@@ -22,8 +21,8 @@ at 2 a.m.
 ### 2 Feed it tokens, not breadcrumbs
 
 Chumsky is much happier when it’s nibbling on a neat `Vec<TokenSpan>` than on
-raw characters. Use the `logos` crate (or your favourite lexical life-form) to
-slice the source first. You’ll get:
+raw characters. Use the `logos` crate (or a favourite lexical life-form) to
+slice the source first. This yields:
 
 - Cleaner error messages (“unexpected `KwIf`”)
 - Simple span maths: every token already knows its start & end byte
@@ -44,7 +43,7 @@ then hand the survivors to `choice()`.
 
 ### 4 Panic? no. Recovery? yes
 
-Error recovery is what turns your parser from Vogon poetry into a Babel fish.
+Error recovery is what turns the parser from Vogon poetry into a Babel fish.
 
 1. **Anchors:** Tell Chumsky that `;`, `}`, `]` and other setters of cosmic
    balance are “hard delimiters”. Use `recover_with(skip_until([]))`.
@@ -53,36 +52,37 @@ Error recovery is what turns your parser from Vogon poetry into a Babel fish.
 3. **Tri-state nodes:** Return `Option<AstNode>`; missing bits propagate but the
    parser soldiers on.
 
-In practice you’ll compose the built-ins (`NestedDelimiters`, `SkipUntil`) with
-a couple of bespoke closures and quickly look like you own the place.
+In practice it is common to compose the built-ins
+(`NestedDelimiters`, `SkipUntil`) with a couple of bespoke closures and quickly
+look like the local authority on parser resilience.
 
 ### 5 Getting Codex to behave (or: how to babysit a 2-metre tall neural net)
 
-Codex is a marvellous companion so long as you:
+Codex is a marvellous companion so long as the operator:
 
 - **Constrain its universe.** Include the token enums, abstract syntax tree
   structures, and the precise combinators in the prompt.
 - **Ask for one production at a time.** Whole-grammar requests invite
   hallucinations of alternate dimensions.
 - **Round-trip ruthlessly.** Generate random abstract syntax trees →
-  pretty-print → re-parse → assert equality. Failures mean Codex (or you) has
-  mis-remembered the Restaurant at the End of the File.
+  pretty-print → re-parse → assert equality. Failures mean Codex (or the prompt
+  author) has misremembered the Restaurant at the End of the File.
 
 ### 6 Linting: the first sip of the differential logic engine
 
-Treat the linter as the pre-solver phase of your differential logic engine:
+Treat the linter as the pre-solver phase of the differential logic engine:
 
 1. Build symbol tables and scope graphs.
 2. Run the cheap local checks (duplicates, arity, type holes).
 3. Emit a constraint set and immediately feed it to the solver; conflicts become
    diagnostics.
 
-Because differential logic supports incremental re-checking, you can deliver
+Because differential logic supports incremental rechecking, teams can deliver
 IDE feedback faster than a hyperspace bypass.
 
 ### 7 Keeping the whole show flying
 
-- **CI Pipeline:** `cargo insta test`, `cargo clippy --deny warnings`, and your
+- **CI Pipeline:** `cargo insta test`, `cargo clippy --deny warnings`, and the
   round-trip parser tests on every push.
 - **Editor integration:** Convert Chumsky’s `Rich` errors into language server
   protocol diagnostics; line/column already sorted.
@@ -94,8 +94,8 @@ ______________________________________________________________________
 ### Too long; didn’t read (because life is short and full of Thursdays)
 
 Write the grammar first, lex separately, tame left-recursion, anchor recovery
-on hard delimiters, keep Codex on a tight leash, and let your linter double as
+on hard delimiters, keep Codex on a tight leash, and let the linter double as
 the logic engine’s warm-up act.
 
-And always keep your towel handy. It’s the most massively useful thing an
+And always keep the towel handy. It’s the most massively useful thing an
 interstellar parser hacker can carry.
