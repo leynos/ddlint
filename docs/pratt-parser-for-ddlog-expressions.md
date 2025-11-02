@@ -35,8 +35,8 @@ ______________________________________________________________________
 
 ## 2. Expression AST definition
 
-First, we need a data structure to represent the parsed expressions. This will
-live alongside the other AST definitions in `src/parser/ast/`.
+First, the parser needs a data structure to represent the parsed expressions.
+This will live alongside the other AST definitions in `src/parser/ast/`.
 
 ```rust
 // In a new file, e.g., src/parser/ast/expr.rs
@@ -300,14 +300,14 @@ token as evidence that the `then` branch was absent, producing a clear
 `expected expression for 'then' branch of 'if'` message.
 
 A subtle ambiguity arises from the shared `IDENT {` token sequence used by
-struct literals. To resolve this we activate a struct-literal guard for the
-duration of the condition parse. While active it interprets `IDENT {` as a
-variable followed by the branch, preventing the condition from consuming the
-branch braces. The guard automatically suspends inside parentheses, brace
-groups, and closure bodies so expressions such as `if (Point { x: 1 }) { ... }`
-or `if cond { Point { x: 1 } }` continue to parse as intended. This strategy
-eliminates spurious `expected T_COLON` diagnostics without restricting
-legitimate struct literal usage.
+struct literals. To resolve this the implementation activates a struct-literal
+guard for the duration of the condition parse. While active it interprets
+`IDENT {` as a variable followed by the branch, preventing the condition from
+consuming the branch braces. The guard automatically suspends inside
+parentheses, brace groups, and closure bodies so expressions such as
+`if (Point { x: 1 }) { ... }` or `if cond { Point { x: 1 } }` continue to parse
+as intended. This strategy eliminates spurious `expected T_COLON` diagnostics
+without restricting legitimate struct literal usage.
 
 ### Handling `match` expressions
 
@@ -376,7 +376,7 @@ The strategy is as follows:
 4. The main parser will wrap the sequence of tokens that were successfully
    parsed by `expression_parser()` in an `N_EXPR_NODE` `SyntaxKind`.
 
-This way, we get the best of both worlds:
+This approach delivers the best of both worlds:
 
 - A structured `ast::Expr` for immediate semantic validation or interpretation.
 
@@ -413,7 +413,7 @@ impl Expression {
     pub fn to_structured_ast(&self) -> Result<ast::Expr, Vec<Simple<SyntaxKind>>> {
         let tokens = self.syntax().children_with_tokens().filter_map(|elem| {
             if let rowan::NodeOrToken::Token(token) = elem {
-                // Here you would reconstruct the (SyntaxKind, Span) stream
+                // Reconstruct the (SyntaxKind, Span) stream at this point
                 // This part needs careful implementation.
             }
             // ...
@@ -481,5 +481,5 @@ token is a terminator such as `)`, `}`, `,`, `;`, or `->`, it emits a unit
 tuple to mirror the Haskell parser's default. Otherwise, it parses a full
 expression, while respecting the struct-literal suppression guard, surfacing a
 targeted diagnostic if the expression is missing. This keeps imperative
-statements usable inside expression contexts and aligns our behaviour with
+statements usable inside expression contexts and aligns the behaviour with
 upstream DDlog semantics.
