@@ -19,7 +19,14 @@ goal of creating a tool that is both powerful in its analysis and intuitive in
 its use. This document serves as the definitive technical blueprint for the
 implementation team.
 
-## I. Architectural blueprint: a CST-first linter engine
+For clarity, this roadmap uses the following terminology consistently. A
+*concrete syntax tree (CST)* represents the full source text, including
+whitespace and comments, while an *abstract syntax tree (AST)* captures only
+the semantic structure that downstream analyses consume. Together with a focus
+on Developer Experience, these abstractions underpin every architectural
+decision outlined below.
+
+## 1. Architectural blueprint: a concrete syntax tree (CST)-first linter engine
 
 The foundation of any modern static analysis tool is its internal
 representation of source code. The choice of this representation dictates the
@@ -173,7 +180,7 @@ methodology (`insta`). This transforms the component list from a simple
 "shopping list" of libraries into a coherent, interdependent architectural
 strategy where each part reinforces the others.
 
-## II. The parsing pipeline: from source text to syntax tree
+## 2. The parsing pipeline: from source text to syntax tree
 
 The first and most critical step in the linting process is the transformation
 of raw DDlog source text into the structured `rowan` CST that the rest of the
@@ -363,7 +370,7 @@ investment in the core usability and value proposition of the entire linting
 tool. It enables the linter to function as a helpful "co-pilot" during
 development, rather than a rigid "gatekeeper" that only runs after the fact.
 
-## III. The rule ecosystem: definition, configuration, and management
+## 3. The rule ecosystem: definition, configuration, and management
 
 The true power and utility of a linter are derived from its set of rules. A
 well-designed rule ecosystem is one that is easy for contributors to extend,
@@ -470,7 +477,7 @@ This table serves as a concrete work breakdown for the engineering team and
 clearly communicates the linter's initial capabilities and priorities to early
 adopters.
 
-## IV. User interface and configuration layer
+## 4. User interface and configuration layer
 
 The success of a developer tool depends heavily on its user interface. A
 powerful analysis engine is of little use if it is difficult to configure or
@@ -534,9 +541,9 @@ multiple sources with a defined precedence: built-in defaults, values from a
 configuration file, and overrides from environment variables. This provides
 users with maximum flexibility. While
 
-`config-rs` supports TOML, YAML, and JSON out of the box, TOML will be the
-documented standard due to its prevalence and readability in the Rust
-ecosystem.18
+`config-rs` supports Tom's Obvious, Minimal Language (TOML), YAML, and JSON out
+of the box, and TOML will be the documented standard due to its prevalence and
+readability in the Rust ecosystem.18
 
 The linter will automatically search for a `ddlint.toml` file in the current
 working directory and then traverse up through parent directories, allowing for
@@ -579,7 +586,7 @@ fn main() {
 Set the `RUST_LOG` environment variable to control verbosity. For example, you
 can set `RUST_LOG=warn` to display warnings while suppressing debug output.
 
-## V. Advanced features: diagnostics and automated fixes
+## 5. Advanced features: diagnostics and automated fixes
 
 The core value of a linter is delivered through its diagnostics and its ability
 to help the user fix the identified problems. This section details the
@@ -714,7 +721,7 @@ and refactor complex code transformations with a high degree of confidence,
 knowing that any deviation from the verified, correct output will be caught
 automatically by the CI system.
 
-## VI. A comprehensive testing and validation strategy
+## 6. A comprehensive testing and validation strategy
 
 A linter is a compiler-like tool, and its correctness, reliability, and
 performance are paramount. A bug in a linter can lead to incorrect warnings,
@@ -804,7 +811,7 @@ This comprehensive, three-tiered testing strategy ensures that every aspect of
 the linter is validated, from the micro-level logic of a single rule to the
 macro-level behaviour of the final executable.
 
-## VII. Phased implementation roadmap and future work
+## 7. Phased implementation roadmap and future work
 
 This design is translated into an actionable, multi-phase project plan. Each
 phase is designed to deliver concrete, demonstrable value and build upon the
