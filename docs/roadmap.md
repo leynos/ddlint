@@ -129,6 +129,48 @@ control flow. This phase aims to build a complete grammar.
   - [ ] Add support for parsing aggregations and `FlatMap` constructs within
     rules.
 
+- [ ] **Align Parser with Updated DDlog Syntax**
+
+  - [ ] Extend the tokenizer and literal parser to support raw and interpolated
+    string forms, their interned variants, and to reject interpolated strings
+    inside patterns as specified in
+    `docs/differential_datalog_parser_syntax_spec_updated.md`.
+
+  - [ ] Parse width-qualified numeric literals (signed and unsigned integers,
+    floats) with range validation and a shaped literal AST so later passes can
+    reason about widths.
+
+  - [ ] Complete the operator table to match the specification, including
+    `++`, `^`, and `=>`, and add precedence tests that cover their interaction
+    with existing operators.
+
+  - [ ] Introduce a dedicated pattern parser that produces AST nodes for use in
+    `match` arms, `for` bindings, and flatmap constructs instead of storing
+    pattern text.
+
+  - [ ] Teach the rule parser to accept multi-head rules, head `@` locations,
+    delay `-<N>` markers, and diff `'` adornments, and to lower by-ref heads to
+    `ref_new`.
+
+  - [ ] Implement vector and map literal parsing with the builder desugarings
+    defined in the specification.
+
+  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing so
+    downstream analyses see the normalised representation.
+
+  - [ ] Desugar top-level `for` statements in rule contexts into equivalent
+    rules, matching the specification's semantics.
+
+  - [ ] Parse `apply` items and enforce that `transformer` declarations outside
+    of `extern` blocks raise diagnostics.
+
+  - [ ] Enforce the qualified-call rule so only fully scoped identifiers parse
+    as function calls, deferring bare `name(…)` disambiguation to name
+    resolution.
+
+  - [ ] Add validators for attribute placement and name uniqueness to mirror
+    the specification's guarantees.
+
 ______________________________________________________________________
 
 ## **Phase 3: Linter Engine and Semantic Analysis**
