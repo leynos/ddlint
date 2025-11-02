@@ -258,7 +258,8 @@ Imperative forms are permitted inside rule bodies, and top-level statements may
 be desugared during parsing as described below.
 
 ```ebnf
-Statement       ::= ForStmt | IfStmt | MatchStmt | Skip | Block | ExprInStmt
+Statement       ::= ForStmt | IfStmt | MatchStmt | Skip | BreakStmt
+                  | ContinueStmt | ReturnStmt | Block | ExprInStmt
 ForStmt         ::= 'for' '(' Pattern 'in' Expr ')' IfGuard? Statement
 IfGuard         ::= 'if' Expr
 IfStmt          ::= 'if' '(' Expr ')' Statement ('else' Statement)?
@@ -273,6 +274,12 @@ LhsAssign       ::= Pattern | Expr       // implementation permits pattern LHS
 **Top‑level `for`:** A top‑level `for` statement is **converted into one or
 more rules** during parsing (desugaring). This affects scoping and where
 variables may appear.
+
+**Break/Continue/Return:**
+
+- `break` and `continue` are permitted only inside loop bodies.
+- `return` is permitted in function/closure bodies; it is not valid in rule
+  bodies. Misuse must be reported with a clear diagnostic.
 
 ### 5.10 Conditions and assignments in rule RHS
 
