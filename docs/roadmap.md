@@ -156,7 +156,7 @@ control flow. This phase aims to build a complete grammar.
     defined in the specification.
 
   - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing so
-    downstream analyses see the normalised representation.
+    downstream analyses see the normalized representation.
 
   - [ ] Desugar top-level `for` statements in rule contexts into equivalent
     rules, matching the specification's semantics.
