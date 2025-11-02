@@ -43,7 +43,7 @@
   relevant file(s) in the `docs/` directory to reflect the latest state.
   **Ensure the documentation remains accurate and current.**
 - Documentation must use en-GB-oxendict ("-ize" / "-yse" / "-our") spelling
-  and grammar. (EXCEPTION: the naming of the "LICENSE" file, which is to be
+  and grammar. (Exception: the naming of the "LICENSE" file, which is to be
   left unchanged for community consistency.)
 
 ## Change Quality & Committing
@@ -140,11 +140,12 @@ project:
     running the full workspace test suite. Use `make fmt`
     (`cargo fmt --workspace`) to apply formatting fixes reported by the
     formatter check.
-- Clippy warnings MUST be disallowed.
+- Clippy warnings must be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.
 - Where a function is too long, extract meaningfully named helper functions
-  adhering to separation of concerns and CQRS.
+  adhering to separation of concerns and Command Query Responsibility
+  Segregation (CQRS).
 - Where a function has too many parameters, group related parameters in
   meaningfully named structs.
 - Where a function is returning a large error consider using `Arc` to reduce the
@@ -246,8 +247,8 @@ The following tooling is available in this environment:
 - `mbake` – A Makefile validator. Run using `mbake validate Makefile`.
 - `strace` – Traces system calls and signals made by a process; useful for
   debugging runtime characteristics and syscalls.
-- `gdb` – The GNU Debugger, for inspecting and controlling programs as they
-  execute (or post-mortem via core dumps).
+- `gdb` – The GNU's Not Unix (GNU) Debugger, for inspecting and controlling
+  programs as they execute (or post-mortem via core dumps).
 - `ripgrep` – Fast, recursive text search tool (`grep` alternative) that
   respects `.gitignore` files.
 - `ltrace` – Traces calls to dynamic library functions made by a process.
@@ -265,7 +266,7 @@ The following tooling is available in this environment:
 - `tcpdump` – Captures and analyses network traffic at the packet level.
 - `nmap` – Network scanner for host discovery, port scanning, and service
   identification.
-- `lldb` – LLVM debugger, alternative to `gdb`.
+- `lldb` – Low Level Virtual Machine (LLVM) debugger, alternative to `gdb`.
 - `eza` – Modern `ls` replacement with more features and better defaults.
 - `fzf` – Interactive fuzzy finder for selecting files, commands, etc.
 - `hyperfine` – Command-line benchmarking tool with statistical output.
