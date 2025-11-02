@@ -48,7 +48,7 @@ ______________________________________________________________________
   - **`LcScopedIdentifier`**: `^(_|[a-z])[A-Za-z0-9_]*$` (variables, fields,
     local functions if unqualified).
   - **`LcGlobalIdentifier`**: as above but **must** include at least one `::`
-    segment (i.e., is fully qualified).
+    segment (that is, fully qualified).
 
 **Resolution rule:** Only **fully qualified** `module::func` names parse as
 function calls at parse time. A bare `name(…)` parses as a variable application
