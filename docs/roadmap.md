@@ -100,7 +100,7 @@ control flow. This phase aims to build a complete grammar.
     syntax specification (`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
   - [x] Add support for parsing all literal types within expressions (e.g.,
-    strings, numbers, booleans). The `SyntaxKind` enum already defines these.
+    strings, numbers, and booleans). The `SyntaxKind` enum already defines these.
 
   - [x] Implement parsers for variable references (`e_var`) and function calls
     (`e_func`).
