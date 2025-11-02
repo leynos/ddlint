@@ -219,7 +219,7 @@ PrimaryKey   ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'
 
 Notes:
 
-- The first form synthesises a record type for `UcName` with the listed fields.
+- The first form synthesizes a record type for `UcName` with the listed fields.
 - `&UcName` in rule **heads** triggers special semantics (see §7.3).
 - `Role`/`Kind` affect runtime semantics but not parse shape.
 
