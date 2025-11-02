@@ -548,7 +548,7 @@ ______________________________________________________________________
 - **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
   parser (or immediately after) so later phases can assume a uniform
   representation (`RHSGroupBy`).
-- **Tabs and positions:** if you normalize tabs, do so before lexing and
+- **Tabs and positions:** perform any tab normalisation before lexing and
   preserve a mapping for accurate diagnostics.
 - **Multiple heads:** either preserve the multi‑head form in the AST or expand
   into multiple single‑head rules consistently; this spec treats multi‑head as
