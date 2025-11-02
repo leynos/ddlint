@@ -11,7 +11,7 @@ document provides a comprehensive exploration of `rstest`, from fundamental
 concepts to advanced techniques, enabling Rust developers to write cleaner,
 more expressive, and robust tests.
 
-## I. Introduction to `rstest` and Test Fixtures in Rust
+## 1. Introduction to `rstest` and Test Fixtures in Rust
 
 ### A. What are Test Fixtures and Why Use Them?
 
@@ -122,8 +122,8 @@ production binaries, which helps keep them small and reduces compile times for
 non-test builds.
 
 When leveraging Tokio's test utilities—for example `tokio::time::pause` or the
-I/O helpers in `tokio-test`—enable the `test-util` feature via a dev-only
-dependency:
+Input/output helpers in `tokio-test`—enable the `test-util` feature via a
+dev-only dependency:
 
 ```toml
 [dev-dependencies]
@@ -862,10 +862,11 @@ resources and test data.
 ### A. Fixtures for Temporary Files and Directories
 
 Managing temporary files and directories is a common requirement for tests that
-involve file I/O. While `rstest` itself doesn't directly provide temporary file
-utilities, its fixture system integrates seamlessly with crates like `tempfile`
-or `test-temp-dir`. A fixture can create a temporary file or directory, provide
-its path or handle to the test, and ensure cleanup (often via RAII).
+involve file input/output. While `rstest` itself doesn't directly provide
+temporary file utilities, its fixture system integrates seamlessly with crates
+like `tempfile` or `test-temp-dir`. A fixture can create a temporary file or
+directory, provide its path or handle to the test, and ensure cleanup (often
+via RAII).
 
 Here's an illustrative example using the `tempfile` crate:
 
