@@ -4,7 +4,7 @@ input relation Blocklisted(endpoint: string)
 
 function addr_port(ip: bit<32>, proto: string, preferred_port: bit<16>): string {
     var port: bit<16> = match (proto) {
-        "FTP"   -> 20,
+        "FTP"   -> 21,
         "HTTPS" -> 443,
         _        -> (if (preferred_port != 0) preferred_port else 80)
     };
