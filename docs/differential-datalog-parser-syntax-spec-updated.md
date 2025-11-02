@@ -591,7 +591,7 @@ ______________________________________________________________________
 - **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
   parser (or immediately after) so later phases can assume a uniform
   representation (`RHSGroupBy`).
-- **Tabs and positions:** if you normalise tabs, do so before lexing and
+- **Tabs and positions:** if you normalize tabs, do so before lexing and
   preserve a mapping for accurate diagnostics.
 - **Compatibility policy:** legacy constructs accepted for compatibility must
   either be lowered to the canonical AST (e.g., `Aggregate`) or rejected with a
