@@ -304,7 +304,7 @@ fn empty_input_produces_no_tokens() {
 fn complex_expression() {
     let src = "R(a, b) :- Q(a) && S(b).";
     let tokens = tokenize(src);
-    // ensure we tokenise without errors and capture punctuation
+    // ensure tokenisation succeeds and captures punctuation
     assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
     assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_IMPLIES));
     assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_DOT));
