@@ -1,0 +1,9 @@
+/* Minimal use of delay (-1) and differentiation (') syntax */
+input stream S(x: u32)
+relation     Acc(x: u32)
+output relation Total(x: u32)
+
+Acc(x) :- Total-1(x).
+Acc(x) :- S'(x).
+
+Total(x) :- Acc(x).

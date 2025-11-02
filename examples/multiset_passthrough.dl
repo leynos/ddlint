@@ -1,0 +1,5 @@
+/* Multiset input/output echo */
+input multiset MIn(x: u32)
+output multiset MOut(x: u32)
+
+MOut(x) :- MIn(x).

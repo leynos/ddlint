@@ -1,0 +1,26 @@
+/* Left join semantics via negation; binding rows to variables */
+input relation Endpoint(ip: bit<32>, proto: string, preferred_port: bit<16>)
+input relation Blocklisted(endpoint: string)
+
+function addr_port(ip: bit<32>, proto: string, preferred_port: bit<16>): string {
+    var port: bit<16> = match (proto) {
+        "FTP"   -> 20,
+        "HTTPS" -> 443,
+        _        -> (if (preferred_port != 0) preferred_port else 80)
+    };
+    "${ip}:${port}"
+}
+
+output relation EndpointSanitization(endpoint: string, sanitized: bool)
+
+/* false for endpoints in the blocklist and present in Endpoint */
+EndpointSanitization(endpoint, false) :-
+    ep in Endpoint(),
+    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
+    Blocklisted(endpoint).
+
+/* true for endpoints present in Endpoint and not blocklisted */
+EndpointSanitization(endpoint, true) :-
+    ep in Endpoint(),
+    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
+    not Blocklisted(endpoint).

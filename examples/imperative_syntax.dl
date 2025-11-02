@@ -1,0 +1,9 @@
+/* FLWOR-like imperative rule syntax */
+input relation R1(f1: bool)
+input relation R2(f2: string)
+
+output relation Main(f1: bool, f2: string)
+
+for (x in R1)
+  for (y in R2)
+    Main(x.f1, y.f2)

@@ -1,0 +1,9 @@
+/* Functions returning tuples; tuple pattern destructuring in rules */
+function bytes_of_ip(a: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>) {
+    (a[31:24], a[23:16], a[15:8], a[7:0])
+}
+
+input relation Host4(addr: bit<32>)
+output relation IntranetHost4(addr: bit<32>)
+
+IntranetHost4(a) :- Host4(a), (192, 168, _, _) = bytes_of_ip(a).

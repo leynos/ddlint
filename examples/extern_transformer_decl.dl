@@ -1,0 +1,10 @@
+/* Extern transformer declaration (parseable without an impl) */
+typedef node_t = u64
+input relation Edge(from: node_t, to: node_t)
+
+extern transformer SCC(Edges: relation[(node_t, node_t)],
+                       from:  function(e: (node_t, node_t)): node_t,
+                       to:    function(e: (node_t, node_t)): node_t)
+    -> (SCCLabels: relation[(node_t, node_t)])
+
+/* Example usage would be declared elsewhere; declaration alone is valid for parsing. */

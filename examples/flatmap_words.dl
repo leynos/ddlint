@@ -1,0 +1,7 @@
+/* Split phrases into words via extern function and FlatMap */
+extern function split(s: string, sep: string): Vec<string>
+
+input relation Phrases(p: string)
+output relation Words(w: string)
+
+Words(w) :- Phrases(p), var w = FlatMap(split(p, " ")).
