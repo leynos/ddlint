@@ -161,7 +161,7 @@ control flow. This phase aims to build a complete grammar.
   - [ ] Desugar top-level `for` statements in rule contexts into equivalent
     rules, matching the specification's semantics.
 
-  - [ ] Parse `apply` items and enforce that `transformer` declarations outwith
+  - [ ] Parse `apply` items and enforce that `transformer` declarations outside
     `extern` blocks raise diagnostics.
 
   - [ ] Enforce the qualified-call rule so only fully scoped identifiers parse
