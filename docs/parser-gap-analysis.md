@@ -48,8 +48,8 @@
   (`f(…)`, `e[expr]`, `e.name`) precedence . Code: postfix/index/call/member
   access and most arithmetic/logic exist (see
   `src/parser/expression/infix.rs`, `src/parser/ast/precedence.rs`).
-  Implication `=>` is tokenized (search shows `T_IMPLIES`), but I don’t see
-  tests exercising it under Pratt; concat `++`/xor `^` aren’t visible in tests
+  Implication `=>` is tokenised (search shows `T_IMPLIES`), but tests do not
+  exercise it under Pratt; concat `++`/xor `^` aren’t visible in tests
   either. **Action:** (a) ensure all spec’d tokens are wired into Pratt with
   correct binding power/associativity; (b) add focused tests for `=>`, `^`,
   `++` to lock precedence.
@@ -62,11 +62,11 @@
   `tests/expression_var_and_call.rs`, `src/parser/tests/expression.rs`).
   **Action (policy choice):**
 
-  * To match the specification: parse `name(…)` as `Variable("name")`
-    followed by a **postfix apply** node (or keep `Call` but mark it
-    “unresolved” unless qualified).
-  * Alternatively, update the specification to reflect the current simpler
-    behaviour.
+  * To **match the spec**: parse `name(…)` as `Variable("name")` followed by a
+    **postfix apply** node (or keep `Call` but mark it “unresolved” unless
+    qualified).
+  * Alternatively, update the spec if the current simpler behaviour is the
+    intended policy.
 
 ### 3) Expressions and control-flow
 
@@ -77,8 +77,9 @@
   `match` is implemented (great!) but **stores arm patterns as raw strings**
   (`MatchArm { pattern: String, body: Expr }` in `src/parser/ast/expr.rs`) and
   collects them via delimiter-balanced slicing
-  (`expression/pattern_collection.rs`). **Deviation:** you’re not building the
-  **pattern AST** the spec expects. **Action:** add a **pattern parser** that
+  (`expression/pattern_collection.rs`). **Deviation:** the current code does not
+  build the **pattern AST** the spec expects. **Action:** add a **pattern
+  parser** that
   produces nodes like `PVar`, `PTuple`, `PStruct`, `PLit`, `PTyped`, … and use
   it for **match arms**, **for-loop bindings**, and **RHS flatmap binds**.
 
@@ -93,7 +94,7 @@
 
 * **`{ expr }` as grouping**
   Spec doesn’t define braces as an **expression grouping** (braces are for map
-  literals or blocks in statements) . Code: you accept `{ expr }` as an
+  literals or blocks in statements). Code: the parser accepts `{ expr }` as an
   **alternate grouping** (`parse_brace_group`). **Deviation:** extra surface
   form not in spec. **Action:** either remove it (strict conformance), or
   **bless it in the spec** as a tolerated extension and document
@@ -103,15 +104,15 @@
 
 * **Vector/Map literals + lowering**
   Spec: `[a, b, c]` and `{k:v,…}` with deterministic **lowerings** to builder
-  calls (capacity/insert) . Code: no collection literal parsing in the Pratt
-  layer today. **Action:** add collection literal productions and (if you keep
-  “early transforms in parser”) build the lowered form immediately or tag nodes
-  for a tiny post-parse lowering pass.
+  calls (capacity/insert). Code: no collection literal parsing in the Pratt
+  layer today. **Action:** add collection literal productions and (if the
+  implementation keeps “early transforms in parser”) build the lowered form
+  immediately or tag nodes for a tiny post-parse lowering pass.
 
 * **`group_by` extraction & legacy `Aggregate`**
   Spec: at most **one** `group_by(project, key)` per RHS expression; extracted
-  to a dedicated AST node; legacy `Aggregate` lowered and warned as deprecated
-  . Code: no `group_by`/`Aggregate` handling found beyond roadmap docs.
+  to a dedicated AST node; legacy `Aggregate` lowered and warned as deprecated.
+  Code: no `group_by`/`Aggregate` handling found beyond roadmap docs.
   **Action:** extend RHS parsing to detect/extract `group_by`; add errors for
   multiple/wrong-arity; keep the `RHSGroupBy` node wired into checks later.
 
@@ -120,12 +121,12 @@
 * **Multi-head rules and `@` location**
   Spec: multiple heads allowed (`Head, Head :- Body.`); `@ Expr` allowed **in
   heads only**; each head may carry delay `-<N>` and diff `'`. Code: rule
-  AST/tests exist, but I don’t see tests for **multi-head**, head
-  **locations**, **delay**, or **diff mark**. Token kinds exist (`T_AT`,
-  delay/diff tokens at the lexer level), but parsing/validation isn’t visible.
-  **Action:** add grammar for `RuleLHS` = `Atom Location?`, comma-separated;
-  support `@` with head-only validation; parse `-<N>` and `'` adorners with
-  range checks (u32 for delay).
+  AST/tests exist, but tests for **multi-head**, head **locations**, **delay**,
+  or **diff mark** are absent. Token kinds exist (`T_AT`, delay/diff tokens at
+  the lexer level), but parsing/validation isn’t visible. **Action:** add
+  grammar for `RuleLHS` = `Atom Location?`, comma-separated; support `@` with
+  head-only validation; parse `-<N>` and `'` adorners with range checks (u32
+  for delay).
 
 * **Head by-ref lowering (`&Rel{…}` → `ref_new`)**
   Spec: `&Rel{…}` **in heads** lowers to `ref_new(Rel{…})`; in expressions,
@@ -150,14 +151,14 @@
   Spec: `index Name (field: Type, …) on Atom;` (with full Atom grammar — may
   include delay/diff/ref/constructor forms) . Code: index parsing exists and
   enforces `on`/parentheses balancing (see `src/parser/tests/indexes.rs`).
-  **Gap:** I don’t see **`on` Atom** variants covered (e.g.,
-  delayed/diff/ref/constructor). **Action:** extend the `on` target to parse
-  full **Atom** and add tests that combine the adornments.
+  **Gap:** **`on` Atom** variants (delayed/diff/ref/constructor) are missing.
+  **Action:** extend the `on` target to parse full **Atom** and add tests that
+  combine the adornments.
 
 * **`apply` items**
-  Spec includes an `Apply` top-level form . Code: I can’t find `apply`
-  parsing/tests. **Action:** add `Apply` item parser + AST and a couple of
-  fixtures.
+  Spec includes an `Apply` top-level form . Code: no `apply`
+  parsing/tests are present. **Action:** add `Apply` item parser + AST and a
+  couple of fixtures.
 
 ### 7) Name & scoping rules
 
@@ -165,9 +166,9 @@
   Spec: unique names for type/relation/index/transformer/import; function
   groups overloaded by **arity** only; reserved words not allowed as
   identifiers; attributes only in certain places . Code: tokenizer and AST
-  structure are present, but I don’t see enforcement tests for **duplicate
+  structure are present, but enforcement tests for **duplicate
   definitions**, **function (name, arity)** uniqueness, or attribute placement
-  beyond the function/param span tests. **Action:** wire post-parse validation
+  beyond the function/param span tests are absent. **Action:** wire post-parse validation
   for uniqueness and produce **spanned diagnostics** per spec.
 
 ## Noteworthy *implementation-only* extensions (consider updating the spec)
@@ -176,7 +177,8 @@
   ergonomic, but **unspecified**. Decide whether to keep and bless it.
 * **Structural literal “guard”** (blocking `Name { … }` in certain contexts
   like `if` condition to avoid misparses) – pragmatic and well-documented in
-  code/tests; add a line to the spec’s “portability notes” if you keep it.
+  code/tests; add a line to the spec’s “portability notes” if that behaviour
+  remains.
 
 ## Quick pointer map (where to change things)
 
