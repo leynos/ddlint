@@ -127,7 +127,7 @@ noted.
 | 1          | Assignment forms inside statements (see §6)            | right         |
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
-and are recognised as operators. `&` in row 13 is expression-only; head
+and are recognized as operators. `&` in row 13 is expression-only; head
 semantics are described in §7.3.
 
 ______________________________________________________________________
@@ -319,7 +319,7 @@ ______________________________________________________________________
 
 ### 6.2 Legacy `Aggregate(…)`
 
-- The legacy `Aggregate` form is still recognised and lowered into `RHSGroupBy`
+- The legacy `Aggregate` form is still recognized and lowered into `RHSGroupBy`
   - a follow‑up condition over `__group`.
 - It is **deprecated**; future grammar may remove it. Emit a warning in linters.
 
