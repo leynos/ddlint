@@ -145,7 +145,7 @@ noted.
 | 1          | Assignment forms inside statements (see §6)            | right         |
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
-and are recognised as operators. `&` in row 13 is expression-only; head
+and are recognized as operators. `&` in row 13 is expression-only; head
 semantics are described in §7.3.
 
 ______________________________________________________________________
