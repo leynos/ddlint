@@ -657,7 +657,7 @@ The final output of the `logos` and `chumsky` pipeline is often a `rowan` tree.
 Unlike a traditional Abstract Syntax Tree (AST), a `rowan` CST is "lossless" or
 "full-fidelity," meaning it represents the source text exactly, including all
 whitespace, comments, and even syntax errors.21 This makes it an ideal data
-structure for tooling that needs to analyze or modify source code without
+structure for tooling that needs to inspect or modify source code without
 losing formatting, such as IDEs, formatters, and refactoring engines.29
 
 ### 4.1 The `rowan` philosophy: losslessness and its testing implications
