@@ -52,9 +52,10 @@ like `if` statements and conditional loops.[^3]
 Thresholds and Implications:
 
 High Cyclomatic Complexity indicates a more intricate control flow, which
-directly impacts testability and maintainability.[^1] More paths mean more test
-cases are required for comprehensive coverage.[^4] McCabe proposed the
-following risk categorization based on Cyclomatic Complexity scores[^3]:
+directly impacts testability, maintainability, and defect discovery effort.[^1]
+More paths mean more test cases are required for comprehensive coverage.[^4]
+McCabe proposed the following risk categorization based on Cyclomatic
+Complexity scores[^3]:
 
 - 1-10: Simple procedure, little risk.
 
@@ -101,8 +102,8 @@ Cognitive Complexity is incremented based on three main rules[^8]:
 
 For instance, a `switch` statement with multiple cases might have a high
 Cyclomatic Complexity because each case represents a distinct path for testing.
-However, if the structure is straightforward and easy to follow, its Cognitive
-Complexity might be relatively low.[^6] Conversely, deeply nested conditional
+However, if the structure remains straightforward, it stays easy to follow, so
+its Cognitive Complexity might be relatively low.[^6] Conversely, deeply nested
 logic, even with fewer paths, can significantly increase Cognitive Complexity
 due to the mental effort required to track the conditions and context.[^9]
 
@@ -147,8 +148,8 @@ crucial metric for sustainable software development.
 The "Bumpy Road" is a code smell that visually and structurally represents
 functions or methods laden with excessive and poorly organized complexity.[^9]
 Coined by Adam Tornhill, this antipattern describes code where the indentation
-level repeatedly increases and decreases, forming a "lumpy" or "bumpy" visual
-pattern when looking at the code's shape.[^9]
+level oscillates, forming a lumpy visual pattern reminiscent of a bumpy road
+when looking at the code's shape.[^9]
 
 ### A. Definition and Characteristics
 
@@ -191,8 +192,8 @@ The severity of a Bumpy Road can be assessed by[^6]:
 
 Fundamentally, a Bumpy Road signifies a function that is trying to do too many
 things, violating the Single Responsibility Principle. It acts as an obstacle
-to comprehension, forcing developers to slow down and pay meticulous attention,
-much like a physical bumpy road slows down driving.[^9]
+to comprehension, forcing developers to slow down so they must pay meticulous
+attention, much like a physical bumpy road slows down driving.[^9]
 
 ### B. How It Forms and Its Impact
 
@@ -201,10 +202,10 @@ development practices that prioritize short-term speed over long-term
 structural integrity.[^2] Rushed development cycles, lack of clear design, or
 cutting corners on maintenance can lead to the gradual accumulation of
 conditional logic within a single function.[^2] As new requirements or edge
-cases are handled, developers might add more
-
-`if` statements or loops to an existing method, rather than stepping back to
-refactor and create appropriate abstractions.
+cases are handled, developers might add additional conditional branches to an
+existing method. Examples include an `if` statement, a loop, or a deeply nested
+match added in haste when a team could instead step back to refactor and create
+appropriate abstractions.
 
 The impact of this antipattern is significant:
 
@@ -403,18 +404,20 @@ data transformation, and error handling for each case, all intermingled.
 Refactoring a Bumpy Road by extracting methods inherently applies SoC, as each
 extracted method ideally handles a single, well-defined concern.[^10] This
 leads to increased freedom for simplification, maintenance, module upgrade,
-reuse, and independent development.[^13] While SoC might introduce more
-interfaces and potentially more code to execute, the benefits in clarity and
-maintainability often outweigh these costs, especially as systems grow.[^13]
+reuse, and independent development.[^13] While SoC might introduce additional
+interfaces and require more code to execute, the accompanying coordination
+overhead is typically outweighed by gains in clarity and maintainability,
+especially as systems grow.[^13]
 
 Consider a function that processes different types of user commands. A Bumpy
 Road approach might have a large `if-else if-else` structure, with each block
 handling a command type and its associated logic. This mixes the concern of
 "dispatching" or "routing" based on command type with the concern of
-"executing" each specific command. Applying SoC would involve separating these:
-perhaps one component decides which command to execute, and separate components
-(functions or classes) handle the execution of each command. This separation
-makes the system easier to understand, test, and extend with new commands.
+"executing" each specific command. Applying SoC would involve separating these
+concerns: one component decides which command to execute while separate
+components—functions or classes—handle the execution of each command. This
+separation makes the system easier to understand, test, and extend with new
+commands.
 
 2\. Command Query Responsibility Segregation
 
@@ -475,13 +478,13 @@ diverse responsibilities.[^14]
 ### B. Avoiding Spaghetti Code Turning into Ravioli Code
 
 When refactoring complex, tangled code (often called "Spaghetti Code" 2), a
-common approach is to break it down into smaller pieces, such as functions or
-classes. However, without careful consideration for cohesion and appropriate
-abstraction levels, this approach can create "Ravioli Code".[^17] Ravioli Code
-consists of numerous small, overly granular classes or functions where
-understanding the overall programme flow requires navigating through many tiny,
-disconnected pieces—making it as difficult to follow as the original
-spaghetti.[^17]
+common approach is to break it down into smaller pieces, such as helper
+functions, focused classes, or dedicated modules. However, without careful
+consideration for cohesion along with appropriate abstraction levels, this
+approach can create "Ravioli Code".[^17] Ravioli Code consists of numerous
+small, overly granular classes, functions, or traits where understanding the
+overall programme flow requires navigating through many tiny, disconnected
+pieces—making it as difficult to follow as the original spaghetti.[^17]
 
 **Strategies to Avoid Ravioli Code:**
 
@@ -526,10 +529,11 @@ spaghetti.[^17]
    consolidated.[^10] Pair programming can also help maintain a balanced
    perspective during refactoring.[^21]
 
-6. **The YAGNI principle:** The initialism expands to the reminder “Aren't
-   Gonna Need It” and helps avoid unnecessary abstractions and features, which
-   can contribute to Ravioli code if abstractions are created for anticipated
-   but not actual needs.[^21]
+6. **The YAGNI (colloquially rendered as “Ya ain't gonna need it”) principle:**
+   The initialism summarises the reminder that speculative features will
+   probably go unused. It helps avoid unnecessary abstractions and features,
+   which can contribute to Ravioli code if abstractions are created for
+   anticipated but not actual needs.[^21]
 
 7. **Focus on System Flow:** While individual components in Ravioli code might
    be simple, the difficulty lies in tracing the overall execution flow. Ensure
@@ -576,20 +580,20 @@ complex conditional logic, often replacing verbose if-elif-else chains or
 switch statements.21.
 
 It works by allowing code to match against the *structure* of data—such as its
-type, shape, or specific values within sequences (lists, tuples) or mappings
-(dictionaries)—and simultaneously destructure this data, binding parts of it to
-variables.[^22] This approach can significantly reduce cognitive load. The
-clarity comes from the direct mapping of data shapes to code blocks, making it
-easier to understand the conditions under which a piece of code executes.[^23]
-For instance, instead of multiple `isinstance` checks followed by key lookups
-and value comparisons in a nested `if` structure to parse a JSON object, a
-single `case` statement with a mapping pattern can define the expected
-structure and extract the necessary values concisely.[^22] This shifts the
-focus from an imperative sequence of checks to a declarative description of
+type, shape, or specific values within sequences like lists or tuples, or
+mappings such as dictionaries—and simultaneously destructure this data, binding
+parts of it to variables.[^22] This approach can significantly reduce cognitive
+load. The clarity comes from the direct mapping of data shapes to code blocks,
+making it easier to understand the conditions under which a piece of code
+executes.[^23] For instance, instead of multiple `isinstance` checks followed
+by key lookups and value comparisons in a nested `if` structure to parse a JSON
+object, a single `case` statement with a mapping pattern can define the
+expected structure and extract the necessary values concisely.[^22] This shifts
+the focus from an imperative sequence of checks to a declarative description of
 data shapes, which is often more intuitive. The destructuring capability is
 particularly powerful, as it eliminates the manual code otherwise needed to
-extract values after a condition has been met, reducing boilerplate and the
-number of mental steps a developer must follow.[^22]
+extract values after a condition has been met, reducing boilerplate while also
+cutting the number of mental steps a developer must follow.[^22]
 
 Consider processing different event types from a UI framework, where events are
 represented as dictionaries.[^24]
@@ -642,8 +646,9 @@ abstraction, allowing them to reason about the program's intent more
 directly.[^25] This often leads to more concise, readable, and maintainable
 code because the "noise" of explicit iteration, temporary variables, and manual
 state updates is minimized.[^25] Many declarative approaches also inherently
-favour immutability and reduce side effects, which are common culprits for bugs
-and increased cognitive load in imperative code.[^26]
+favour immutability, reduce side effects, and encourage deterministic
+behaviour—common culprits for bugs and increased cognitive load in imperative
+code.[^26]
 
 Examples include using Structured Query Language for database queries—
 specifying the desired dataset rather than the retrieval algorithm[^34]—or
@@ -661,8 +666,8 @@ complexity or could introduce its own.[^27]
 3\. Employing Dispatcher and Command Patterns
 
 For managing complex conditional logic that selects different behaviours (often
-found in Bumpy Roads or large switch statements), the Command and Dispatcher
-patterns offer a structured and extensible alternative.
+found in Bumpy Roads or large switch statements), these complementary patterns
+offer a structured and extensible alternative.
 
 The **Command pattern** encapsulates a request or an action as an object.[^28]
 Each command object implements a common interface (e.g., with an
@@ -672,7 +677,8 @@ the object that knows how to perform it. Instead of a large conditional
 checking a type and then executing logic, different command objects can be
 instantiated based on the type, and then their `execute()` method is called.
 This promotes the Single Responsibility Principle, as each command class
-handles a single action, making the system easier to test and extend.[^29]
+handles a single action, making the system easier to test, extend, and
+evolve.[^29]
 
 The **Dispatcher pattern** often works in conjunction with the Command pattern.
 A dispatcher is a central component that receives requests (which could be
@@ -685,8 +691,8 @@ original `case`, and a dispatcher (perhaps a map from case identifiers to
 handler instances) that looks up and invokes the correct handler.[^30] This
 transforms the control flow from a monolithic conditional block into a more
 manageable registration and lookup mechanism. The cognitive load is reduced
-because developers can focus on individual, self-contained handlers and trust
-the dispatcher's routing logic.
+because developers can focus on individual, self-contained handlers while
+trusting the dispatcher's routing logic.
 
 For example, a `switch` statement handling different message types:
 
@@ -785,19 +791,19 @@ modify—is paramount.[^2] This is achieved not merely through aesthetic choices
 but through deliberate design and refactoring efforts. Techniques such as
 ensuring balanced abstraction, leveraging structural pattern matching for
 clearer conditional logic, embracing declarative programming paradigms, and
-employing patterns like Dispatcher and Command can transform convoluted code
-into more manageable and comprehensible structures. However, these techniques
-must be applied judiciously, always prioritizing genuine improvements in
-clarity and maintainability over adherence to a pattern for its own sake, to
-avoid pitfalls like Ravioli Code.
+employing patterns like the Dispatcher pattern alongside the Command pattern
+can transform convoluted code into more manageable and comprehensible
+structures. However, these techniques must be applied judiciously, always
+prioritizing genuine improvements in clarity and maintainability over adherence
+to a pattern for its own sake, to avoid pitfalls like Ravioli Code.
 
 Integrate these principles and techniques into daily development practices
 through a proactive and disciplined approach. This includes regular code
 reviews, monitoring complexity metrics, and fostering a team culture that
 values code quality and continuous improvement. The oft-quoted wisdom, "Good
 programmers write code that humans can understand"[^1], remains the guiding
-principle. Strive for this ideal to build systems that are not only powerful
-and efficient, but also a pleasure to evolve and maintain.
+principle. Strive for this ideal to build systems that are powerful, efficient,
+and genuinely enjoyable for the team to evolve and maintain.
 
 ## Works Cited
 
