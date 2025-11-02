@@ -12,12 +12,12 @@ user-friendly linter.
 The design philosophy is centered on delivering a superior Developer Experience
 (DX), not only for the end-users who will consume the linter's diagnostics but
 also for the engineers who will contribute to its development. This is achieved
-through a carefully selected, modern technology stack and an architecture that
-prioritizes clarity, modularity, and extensibility. Every design choice, from
-the foundational data structures to the user-facing output, is made with the
-goal of creating a tool that is both powerful in its analysis and intuitive in
-its use. This document serves as the definitive technical blueprint for the
-implementation team.
+through a carefully selected, modern technology stack coupled with an
+architecture that prioritizes clarity, modularity, and extensibility. Every
+design choice, from the foundational data structures to the user-facing output,
+is made with the goal of creating a tool that is both powerful in its analysis
+and intuitive in its use. This document serves as the definitive technical
+blueprint for the implementation team.
 
 For clarity, this roadmap uses the following terminology consistently. A
 *concrete syntax tree (CST)* represents the full source text, including
@@ -46,15 +46,15 @@ is not a minor detail; it is the fundamental prerequisite for the advanced
 features expected of a modern linter.
 
 The primary benefits of this CST-first approach are twofold. First, it enables
-highly accurate and context-rich diagnostics. When an issue is detected, the
+highly accurate, context-rich diagnostics. When an issue is detected, the
 linter has access to the exact byte offsets of the problematic code within the
 original source file. This allows for precise highlighting, annotations, and
 the rendering of source snippets that are faithful to what the user wrote.
 Second, and critically, a CST is essential for reliable automated code fixing
-(`autofix`). To rewrite a piece of code—for example, to correct a casing style
-or remove a redundant clause—the tool must understand the source text
-completely, including the whitespace and comments surrounding the code to be
-changed, to avoid corrupting the file's formatting or structure.
+(`autofix`). To rewrite a piece of code—for example, to correct a casing style,
+or to remove a redundant clause—the tool must understand the source text
+completely, including the whitespace, comments, and delimiters surrounding the
+code to be changed, to avoid corrupting the file's formatting or structure.
 
 To implement this CST, the project will utilize the `rowan` library.1
 
@@ -77,10 +77,9 @@ Rather than designing a linter engine from first principles, this project will
 adapt the mature and performant model pioneered by `rslint_core`.4 The
 
 `rslint` project demonstrates a highly effective architecture for a CST-based
-linter, featuring parallelised rule execution and a clean separation of
-concerns that makes it both fast and maintainable.6 Adopting this model allows
-the team to leverage proven patterns and focus on implementing DDlog-specific
-logic.
+linter, featuring parallelised rule execution, a clean separation of concerns,
+and deliberate maintainability safeguards.6 Adopting this model allows the team
+to leverage proven patterns and focus on implementing DDlog-specific logic.
 
 The heart of this adapted engine will be a set of core traits that define the
 structure and behaviour of every lint rule:
@@ -138,7 +137,7 @@ opportunities, shaping the selection of nearly every other major component in
 the system.
 
 The chain of architectural consequences begins with the project's highest-level
-goals: to provide developers with rich, actionable diagnostics and powerful,
+goals: to provide developers with rich, actionable diagnostics, and powerful,
 automated fixing capabilities. This immediately makes a lossless representation
 of the source code a non-negotiable requirement. A traditional AST, by its
 nature, discards the very information (comments, whitespace, exact formatting)
@@ -151,13 +150,13 @@ model that is designed to work with it. The `rslint_core` architecture, which
 is explicitly built to run rules over a CST, becomes the ideal candidate,
 providing a proven template for a performant, parallelised engine.4
 
-The choice of a CST has further downstream effects, particularly on diagnostics
-and testing. To display the kind of rich, annotated error messages seen in
-modern compilers, the diagnostic library needs precise source location
-information. The `rowan` CST, by preserving all byte offsets from the original
-file, can provide the exact `SourceSpan` data that a library like `miette`
-requires to render its beautiful, user-friendly error reports.9 This creates a
-powerful synergy:
+The choice of a CST has further downstream effects, particularly on
+diagnostics, testing, and tooling. To display the kind of rich, annotated error
+messages seen in modern compilers, the diagnostic library needs precise source
+location information. The `rowan` CST, by preserving all byte offsets from the
+original file, can provide the exact `SourceSpan` data that a library like
+`miette` requires to render its beautiful, user-friendly error reports.9 This
+creates a powerful synergy:
 
 `rowan` provides the data, and `miette` provides the presentation.
 
@@ -218,9 +217,9 @@ abstraction avoids manual index arithmetic and reduces boundary errors.
 Following the established `rowan` pattern, the grammar of the DDlog language
 must be encoded into a `SyntaxKind` enum.3 This enum serves as the set of type
 tags for every possible element in the syntax tree. It will include variants
-for all terminals (tokens like identifiers, keywords, and punctuation) and
-non-terminals (nodes representing language constructs like relations, rules,
-and expressions).
+for all terminals (tokens like identifiers, keywords, and punctuation), along
+with non-terminals (nodes representing language constructs like relations,
+rules, and expressions).
 
 A crucial aspect of this enum is its machine representation. It must be defined
 with `#[repr(u16)]` and derive the `FromPrimitive` and `ToPrimitive` traits
@@ -235,7 +234,7 @@ where the parser encountered a syntax error but was able to recover.
 
 An example of this enum's definition would be:
 
-```rust
+```rust,no_run
 use num_derive::{FromPrimitive, ToPrimitive};
 
 #
@@ -418,7 +417,7 @@ lives right next to the code it describes and is never out of sync.
 An example of how a developer would define a new rule using this macro is as
 follows:
 
-```rust
+```rust,no_run
 declare_lint! {
     /// ## What it does
     /// Checks for relations that are declared but are never used as input to another rule.
@@ -459,7 +458,7 @@ involvement and accelerates the growth of the linter's rule set.
 
 To provide clear scope for the initial implementation phases and to deliver
 immediate value to users, the following catalog of rules is proposed. This list
-prioritizes correctness checks, followed by performance hints and stylistic
+prioritizes correctness checks, followed by performance hints, and stylistic
 suggestions, establishing a solid foundation of essential lints.
 
 | Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                        |
@@ -575,7 +574,7 @@ logger is initialized by default. A consuming binary should call a logger setup
 routine early in `main` to surface these messages. One convenient option is
 [`env_logger`](https://docs.rs/env_logger/):
 
-```rust
+```rust,no_run
 fn main() {
     // Cargo.toml: env_logger = "0.11"
     env_logger::init();
@@ -757,10 +756,11 @@ assertions.
 
 The `insta` crate is the de-facto standard for snapshot testing in the Rust
 ecosystem and will be the primary tool for this purpose.10 The testing workflow
-will involve creating a suite of small DDlog code snippets, each designed to
-trigger one or more specific diagnostics. A test function will run the linter
-on a snippet and capture the resulting diagnostic string. This string is then
-asserted against a stored reference value (the "snapshot") using a macro like
+will involve creating a suite of small DDlog code snippets. Each snippet is
+designed to trigger one or more specific diagnostics. A test function will run
+the linter on a snippet and capture the resulting diagnostic string. This
+string is then asserted against a stored reference value (the "snapshot") using
+a macro like
 
 `insta::assert_snapshot!` or `insta::assert_debug_snapshot!`.11
 
@@ -814,7 +814,7 @@ macro-level behaviour of the final executable.
 ## 7. Phased implementation roadmap and future work
 
 This design is translated into an actionable, multi-phase project plan. Each
-phase is designed to deliver concrete, demonstrable value and build upon the
+phase is designed to deliver concrete, demonstrable value, and build upon the
 foundations laid by the previous one. This iterative approach mitigates risk
 and allows for feedback to be incorporated throughout the development cycle.
 
