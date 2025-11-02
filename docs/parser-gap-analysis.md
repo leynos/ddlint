@@ -130,7 +130,7 @@
 * **Head by-ref lowering (`&Rel{…}` → `ref_new`)**
   Spec: `&Rel{…}` **in heads** lowers to `ref_new(Rel{…})`; in expressions,
   `&expr` remains a by-ref expression node . Code: no sign of this lowering.
-  **Action:** add head-context check and rewrite before AST finalisation.
+  **Action:** add head-context check and rewrite before AST finalization.
 
 * **Assignments in RHS / flat-map binds**
   Spec allows **assignment-like binds** (pattern `=` expression) as distinct
