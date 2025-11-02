@@ -123,7 +123,7 @@ purpose. For instance, an example for
 `String::clone()` should not just show `hello.clone();`, but should demonstrate
 a scenario where ownership rules necessitate creating a copy.[^9]
 
-To achieve this, examples must be clear and concise. Any code that is not
+To achieve this, examples must be clear, concise, and purposeful. Any code that
 directly relevant to the point being made—such as complex setup, boilerplate,
 or unrelated logic—should be hidden to avoid distracting the reader.[^3]
 
@@ -196,8 +196,8 @@ the test, but it will be completely omitted from the final HTML documentation
 rendered for the user.[^3]
 
 This feature is essential for bridging the gap between what makes a good,
-human-readable example and what constitutes a complete, compilable program. Its
-primary use cases include:
+human-readable example, and what constitutes a complete, compilable program.
+Its primary use cases include:
 
 1. **Hiding** `main` **Wrappers**: As demonstrated in the error-handling
    examples, the entire `fn main() -> Result<...> {... }` and `Ok(())`
