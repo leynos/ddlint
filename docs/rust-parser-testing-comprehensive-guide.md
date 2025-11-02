@@ -349,7 +349,7 @@ mod tests {
         assert!(result.is_some());
         let err = result.unwrap().unwrap_err();
 
-        // Check that it's the specific error we expect from the callback.
+        // Check that it's the specific error expected from the callback.
         assert!(matches!(err, CallbackError::InvalidInt(_)));
     }
 }
@@ -466,7 +466,7 @@ pub enum Expr<'a> {
 
 // And a parser function for 'let' statements:
 use chumsky::prelude::*;
-use crate::lexer::Token; // Your token enum
+use crate::lexer::Token; // Token enum defined by the parser
 
 fn let_parser<'a>() -> impl Parser<'a, &'a, Stmt<'a>, extra::Err<Simple<Token<'a>>>> {
     just(Token::Let)
@@ -584,7 +584,7 @@ inputs. For each invalid input, the test must verify two critical properties:
    produce a useful partial AST for the valid parts of the code.
 
 Snapshot testing is the perfect tool for this. By snapshotting both the error
-vector and the resulting partial AST, we can validate the overall semantics of
+vector and the resulting partial AST, this validates the overall semantics of
 the error recovery mechanism.
 
 ```rust
@@ -701,7 +701,7 @@ structure of the language.
 ```rust
 // In tests/rowan_tests.rs
 use rowan::SyntaxNode;
-use crate::lang::MyLang; // Your Language trait implementation
+use crate::lang::MyLang; // Language trait implementation
 
 // A simple pretty-printer that traverses the CST.
 fn pretty_print(node: SyntaxNode<MyLang>) -> String {
@@ -771,7 +771,7 @@ fn do_cst_snapshot_test(path: &Path) {
 }
 
 #[rstest]
-#[files("corpus/**/*.mylang")] // Glob pattern for your language files
+#[files("corpus/**/*.mylang")] // Glob pattern for language fixture files
 fn test_cst_snapshots(input: &Path) {
     do_cst_snapshot_test(input);
 }
@@ -929,7 +929,7 @@ pub enum UnaryOp { Plus, Minus }
 
 pub enum BinaryOp { Add, Sub, Mul, Div }
 
-// For the recursive Expr enum, we need more control.
+// The recursive Expr enum requires more control here.
 pub enum Expr {
     Literal(u64),
     Unary { op: UnaryOp, expr: Box<Expr> },
@@ -970,7 +970,7 @@ operator precedence by adding parentheses where necessary to preserve the AST's
 structure.
 
 ```rust
-// A simple pretty-printer for our Expr AST (illustrative).
+// A simple pretty-printer for the Expr AST (illustrative).
 fn to_sexpr(expr: &Expr) -> String {
     match expr {
         Expr::Literal(n) => n.to_string(),
