@@ -44,7 +44,7 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
 ///
 /// The macro expects a parsing context `ctx` with a `stream` field. It loops
 /// until the stream is exhausted, invoking the handler associated with each
-/// recognised kind. Handlers must advance the stream to consume the tokens they
+/// recognized kind. Handlers must advance the stream to consume the tokens they
 /// process. Any unhandled kind is skipped.
 ///
 /// # Examples
@@ -83,7 +83,7 @@ macro_rules! token_dispatch {
     }};
 }
 
-/// Parser recognising whitespace and comment tokens.
+/// Parser recognizing whitespace and comment tokens.
 ///
 /// The combinator is useful for padding other parsers where whitespace is
 /// allowed. It matches [`SyntaxKind::T_WHITESPACE`] and
