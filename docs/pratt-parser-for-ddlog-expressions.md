@@ -267,7 +267,8 @@ pub fn expression_parser() -> impl Parser<SyntaxKind, ast::Expr, Error = Simple<
 
 **Note**: The binding power values (1 through 7) are illustrative. They must be
 carefully chosen to exactly match the precedence rules specified in the Haskell
-parser analysis (`docs/haskell-parser-analysis.md`).
+updated syntax specification
+(`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
 ### Handling `if`/`else` expressions
 

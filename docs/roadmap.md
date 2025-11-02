@@ -96,8 +96,8 @@ control flow. This phase aims to build a complete grammar.
 - [ ] **Implement Detailed Expression Parsing**
 
   - [x] Design and implement a Pratt parser for DDlog expressions to correctly
-    handle operator precedence and associativity, as outlined in the Haskell
-    parser analysis (`docs/haskell-parser-analysis.md`).
+    handle operator precedence and associativity, as defined in the updated
+    syntax specification (`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
   - [x] Add support for parsing all literal types within expressions (e.g.,
     strings, numbers, booleans). The `SyntaxKind` enum already defines these.
