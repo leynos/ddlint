@@ -526,9 +526,10 @@ spaghetti.[^17]
    consolidated.[^10] Pair programming can also help maintain a balanced
    perspective during refactoring.[^21]
 
-6. **The YAGNI (“You Aren't Gonna Need It”) principle:** This principle helps
-   avoid unnecessary abstractions and features, which can contribute to Ravioli
-   code if abstractions are created for anticipated but not actual needs.[^21]
+6. **The YAGNI principle:** The initialism expands to the reminder “Aren't
+   Gonna Need It” and helps avoid unnecessary abstractions and features, which
+   can contribute to Ravioli code if abstractions are created for anticipated
+   but not actual needs.[^21]
 
 7. **Focus on System Flow:** While individual components in Ravioli code might
    be simple, the difficulty lies in tracing the overall execution flow. Ensure
