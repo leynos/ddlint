@@ -15,7 +15,7 @@
   grouping, and how unqualified `name(…)` calls are parsed).
 * Most gaps are tractable, but two require **design choices**: (1) whether to
   keep `{ expr }` as grouping (not in spec) and (2) whether to change call
-  parsing to obey the spec’s “only fully-qualified calls are parsed as calls”
+  parsing to obey the spec’s “only fully qualified calls are parsed as calls”
   rule.
 
 ## Where the implementation deviates (or is missing) vs the spec
