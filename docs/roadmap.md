@@ -222,8 +222,8 @@ from the design document can be implemented.
     - Requires the symbol table.
 
     - Logic: Iterate through all declared relations in the symbol table. For
-      each, check if it has any usage sites (i.e., appears in a rule body). If
-      not, emit a diagnostic.
+      each, check for usage sites (for example, a rule body reference). If
+      none exist, emit a diagnostic.
 
   - [ ] `unused-variable`:
 
