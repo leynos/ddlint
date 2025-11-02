@@ -38,9 +38,9 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
 /// Collapse runs of whitespace into single spaces.
 ///
 /// ```
-/// assert_eq!(normalise_whitespace("a  b\n c"), "a b c");
+/// assert_eq!(normalize_whitespace("a  b\n c"), "a b c");
 /// ```
-pub(super) fn normalise_whitespace(text: &str) -> String {
+pub(super) fn normalize_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
