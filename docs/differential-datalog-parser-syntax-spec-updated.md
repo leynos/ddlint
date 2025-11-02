@@ -37,7 +37,7 @@ ______________________________________________________________________
 - Whitespace separates tokens; newlines are not syntactically significant.
 - `//` to end‑of‑line and `/* … */` block comments are supported; nested block
   comments are **not** required.
-- Tabs are normalised to single spaces for position tracking.
+- Tabs are normalized to single spaces for position tracking.
 
 ### 2.2 Identifiers and case classes
 
@@ -201,7 +201,7 @@ PrimaryKey   ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'
 
 Notes:
 
-- The first form synthesises a record type for `UcName` with the listed fields.
+- The first form synthesizes a record type for `UcName` with the listed fields.
 - `&UcName` in rule **heads** triggers special semantics (see §7.3).
 - `Role`/`Kind` affect runtime semantics but not parse shape.
 
@@ -326,7 +326,7 @@ ______________________________________________________________________
 ### 6.3 Head by‑reference (`&Rel{…}`) → `ref_new`
 
 - In a **rule head**, `&Rel{…}` (or bracket form) is rewritten to a call to
-  **`ref_new(Rel{…})`** so that downstream stages can materialise reference
+  **`ref_new(Rel{…})`** so that downstream stages can materialize reference
   values.
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
@@ -548,7 +548,7 @@ ______________________________________________________________________
 - **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
   parser (or immediately after) so later phases can assume a uniform
   representation (`RHSGroupBy`).
-- **Tabs and positions:** if you normalise tabs, do so before lexing and
+- **Tabs and positions:** if you normalize tabs, do so before lexing and
   preserve a mapping for accurate diagnostics.
 - **Multiple heads:** either preserve the multi‑head form in the AST or expand
   into multiple single‑head rules consistently; this spec treats multi‑head as
