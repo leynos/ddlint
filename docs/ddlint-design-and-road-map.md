@@ -227,7 +227,7 @@ with `#[repr(u16)]` and derive the `FromPrimitive` and `ToPrimitive` traits
 from the `num-derive` crate. This is because `rowan`'s internal `GreenNode`s
 are untyped and use a `rowan::SyntaxKind`, which is a newtype wrapper around a
 `u16`, for their type tags. These derivations provide a safe and efficient
-mechanism to convert between our strongly typed `SyntaxKind` enum and `rowan`'s
+mechanism to convert between the strongly typed `SyntaxKind` enum and `rowan`'s
 generic `u16` representation.3 A special
 
 `N_ERROR` variant will also be included to represent locations in the tree
@@ -276,10 +276,10 @@ enum SyntaxKind {
 ```
 
 To complete the integration with `rowan`, the `rowan::Language` trait must be
-implemented for a newtype that wraps our `SyntaxKind`. This trait acts as the
-bridge, with its `kind_from_raw` and `kind_to_raw` methods using the
-`FromPrimitive` and `ToPrimitive` implementations to connect our specific DDlog
-grammar to the generic `rowan` machinery.3
+implemented for a newtype that wraps the project’s `SyntaxKind`. This trait
+acts as the bridge, with its `kind_from_raw` and `kind_to_raw` methods using
+the `FromPrimitive` and `ToPrimitive` implementations to connect the specific
+DDlog grammar to the generic `rowan` machinery.3
 
 ### 2.2. Parser implementation strategy: leveraging `chumsky`
 
@@ -564,9 +564,9 @@ be simple and extensible. The following table specifies the initial schema.
 | [rules].`<rule-name>`     | String           | (rule default)                                     | Sets the severity for a rule. Valid values are "allow" (disables the rule), "warn", or "error". An error will cause the linter to exit with a non-zero status code. |
 | [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The level is set alongside rule-specific configuration keys.                                                                     |
 
-This schema provides a clear and powerful way for users to tailor the linter's
-behaviour to their project's specific needs, from disabling entire classes of
-rules to fine-tuning the parameters of stylistic checks.
+This schema provides a clear and powerful way for teams to tailor the linter's
+behaviour to project-specific needs, from disabling entire classes of rules to
+fine-tuning the parameters of stylistic checks.
 
 ### 4.4. Logging
 
@@ -579,12 +579,12 @@ routine early in `main` to surface these messages. One convenient option is
 fn main() {
     // Cargo.toml: env_logger = "0.11"
     env_logger::init();
-    // run ddlint or your application logic
+    // run ddlint or the application logic
 }
 ```
 
-Set the `RUST_LOG` environment variable to control verbosity. For example, you
-can set `RUST_LOG=warn` to display warnings while suppressing debug output.
+Set the `RUST_LOG` environment variable to control verbosity. For example,
+`RUST_LOG=warn` displays warnings while suppressing debug output.
 
 ## 5. Advanced features: diagnostics and automated fixes
 
