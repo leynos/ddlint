@@ -1047,8 +1047,8 @@ philosophy:
 2. **Prioritize High-Leverage Tests:** In the context of parsing, the most
    powerful tests are often those that verify the integration of the entire
    pipeline. The AST round-trip property test and the CST losslessness test are
-   paramount. Investing in the infrastructure for these tests (i.e.,
-   `Arbitrary` implementations and a pretty-printer) early in the development
+   paramount. Investing in the infrastructure for these tests—namely,
+   `Arbitrary` implementations and a pretty-printer—early in the development
    process yields the highest return.
 
 3. **Treat Spans and Errors as First-Class Citizens:** A parser is not merely a
