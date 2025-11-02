@@ -176,13 +176,13 @@ project:
   with a backslash.
 - Prefer single line versions of functions where appropriate. For example,
 
-  ```rust
+  ```rust,no_run
   pub fn new(id: u64) -> Self { Self(id) }
   ```
 
   Instead of:
 
-  ```rust
+  ```rust,no_run
   pub fn new(id: u64) -> Self {
       Self(id)
   }
