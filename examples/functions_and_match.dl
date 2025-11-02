@@ -12,5 +12,7 @@ function last_byte(a: OptionalIPAddress): bit<8> {
 
 input relation Host(address: OptionalIPAddress)
 output relation IPv6Addr(addr: bit<128>)
+output relation HostLastByte(address: OptionalIPAddress, last: bit<8>)
 
 IPv6Addr(addr) :- Host(.address = Some{IPv6Address{addr}}).
+HostLastByte(addr, last_byte(addr)) :- Host(.address = addr).
