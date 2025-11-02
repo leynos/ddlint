@@ -344,7 +344,7 @@ ______________________________________________________________________
 
 ### 6.2 Legacy `Aggregate(…)`
 
-- The legacy `Aggregate` form is still recognised and lowered into `RHSGroupBy`
+- The legacy `Aggregate` form is still recognized and lowered into `RHSGroupBy`
   - a follow‑up condition over `__group`.
 - It is **deprecated**; future grammar may remove it. Emit a warning in linters.
 
