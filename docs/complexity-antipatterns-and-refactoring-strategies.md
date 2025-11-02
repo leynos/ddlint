@@ -336,8 +336,9 @@ Once a Bumpy Road is identified, the primary remediation strategy is the
    or design patterns (like the Command pattern for different actions within
    the bumps), is warranted.[^10]
 
-Tools like CodeScene can automatically identify Bumpy Roads and even suggest or
-perform auto-refactoring for certain languages.[^9]
+Tools like CodeScene's Automatic Code Evolution (ACE) service can automatically
+identify Bumpy Roads and even suggest or perform auto-refactoring for certain
+languages.[^9]
 
 ### C. Red Flags Portending the Bumpy Road
 
@@ -643,8 +644,8 @@ state updates is minimized.[^25] Many declarative approaches also inherently
 favour immutability and reduce side effects, which are common culprits for bugs
 and increased cognitive load in imperative code.[^26]
 
-Examples include using Structured Query Language (SQL) for database queries
-specifying the desired dataset rather than the retrieval algorithm[^34], or
+Examples include using Structured Query Language for database queries—
+specifying the desired dataset rather than the retrieval algorithm[^34]—or
 employing functional programming constructs like `map`, `filter`, and `reduce`
 on collections instead of writing explicit loops. Refactoring imperative code
 to a declarative style can start small, perhaps by converting a loop that
@@ -806,7 +807,8 @@ and efficient, but also a pleasure to evolve and maintain.
 [^3]: Cyclomatic complexity — Wikipedia,
       <https://en.wikipedia.org/wiki/Cyclomatic_complexity>
 [^4]: Cyclomatic complexity: Definition and limits in understanding code
-      quality — Developer Experience (DX),
+      quality — the Developer Experience platform,
+      <https://getdx.com/blog/cyclomatic-complexity/>
       <https://getdx.com/blog/cyclomatic-complexity/>
 [^5]: Cyclomatic complexity — Wikipedia (risk classification),
       <https://en.wikipedia.org/wiki/Cyclomatic_complexity>
@@ -845,7 +847,7 @@ and efficient, but also a pleasure to evolve and maintain.
        <https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs>
 [^20]: Mastering Command Query Responsibility Segregation: 7 Powerful Benefits,
        <https://hyscaler.com/insights/mastering-cqrs-benefits-of-command-query/>
-[^21]: Implementing Command Query Responsibility Segregation in the .NET
+[^21]: Implementing Command Query Responsibility Segregation in the dotnet
        ecosystem — Dev Community,
        <https://dev.to/moh_moh701/enhancing-net-applications-with-cqrs-and-solid-principles-30i8>
 [^22]: How do you refactor a God class? — Stack Overflow,
