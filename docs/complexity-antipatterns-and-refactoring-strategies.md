@@ -574,10 +574,10 @@ and method structure.
 
 1. Structural pattern matching
 
-Structural pattern matching, available in languages like Python (since 3.10
-with match-case) and C#, offers a declarative and expressive way to handle
-complex conditional logic, often replacing verbose if-elif-else chains or
-switch statements.21.
+Structural pattern matching—available in languages like Python (since 3.10 with
+match-case) and C#—offers a declarative and expressive way to handle complex
+conditional logic, often replacing verbose if-elif-else chains or switch
+statements.21.
 
 It works by allowing code to match against the *structure* of data—such as its
 type, shape, or specific values within sequences like lists or tuples, or
