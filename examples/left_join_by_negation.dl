@@ -8,7 +8,11 @@ function addr_port(ip: bit<32>, proto: string, preferred_port: bit<16>): string 
         "HTTPS" -> 443,
         _        -> (if (preferred_port != 0) preferred_port else 80)
     };
-    "${ip}:${port}"
+    var o1: bit<8> = ip[31:24];
+    var o2: bit<8> = ip[23:16];
+    var o3: bit<8> = ip[15:8];
+    var o4: bit<8> = ip[7:0];
+    "${o1}.${o2}.${o3}.${o4}:${port}"
 }
 
 output relation EndpointSanitization(endpoint: string, sanitized: bool)
