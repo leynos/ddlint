@@ -28,8 +28,8 @@ body as opposed to the head.
 * **String families & interning**
   Spec: three families (normal `"…"`, raw `[| … |]`, interpolated raw
   `$[| … ${expr} … |]`), plus `i"…"`/`i[|…|]` interning and the ban on
-  interpolated strings in patterns . Code today: literal parsing only
-  recognizes **quoted strings** via `T_STRING` in the Pratt layer
+  interpolated strings in patterns. Code today: literal parsing only recognizes
+  **quoted strings** via `T_STRING` in the Pratt layer
   (`src/parser/expression/literals.rs`) and strips quotes; no raw/interpolated
   forms, no interning prefix handling. **Action:** extend tokenizer to emit
   distinct tokens for raw/interpolated strings and `i`-prefixed forms; extend
@@ -38,18 +38,18 @@ body as opposed to the head.
 
 * **Numeric literal widths**
   Spec: width-qualified ints (`8'hFF`, `16'sd-1`) and floats (`…'f32|f64`) with
-  **fit checks** . Code: numbers are parsed as **opaque text**
-  `Literal::Number` with no width/signedness semantics. **Action:** teach the
-  tokenizer to recognize width/base/signedness; add parse-time validation and a
-  shaped abstract syntax tree representation (or rich literal node) so lints
-  can reason about sizes.
+  **fit checks**. Code: numbers are parsed as **opaque text** `Literal::Number`
+  with no width/signedness semantics. **Action:** teach the tokenizer to
+  recognize width/base/signedness; add parse-time validation and a shaped
+  abstract syntax tree representation (or rich literal node) so lints can
+  reason about sizes.
 
 ### 2) Operators and precedence
 
 * **Operator table completeness**
   Spec mandates an authoritative table incl. `++` (concat), bit-xor `^`,
   implication `=>`, the usual arithmetic/logic, and tight postfix
-  (`f(…)`, `e[expr]`, `e.name`) precedence . Code: postfix/index/call/member
+  (`f(…)`, `e[expr]`, `e.name`) precedence. Code: postfix/index/call/member
   access and most arithmetic/logic exist (see
   `src/parser/expression/infix.rs`, `src/parser/ast/precedence.rs`).
   Implication `=>` is tokenised (search shows `T_IMPLIES`), but tests do not
@@ -61,7 +61,7 @@ body as opposed to the head.
 * **Call parsing for unqualified names**
   Spec: “Only **fully qualified** `module::func` parses as a function call at
   parse time; a bare `name(…)` parses as a variable application and is
-  disambiguated by name resolution later” . Code: `foo()` becomes
+  disambiguated by name resolution later”. Code: `foo()` becomes
   `Expr::Call { name: "foo", … }` immediately (see
   `tests/expression_var_and_call.rs`, `src/parser/tests/expression.rs`).
   **Action (policy choice):**
@@ -78,7 +78,7 @@ body as opposed to the head.
   Spec defines **pattern grammar** (tuples, structs, typed patterns, wildcards,
   literals, etc.) and says patterns appear in three contexts
   (match/flatmap/for) with the **same surface syntax, different abstract syntax
-  tree shapes** . Code: `match` is implemented (great!) but **stores arm
+  tree shapes**. Code: `match` is implemented (great!) but **stores arm
   patterns as raw strings** (`MatchArm { pattern: String, body: Expr }` in
   `src/parser/ast/expr.rs`) and collects them via delimiter-balanced slicing
   (`expression/pattern_collection.rs`). **Deviation:** the current code does
@@ -89,7 +89,7 @@ body as opposed to the head.
 
 * **`for` loops**
   Spec: `for (Pattern in Expr) if Guard? Statement` acts as an imperative form
-  in rule bodies; top-level `for` is **desugared to rules** . Code: Pratt
+  in rule bodies; top-level `for` is **desugared to rules**. Code: Pratt
   supports `for` as an **expression** (`Expr::ForLoop`) with pattern text
   slicing and an optional `if` guard (`src/parser/expression/control_flow.rs`).
   Top-level desugaring is not present. **Action:** (a) add **top-level**
@@ -135,14 +135,14 @@ body as opposed to the head.
 
 * **Head by-ref lowering (`&Rel{…}` → `ref_new`)**
   Spec: `&Rel{…}` **in heads** lowers to `ref_new(Rel{…})`; in expressions,
-  `&expr` remains a by-ref expression node . Code: no sign of this lowering.
+  `&expr` remains a by-ref expression node. Code: no sign of this lowering.
   **Action:** add head-context check and rewrite before abstract syntax tree
   finalization.
 
 * **Assignments in the right-hand side / flat-map binds**
   Spec allows **assignment-like binds** (pattern `=` expression) as distinct
-  right-hand-side terms . Code: right-hand-side binder forms aren’t visible
-  yet. **Action:** add term kinds for `RHSAssign` and validate pattern contexts.
+  right-hand-side terms. Code: right-hand-side binder forms aren’t visible yet.
+  **Action:** add term kinds for `RHSAssign` and validate pattern contexts.
 
 ### 6) Items (top-level constructs)
 
@@ -156,14 +156,14 @@ body as opposed to the head.
 
 * **Index declaration shape**
   Spec: `index Name (field: Type, …) on Atom;` (with full Atom grammar — may
-  include delay/diff/ref/constructor forms) . Code: index parsing exists and
+  include delay/diff/ref/constructor forms). Code: index parsing exists and
   enforces `on`/parentheses balancing (see `src/parser/tests/indexes.rs`).
   **Gap:** **`on` Atom** variants (delayed/diff/ref/constructor) are missing.
   **Action:** extend the `on` target to parse full **Atom** and add tests that
   combine the adornments.
 
 * **`apply` items**
-  Spec includes an `Apply` top-level form . Code: no `apply` parsing/tests are
+  Spec includes an `Apply` top-level form. Code: no `apply` parsing/tests are
   present. **Action:** add `Apply` item parser plus abstract syntax tree
   coverage and a couple of fixtures.
 
@@ -172,7 +172,7 @@ body as opposed to the head.
 * **Uniqueness/overload rules**
   Spec: unique names for type/relation/index/transformer/import; function
   groups overloaded by **arity** only; reserved words not allowed as
-  identifiers; attributes only in certain places . Code: tokenizer and abstract
+  identifiers; attributes only in certain places. Code: tokenizer and abstract
   syntax tree structure are present, but enforcement tests for **duplicate
   definitions**, **function (name, arity)** uniqueness, or attribute placement
   beyond the function/param span tests are absent. **Action:** wire post-parse
