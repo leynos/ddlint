@@ -814,7 +814,7 @@ macro-level behaviour of the final executable.
 
 ## 7. Phased implementation roadmap and future work
 
-This design is translated into an actionable, multi-phase project plan. Each
+This design is translated into an actionable, multiphase project plan. Each
 phase is designed to deliver concrete, demonstrable value, and build upon the
 foundations laid by the previous one. This iterative approach mitigates risk
 and allows for feedback to be incorporated throughout the development cycle.
