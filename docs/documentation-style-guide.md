@@ -28,7 +28,7 @@ Apply these rules to keep the documentation clear and consistent for developers.
   comprehension.
 - Company names are treated as collective nouns: "Concordat Industries are
   expanding".
-- Avoid first and second person personal pronouns outside of the `README.md`
+- Avoid first and second person personal pronouns outside the `README.md`
   file.
 
 ## Headings
@@ -59,7 +59,7 @@ Apply these rules to keep the documentation clear and consistent for developers.
 - Wrap paragraphs at 80 columns.
 - Wrap code at 120 columns.
 - Do not wrap tables.
-- Use footnotes referenced numerically with `[^label]`.
+- Use GitHub-flavoured numeric footnotes referenced as `[^1]`.
 - Footnotes must be numbered in order of appearance in the document.
 - Tables and diagrams must be captioned.
 
@@ -126,7 +126,7 @@ flowchart TD
 
 ## Roadmap task writing guidelines
 
-When documenting development roadmap items, write them, so that they are
+When documenting development roadmap items, write them so that they are
 achievable, measurable, and structured. This ensures the roadmap functions as a
 practical planning tool rather than a vague wishlist. Do not commit to
 timeframes in the roadmap. Development effort should be roughly consistent from
