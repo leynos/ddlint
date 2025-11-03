@@ -390,7 +390,7 @@ clear diagnostic that includes a span:
   `type`, `function`, or `relation`.
 - **Non‑extern transformer:** `transformer` lacking the `extern` qualifier.
 - **Duplicate definition:** repeated name for
-  type/relation/index/transformer/import; or function with same `(name, arity)`.
+  type/relation/index/transformer/import, or function with the same `(name, arity)`.
 - **`group_by` misuse:** more than one `group_by` in an expression or wrong
   arity (≠ 2).
 - **String pattern interpolation:** an interpolated string in a pattern context.

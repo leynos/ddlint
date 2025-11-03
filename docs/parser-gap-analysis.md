@@ -18,8 +18,8 @@
   parsing to obey the spec’s “only fully qualified calls are parsed as calls”
   rule.
 
-In this analysis, references to the rule right-hand side (RHS) mean the rule
-body as opposed to the head.
+In this analysis, RHS (right-hand side) refers to the rule body, not the rule
+head.
 
 ## Where the implementation deviates (or is missing) vs the spec
 
