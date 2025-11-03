@@ -7,4 +7,4 @@ ignorecase: false
 nonword: true
 # Flags headings with consecutive Title Case words not in the allowed list.
 tokens:
-  - '\\b(?!(?:API|OpenTofu|HashiCorp|HCL|JSON|YAML|Python|Cyclopts|Typer|Rust|GitHub)\\b)[A-Z][a-z]+(?:\\s+(?!(?:API|OpenTofu|HashiCorp|HCL|JSON|YAML|Python|Cyclopts|Typer|Rust|GitHub)\\b)[A-Z][a-z]+)+'
+  - '\b(?!(?:API|AST|Backus|CD|CLI|Codex|CST|DDlog|Differential|Datalog|GitHub|HashiCorp|HCL|JSON|LSP|Naur|OpenTofu|Pratt|Python|Cyclopts|Typer|Rust|RAII|CI|YAML)\b)[A-Z][a-z]+(?:\s+(?!(?:API|AST|Backus|CD|CLI|Codex|CST|DDlog|Differential|Datalog|GitHub|HashiCorp|HCL|JSON|LSP|Naur|OpenTofu|Pratt|Python|Cyclopts|Typer|Rust|RAII|CI|YAML)\b)[A-Z][a-z]+)+'

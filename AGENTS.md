@@ -1,6 +1,6 @@
-# Assistant Instructions
+# Assistant instructions
 
-## Code Style and Structure
+## Code style and structure
 
 - **Code is for humans.** Write code with clarity and empathy—assume a
   tired teammate will need to debug it at 3 a.m.
@@ -33,7 +33,7 @@
   feature and constituents colocated with targets. Large blocks of test data
   should be moved to external data files.
 
-## Documentation Maintenance
+## Documentation maintenance
 
 - **Reference:** Use the markdown files within the `docs/` directory as a
   knowledge base and source of truth for project requirements, dependency
@@ -46,7 +46,7 @@
   and grammar. (Exception: the naming of the "LICENSE" file, which is to be
   left unchanged for community consistency.)
 
-## Change Quality & Committing
+## Change quality & committing
 
 - **Atomicity:** Aim for small, focused, atomic changes. Each change (and
   subsequent commit) should represent a single logical unit of work.
@@ -76,7 +76,7 @@
       code snippets) within the commit message body.
   - Do not commit changes that fail any of the quality gates.
 
-## Refactoring Heuristics & Workflow
+## Refactoring heuristics & workflow
 
 - **Recognizing Refactoring Needs:** Regularly assess the codebase for potential
   refactoring opportunities. Consider refactoring when the following indicators
@@ -108,7 +108,7 @@
     pass before and after, unit tests added for new units).
   - Ensure the refactoring commit itself passes all quality gates.
 
-## Rust Specific Guidance
+## Rust specific guidance
 
 This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
@@ -204,7 +204,7 @@ project:
   `the-newtype` to unify semantics when the maintainers own the trait
   definitions.
 
-### Dependency Management
+### Dependency management
 
 - **Mandate caret requirements for all dependencies.** All crate versions
   specified in `Cargo.toml` must use SemVer-compatible caret requirements
@@ -218,7 +218,7 @@ project:
   (`~`) should only be used where a dependency must be locked to patch-level
   updates for a specific, documented reason.
 
-### Error Handling
+### Error handling
 
 - **Prefer semantic error enums**. Derive `std::error::Error` (via the
   `thiserror` crate) for any condition the caller might inspect, retry, or map
@@ -229,7 +229,7 @@ project:
   API boundaries, and to `eyre` only in the main `main()` entrypoint or
   top-level async task.
 
-## Markdown Guidance
+## Markdown guidance
 
 - Validate Markdown files using `make markdownlint`.
 - Run `make fmt` after any documentation changes to format all Markdown
@@ -282,7 +282,7 @@ The following tooling is available in this environment:
 - `difft` **(Difftastic)** – Semantic diff tool that compares code structure
   rather than just text differences.
 
-## Key Takeaway
+## Key takeaway
 
 These practices help maintain a high-quality codebase and facilitate
 collaboration.

@@ -7,7 +7,7 @@ grammar rules, and the Abstract Syntax Tree (AST) structures they construct.
 The notes provide a reference for porting the parser to Rust using `chumsky`
 and `rowan` as described in the other design documents.
 
-## Token Definitions
+## Token definitions
 
 Tokens are defined using Parsec's `TokenParser` facilities. The parser
 recognizes two sets of keywords:
@@ -81,7 +81,7 @@ this configuration.
 `reservedNames` is defined simply as `ddlogKeywords ++ rustKeywords`, so
 downstream code must not reuse any of those identifiers.
 
-## Parser Entry Points
+## Parser entry points
 
 The module exposes `parseDatalogString` as the main entry point. This wraps
 Parsec and returns either a `DatalogProgram` or an error:
@@ -112,7 +112,7 @@ isolated expression. Both delegate to individual rules described below.
 ensures the caller receives a clear error message when parsing fails and that
 IO exceptions remain separated from parse errors.
 
-## Grammar Productions and Abstract Syntax Tree (AST) Mapping
+## Grammar productions and abstract syntax tree (AST) mapping
 
 Each parser rule uses `withPos` to attach source locations. The rules construct
 values from `Language.DifferentialDatalog.Syntax`, providing an explicit
@@ -191,7 +191,7 @@ rule = withPos $
 - `expr` – an expression parser built via `buildExpressionParser`; it handles
   literals, operators and function calls.
 
-### Control-Flow Statements
+### Control-flow statements
 
 The parser contains dedicated rules for imperative constructs used in rules:
 
@@ -213,7 +213,7 @@ parseIfStatement = IfStatement nopos <$ reserved "if"
 guard, while `parseIfStatement` handles conditional branching with an optional
 `else` clause. Both return structured statement nodes used by the rule parser.
 
-### Expression Grammar
+### Expression grammar
 
 The `expr` rule is defined through `buildExpressionParser` and a series of
 helper terms:
@@ -255,7 +255,7 @@ The table `etable` defines operator precedence, including assignment and
 logical connectives. Complex features such as group-by extraction are handled
 in helper functions like `extractGroupBy`.
 
-### Supporting Utilities
+### Supporting utilities
 
 Two helper mechanisms appear throughout the parser. `removeTabs` sanitizes the
 input by replacing any tab character with a single space:
@@ -284,7 +284,7 @@ Each rule constructs an appropriate structure from
 `Language.DifferentialDatalog.Syntax`, ensuring that positions and attributes
 are preserved.
 
-## Lexical Elements
+## Lexical elements
 
 The complete set of lexical tokens derived from the parser includes:
 
@@ -301,7 +301,7 @@ The complete set of lexical tokens derived from the parser includes:
 These lexical elements will translate directly into `SyntaxKind` token variants
 in the Rust implementation.
 
-## Porting Notes
+## Porting notes
 
 When porting to Rust, the constructs above can be expressed with `chumsky`
 combinators and a `rowan` concrete syntax tree (CST). The `expr` grammar maps well to

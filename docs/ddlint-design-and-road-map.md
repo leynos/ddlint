@@ -908,7 +908,7 @@ of issues.
 - **Deliverable:** A feature-complete, polished, and well-documented linter
   ready for a stable 1.0 release.
 
-### Phase 4 (future): IDE integration via the Language Server Protocol (LSP)
+### Phase 4 (future): IDE integration via the language server protocol (LSP)
 
 The architecture designed in the preceding phases explicitly paves the way for
 future extension into an IDE language server. The decoupling of the core

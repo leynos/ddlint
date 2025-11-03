@@ -10,7 +10,7 @@ lossless token-level structure built during parsing.
 
 ______________________________________________________________________
 
-## **Phase 1: Foundational Components (Largely Complete)**
+## **Phase 1: foundational components (largely complete)**
 
 This phase covers the core infrastructure for turning source text into a
 navigable syntax tree.
@@ -92,7 +92,7 @@ navigable syntax tree.
 
 ______________________________________________________________________
 
-## **Phase 2: Parser Grammar Expansion**
+## **Phase 2: parser grammar expansion**
 
 The current parser excels at identifying top-level statements but has a
 simplified understanding of statement bodies, particularly expressions as well
@@ -178,7 +178,7 @@ as control flow constructs. This phase aims to build a complete grammar.
 
 ______________________________________________________________________
 
-## **Phase 3: Linter Engine and Semantic Analysis**
+## **Phase 3: linter engine and semantic analysis**
 
 This phase involves building the core engine that will execute lint rules, as
 envisioned in `ddlint-design-and-road-map.md`.
@@ -215,7 +215,7 @@ envisioned in `ddlint-design-and-road-map.md`.
 
 ______________________________________________________________________
 
-## **Phase 4: Lint Rule Implementation**
+## **Phase 4: lint rule implementation**
 
 With the engine and semantic analysis in place, the initial set of lint rules
 from the design document can be implemented.
@@ -291,7 +291,7 @@ from the design document can be implemented.
 
 ______________________________________________________________________
 
-## **Phase 5: User Interface and Experience**
+## **Phase 5: user interface and experience**
 
 This phase focuses on creating a polished and usable tool for the end-user.
 
@@ -320,7 +320,7 @@ This phase focuses on creating a polished and usable tool for the end-user.
 
 ______________________________________________________________________
 
-## **Phase 6: Advanced Features and Future Work**
+## **Phase 6: advanced features and future work**
 
 - [ ] **Autofixing**
 
