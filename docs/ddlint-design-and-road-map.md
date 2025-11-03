@@ -139,10 +139,10 @@ the system.
 The chain of architectural consequences begins with the project's highest-level
 goals: to provide developers with rich, actionable diagnostics, and powerful,
 automated fixing capabilities. This immediately makes a lossless representation
-of the source code a non-negotiable requirement. A traditional AST, by its
-nature, discards the very information (comments, whitespace, exact formatting)
-needed for these features, rendering it insufficient. This leads directly to
-the necessity of a CST. Within the Rust ecosystem, `rowan` is the
+of the source code a non-negotiable requirement. A traditional abstract syntax
+tree, by its nature, discards the very information (comments, whitespace, exact
+formatting) needed for these features, rendering it insufficient. This leads
+directly to the necessity of a CST. Within the Rust ecosystem, `rowan` is the
 industry-standard, production-grade solution for this problem.1
 
 Once `rowan` is chosen, the next logical step is to select a linter engine
@@ -203,7 +203,7 @@ sequenceDiagram
     Parser->>Parser: build token stream
     Parser->>SyntaxTree: construct green tree from tokens
     SyntaxTree-->>Parser: green tree
-    Parser->>Parser: wrap green tree in AST root
+    Parser->>Parser: wrap green tree in abstract syntax tree root
     Parser-->>User: Parsed { green, root }
 ```
 
@@ -314,11 +314,11 @@ optimizer that leverages Generic Associated Types (GATs) to fuse and optimize
 the parser's structure, and it supports zero-copy parsing to minimize
 allocations.12
 
-The output of the `chumsky`-based parser will not be a conventional AST.
-Instead, it will be designed to directly construct a `rowan::GreenNode`, which
-is the precise input required by the linter's core engine. This direct-to-CST
-parsing avoids an intermediate allocation and translation step, further
-improving performance.
+The output of the `chumsky`-based parser will not be a conventional abstract
+syntax tree. Instead, it will be designed to directly construct a
+`rowan::GreenNode`, which is the precise input required by the linter's core
+engine. This direct-to-CST parsing avoids an intermediate allocation and
+translation step, further improving performance.
 
 ### 2.3. The symbiotic relationship between parser and linter
 
