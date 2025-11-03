@@ -18,6 +18,9 @@
   parsing to obey the spec’s “only fully qualified calls are parsed as calls”
   rule.
 
+In this analysis, references to the rule right-hand side (RHS) mean the rule
+body as opposed to the head.
+
 ## Where the implementation deviates (or is missing) vs the spec
 
 ### 1) Lexical and literals
@@ -30,15 +33,16 @@
   (`src/parser/expression/literals.rs`) and strips quotes; no raw/interpolated
   forms, no interning prefix handling. **Action:** extend tokenizer to emit
   distinct tokens for raw/interpolated strings and `i`-prefixed forms; extend
-  Pratt literals to build the right AST (and keep the “no interpolated strings
-  in patterns” validation).
+  Pratt literals to build the right Abstract Syntax Tree (AST) (and keep the
+  “no interpolated strings in patterns” validation).
 
 * **Numeric literal widths**
   Spec: width-qualified ints (`8'hFF`, `16'sd-1`) and floats (`…'f32|f64`) with
   **fit checks** . Code: numbers are parsed as **opaque text**
   `Literal::Number` with no width/signedness semantics. **Action:** teach the
-  tokenizer to recognize width/base/signedness; add parse-time validation and
-  shaped AST (or rich literal node) so lints can reason about sizes.
+  tokenizer to recognize width/base/signedness; add parse-time validation and a
+  shaped abstract syntax tree representation (or rich literal node) so lints
+  can reason about sizes.
 
 ### 2) Operators and precedence
 
@@ -73,15 +77,15 @@
 * **`match` expression shape**
   Spec defines **pattern grammar** (tuples, structs, typed patterns, wildcards,
   literals, etc.) and says patterns appear in three contexts
-  (match/flatmap/for) with the **same surface syntax, different ASTs** . Code:
-  `match` is implemented (great!) but **stores arm patterns as raw strings**
-  (`MatchArm { pattern: String, body: Expr }` in `src/parser/ast/expr.rs`) and
-  collects them via delimiter-balanced slicing
+  (match/flatmap/for) with the **same surface syntax, different abstract syntax
+  tree shapes** . Code: `match` is implemented (great!) but **stores arm
+  patterns as raw strings** (`MatchArm { pattern: String, body: Expr }` in
+  `src/parser/ast/expr.rs`) and collects them via delimiter-balanced slicing
   (`expression/pattern_collection.rs`). **Deviation:** the current code does
-  not build the **pattern AST** the spec expects. **Action:** add a **pattern
+  not build the **pattern tree** the spec expects. **Action:** add a **pattern
   parser** that produces nodes like
   `PVar`, `PTuple`, `PStruct`, `PLit`, `PTyped`, … and use it for **match
-  arms**, **for-loop bindings**, and **RHS flatmap binds**.
+  arms**, **for-loop bindings**, and **right-hand-side flatmap binds**.
 
 * **`for` loops**
   Spec: `for (Pattern in Expr) if Guard? Statement` acts as an imperative form
@@ -90,7 +94,7 @@
   slicing and an optional `if` guard (`src/parser/expression/control_flow.rs`).
   Top-level desugaring is not present. **Action:** (a) add **top-level**
   desugaring pass (“convertStatement”) to emit rules; (b) once the plan
-  introduces a **pattern AST**, stop storing the binding as string.
+  introduces a **pattern tree**, stop storing the binding as string.
 
 * **`{ expr }` as grouping**
   Spec doesn’t define braces as an **expression grouping** (braces are for map
@@ -110,42 +114,45 @@
   immediately or tag nodes for a tiny post-parse lowering pass.
 
 * **`group_by` extraction & legacy `Aggregate`**
-  Spec: at most **one** `group_by(project, key)` per RHS expression; extracted
-  to a dedicated AST node; legacy `Aggregate` lowered and warned as deprecated.
-  Code: no `group_by`/`Aggregate` handling found beyond roadmap docs.
-  **Action:** extend RHS parsing to detect/extract `group_by`; add errors for
-  multiple/wrong-arity; keep the `RHSGroupBy` node wired into checks later.
+  Spec: at most **one** `group_by(project, key)` per right-hand-side
+  expression; extracted to a dedicated abstract syntax tree node; legacy
+  `Aggregate` lowered and warned as deprecated. Code: no `group_by`/`Aggregate`
+  handling found beyond roadmap docs. **Action:** extend right-hand-side
+  parsing to detect/extract `group_by`; add errors for multiple/wrong-arity;
+  keep the `RHSGroupBy` node wired into checks later.
 
 ### 5) Rules, heads, and adornments
 
 * **Multi-head rules and `@` location**
   Spec: multiple heads allowed (`Head, Head :- Body.`); `@ Expr` allowed **in
   heads only**; each head may carry delay `-<N>` and diff `'`. Code: rule
-  AST/tests exist, but tests for **multi-head**, head **locations**, **delay**,
-  or **diff mark** are absent. Token kinds exist (`T_AT`, delay/diff tokens at
-  the lexer level), but parsing/validation isn’t visible. **Action:** add
-  grammar for `RuleLHS` = `Atom Location?`, comma-separated; support `@` with
-  head-only validation; parse `-<N>` and `'` adorners with range checks (u32
-  for delay).
+  Abstract syntax tree tests exist, but tests for **multi-head**, head
+  **locations**, **delay**, or **diff mark** are absent. Token kinds exist
+  (`T_AT`, delay/diff tokens at the lexer level), but parsing/validation isn’t
+  visible. **Action:** add grammar for `RuleLHS` = `Atom Location?`,
+  comma-separated; support `@` with head-only validation; parse `-<N>` and `'`
+  adorners with range checks (u32 for delay).
 
 * **Head by-ref lowering (`&Rel{…}` → `ref_new`)**
   Spec: `&Rel{…}` **in heads** lowers to `ref_new(Rel{…})`; in expressions,
   `&expr` remains a by-ref expression node . Code: no sign of this lowering.
-  **Action:** add head-context check and rewrite before AST finalization.
+  **Action:** add head-context check and rewrite before abstract syntax tree
+  finalization.
 
-* **Assignments in RHS / flat-map binds**
+* **Assignments in the right-hand side / flat-map binds**
   Spec allows **assignment-like binds** (pattern `=` expression) as distinct
-  **RHS** terms . Code: RHS binder forms aren’t visible yet. **Action:** add
-  RHS term kinds for `RHSAssign` and validate pattern contexts.
+  right-hand-side terms . Code: right-hand-side binder forms aren’t visible
+  yet. **Action:** add term kinds for `RHSAssign` and validate pattern contexts.
 
 ### 6) Items (top-level constructs)
 
 * **Transformer extern-only**
   Spec: `transformer` must be **extern**; non-extern rejected; attributes
-  allowed only on `type`, `function`, and `relation`. Code: AST modules for
-  transformers exist, but there aren’t tests asserting **non-extern = error**
-  or **attribute placement** rules. **Action:** implement/validate these guards
-  and add tests (e.g., attribute on `index` should error per spec).
+  allowed only on `type`, `function`, and `relation`. Code: abstract syntax
+  tree modules for transformers exist, but there aren’t tests asserting
+  **non-extern = error** or **attribute placement** rules. **Action:**
+  implement/validate these guards and add tests (e.g., attribute on `index`
+  should error per spec).
 
 * **Index declaration shape**
   Spec: `index Name (field: Type, …) on Atom;` (with full Atom grammar — may
@@ -157,18 +164,19 @@
 
 * **`apply` items**
   Spec includes an `Apply` top-level form . Code: no `apply` parsing/tests are
-  present. **Action:** add `Apply` item parser + AST and a couple of fixtures.
+  present. **Action:** add `Apply` item parser plus abstract syntax tree
+  coverage and a couple of fixtures.
 
 ### 7) Name & scoping rules
 
 * **Uniqueness/overload rules**
   Spec: unique names for type/relation/index/transformer/import; function
   groups overloaded by **arity** only; reserved words not allowed as
-  identifiers; attributes only in certain places . Code: tokenizer and AST
-  structure are present, but enforcement tests for **duplicate definitions**,
-  **function (name, arity)** uniqueness, or attribute placement beyond the
-  function/param span tests are absent. **Action:** wire post-parse validation
-  for uniqueness and produce **spanned diagnostics** per spec.
+  identifiers; attributes only in certain places . Code: tokenizer and abstract
+  syntax tree structure are present, but enforcement tests for **duplicate
+  definitions**, **function (name, arity)** uniqueness, or attribute placement
+  beyond the function/param span tests are absent. **Action:** wire post-parse
+  validation for uniqueness and produce **spanned diagnostics** per spec.
 
 ## Noteworthy *implementation-only* extensions (consider updating the spec)
 
@@ -189,7 +197,7 @@
   * `literals.rs` (string families, numerics)
   * `infix.rs` + `ast/precedence.rs` (wire missing operators)
   * `data_structures.rs` (vector/map literals; keep struct literal guard)
-  * `control_flow.rs` & `pattern_collection.rs` (switch to **pattern AST**
+* `control_flow.rs` & `pattern_collection.rs` (switch to a **pattern tree**
     rather than string slices)
 * **Rules & items:** `src/parser/ast/*` and `src/parser/tests/*`
   (multi-head parsing, `@` location, delay/diff on heads, `&Rel{…}` lowering,
@@ -220,7 +228,7 @@
 
 1. **Strings & numbers** (token kinds + literal parsing + tests)
 2. **Operator table completion** (`=>`, `^`, `++`)
-3. **Pattern parsing** (introduce proper pattern AST; switch match/for)
+3. **Pattern parsing** (introduce a proper pattern tree; switch match/for)
 4. **Rules adornments** (multi-head, `@`, delay/diff, `&Rel` lowering)
 5. **Collections + desugarings** (vector/map)
 6. **`group_by`/`Aggregate` extraction**
