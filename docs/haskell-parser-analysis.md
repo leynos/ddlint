@@ -3,9 +3,9 @@
 This document summarizes the design of the parser implemented in
 `Language.DifferentialDatalog.Parse`. The original code is written in Haskell
 using Parsec. This overview highlights token definitions, entry points, major
-grammar rules, and the AST structures they construct. The notes provide a
-reference for porting the parser to Rust using `chumsky` and `rowan` as
-described in the other design documents.
+grammar rules, and the Abstract Syntax Tree (AST) structures they construct.
+The notes provide a reference for porting the parser to Rust using `chumsky`
+and `rowan` as described in the other design documents.
 
 ## Token Definitions
 
@@ -112,12 +112,12 @@ isolated expression. Both delegate to individual rules described below.
 ensures the caller receives a clear error message when parsing fails and that
 IO exceptions remain separated from parse errors.
 
-## Grammar Productions and AST Mapping
+## Grammar Productions and Abstract Syntax Tree (AST) Mapping
 
 Each parser rule uses `withPos` to attach source locations. The rules construct
-values from `Language.DifferentialDatalog.Syntax`, providing an explicit AST.
-The top-level `spec` rule gathers a list of `SpecItem` values, then builds a
-`DatalogProgram`:
+values from `Language.DifferentialDatalog.Syntax`, providing an explicit
+abstract syntax tree. The top-level `spec` rule gathers a list of `SpecItem`
+values, then builds a `DatalogProgram`:
 
 ```haskell
 spec = do
@@ -146,7 +146,7 @@ spec = do
 ### Declarations
 
 `decl` recognizes one of several declaration forms, each constructing a
-specific AST node
+specific syntax tree node
 (`Import`, `TypeDef`, `Relation`, `Index`, `Function`, `Transformer`, `Rule` or
 `Apply`). Attributes encountered before the item are attached to the resulting
 node when applicable.
@@ -169,7 +169,7 @@ decl =  do attrs <- attributes
 
 Other notable grammar rules include:
 
-- `imprt` – parses an import statement and yields an `Import` AST node.
+- `imprt` – parses an import statement and yields an `Import` syntax tree node.
 - `typeDef` – handles regular and `extern` type definitions, producing `TypeDef`
   values.
 - `func` – parses function definitions, optionally with a body.
@@ -306,9 +306,10 @@ in the Rust implementation.
 When porting to Rust, the constructs above can be expressed with `chumsky`
 combinators and a `rowan` CST. The `expr` grammar maps well to
 `chumsky::recursive`, while the statement parsers become small combinators that
-emit both AST nodes and CST events. Group-by extraction can be implemented
-using a post-processing step mirroring `extractGroupBy`. Patterns for `match`
-and `for` loops translate to nested `chumsky` parsers building structured nodes.
+emit both abstract syntax tree nodes and CST events. Group-by extraction can be
+implemented using a post-processing step mirroring `extractGroupBy`. Patterns
+for `match` and `for` loops translate to nested `chumsky` parsers building
+structured nodes.
 
 Keep this file in lockstep with `Parse.hs` when changes land so that the Rust
 implementation remains accurate.
