@@ -183,7 +183,7 @@ body as opposed to the head.
 * **`{ expr }` grouping** in expressions (`parse_brace_group`) – tidy, often
   ergonomic, but **unspecified**. Decide whether to keep and bless it.
 * **Structural literal “guard”** (blocking `Name { … }` in certain contexts
-  like `if` condition to avoid misparses) – pragmatic and well-documented in
+  like `if` condition to avoid misparses). – pragmatic and well-documented in
   code/tests; add a line to the spec’s “portability notes” if that behaviour
   remains.
 
