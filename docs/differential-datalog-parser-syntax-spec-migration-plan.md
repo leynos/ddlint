@@ -5,6 +5,9 @@ and the updated, normative DDlog syntax specification, then sets out an
 implementation plan to migrate any still‑relevant information into the spec so
 the Haskell analysis can be fully deprecated.
 
+Terminology: references to the rule right-hand side (RHS) denote the rule body;
+the left-hand side (LHS) denotes the head.
+
 ______________________________________________________________________
 
 ## Executive Summary
@@ -99,7 +102,8 @@ document.
 - Add a “Legacy and Compatibility Tokens” subsection:
   - `Aggregate`: accepted; lowered to `RHSGroupBy`; deprecated with a
     diagnostic.
-  - `FlatMap`: surface syntax represented via pattern binds on the RHS; no
+  - `FlatMap`: surface syntax represented via pattern binds on the right-hand
+    side; no
     distinct keyword in the updated language.
   - `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, `as`, `Inspect`
     (and any others present in the historical lexer): define status per token
