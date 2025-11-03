@@ -1,4 +1,4 @@
-# Differential Datalog Parser & Syntax Specification (Updated)
+# Differential Datalog parser and syntax specification (updated)
 
 **Audience:** Implementing engineers porting or extending the frontend;
 linter/IDE authors.

@@ -1,6 +1,6 @@
-# A Systematic Guide to Effective, Ergonomic, and "Don't Repeat Yourself" (DRY) Doctests in Rust
+# A systematic guide to effective, ergonomic, and "Don't repeat yourself" (DRY) doctests in Rust
 
-## The `rustdoc` Compilation Model: A Foundational Perspective
+## The `rustdoc` compilation model: a foundational perspective
 
 To master the art of writing effective documentation tests in Rust, one must
 first understand the foundational principles upon which the `rustdoc` tool
@@ -11,7 +11,7 @@ validate the public API of a crate from the perspective of an external user.
 This single principle dictates the entire compilation model and explains both
 the power and the inherent limitations of doctests.
 
-### 1.1 The "Separate Crate" Paradigm
+### 1.1 The "separate crate" paradigm
 
 At its heart, `rustdoc` treats each documentation test not as a snippet of code
 running within the library's own context, but as an entirely separate,
@@ -49,7 +49,7 @@ special access to the library's internals; it interacts with the library's API
 precisely as a downstream crate would, providing a powerful guarantee that the
 public-facing examples are correct and functional.[^1]
 
-### 1.2 First-Order Consequences of the Model
+### 1.2 First-order consequences of the model
 
 This "separate crate" paradigm has two immediate and significant consequences
 that shape all advanced doctesting patterns.
@@ -87,14 +87,14 @@ violating the "Don't Repeat Yourself" (DRY) principle.[^1] This reveals that
 over the convenience of a single, unified system for testable documentation of
 both public and private code.
 
-## Authoring Effective Doctests: From Basics to Best Practices
+## Authoring effective doctests: from basics to best practices
 
 With a solid understanding of the `rustdoc` compilation model, one can move on
 to the practical craft of authoring doctests. An effective doctest is more than
 just a block of code; it is a piece of technical communication that should be
 clear, illustrative, and robust.
 
-### 2.1 The Anatomy of a Doctest
+### 2.1 The anatomy of a doctest
 
 Doctests reside within documentation comments. Rust recognizes two types:
 
@@ -112,7 +112,7 @@ explicitly add the `rust` language specifier for clarity.[^3] A doctest
 outcomes, use the standard macros `assert!`, `assert_eq!`, and
 `assert_ne!`.[^3] <!-- markdownlint-enable MD013 -->
 
-### 2.2 The Philosophy of a Good Example
+### 2.2 The philosophy of a good example
 
 The purpose of a documentation example extends beyond merely demonstrating
 syntax. A reader can typically be expected to understand the mechanics of
@@ -128,7 +128,7 @@ To achieve this, examples must be clear, concise, and purposeful. Any code that
 directly relevant to the point being made—such as complex setup, boilerplate,
 or unrelated logic—should be hidden to avoid distracting the reader.[^3]
 
-### 2.3 Ergonomic Error Handling: Taming the `?` Operator
+### 2.3 Ergonomic error handling: taming the `?` operator
 
 One of the most common ergonomic hurdles in writing doctests involves handling
 functions that return a `Result`. The question mark (`?`) operator is the
@@ -188,7 +188,7 @@ boilerplate. However, it is critical that the `(())` be written as a single,
 contiguous sequence of characters, as `rustdoc`'s detection mechanism is purely
 textual and will not recognize `( () )`.[^3]
 
-### 2.4 The Power of Hidden Lines (`#`): Creating Clean Examples
+### 2.4 The power of hidden lines (`#`): creating clean examples
 
 The mechanism that makes clean, focused examples possible is the "hidden line"
 syntax. Any line in a doctest code block that begins with a `#` character
@@ -225,14 +225,14 @@ irrelevant details. Understanding them as clever workarounds, rather than as
 first-class language features, helps explain their sometimes quirky, text-based
 behaviour.
 
-## Advanced Doctest Control and Attributes
+## Advanced doctest control and attributes
 
 Beyond basic pass/fail checks, `rustdoc` provides a suite of attributes to
 control doctest behaviour with fine-grained precision. These attributes, placed
 in the header of a code block (e.g., \`\`\`\`ignore\`), allow developers to
 handle expected failures, non-executable examples, and other complex scenarios.
 
-### 3.1 A Comparative Analysis of Doctest Attributes
+### 3.1 A comparative analysis of doctest attributes
 
 Choosing the correct attribute is critical for communicating the intent of an
 example and ensuring the test suite provides meaningful feedback. The following
@@ -246,7 +246,7 @@ table provides a comparative reference for the most common doctest attributes.
 | no_run       | Compiles the code but does not execute it.                          | OK if compilation succeeds.                                    | Use Case: Essential for examples with undesirable side effects in a test environment, such as network requests, filesystem input/output, or launching a GUI. Guarantees the example is valid Rust code without running it.[^5]        |
 | edition20xx  | Compiles the code using the specified Rust edition's rules.         | OK on success.                                                 | Use Case: Demonstrating syntax or idioms that are specific to a particular Rust edition (e.g., edition2018, edition2021).[^4]                                                                                                         |
 
-### 3.2 Detailed Attribute Breakdown
+### 3.2 Detailed attribute breakdown
 
 - `ignore`: This is the bluntest instrument in the toolbox. It tells `rustdoc`
   to do nothing with the code block. It is almost always better to either fix
@@ -279,7 +279,7 @@ table provides a comparative reference for the most common doctest attributes.
   editions and need to demonstrate edition-specific features or migration
   paths.[^4]
 
-## The DRY Principle in Doctests: Managing Shared and Complex Logic
+## The DRY principle in doctests: managing shared and complex logic
 
 The "Don't Repeat Yourself" (DRY) principle is a cornerstone of software
 engineering, and it applies to test code as much as it does to production code.
@@ -288,7 +288,7 @@ complex setup logic. Copying and pasting this setup into every doctest using
 hidden lines is tedious, error-prone, and a clear violation of the DRY
 principle.
 
-### 4.1 The Problem of Shared Setup
+### 4.1 The problem of shared setup
 
 Consider a library for interacting with a database. Nearly every doctest might
 need to perform the same initial steps: spin up a temporary database instance,
@@ -296,7 +296,7 @@ connect to it, and seed it with some initial data. Repeating this multi-line
 setup in every single example is inefficient and makes maintenance difficult. A
 change to the setup process would require updating dozens of doctests.
 
-### 4.2 The `#[cfg(doctest)]` Pattern for Shared Helpers
+### 4.2 The `#[cfg(doctest)]` pattern for shared helpers
 
 The canonical solution to this problem involves using a special configuration
 flag provided by `rustdoc`: `doctest`. A common mistake is to try to place
@@ -362,7 +362,7 @@ This pattern is the most effective way to achieve DRY doctests. It centralizes
 setup logic, improves maintainability, and cleanly separates testing concerns
 from production code.[^11]
 
-### 4.3 Advanced DRY: Programmatic Doctest Generation
+### 4.3 Advanced DRY: programmatic doctest generation
 
 For highly specialized use cases, such as authoring procedural macros, the DRY
 principle can be taken a step further. A procedural macro generates code, and
@@ -376,7 +376,7 @@ generation of doctests from the same source of truth that generates the code
 they are intended to test, representing the ultimate application of the DRY
 principle in this domain.[^12]
 
-## Conditional Compilation Strategies for Doctests
+## Conditional compilation strategies for doctests
 
 Conditional compilation is a powerful feature of Rust, but it introduces
 significant complexity when interacting with `rustdoc`. A common source of
@@ -386,7 +386,7 @@ documentation, and (2) ensuring doctests for those items *execute* only under
 the correct conditions. These two goals are achieved with different mechanisms
 that operate at different stages of the `rustdoc` pipeline.
 
-### 5.1 Documenting Conditionally Compiled Items: `#[cfg(doc)]`
+### 5.1 Documenting conditionally compiled items: `#[cfg(doc)]`
 
 **The Goal**: To ensure that an item, such as a `struct UnixSocket` that is
 only available on Unix-like systems, is included in the documentation
@@ -421,7 +421,7 @@ passed to the compiler.[^13] The compiler only sees the host
 available, and the test fails to compile. `#[cfg(doc)]` affects what is
 documented, not what is testable.
 
-### 5.2 Executing Doctests Conditionally: Feature Flags
+### 5.2 Executing doctests conditionally: feature flags
 
 **The Goal**: To ensure a doctest that relies on an optional crate feature
 (e.g., a feature named `"serde"`) is only executed when that feature is enabled
@@ -475,7 +475,7 @@ This approach provides clearer feedback but is significantly more verbose and
 less ergonomic, especially when applied to outer (`///`) doc comments, as the
 `cfg_attr` must be applied to every single line of the comment.[^14]
 
-### 5.3 Displaying Feature Requirements in Docs: `#[doc(cfg(...))]`
+### 5.3 Displaying feature requirements in docs: `#[doc(cfg(...))]`
 
 To complement conditional execution, Rust provides a way to visually flag
 feature-gated items in the generated documentation. This is achieved with the
@@ -497,13 +497,13 @@ that reads, "This is only available when the `serde` feature is enabled." This
 attribute is purely for documentation generation and is independent of, but
 often used alongside, the conditional test execution patterns.[^14]
 
-## Doctests in the Wider Project Ecosystem
+## Doctests in the wider project ecosystem
 
 Doctests are a powerful tool, but they are just one component of a
 comprehensive testing strategy. Understanding their specific role and
 limitations is key to maintaining a healthy and well-tested Rust project.
 
-### 6.1 Choosing the Right Test Type: A Decision Framework
+### 6.1 Choosing the right test type: a decision framework
 
 A robust testing strategy leverages three distinct types of tests, each with
 its own purpose:
@@ -527,7 +527,7 @@ its own purpose:
   testing complex user workflows, interactions between multiple API entry
   points, and the overall behaviour of the library as a black box.[^6]
 
-### 6.2 The Unsolved Problem: Testing Private APIs
+### 6.2 The unsolved problem: testing private APIs
 
 As established, the `rustdoc` compilation model makes testing private items in
 doctests impossible by design.[^1] The community has developed several
@@ -555,7 +555,7 @@ dedicated unit tests for verifying private logic. The lack of a clean solution
 for test-verifying private documentation is a known and accepted trade-off
 within the Rust ecosystem.
 
-### 6.3 Practical Challenges and Solutions
+### 6.3 Practical challenges and solutions
 
 Beyond architectural considerations, developers face several practical,
 real-world challenges when working with doctests.
@@ -584,7 +584,7 @@ real-world challenges when working with doctests.
   correctly, it can be copied into the doc comment, and the necessary
   formatting (`///`, `#`, etc.) can be applied.[^15]
 
-## Conclusion and Recommendations
+## Conclusion and recommendations
 
 Rust's documentation testing framework is a uniquely powerful feature that
 promotes the creation of high-quality, reliable "living documentation." By

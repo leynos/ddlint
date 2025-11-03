@@ -1,4 +1,4 @@
-# Differential Datalog Parser Spec Migration Plan
+# Migration plan for the Differential Datalog parser spec
 
 This document records the gaps between the historical Haskell parser analysis
 and the updated, normative DDlog syntax specification, then sets out an
@@ -10,7 +10,7 @@ the left-hand side (LHS) denotes the head.
 
 ______________________________________________________________________
 
-## Executive Summary
+## Executive summary
 
 The updated specification supersedes most grammar and precedence details and
 fixes prior ambiguities (e.g., `:-` vs `::-`). However, several pieces of
@@ -34,7 +34,7 @@ deprecated as authoritative guidance and retained only as historical context.
 
 ______________________________________________________________________
 
-## Findings: Content Not Yet Superseded by the Spec
+## Findings: content not yet superseded by the spec
 
 1) Host‑language keyword reservation
 
@@ -86,7 +86,7 @@ Already superseded (intentional changes)
 
 ______________________________________________________________________
 
-## Migration Plan
+## Migration plan
 
 Objective: integrate all still‑relevant details from the Haskell analysis into
 the normative spec and implementation notes, then deprecate the Haskell
@@ -155,7 +155,7 @@ document.
 
 ______________________________________________________________________
 
-## Reference Update List (Occurrences to Change After Deprecation)
+## Reference update list (occurrences to change after deprecation)
 
 Search scope: repository tracked files.
 
@@ -174,7 +174,7 @@ document to capture any new references.
 
 ______________________________________________________________________
 
-## Decision Log (to be confirmed)
+## Decision log (to be confirmed)
 
 - `#` and `<=>` tokens: [DECIDE] reserved‑but‑unused vs removed.
 - `typedef` handling: [DECIDE] alias to `type` with diagnostic vs hard error.
@@ -183,7 +183,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## QA Checklist
+## QA checklist
 
 - [ ] Spec updated with appendix and statement grammar changes.
 - [ ] Lexer tables match the updated reserved sets.

@@ -56,7 +56,7 @@ In practice it is common to compose the built-ins
 (`NestedDelimiters`, `SkipUntil`) with a couple of bespoke closures and quickly
 look like the local authority on parser resilience.
 
-### 5 Getting Codex to behave (or: how to babysit a 2-metre tall neural net)
+### 5 Getting the Codex to behave (or: how to babysit a 2-metre tall neural net)
 
 Codex is a marvellous companion so long as the operator:
 

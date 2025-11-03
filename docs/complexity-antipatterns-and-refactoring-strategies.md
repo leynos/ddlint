@@ -1,6 +1,6 @@
 # Navigating code complexity: a guide for implementers and maintainers
 
-## 1. Introduction: The Challenge of Software Complexity
+## 1. Introduction: the challenge of software complexity
 
 Software development is an inherently complex endeavor. As systems evolve and
 features are added, the intricacy of the codebase tends to increase, often
@@ -24,14 +24,14 @@ inadvertently creating new forms of convoluted code. The ultimate goal is to
 foster the development of software that is not only functional but also robust,
 maintainable, and understandable for the long haul.
 
-## 2. Understanding Key Complexity Metrics
+## 2. Understanding key complexity metrics
 
 To effectively manage complexity, it is essential to measure it. Two prominent
 metrics in software engineering are Cyclomatic Complexity and Cognitive
 Complexity, each offering a distinct perspective on codebase complexity
 challenges.
 
-### A. Cyclomatic Complexity: Measuring Testability
+### A. Cyclomatic complexity: measuring testability
 
 Cyclomatic Complexity, developed by Thomas J. McCabe, Sr. in 1976, is a
 quantitative measure of the number of linearly independent paths through a
@@ -70,7 +70,7 @@ Complexity scores[^3]:
   valuable for assessing how difficult code will be to test, it doesn't always
   align with how difficult it is for a human to understand.[^6]
 
-### B. Cognitive Complexity: Measuring Understandability
+### B. Cognitive complexity: measuring understandability
 
 Cognitive Complexity, a metric notably championed by SonarSource, addresses a
 different facet of code complexity: how difficult a piece of code is to
@@ -116,7 +116,7 @@ be refactored into smaller, more manageable pieces.[^8] The primary impact of
 high Cognitive Complexity is a slowdown in development and an increase in
 maintenance costs.[^8]
 
-### Table 1: Cyclomatic vs. Cognitive Complexity
+### Table 1: cyclomatic vs. cognitive complexity
 
 - **Primary Focus**
   - *Cyclomatic Complexity:* testability and execution paths
@@ -143,7 +143,7 @@ Cyclomatic Complexity guides testing efforts, Cognitive Complexity directly
 addresses the human factor in software maintenance and evolution, making it a
 crucial metric for sustainable software development.
 
-## 3. The "Bumpy Road" Antipattern
+## 3. The "bumpy road" antipattern
 
 The "Bumpy Road" is a code smell that visually and structurally represents
 functions or methods laden with excessive and poorly organized complexity.[^9]
@@ -151,7 +151,7 @@ Coined by Adam Tornhill, this antipattern describes code where the indentation
 level oscillates, forming a lumpy visual pattern reminiscent of a bumpy road
 when looking at the code's shape.[^9]
 
-### A. Definition and Characteristics
+### A. Definition and characteristics
 
 A method exhibiting the Bumpy Road antipattern typically contains multiple
 sections, each characterized by deep nesting of conditional logic or loops.[^9]
@@ -195,7 +195,7 @@ things, violating the Single Responsibility Principle. It acts as an obstacle
 to comprehension, forcing developers to slow down so they must pay meticulous
 attention, much like a physical bumpy road slows down driving.[^9]
 
-### B. How It Forms and Its Impact
+### B. How it forms and its impact
 
 The Bumpy Road antipattern, like many software antipatterns, often emerges from
 development practices that prioritize short-term speed over long-term
@@ -234,13 +234,13 @@ risky to evolve.[^9] It's a clear signal that the code is not well-aligned with
 how human brains process information, making it a prime candidate for
 refactoring.
 
-## 4. Navigating and Rectifying the Bumpy Road
+## 4. Navigating and rectifying the bumpy road
 
 Addressing the Bumpy Road antipattern involves both proactive measures to
 prevent its formation and reactive strategies to refactor existing problematic
 code. Identifying early warning signs is also crucial.
 
-### A. Avoiding the Antipattern: Proactive Strategies
+### A. Avoiding the antipattern: proactive strategies
 
 Preventing the Bumpy Road begins with a commitment to sound software
 engineering principles from the outset.
@@ -306,7 +306,7 @@ engineering principles from the outset.
 This approach significantly reduces nesting and, consequently, Cognitive
 Complexity for the main execution path.
 
-### B. Rectifying Existing Bumpy Road Code
+### B. Rectifying existing bumpy road code
 
 Once a Bumpy Road is identified, the primary remediation strategy is the
 **Extract Method** refactoring.[^9]
@@ -341,7 +341,7 @@ Tools like CodeScene's Automatic Code Evolution (ACE) service can automatically
 identify Bumpy Roads and even suggest or perform auto-refactoring for certain
 languages.[^9]
 
-### C. Red Flags Portending the Bumpy Road
+### C. Red flags portending the bumpy road
 
 Recognizing early warning signs can prevent minor complexity issues from
 escalating into full-blown Bumpy Roads.
@@ -379,14 +379,14 @@ escalating into full-blown Bumpy Roads.
 By proactively addressing these red flags through disciplined refactoring,
 teams can maintain a smoother, more navigable codebase.
 
-## 5. Broader Implications and Clean Refactoring Approaches
+## 5. Broader implications and clean refactoring approaches
 
 High complexity and antipatterns like the Bumpy Road stem from violations of
 fundamental software design principles. Understanding these connections and
 applying sophisticated refactoring techniques are essential for building
 maintainable systems.
 
-### A. Relation to Separation of Concerns and Command Query Responsibility Segregation
+### A. Relation to separation of concerns and command query responsibility segregation
 
 1\. Separation of Concerns (SoC)
 
@@ -475,7 +475,7 @@ and scaling of read and write sides, but more importantly for this discussion,
 it enforces a structural discipline that discourages methods from accumulating
 diverse responsibilities.[^14]
 
-### B. Avoiding Spaghetti Code Turning into Ravioli Code
+### B. Avoiding spaghetti code turning into ravioli code
 
 When refactoring complex, tangled code (often called "Spaghetti Code" 2), a
 common approach is to break it down into smaller pieces, such as helper
@@ -547,13 +547,13 @@ between components are also clear and manageable. It's about finding a
 "recursive Ravioli" structure, where at each level of containment, one deals
 with a manageable number (e.g., 7 +/- 2) of components.[^21]
 
-### C. Clean Refactoring Approaches to Reduce Cognitive Complexity
+### C. Clean refactoring approaches to reduce cognitive complexity
 
 Several specific refactoring techniques can be particularly effective in
 reducing cognitive complexity, especially when dealing with conditional logic
 and method structure.
 
-### Table 2: Refactoring Approaches for Reducing Cognitive Complexity
+### Table 2: refactoring approaches for reducing cognitive complexity
 
 - **Balanced Abstraction (e.g., Extract Method)**
   - Break large methods into smaller, cohesive units
@@ -805,7 +805,7 @@ programmers write code that humans can understand"[^1], remains the guiding
 principle. Strive for this ideal to build systems that are powerful, efficient,
 and genuinely enjoyable for the team to evolve and maintain.
 
-## Works Cited
+## Works cited
 
 [^1]: How to Identify and Reduce Cognitive Complexity in a Codebase — Axify,
       <https://axify.io/blog/cognitive-complexity>

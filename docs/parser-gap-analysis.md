@@ -1,4 +1,4 @@
-# DDlint Parser Gap Analysis
+# DDlint parser gap analysis
 
 ## Executive summary
 
