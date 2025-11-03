@@ -103,7 +103,7 @@ The main strategies and tools are:
   rules, and edge case handling.
 - **Snapshot Testing** using `insta`: Detects regressions in full syntax trees
   or error diagnostics. Best used for AST structure validation, error message
-  quality, and CST losslessness verification.
+  quality, and Concrete Syntax Tree (CST) losslessness verification.
 - **Property-Based Testing** powered by `proptest`: Uncovers unforeseen bugs via
   random input generation and round-trip validation. Best used for parser
   robustness, AST round-trips, and invariant testing.
@@ -1066,8 +1066,9 @@ philosophy:
    confident iteration on a language's syntax and its corresponding AST
    structure.
 
-For integration into a Continuous Integration/Continuous Deployment (CI/CD)
-pipeline, a tiered approach is recommended. The fast-running unit tests and
+For integration into a Continuous Integration (CI) and Continuous Deployment
+(CD) pipeline, a tiered approach is recommended. The fast-running unit tests
+and
 snapshot tests should be executed on every commit to provide rapid feedback.
 The more computationally expensive `proptest` suites, particularly the AST
 round-trip test, can be run nightly, or as a mandatory check before a release,

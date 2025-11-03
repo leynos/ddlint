@@ -304,7 +304,7 @@ in the Rust implementation.
 ## Porting Notes
 
 When porting to Rust, the constructs above can be expressed with `chumsky`
-combinators and a `rowan` CST. The `expr` grammar maps well to
+combinators and a `rowan` concrete syntax tree (CST). The `expr` grammar maps well to
 `chumsky::recursive`, while the statement parsers become small combinators that
 emit both abstract syntax tree nodes and CST events. Group-by extraction can be
 implemented using a post-processing step mirroring `extractGroupBy`. Patterns

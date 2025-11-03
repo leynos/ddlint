@@ -656,7 +656,7 @@ fn test_custom_name_user(user_fixture: User) {
 
 This pattern of `#[default]` in fixtures and `#[with]` in tests allows a small
 number of flexible fixtures to serve a large number of test variations. It
-promotes a DRY (Don't Repeat Yourself) approach to test setup by centralizing
+promotes a Don't Repeat Yourself (DRY) approach to test setup by centralizing
 common configurations in the fixture's defaults and allowing targeted
 customization where needed, thus reducing the proliferation of slightly
 different fixtures.
@@ -870,7 +870,8 @@ involve file input/output. While `rstest` itself doesn't directly provide
 temporary file utilities, its fixture system integrates seamlessly with crates
 like `tempfile` or `test-temp-dir`. A fixture can create a temporary file,
 directory, or similar resource, expose whichever locator the test requires, and
-ensure cleanup (often via RAII). That locator might be a filesystem path or an
+ensure cleanup (often via Resource Acquisition Is Initialization (RAII)). That
+locator might be a filesystem path or an
 open handle depending on the scenario.
 
 Here's an illustrative example using the `tempfile` crate:

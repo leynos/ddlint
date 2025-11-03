@@ -529,11 +529,11 @@ pieces—making it as difficult to follow as the original spaghetti.[^17]
    consolidated.[^10] Pair programming can also help maintain a balanced
    perspective during refactoring.[^21]
 
-6. **The YAGNI (colloquially rendered as “Ya ain't gonna need it”) principle:**
-   The initialism summarises the reminder that speculative features will
-   probably go unused. It helps avoid unnecessary abstractions and features,
-   which can contribute to Ravioli code if abstractions are created for
-   anticipated but not actual needs.[^21]
+6. **The “Ya Ain't Gonna Need It” (YAGNI) principle:** The initialism
+   summarises the reminder that speculative features will probably go unused.
+   It helps avoid unnecessary abstractions and features, which can contribute
+   to Ravioli code if abstractions are created for anticipated but not actual
+   needs.[^21]
 
 7. **Focus on System Flow:** While individual components in Ravioli code might
    be simple, the difficulty lies in tracing the overall execution flow. Ensure
