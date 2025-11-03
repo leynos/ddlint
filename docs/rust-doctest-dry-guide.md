@@ -142,7 +142,7 @@ considered an anti-pattern because users often copy example code verbatim, and
 encouraging panicking on errors is contrary to robust application design.[^9]
 Instead, two canonical solutions exist.
 
-Solution 1: The Explicit main Function
+#### Solution 1: The explicit main function
 
 The most transparent and recommended approach is to manually write a main
 function within the doctest that returns a Result. This leverages the
@@ -167,7 +167,7 @@ can then be hidden from the rendered documentation.
 In this pattern, the reader only sees the core, fallible code, while the test
 itself is a complete, well-behaved program.[^9]
 
-Solution 2: The Implicit Result-Returning main
+#### Solution 2: The implicit Result-returning main
 
 rustdoc provides a lesser-known but more concise shorthand for this exact
 scenario. If a code block ends with the literal token (()), rustdoc will
