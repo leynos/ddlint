@@ -104,7 +104,7 @@
 - **Separate Atomic Refactors:** If refactoring is deemed necessary:
   - Perform the refactoring as a **separate, atomic commit** *after* the
     functional change commit.
-  - Ensure the refactoring adheres to the testing guidelines (behavioural tests
+  - Ensure the refactoring adheres to the testing guidelines (scenario tests
     pass before and after, unit tests added for new units).
   - Ensure the refactoring commit itself passes all quality gates.
 
