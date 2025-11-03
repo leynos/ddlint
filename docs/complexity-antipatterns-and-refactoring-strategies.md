@@ -530,7 +530,7 @@ pieces—making it as difficult to follow as the original spaghetti.[^17]
    perspective during refactoring.[^21]
 
 6. **The “Ya Ain't Gonna Need It” (YAGNI) principle:** The initialism
-   summarises the reminder that speculative features will probably go unused.
+   summarizes the reminder that speculative features will probably go unused.
    It helps avoid unnecessary abstractions and features, which can contribute
    to Ravioli code if abstractions are created for anticipated but not actual
    needs.[^21]
@@ -603,7 +603,7 @@ represented as dictionaries.[^24]
 ```python
   event_data = get_event()
   if "type" in event_data and event_data["type"] == "click":
-      if "position" in event_data and isinstance(event_data["position"], tuple) and len(event_data["position"]) ==[^2]:
+      if "position" in event_data and isinstance(event_data["position"], tuple) and len(event_data["position"]) == 2:
           x, y = event_data["position"]
           handle_click(x, y)
   elif "type" in event_data and event_data["type"] == "keypress":
