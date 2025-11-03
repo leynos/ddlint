@@ -170,7 +170,7 @@ premier tool for this in Rust.10
 diagnostic and save it as a "snapshot." On subsequent test runs, any change to
 this output, however minor, will cause the test to fail, immediately flagging a
 regression. This allows developers to review and approve changes to diagnostic
-output with confidence using the `cargo insta review` tool.11
+output with confidence using the `cargo insta review` tool.[^11]
 
 This creates a virtuous cycle: the need for advanced features mandates a CST
 (`rowan`), which enables a specific engine design (`rslint_core`-style) and
@@ -763,7 +763,7 @@ the linter on a snippet and capture the resulting diagnostic string. This
 string is then asserted against a stored reference value (the "snapshot") using
 a macro like
 
-`insta::assert_snapshot!` or `insta::assert_debug_snapshot!`.11
+`insta::assert_snapshot!` or `insta::assert_debug_snapshot!`.[^11]
 
 When a diagnostic's output is changed (for instance, to improve its wording),
 the corresponding snapshot test will fail. The developer can then use the
@@ -956,3 +956,7 @@ completing the vision of a truly interactive developer assistant.
 [^9]: `miette` crate documentation. Describes annotated snippets, labels,
       theming, and other rich diagnostic features.
       <https://docs.rs/miette/latest/miette/>
+
+[^11]: `insta` snapshot testing documentation. Covers snapshot macros and the
+       `cargo insta review` workflow.
+       <https://insta.rs/docs/>
