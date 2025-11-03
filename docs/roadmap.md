@@ -4,6 +4,10 @@ This roadmap breaks down the work into logical phases, from the foundational
 parsing layer to the implementation of the linter engine and user-facing
 features.
 
+Terminology: references to the Abstract Syntax Tree (AST) describe the typed
+tree produced after parsing, while the Concrete Syntax Tree (CST) captures the
+lossless token-level structure built during parsing.
+
 ______________________________________________________________________
 
 ## **Phase 1: Foundational Components (Largely Complete)**
