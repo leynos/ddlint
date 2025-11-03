@@ -857,7 +857,7 @@ scalable linter engine, the rule management system, and the user-facing CLI.
 
   1. Implement the full linter engine inspired by `rslint_core`, including the
      `Rule` and `CstRule` traits, the `RuleCtx` struct, the `CstRuleStore`, and
-    the parallelized rule runner.4
+     the parallelized rule runner.4
 
   2. Implement the `declare_lint!` macro to streamline rule creation.6
 
@@ -927,7 +927,7 @@ linting logic into a reusable library is the key enabler for this.
 
   3. The `lsp-types` crate will be used for all LSP-defined data structures.25
     This ensures protocol compliance and provides strongly typed Rust
-     representations for messages like
+    representations for messages like
 
      `PublishDiagnosticsParams` and `Diagnostic`.27
 
@@ -959,5 +959,4 @@ completing the vision of a truly interactive developer assistant.
       <https://docs.rs/miette/latest/miette/>
 
 [^11]: `insta` snapshot testing documentation. Covers snapshot macros and the
-       `cargo insta review` workflow.
-       <https://insta.rs/docs/>
+       `cargo insta review` workflow. <https://insta.rs/docs/>

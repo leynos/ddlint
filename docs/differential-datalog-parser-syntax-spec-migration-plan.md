@@ -19,7 +19,8 @@ explicitly superseded in the spec:
 
 - Reservation of host‑language (Rust) keywords as identifiers.
 - Explicit handling status for legacy/compatibility tokens (e.g.,
-  `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,`float`,`as`).
+  `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,
+  `float`,`as`).
 - Statement forms `break`, `continue`, and `return` (parsers and keywords are
   present in code/roadmaps, but they are not formalised in the spec’s
   Statements grammar).
@@ -46,12 +47,12 @@ ______________________________________________________________________
 2) Legacy/compatibility tokens and spellings
 
    - The Haskell analysis lists tokens such as
-     `Aggregate`, `FlatMap`, `Inspect`,
-     `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, and `as`.
+     `Aggregate`, `FlatMap`, `Inspect`, `typedef`, `signed`, `bigint`, `bit`,
+     `double`, `float`, and `as`.
    - The updated spec explicitly documents legacy `Aggregate` lowering and
-     flatmap‑like binds via pattern assignments, but does not enumerate the full
-     set of legacy tokens nor specify their acceptance/deprecation status (accept
-     with lowering, parse‑time error, or reserved but unused).
+     flatmap‑like binds via pattern assignments, but does not enumerate the
+     full set of legacy tokens nor specify their acceptance/deprecation status
+     (accept with lowering, parse‑time error, or reserved but unused).
 
 3) Control‑flow statements: `break`, `continue`, `return`
 
@@ -74,14 +75,14 @@ ______________________________________________________________________
 6) Implementation compatibility notes
 
    - The Haskell analysis spells out pre‑lexing tab normalization and position
-     mapping. The spec references this but could explicitly tie it to entry points
-     and diagnostics guarantees.
+     mapping. The spec references this but could explicitly tie it to entry
+     points and diagnostics guarantees.
 
 Already superseded (intentional changes)
 
 - Rule head operator corrected to `:-` (not `::-`).
 - `{ expr }` as expression grouping is intentionally excluded from the spec.
-- Only fully‑qualified calls parse as calls at parse time (bare `name(...)`
+- Only fully‑qualified calls parse as calls at parse time (bare `name(…)`
   deferred to name resolution) — a deliberate divergence from the Haskell
   parser.
 
@@ -98,20 +99,18 @@ document.
    - Add an appendix “Reserved Identifiers and Host‑Language Keywords”.
      - State that the lexer reserves DDlog keywords and a set of Rust keywords.
      - Provide a compact, versioned list or reference to a single source of
-       truth
-       (the lexer table), with a note that updates to the host keyword set update
-       the spec implicitly.
+       truth (the lexer table), with a note that updates to the host keyword
+       set update the spec implicitly.
    - Add a “Legacy and Compatibility Tokens” subsection:
      - `Aggregate`: accepted; lowered to `RHSGroupBy`; deprecated with a
        diagnostic.
      - `FlatMap`: surface syntax represented via pattern binds on the right-hand
-       side; no
-       distinct keyword in the updated language.
+       side; no distinct keyword in the updated language.
      - `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, `as`, `Inspect`
-       (and any others present in the historical lexer): define status per token
-       as one of: accepted alias (with diagnostic), parse‑time error, or reserved
-      (tokenized but rejected with a targeted message). If a token is not used
-       today, mark as “reserved, not part of the grammar”.
+       (and any others present in the historical lexer): define status per
+       token as one of: accepted alias (with diagnostic), parse‑time error, or
+       reserved (tokenized but rejected with a targeted message). If a token is
+       not used today, mark as “reserved, not part of the grammar”.
    - Extend the Statements grammar to include `break`, `continue`, and `return`:
      - `break`/`continue`: allowed only in loop bodies; error elsewhere.
      - `return`: allowed in function/closure bodies; not valid in rule bodies.

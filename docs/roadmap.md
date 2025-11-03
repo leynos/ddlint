@@ -22,8 +22,7 @@ navigable syntax tree.
   - [x] Configure strict Clippy lints in `clippy.toml` and `Cargo.toml`.
 
   - [x] Establish a Continuous Integration (CI) pipeline using GitHub Actions
-        for formatting, linting,
-    and testing (`.github/workflows/ci.yml`).
+        for formatting, linting, and testing (`.github/workflows/ci.yml`).
 
   - [x] Define project documentation standards and agent instructions
     (`AGENTS.md`, `docs/documentation-style-guide.md`).
@@ -105,7 +104,8 @@ as control flow constructs. This phase aims to build a complete grammar.
     syntax specification (`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
   - [x] Add support for parsing all literal types within expressions (e.g.,
-    strings, numbers, and booleans). The `SyntaxKind` enum already defines these.
+    strings, numbers, and booleans). The `SyntaxKind` enum already defines
+    these.
 
   - [x] Implement parsers for variable references (`e_var`) and function calls
     (`e_func`).
@@ -228,8 +228,8 @@ from the design document can be implemented.
     - Requires the symbol table.
 
     - Logic: Iterate through all declared relations in the symbol table. For
-      each, check for usage sites (for example, a rule body reference). If
-      none exist, emit a diagnostic.
+      each, check for usage sites (for example, a rule body reference). If none
+      exist, emit a diagnostic.
 
   - [ ] `unused-variable`:
 

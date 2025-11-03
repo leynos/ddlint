@@ -9,7 +9,7 @@
 Before summoning Chumsky’s combinators, capture the grammar — preferably in
 Extended Backus–Naur Form, biro on a napkin, or etched into the side of a Vogon
 constructor fleet. Chumsky mirrors whatever it receives; revise the napkin
-later and the team will be spelunking inside recursive lambdas at 2 a.m.
+later, and the team will be spelunking inside recursive lambdas at 2 a.m.
 
 ### Checklist
 
@@ -52,9 +52,9 @@ Error recovery is what turns the parser from Vogon poetry into a Babel fish.
 3. **Tri-state nodes:** Return `Option<AstNode>`; missing bits propagate but the
    parser soldiers on.
 
-In practice it is common to compose the built-ins
-(`NestedDelimiters`, `SkipUntil`) with a couple of bespoke closures and quickly
-look like the local authority on parser resilience.
+In practice, it is common to compose the built-ins (`NestedDelimiters`,
+`SkipUntil`) with a couple of bespoke closures and quickly look like the local
+authority on parser resilience.
 
 ### 5 Getting the Codex to behave (or: how to babysit a 2-metre tall neural net)
 

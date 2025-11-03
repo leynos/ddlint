@@ -85,9 +85,9 @@ Core Principles of Calculation:
 Cognitive Complexity is incremented based on three main rules[^8]:
 
 1. **Breaks in Linear Flow:** Each time the code breaks the normal linear
-   reading flow (e.g., loops, conditionals like
-   `if`/`else`/`switch`, `try-catch` blocks, jumps to labels, and sequences of
-   logical operators like `&&` and `||`), a penalty is applied.
+   reading flow (e.g., loops, conditionals like `if`/`else`/`switch`,
+   `try-catch` blocks, jumps to labels, and sequences of logical operators like
+   `&&` and `||`), a penalty is applied.
 
 2. **Nesting:** Each level of nesting of these flow-breaking structures adds an
    additional penalty. This is because deeper nesting makes it harder to keep
@@ -96,7 +96,7 @@ Cognitive Complexity is incremented based on three main rules[^8]:
 3. **Shorthand Discount:** Structures that allow multiple statements to be read
    as a single unit (e.g., a well-named method call) do not incur the same
    penalties as the raw statements they encapsulate. Method calls are generally
-  "free" in terms of cognitive complexity, as a well-chosen name summarizes
+   "free" in terms of cognitive complexity, as a well-chosen name summarizes
    the underlying logic, allowing readers to grasp the high-level view before
    diving into details. However, recursive calls do increment the score.[^8]
 
@@ -116,7 +116,7 @@ be refactored into smaller, more manageable pieces.[^8] The primary impact of
 high Cognitive Complexity is a slowdown in development and an increase in
 maintenance costs.[^8]
 
-### Table 1: cyclomatic vs. cognitive complexity
+### Table 1: Cyclomatic vs. cognitive complexity
 
 - **Primary Focus**
   - *Cyclomatic Complexity:* testability and execution paths
@@ -553,7 +553,7 @@ Several specific refactoring techniques can be particularly effective in
 reducing cognitive complexity, especially when dealing with conditional logic
 and method structure.
 
-### Table 2: refactoring approaches for reducing cognitive complexity
+### Table 2: Refactoring approaches for reducing cognitive complexity
 
 - **Balanced Abstraction (e.g., Extract Method)**
   - Break large methods into smaller, cohesive units
