@@ -62,12 +62,12 @@ To implement this CST, the project will utilize the `rowan` library.1
 syntax trees, and its adoption by major projects like `rust-analyzer` validates
 its robustness and performance for production systems.1 The core innovation of
 
-`rowan` is its "Red/Green Tree" design. The "Green Tree" is the immutable,
+`rowan` is its "Red/Green Tree" design.[^3] The "Green Tree" is the immutable,
 untyped core data structure that stores the tree's topology efficiently. It is
 composed of `GreenNode`s and `GreenToken`s and is cheap to clone and share
 across threads. Layered on top of this is the "Red Tree," a typed, parent-aware
-API that provides ergonomic, safe access to the syntax tree for analysis.3 This
-separation provides the best of both worlds: the performance and memory
+API that provides ergonomic, safe access to the syntax tree for analysis.[^3]
+This separation provides the best of both worlds: the performance and memory
 efficiency of a compact, immutable data structure and the safety and
 convenience of a strongly typed API.
 
@@ -215,11 +215,11 @@ abstraction avoids manual index arithmetic and reduces boundary errors.
 ### 2.1. Defining the DDlog `SyntaxKind`
 
 Following the established `rowan` pattern, the grammar of the DDlog language
-must be encoded into a `SyntaxKind` enum.3 This enum serves as the set of type
-tags for every possible element in the syntax tree. It will include variants
-for all terminals (tokens like identifiers, keywords, and punctuation), along
-with non-terminals (nodes representing language constructs like relations,
-rules, and expressions).
+must be encoded into a `SyntaxKind` enum.[^3] This enum serves as the set of
+type tags for every possible element in the syntax tree. It will include
+variants for all terminals (tokens like identifiers, keywords, and
+punctuation), along with non-terminals (nodes representing language constructs
+like relations, rules, and expressions).
 
 A crucial aspect of this enum is its machine representation. It must be defined
 with `#[repr(u16)]` and derive the `FromPrimitive` and `ToPrimitive` traits
@@ -227,7 +227,7 @@ from the `num-derive` crate. This is because `rowan`'s internal `GreenNode`s
 are untyped and use a `rowan::SyntaxKind`, which is a newtype wrapper around a
 `u16`, for their type tags. These derivations provide a safe and efficient
 mechanism to convert between the strongly typed `SyntaxKind` enum and `rowan`'s
-generic `u16` representation.3 A special
+generic `u16` representation.[^3] A special
 
 `N_ERROR` variant will also be included to represent locations in the tree
 where the parser encountered a syntax error but was able to recover.
@@ -278,7 +278,7 @@ To complete the integration with `rowan`, the `rowan::Language` trait must be
 implemented for a newtype that wraps the project’s `SyntaxKind`. This trait
 acts as the bridge, with its `kind_from_raw` and `kind_to_raw` methods using
 the `FromPrimitive` and `ToPrimitive` implementations to connect the specific
-DDlog grammar to the generic `rowan` machinery.3
+DDlog grammar to the generic `rowan` machinery.[^3]
 
 ### 2.2. Parser implementation strategy: leveraging `chumsky`
 
@@ -945,5 +945,9 @@ linting logic into a reusable library is the key enabler for this.
      textDocument/publishDiagnostics notification.
 
 - **Deliverable:** A DDlog language server that provides real-time, on-the-fly
-  diagnostics directly within supported editors like Visual Studio Code,
-  completing the vision of a truly interactive developer assistant.
+diagnostics directly within supported editors like Visual Studio Code,
+completing the vision of a truly interactive developer assistant.
+
+[^3]: Rust Analyzer manual, "Syntax Trees". Explains the rowan red/green tree
+      design, `SyntaxKind` enums, and the `rowan::Language` bridge.
+      <https://rust-analyzer.github.io/manual.html#syntax-trees>
