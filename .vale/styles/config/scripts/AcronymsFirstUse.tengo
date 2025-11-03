@@ -1,0 +1,96 @@
+matches := []
+defined := {}
+reported := {}
+
+allow := {
+  "API": true, "CLI": true, "CPU": true, "DNS": true, "GPU": true, "HTML": true,
+  "HTTP": true, "HTTPS": true, "IDE": true, "IP": true, "JSON": true, "RAM": true,
+  "SDK": true, "SSH": true, "TCP": true, "TLS": true, "UDP": true, "UI": true,
+  "URL": true, "USB": true, "UTF": true, "UX": true, "YAML": true, "AST": true,
+  "CST": true, "DX": true, "TOML": true, "LSP": true, "RPC": true, "QA": true,
+  "EBNF": true, "IO": true, "GUI": true, "OS": true, "RAII": true, "MD": true,
+  "MIT": true, "README": true
+}
+
+is_upper := func(ch) { return len(ch) == 1 && ch >= "A" && ch <= "Z" }
+is_lower := func(ch) { return len(ch) == 1 && ch >= "a" && ch <= "z" }
+is_digit := func(ch) { return len(ch) == 1 && ch >= "0" && ch <= "9" }
+is_space := func(ch) { return ch == " " || ch == "\t" || ch == "\n" || ch == "\r" }
+
+s := scope
+n := len(s)
+i := 0
+
+for i < n {
+  if i+1 > n {
+    break
+  }
+
+  ch := s[i : i+1]
+  if is_upper(ch) {
+    j := i
+    uppers := 0
+
+    for j < n {
+      curr := s[j:j+1]
+      if is_upper(curr) {
+        if j+1 < n && is_lower(s[j+1:j+2]) && uppers >= 2 {
+          break
+        }
+        uppers += 1
+        j += 1
+        continue
+      }
+      if uppers >= 2 && is_digit(curr) {
+        j += 1
+        continue
+      }
+      break
+    }
+
+    if uppers >= 2 {
+      // Skip CamelCase fragments like "DDlog" where the acronym is
+      // immediately followed by a lowercase character.
+      if j < n && is_lower(s[j:j+1]) {
+        i = j
+        continue
+      }
+
+      base := s[i:j]
+
+      skip := 0
+      if j+2 <= n && (s[j:j+2] == "'s" || s[j:j+2] == "’s") {
+        skip = 2
+      } else if j+1 <= n && s[j:j+1] == "s" {
+        skip = 1
+      }
+
+      prev := ""
+      k := i - 1
+      for k >= 0 {
+        prev = s[k:k+1]
+        if is_space(prev) {
+          k -= 1
+          continue
+        }
+        break
+      }
+
+      if prev == "(" {
+        defined[base] = true
+      } else {
+        if !defined[base] && !allow[base] && !reported[base] {
+          matches = append(matches, {"begin": i, "end": j})
+          reported[base] = true
+        }
+      }
+
+      i = j + skip
+      continue
+    }
+  }
+
+  i += 1
+}
+
+matches
