@@ -34,9 +34,6 @@ for i < n {
     for j < n {
       curr := s[j:j+1]
       if is_upper(curr) {
-        if j+1 < n && is_lower(s[j+1:j+2]) && uppers >= 2 {
-          break
-        }
         uppers += 1
         j += 1
         continue
