@@ -124,8 +124,9 @@ preserving associativity.
 
 To catch regressions, add micro-benchmarks that parse representative DDlog
 files and measure throughput and memory allocations. Compare these results with
-the existing Haskell parser using similar inputs. Benchmarks should run in CI,
-so performance changes are visible in pull requests.
+the existing Haskell parser using similar inputs. Benchmarks should run in
+Continuous Integration (CI), so performance changes are visible in pull
+requests.
 
 ## 10. Modelling Trivia Tokens
 

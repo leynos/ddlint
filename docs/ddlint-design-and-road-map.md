@@ -719,7 +719,7 @@ This dual-snapshot strategy—one for the diagnostic message and one for the
 resulting code—creates a robust safety net. It allows developers to implement
 and refactor complex code transformations with a high degree of confidence,
 knowing that any deviation from the verified, correct output will be caught
-automatically by the CI system.
+automatically by the Continuous Integration (CI) system.
 
 ## 6. A comprehensive testing and validation strategy
 
@@ -908,7 +908,7 @@ of issues.
 - **Deliverable:** A feature-complete, polished, and well-documented linter
   ready for a stable 1.0 release.
 
-### Phase 4 (future): IDE integration via LSP
+### Phase 4 (future): IDE integration via the Language Server Protocol (LSP)
 
 The architecture designed in the preceding phases explicitly paves the way for
 future extension into an IDE language server. The decoupling of the core
@@ -921,8 +921,9 @@ linting logic into a reusable library is the key enabler for this.
      library.
 
   2. A dedicated LSP framework library, such as `tower-lsp`, will be used to
-     handle the boilerplate of the Language Server Protocol communication
-     (JSON-RPC, message handling, etc.).
+     handle the boilerplate of the Language Server Protocol (LSP) communication
+     (JavaScript Object Notation (JSON) Remote Procedure Call (RPC), message
+     handling, etc.).
 
   3. The `lsp-types` crate will be used for all LSP-defined data structures.25
     This ensures protocol compliance and provides strongly typed Rust

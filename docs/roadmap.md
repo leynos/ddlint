@@ -15,13 +15,14 @@ ______________________________________________________________________
 This phase covers the core infrastructure for turning source text into a
 navigable syntax tree.
 
-- [x] **Project Scaffolding & CI**
+- [x] **Project Scaffolding & Continuous Integration (CI)**
 
   - [x] Set up the Cargo project with a library and binary structure.
 
   - [x] Configure strict Clippy lints in `clippy.toml` and `Cargo.toml`.
 
-  - [x] Establish a CI pipeline using GitHub Actions for formatting, linting,
+  - [x] Establish a Continuous Integration (CI) pipeline using GitHub Actions
+        for formatting, linting,
     and testing (`.github/workflows/ci.yml`).
 
   - [x] Define project documentation standards and agent instructions

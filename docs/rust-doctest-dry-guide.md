@@ -1,4 +1,4 @@
-# A Systematic Guide to Effective, Ergonomic, and DRY Doctests in Rust
+# A Systematic Guide to Effective, Ergonomic, and "Don't Repeat Yourself" (DRY) Doctests in Rust
 
 ## The `rustdoc` Compilation Model: A Foundational Perspective
 
@@ -66,7 +66,8 @@ invoking `rustc` to compile and link a new executable for every single doctest
 is computationally expensive. For small projects, this overhead is negligible.
 However, for large libraries with hundreds of doctests, the cumulative
 compilation time can become a significant bottleneck in the development and
-CI/CD cycle, a common pain point in the Rust community.[^2]
+Continuous Integration (CI) and Continuous Deployment (CD) cycle, a common
+pain point in the Rust community.[^2]
 
 The architectural purity of the `rustdoc` model—its insistence on simulating an
 external user—creates a fundamental trade-off. On one hand, it provides an
@@ -268,7 +269,8 @@ table provides a comparative reference for the most common doctest attributes.
 - `no_run`: This attribute strikes a crucial balance between test verification
   and practicality. For an example that demonstrates how to download a file
   from the internet, the example code must be syntactically correct and use the
-  API properly, but it is undesirable for the CI server to perform a network
+  API properly, but it is undesirable for the Continuous Integration (CI)
+  server to perform a network
   request during every test run. `no_run` provides this guarantee by compiling
   the code without executing it.[^5]
 

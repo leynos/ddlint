@@ -25,7 +25,8 @@ enforces name‑uniqueness invariants, and records source provenance.
 - **Output:** a `DatalogProgram` comprising:
   - `imports`, `typedefs`, `functions` (grouped by name; overload by arity
     permitted), `transformers`, `relations`, `indexes`, `rules`, `applys`.
-- **Transformations performed pre‑AST:** `group_by` and `Aggregate` lowering;
+- **Transformations performed pre‑Abstract Syntax Tree (AST):** `group_by` and
+  `Aggregate` lowering;
   map/vector literal lowering; `&` in rule heads → `ref_new`.
 
 ______________________________________________________________________
@@ -132,7 +133,7 @@ semantics are described in §7.3.
 
 ______________________________________________________________________
 
-## 5. Grammar (mini‑EBNF)
+## 5. Grammar (mini‑Extended Backus–Naur Form (EBNF))
 
 Notation: `A?` optional, `A*` zero or more, `A+` one or more, alternatives with
 `|`. Terminals in `'single quotes'`.
@@ -267,7 +268,7 @@ LhsAssign       ::= Pattern | Expr       // implementation permits pattern LHS
 more rules** during parsing (desugaring). This affects scoping and where
 variables may appear.
 
-### 5.10 Conditions and assignments in rule RHS
+### 5.10 Conditions and assignments in the rule right-hand side (RHS)
 
 `Condition` is any expression in a boolean context. The parser accepts
 assignment‑like forms (e.g., pattern `=` expression) inside RHS to support
