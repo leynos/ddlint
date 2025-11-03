@@ -12,6 +12,6 @@ tokens:
 
 # Avoid false positives where the “-ly” word isn’t an adverb.
 exceptions:
-  - '\bearly-[a-z]+'
-  - '\bfriendly-[a-z]+'
-  - '\bfamily-[a-z]+'
+  - '\bearly-[A-Za-z]+'
+  - '\bfriendly-[A-Za-z]+'
+  - '\bfamily-[A-Za-z]+'
