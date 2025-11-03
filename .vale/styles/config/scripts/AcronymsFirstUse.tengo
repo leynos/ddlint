@@ -308,6 +308,100 @@ for inline_pos < n {
   inline_pos += 1
 }
 
+link_pos := 0
+for link_pos < n {
+  skip_link := ignore_range_end(link_pos)
+  if skip_link != -1 {
+    if skip_link <= link_pos {
+      link_pos += 1
+    } else {
+      link_pos = skip_link
+    }
+    continue
+  }
+
+  ch_link := s[link_pos:link_pos+1]
+
+  if ch_link == "[" {
+    close := link_pos + 1
+    for close < n {
+      skip_close := ignore_range_end(close)
+      if skip_close != -1 {
+        if skip_close <= close {
+          close += 1
+        } else {
+          close = skip_close
+        }
+        continue
+      }
+
+      if s[close:close+1] == "]" {
+        break
+      }
+      close += 1
+    }
+
+    if close < n && close+1 < n && s[close+1:close+2] == "(" {
+      paren := close + 2
+      depth := 1
+      for paren < n {
+        skip_paren := ignore_range_end(paren)
+        if skip_paren != -1 {
+          if skip_paren <= paren {
+            paren += 1
+          } else {
+            paren = skip_paren
+          }
+          continue
+        }
+
+        ch_paren := s[paren:paren+1]
+        if ch_paren == "(" {
+          depth += 1
+        } else if ch_paren == ")" {
+          depth -= 1
+          if depth == 0 {
+            add_ignore_range(close+2, paren)
+            link_pos = paren + 1
+            break
+          }
+        }
+        paren += 1
+      }
+
+      if depth == 0 {
+        continue
+      }
+    }
+  } else if ch_link == "<" {
+    end := link_pos + 1
+    for end < n {
+      skip_end := ignore_range_end(end)
+      if skip_end != -1 {
+        if skip_end <= end {
+          end += 1
+        } else {
+          end = skip_end
+        }
+        continue
+      }
+
+      if s[end:end+1] == ">" {
+        add_ignore_range(link_pos, end+1)
+        link_pos = end + 1
+        break
+      }
+      end += 1
+    }
+    if link_pos != end + 1 {
+      link_pos += 1
+    }
+    continue
+  }
+
+  link_pos += 1
+}
+
 i := 0
 
 for i < n {
