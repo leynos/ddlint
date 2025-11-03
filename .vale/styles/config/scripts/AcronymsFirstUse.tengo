@@ -140,6 +140,27 @@ s := scope
 n := len(s)
 
 comment_ranges := []
+ignore_ranges := []
+
+add_ignore_range := func(begin, end) {
+  ignore_ranges = append(ignore_ranges, {"begin": begin, "end": end})
+}
+
+ignore_range_end := func(idx) {
+  total := len(ignore_ranges)
+  current := 0
+
+  for current < total {
+    rng := ignore_ranges[current]
+    if idx >= rng["begin"] && idx < rng["end"] {
+      return rng["end"]
+    }
+    current += 1
+  }
+
+  return -1
+}
+
 pos := 0
 for pos < n {
   if pos+4 <= n && s[pos:pos+4] == "<!--" {
@@ -182,11 +203,156 @@ is_in_comment := func(idx) {
   return false
 }
 
+line_start := 0
+in_fence := false
+fence_char := ""
+fence_count := 0
+fence_begin := 0
+
+for line_start < n {
+  line_end := line_start
+  for line_end < n && s[line_end:line_end+1] != "\n" {
+    line_end += 1
+  }
+
+  content_idx := line_start
+  for content_idx < line_end {
+    ch_line := s[content_idx:content_idx+1]
+    if ch_line != " " && ch_line != "\t" {
+      break
+    }
+    content_idx += 1
+  }
+
+  if !in_fence {
+    if content_idx < line_end {
+      fence_candidate := s[content_idx:content_idx+1]
+      if fence_candidate == "`" || fence_candidate == "~" {
+        candidate_idx := content_idx
+        count := 0
+        for candidate_idx < line_end && s[candidate_idx:candidate_idx+1] == fence_candidate {
+          count += 1
+          candidate_idx += 1
+        }
+        if count >= 3 {
+          in_fence = true
+          fence_char = fence_candidate
+          fence_count = count
+          fence_begin = line_start
+        }
+      }
+    }
+  } else {
+    if content_idx < line_end {
+      fence_candidate := s[content_idx:content_idx+1]
+      if fence_candidate == fence_char {
+        candidate_idx := content_idx
+        count := 0
+        for candidate_idx < line_end && s[candidate_idx:candidate_idx+1] == fence_char {
+          count += 1
+          candidate_idx += 1
+        }
+        if count >= fence_count {
+          fence_end := line_end
+          if line_end < n {
+            fence_end += 1
+          }
+          add_ignore_range(fence_begin, fence_end)
+          in_fence = false
+        }
+      }
+    }
+  }
+
+  if line_end >= n {
+    line_start = n
+  } else {
+    line_start = line_end + 1
+  }
+}
+
+if in_fence {
+  add_ignore_range(fence_begin, n)
+}
+
+inline_pos := 0
+for inline_pos < n {
+  skip_inline := ignore_range_end(inline_pos)
+  if skip_inline != -1 {
+    if skip_inline <= inline_pos {
+      inline_pos += 1
+    } else {
+      inline_pos = skip_inline
+    }
+    continue
+  }
+
+  if inline_pos+1 <= n && s[inline_pos:inline_pos+1] == "`" {
+    j := inline_pos
+    ticks := 0
+    for j < n && s[j:j+1] == "`" {
+      ticks += 1
+      j += 1
+    }
+
+    if ticks > 0 {
+      search := j
+      found := false
+      for search < n {
+        skip_search := ignore_range_end(search)
+        if skip_search != -1 {
+          if skip_search <= search {
+            search += 1
+          } else {
+            search = skip_search
+          }
+          continue
+        }
+
+        if search+1 <= n && s[search:search+1] == "`" {
+          k := search
+          count := 0
+          for k < n && s[k:k+1] == "`" {
+            count += 1
+            k += 1
+          }
+          if count == ticks {
+            add_ignore_range(inline_pos, k)
+            inline_pos = k
+            found = true
+            break
+          }
+          search = k
+          continue
+        }
+
+        search += 1
+      }
+
+      if found {
+        continue
+      }
+    }
+  }
+
+  inline_pos += 1
+}
+
 i := 0
 
 for i < n {
   if i+1 > n {
     break
+  }
+
+  skip := ignore_range_end(i)
+  if skip != -1 {
+    if skip <= i {
+      i += 1
+    } else {
+      i = skip
+    }
+    continue
   }
 
   ch := s[i : i+1]
