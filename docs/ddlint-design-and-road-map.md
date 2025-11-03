@@ -152,11 +152,11 @@ providing a proven template for a performant, parallelized engine.4
 
 The choice of a CST has further downstream effects, particularly on
 diagnostics, testing, and tooling. To display the kind of rich, annotated error
-messages seen in modern compilers, the diagnostic library needs precise source
+messages seen in modern compilers, the reporting library needs precise source
 location information. The `rowan` CST, by preserving all byte offsets from the
-original file, can provide the exact `SourceSpan` data that a library like
-`miette` requires to render its beautiful, user-friendly error reports.9 This
-creates a powerful synergy:
+original file, can provide the exact `SourceSpan` data required to render
+`miette`'s beautiful, user-friendly error reports.9 This creates a powerful
+synergy:
 
 `rowan` provides the data, and `miette` provides the presentation.
 
