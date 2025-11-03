@@ -138,8 +138,8 @@ as control flow constructs. This phase aims to build a complete grammar.
 
   - [ ] Extend the tokenizer and literal parser to support raw and interpolated
     string forms, their interned variants, and to reject interpolated strings
-    inside patterns as specified in
-    `docs/differential_datalog_parser_syntax_spec_updated.md`.
+    inside patterns as specified in the updated
+    [parser syntax spec](docs/differential-datalog-parser-syntax-spec-updated.md).
 
   - [ ] Parse width-qualified numeric literals (signed and unsigned integers,
     floats) with range validation and a shaped literal AST so later passes can

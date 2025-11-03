@@ -7,16 +7,38 @@ nonword: true
 swap:
   color: colour
   colors: colours
+  colored: coloured
+  coloring: colouring
+  colorful: colourful
+  colorless: colourless
   behavior: behaviour
   behaviors: behaviours
+  behavioral: behavioural
+  behaviorally: behaviourally
   neighbor: neighbour
   neighbors: neighbours
+  neighborhood: neighbourhood
+  neighboring: neighbouring
+  neighborly: neighbourly
   flavor: flavour
   flavors: flavours
+  flavored: flavoured
+  flavorful: flavourful
   honor: honour
   honors: honours
+  honored: honoured
+  honoring: honouring
+  honorable: honourable
+  honorary: honorary
   humor: humour
+  humors: humours
+  humorous: humorous
   armor: armour
+  armors: armours
+  armored: armoured
   rumor: rumour
+  rumors: rumours
+  rumored: rumoured
   favorite: favourite
   favorites: favourites
+  favoritism: favouritism
