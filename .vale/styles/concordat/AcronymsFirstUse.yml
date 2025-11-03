@@ -4,6 +4,6 @@ link: "House style: expand acronyms on first use."
 level: warning
 
 scope:
-  - text
+  - raw
 
 script: AcronymsFirstUse.tengo
