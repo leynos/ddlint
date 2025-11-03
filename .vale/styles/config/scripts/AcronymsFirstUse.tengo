@@ -405,10 +405,6 @@ for link_pos < n {
 i := 0
 
 for i < n {
-  if i+1 > n {
-    break
-  }
-
   skip := ignore_range_end(i)
   if skip != -1 {
     if skip <= i {
