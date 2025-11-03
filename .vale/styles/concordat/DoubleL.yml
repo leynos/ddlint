@@ -7,8 +7,6 @@ nonword: true
 swap:
   canceled: cancelled
   canceling: cancelling
-  cancellation: cancellation
-  cancellable: cancellable
   counselor: counsellor
   counseling: counselling
   counseled: counselled
