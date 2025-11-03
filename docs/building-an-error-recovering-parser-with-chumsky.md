@@ -65,7 +65,7 @@ Codex is a marvellous companion so long as the operator:
 - **Ask for one production at a time.** Whole-grammar requests invite
   hallucinations of alternate dimensions.
 - **Round-trip ruthlessly.** Generate random abstract syntax trees →
-  pretty-print → re-parse → assert equality. Failures mean Codex (or the prompt
+  pretty-print → reparse → assert equality. Failures mean Codex (or the prompt
   author) has misremembered the Restaurant at the End of the File.
 
 ### 6 Linting: the first sip of the differential logic engine
@@ -83,8 +83,7 @@ IDE feedback faster than a hyperspace bypass.
 ### 7 Keeping the whole show flying
 
 - **Continuous Integration (CI) pipeline:** `cargo insta test`,
-  `cargo clippy --deny warnings`, and the round-trip parser tests on every
-  push.
+  `cargo clippy --deny warnings`, and the round-trip parser tests on every push.
 - **Editor integration:** Convert Chumsky’s `Rich` errors into language server
   protocol diagnostics; line/column already sorted.
 - **Performance guardrails:** Benchmark on a late-game save. If a commit slows

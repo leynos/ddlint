@@ -12,7 +12,7 @@ use crate::{
 use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
 
-/// Tokenise `src` into `(SyntaxKind, Span)` pairs using
+/// Tokenize `src` into `(SyntaxKind, Span)` pairs using
 /// [`tokenize_with_trivia`].
 ///
 /// # Examples

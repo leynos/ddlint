@@ -162,7 +162,7 @@ decl =  do attrs <- attributes
                      <|> (return . SpTransformer)    <$> transformer
                      <|> (return . SpRule)           <$> rule
                      <|> (return . SpApply)          <$> apply)
-                   <|> (map SpRule . convertStatement) <$> parseForStatement
+                     <|> (map SpRule . convertStatement) <$> parseForStatement
 ```
 
 【F:Parse.hs†L262-L276】
@@ -304,12 +304,12 @@ in the Rust implementation.
 ## Porting notes
 
 When porting to Rust, the constructs above can be expressed with `chumsky`
-combinators and a `rowan` concrete syntax tree (CST). The `expr` grammar maps well to
-`chumsky::recursive`, while the statement parsers become small combinators that
-emit both abstract syntax tree nodes and CST events. Group-by extraction can be
-implemented using a post-processing step mirroring `extractGroupBy`. Patterns
-for `match` and `for` loops translate to nested `chumsky` parsers building
-structured nodes.
+combinators and a `rowan` concrete syntax tree (CST). The `expr` grammar maps
+well to `chumsky::recursive`, while the statement parsers become small
+combinators that emit both abstract syntax tree nodes and CST events. Group-by
+extraction can be implemented using a post-processing step mirroring
+`extractGroupBy`. Patterns for `match` and `for` loops translate to nested
+`chumsky` parsers building structured nodes.
 
 Keep this file in lockstep with `Parse.hs` when changes land so that the Rust
 implementation remains accurate.

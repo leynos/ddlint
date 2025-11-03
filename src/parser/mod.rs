@@ -1,7 +1,7 @@
 //! Chumsky-based parser producing a rowan CST.
 //!
 //! This module contains the entry point for parsing `DDlog` source code.
-//! The parser tokenises the input and wraps tokens into a `rowan::GreenNode`,
+//! The parser tokenizes the input and wraps tokens into a `rowan::GreenNode`,
 //! with support for parsing imports, typedefs, relations, indexes, functions,
 //! and rules. It lays down the framework for integrating `chumsky` combinators
 //! and error recovery in later stages.
@@ -25,7 +25,7 @@ pub use cst_builder::{Parsed, ParsedSpans};
 
 /// Parse the provided source string.
 ///
-/// The function tokenises the source using [`tokenize_with_trivia`], then uses a minimal
+/// The function tokenizes the source using [`tokenize_with_trivia`], then uses a minimal
 /// `chumsky` parser to wrap those tokens into a CST. Syntactic error recovery
 /// will insert `N_ERROR` nodes when grammar rules fail once they exist.
 ///

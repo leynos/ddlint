@@ -257,8 +257,8 @@ The following tooling is available in this environment:
 - `valgrind` – Suite for detecting memory leaks, profiling, and debugging
   low-level memory errors.
 - `bpftrace` – High-level tracing tool for the Berkeley Packet Filter (BPF)
-  and its extended Berkeley Packet Filter (eBPF) variant, using a custom scripting
-  language for kernel and application tracing.
+  and its extended Berkeley Packet Filter (eBPF) variant, using a custom
+  scripting language for kernel and application tracing.
 - `lsof` – Lists open files and the processes using them.
 - `htop` – Interactive process viewer (visual upgrade to `top`).
 - `iotop` – Displays and monitors input/output usage by processes.

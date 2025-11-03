@@ -26,8 +26,8 @@ enforces name‑uniqueness invariants, and records source provenance.
   - `imports`, `typedefs`, `functions` (grouped by name; overload by arity
     permitted), `transformers`, `relations`, `indexes`, `rules`, `applys`.
 - **Transformations performed pre‑Abstract Syntax Tree (AST):** `group_by` and
-  `Aggregate` lowering;
-  map/vector literal lowering; `&` in rule heads → `ref_new`.
+  `Aggregate` lowering; map/vector literal lowering; `&` in rule heads →
+  `ref_new`.
 
 #### 1.1.1 Expression‑only parsing
 
