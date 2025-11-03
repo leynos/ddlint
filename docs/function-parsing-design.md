@@ -3,9 +3,9 @@
 This document outlines the strategy for parsing `function` definitions and
 declarations within `ddlint`. The parser relies on small helpers to interpret
 parameter lists and optional return types. These helpers now live in the
-`parser::ast::parse_utils` module so that both `Function` and `Relation` AST
-nodes can reuse them. A span-aware helper, `open_delimiter`, pushes the
-delimiter kind and token span onto `DelimStack`.
+`parser::ast::parse_utils` module so that both `Function` and `Relation`
+Abstract Syntax Tree (AST) nodes can reuse them. A span-aware helper,
+`open_delimiter`, pushes the delimiter kind and token span onto `DelimStack`.
 
 Short description: the following diagram shows how helper functions compose
 during parsing.
