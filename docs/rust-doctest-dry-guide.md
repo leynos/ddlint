@@ -66,8 +66,8 @@ invoking `rustc` to compile and link a new executable for every single doctest
 is computationally expensive. For small projects, this overhead is negligible.
 However, for large libraries with hundreds of doctests, the cumulative
 compilation time can become a significant bottleneck in the development and
-Continuous Integration (CI) and Continuous Deployment (CD) cycle, a common
-pain point in the Rust community.[^2]
+Continuous Integration (CI) and Continuous Deployment (CD) cycle, a common pain
+point in the Rust community.[^2]
 
 The architectural purity of the `rustdoc` model—its insistence on simulating an
 external user—creates a fundamental trade-off. On one hand, it provides an
@@ -270,9 +270,8 @@ table provides a comparative reference for the most common doctest attributes.
   and practicality. For an example that demonstrates how to download a file
   from the internet, the example code must be syntactically correct and use the
   API properly, but it is undesirable for the Continuous Integration (CI)
-  server to perform a network
-  request during every test run. `no_run` provides this guarantee by compiling
-  the code without executing it.[^5]
+  server to perform a network request during every test run. `no_run` provides
+  this guarantee by compiling the code without executing it.[^5]
 
 - `edition20xx`: This attribute allows an example to be tested against a
   specific Rust edition. This is important for crates that support multiple

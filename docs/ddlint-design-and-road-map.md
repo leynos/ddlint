@@ -203,7 +203,7 @@ sequenceDiagram
     Parser->>Parser: build token stream
     Parser->>SyntaxTree: construct green tree from tokens
     SyntaxTree-->>Parser: green tree
-    Parser->>Parser: wrap green tree in abstract syntax tree root
+    Parser->>Parser: construct typed root (red tree) from green tree
     Parser-->>User: Parsed { green, root }
 ```
 

@@ -258,7 +258,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
     out
 }
 
-/// Tokenise the source, excluding whitespace and comments.
+/// Tokenize the source, excluding whitespace and comments.
 ///
 /// Returns only significant tokens for use in expression parsing.
 ///
@@ -278,7 +278,7 @@ pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
         .collect()
 }
 
-/// Tokenise the provided `DDlog` source.
+/// Tokenize the provided `DDlog` source.
 ///
 /// # Examples
 ///

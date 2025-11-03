@@ -130,6 +130,6 @@ requests.
 
 ## 10. Modelling trivia tokens
 
-Whitespace and comments are tokenised as `T_WHITESPACE` and `T_COMMENT`
+Whitespace and comments are tokenized as `T_WHITESPACE` and `T_COMMENT`
 variants, so the CST preserves them. AST wrappers skip over these trivia nodes,
 ensuring that semantic analyses operate on significant tokens only.

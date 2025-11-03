@@ -1,7 +1,7 @@
 //! Core Pratt parser implementation and entry point.
 //!
 //! This module defines the [`Pratt`] struct and the public
-//! [`parse_expression`] function which tokenises the source and builds
+//! [`parse_expression`] function which tokenizes the source and builds
 //! expression trees.
 
 use chumsky::error::Simple;
@@ -79,7 +79,7 @@ impl StructLiteralState {
 
 /// Parse a source string into an [`Expr`].
 ///
-/// This tokenises the input and runs the Pratt parser, collecting any syntax
+/// This tokenizes the input and runs the Pratt parser, collecting any syntax
 /// errors for the caller to handle.
 ///
 /// # Errors

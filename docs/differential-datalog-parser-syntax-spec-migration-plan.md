@@ -38,43 +38,44 @@ ______________________________________________________________________
 
 1) Host‑language keyword reservation
 
-- The Haskell analysis documents reserving a broad set of Rust keywords to
-  avoid code‑generation and embedding conflicts.
-- The current spec lists only DDlog keywords and reserved operators; it does
-  not state the host‑language reservation policy.
+   - The Haskell analysis documents reserving a broad set of Rust keywords to
+     avoid code‑generation and embedding conflicts.
+   - The current spec lists only DDlog keywords and reserved operators; it does
+     not state the host‑language reservation policy.
 
 2) Legacy/compatibility tokens and spellings
 
-- The Haskell analysis lists tokens such as `Aggregate`, `FlatMap`, `Inspect`,
-  `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, and `as`.
-- The updated spec explicitly documents legacy `Aggregate` lowering and
-  flatmap‑like binds via pattern assignments, but does not enumerate the full
-  set of legacy tokens nor specify their acceptance/deprecation status (accept
-  with lowering, parse‑time error, or reserved but unused).
+   - The Haskell analysis lists tokens such as
+     `Aggregate`, `FlatMap`, `Inspect`,
+     `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, and `as`.
+   - The updated spec explicitly documents legacy `Aggregate` lowering and
+     flatmap‑like binds via pattern assignments, but does not enumerate the full
+     set of legacy tokens nor specify their acceptance/deprecation status (accept
+     with lowering, parse‑time error, or reserved but unused).
 
 3) Control‑flow statements: `break`, `continue`, `return`
 
-- The Haskell parser (and the published roadmap) recognize these constructs.
-- The spec’s Statements grammar covers `for`/`if`/`match`/`skip`/`block` and
-  assignments, but does not include `break`, `continue`, or `return`.
+   - The Haskell parser (and the published roadmap) recognize these constructs.
+   - The spec’s Statements grammar covers `for`/`if`/`match`/`skip`/`block` and
+     assignments, but does not include `break`, `continue`, or `return`.
 
 4) Additional reserved operators in Haskell
 
-- The Haskell token set includes `#` and `<=>` as single tokens.
-- The spec’s operator table and special tokens do not mention them, nor state
-  whether they are reserved or removed.
+   - The Haskell token set includes `#` and `<=>` as single tokens.
+   - The spec’s operator table and special tokens do not mention them, nor state
+     whether they are reserved or removed.
 
 5) Parser entry points
 
-- The Haskell module exposes both a full‑program parser and an
-  expression‑only parser (useful for tests and tooling).
-- The spec documents only the full‑program input/output.
+   - The Haskell module exposes both a full‑program parser and an
+     expression‑only parser (useful for tests and tooling).
+   - The spec documents only the full‑program input/output.
 
 6) Implementation compatibility notes
 
-- The Haskell analysis spells out pre‑lexing tab normalization and position
-  mapping. The spec references this but could explicitly tie it to entry points
-  and diagnostics guarantees.
+   - The Haskell analysis spells out pre‑lexing tab normalization and position
+     mapping. The spec references this but could explicitly tie it to entry points
+     and diagnostics guarantees.
 
 Already superseded (intentional changes)
 
@@ -94,64 +95,66 @@ document.
 
 1) Spec edits
 
-- Add an appendix “Reserved Identifiers and Host‑Language Keywords”.
-  - State that the lexer reserves DDlog keywords and a set of Rust keywords.
-  - Provide a compact, versioned list or reference to a single source of truth
-    (the lexer table), with a note that updates to the host keyword set update
-    the spec implicitly.
-- Add a “Legacy and Compatibility Tokens” subsection:
-  - `Aggregate`: accepted; lowered to `RHSGroupBy`; deprecated with a
-    diagnostic.
-  - `FlatMap`: surface syntax represented via pattern binds on the right-hand
-    side; no
-    distinct keyword in the updated language.
-  - `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, `as`, `Inspect`
-    (and any others present in the historical lexer): define status per token
-    as one of: accepted alias (with diagnostic), parse‑time error, or reserved
-    (tokenised but rejected with a targeted message). If a token is not used
-    today, mark as “reserved, not part of the grammar”.
-- Extend the Statements grammar to include `break`, `continue`, and `return`:
-  - `break`/`continue`: allowed only in loop bodies; error elsewhere.
-  - `return`: allowed in function/closure bodies; not valid in rule bodies.
-  - Call out diagnostic responsibilities when misused.
-- Clarify treatment of `#` and `<=>` operators:
-  - Either mark them as “reserved but not in the grammar” (error on use) or
-    “removed” (hard error) — decide and document.
-- Document an expression‑only entry point alongside the full‑program entry
-  point under “Entry points and products”.
-- Expand “Portability notes” with a compatibility policy and explicit tab
-  normalization guidance.
+   - Add an appendix “Reserved Identifiers and Host‑Language Keywords”.
+     - State that the lexer reserves DDlog keywords and a set of Rust keywords.
+     - Provide a compact, versioned list or reference to a single source of
+       truth
+       (the lexer table), with a note that updates to the host keyword set update
+       the spec implicitly.
+   - Add a “Legacy and Compatibility Tokens” subsection:
+     - `Aggregate`: accepted; lowered to `RHSGroupBy`; deprecated with a
+       diagnostic.
+     - `FlatMap`: surface syntax represented via pattern binds on the right-hand
+       side; no
+       distinct keyword in the updated language.
+     - `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, `as`, `Inspect`
+       (and any others present in the historical lexer): define status per token
+       as one of: accepted alias (with diagnostic), parse‑time error, or reserved
+      (tokenized but rejected with a targeted message). If a token is not used
+       today, mark as “reserved, not part of the grammar”.
+   - Extend the Statements grammar to include `break`, `continue`, and `return`:
+     - `break`/`continue`: allowed only in loop bodies; error elsewhere.
+     - `return`: allowed in function/closure bodies; not valid in rule bodies.
+     - Call out diagnostic responsibilities when misused.
+   - Clarify treatment of `#` and `<=>` operators:
+     - Either mark them as “reserved but not in the grammar” (error on use) or
+       “removed” (hard error) — decide and document.
+   - Document an expression‑only entry point alongside the full‑program entry
+     point under “Entry points and products”.
+   - Expand “Portability notes” with a compatibility policy and explicit tab
+     normalization guidance.
 
 2) Lexer and parser alignment
 
-- Ensure the lexer’s reserved keyword set includes Rust keywords and any
-  legacy tokens the project commits to reserve/diagnose.
-- Decide fate of `#`/`<=>` and implement consistent errors.
+   - Ensure the lexer’s reserved keyword set includes Rust keywords and any
+     legacy tokens the project commits to reserve/diagnose.
+   - Decide fate of `#`/`<=>` and implement consistent errors.
 
 3) Tests and diagnostics
 
-- Add parser tests covering:
-  - `break`/`continue`/`return` acceptance/errors in correct/incorrect
-    contexts.
-  - Legacy token handling (lowering, aliasing, or rejection with a precise
-    message).
-  - Reserved‑but‑unused operators (`#`, `<=>`) produce the intended diagnostic.
-  - Host keyword reservation: using a Rust keyword as an identifier is
-    rejected with a clear error.
+   - Add parser tests covering:
+     - `break`/`continue`/`return` acceptance/errors in correct/incorrect
+       contexts.
+     - Legacy token handling (lowering, aliasing, or rejection with a precise
+       message).
+     - Reserved‑but‑unused operators (`#`, `<=>`) produce the intended
+       diagnostic.
+     - Host keyword reservation: using a Rust keyword as an identifier is
+       rejected with a clear error.
 
 4) Deprecate the Haskell analysis document
 
-- After spec and tests land, add a deprecation banner to
-  `docs/haskell-parser-analysis.md` pointing to the spec, noting it is
-  preserved only for historical context.
-- Remove any normative lists in the Haskell doc (or relabel as “historical
-  snapshot”) to avoid confusion.
+   - After spec and tests land, add a deprecation banner to
+     `docs/haskell-parser-analysis.md` pointing to the spec, noting it is
+     preserved only for historical context.
+   - Remove any normative lists in the Haskell doc (or relabel as “historical
+     snapshot”) to avoid confusion.
 
 5) Optional: compatibility mode policy
 
-- If the project chooses to keep certain legacy spellings temporarily, gate
-  them behind a “compat mode” configuration, documented in the spec’s
-  compatibility appendix. Provide a deprecation timeline.
+   - If the project chooses to keep certain legacy spellings temporarily, gate
+     them behind a “compat mode” configuration, documented in the spec’s
+     compatibility appendix. Provide a deprecation timeline.
 
 ______________________________________________________________________
 

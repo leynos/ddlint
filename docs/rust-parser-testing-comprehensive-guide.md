@@ -1068,12 +1068,11 @@ philosophy:
 
 For integration into a Continuous Integration (CI) and Continuous Deployment
 (CD) pipeline, a tiered approach is recommended. The fast-running unit tests
-and
-snapshot tests should be executed on every commit to provide rapid feedback.
-The more computationally expensive `proptest` suites, particularly the AST
-round-trip test, can be run nightly, or as a mandatory check before a release,
-ensuring that deeper, more subtle bugs are caught without slowing down the
-primary development loop.
+and snapshot tests should be executed on every commit to provide rapid
+feedback. The more computationally expensive `proptest` suites, particularly
+the AST round-trip test, can be run nightly, or as a mandatory check before a
+release, ensuring that deeper, more subtle bugs are caught without slowing down
+the primary development loop.
 
 Ultimately, building a language is an iterative process.23 The syntax,
 semantics, and tooling will evolve. A robust, multi-faceted test suite is the

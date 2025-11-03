@@ -95,7 +95,7 @@ ______________________________________________________________________
 ## **Phase 2: parser grammar expansion**
 
 The current parser excels at identifying top-level statements but has a
-simplified understanding of statement bodies, particularly expressions as well
+simplified understanding of statement bodies, particularly expressions, as well
 as control flow constructs. This phase aims to build a complete grammar.
 
 - [ ] **Implement Detailed Expression Parsing**
@@ -160,14 +160,14 @@ as control flow constructs. This phase aims to build a complete grammar.
   - [ ] Implement vector and map literal parsing with the builder desugarings
     defined in the specification.
 
-  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing so
+  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
     downstream analyses see the normalized representation.
 
   - [ ] Desugar top-level `for` statements in rule contexts into equivalent
     rules, matching the specification's semantics.
 
-  - [ ] Parse `apply` items and enforce that `transformer` declarations outside
-    of `extern` blocks raise diagnostics.
+  - [ ] Parse `apply` items and enforce that `transformer` declarations outwith
+    `extern` blocks raise diagnostics.
 
   - [ ] Enforce the qualified-call rule so only fully scoped identifiers parse
     as function calls, deferring bare `name(…)` disambiguation to name

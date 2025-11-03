@@ -871,8 +871,7 @@ temporary file utilities, its fixture system integrates seamlessly with crates
 like `tempfile` or `test-temp-dir`. A fixture can create a temporary file,
 directory, or similar resource, expose whichever locator the test requires, and
 ensure cleanup (often via Resource Acquisition Is Initialization (RAII)). That
-locator might be a filesystem path or an
-open handle depending on the scenario.
+locator might be a filesystem path or an open handle depending on the scenario.
 
 Here's an illustrative example using the `tempfile` crate:
 
