@@ -191,7 +191,7 @@ project:
 - Use NewTypes to model domain values and eliminate "integer soup". Reach for
   `newt-hype` when introducing many homogeneous wrappers that share semantics;
   add small shims such as `From<&str>` and `AsRef<str>` for string-backed
-  wrappers. For path-centric wrappers implement `AsRef<Path>` alongside
+  wrappers. For path-centric wrappers, implement `AsRef<Path>` alongside
   `into_inner()` and `to_path_buf()`; avoid attempting
   `impl From<Wrapper> for PathBuf` because of the orphan rule. Prefer explicit
   tuple structs whenever bespoke validation or tailored trait surfaces are
