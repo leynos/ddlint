@@ -142,7 +142,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     [parser syntax spec](docs/differential-datalog-parser-syntax-spec-updated.md).
 
   - [ ] Parse width-qualified numeric literals (signed and unsigned integers,
-    floats) with range validation and a shaped literal AST so later passes can
+    floats) with range validation and a shaped literal AST, so later passes can
     reason about widths.
 
   - [ ] Complete the operator table to match the specification, including
