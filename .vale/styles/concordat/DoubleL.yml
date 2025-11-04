@@ -7,13 +7,16 @@ nonword: true
 swap:
   cancelation: cancellation
   cancelations: cancellations
-  canceled: cancelled
-  canceling: cancelling
   cancelable: cancellable
+  cancelables: cancellables
+  canceled: cancelled
+  canceler: canceller
+  cancelers: cancellers
+  canceling: cancelling
   counselor: counsellor
+  counselors: counsellors
   counseling: counselling
   counseled: counselled
-  counselors: counsellors
   traveled: travelled
   traveler: traveller
   traveling: travelling
