@@ -109,9 +109,9 @@ The main strategies and tools are:
   robustness, AST round-trips, and invariant testing.
 
 This structured approach, combining conventional file organization, a clear
-understanding of each testing paradigm's purpose, and targeted tooling lays the
-groundwork for the robust and maintainable test suite detailed in the following
-sections.
+understanding of each testing paradigm's purpose, and targeted tooling, lays
+the groundwork for the robust and maintainable test suite detailed in the
+following sections.
 
 ## Section 2: rigorous testing of the `logos` lexer
 
@@ -738,9 +738,7 @@ While the losslessness test is vital, it doesn't make the internal structure of
 the CST visible. The `Debug` implementation for `rowan::SyntaxNode` produces a
 beautifully formatted, indented tree. It enumerates the kind and span for every
 node and includes the corresponding tokens.31 This debug representation is a
-perfect candidate for snapshot testing with
-
-`insta`.
+perfect candidate for snapshot testing with `insta`.
 
 By snapshotting the CST, developers gain a human-readable "golden" record of
 the entire parse result for a given input. This is invaluable for debugging the

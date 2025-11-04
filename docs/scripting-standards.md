@@ -83,7 +83,7 @@ Employ Cyclopts when a script requires parameters, particularly under CI with
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Annotated
 
 import cyclopts
 from cyclopts import App, Parameter
@@ -102,9 +102,9 @@ def main(
     version: Annotated[str, Parameter(required=True)],
 
     # Optional scalars
-    package_name: Optional[str] = None,
-    target: Optional[str] = None,
-    outdir: Optional[Path] = None,
+    package_name: str | None = None,
+    target: str | None = None,
+    outdir: Path | None = None,
     dry_run: bool = False,
 
     # Lists (whitespace/newline separated by default)
@@ -146,7 +146,7 @@ Guidance:
   must remain available, add an alias:
 
   ```python
-  package_name: Annotated[Optional[str], Parameter(aliases=["--name"])] = None
+  package_name: Annotated[str | None, Parameter(aliases=["--name"])] = None
   ```
 
 - Where a specific delimiter is required for an environment list (for example,
@@ -159,7 +159,7 @@ Guidance:
 - Per‑parameter environment names can be pinned for backwards compatibility:
 
   ```python
-  config_out: Annotated[Optional[Path], Parameter(env_var="INPUT_CONFIG_PATH")] = None
+  config_out: Annotated[Path | None, Parameter(env_var="INPUT_CONFIG_PATH")] = None
   ```
 
 ## plumbum: command calling and pipelines
@@ -167,7 +167,7 @@ Guidance:
 ### Basics: command calls, capturing output, handling failures
 
 ```python
-from __future__ annotations
+from __future__ import annotations
 from plumbum import local
 from plumbum.cmd import git, grep
 
@@ -244,7 +244,7 @@ DIST = PROJECT_ROOT / "dist"
 cfg = PROJECT_ROOT.joinpath("config", "release.toml").resolve()
 ```
 
-### Reading / writing files and atomic updates
+### Reading and writing files and atomic updates
 
 ```python
 from pathlib import Path
@@ -293,7 +293,7 @@ except FileNotFoundError:
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Annotated
 
 import cyclopts
 from cyclopts import App, Parameter
@@ -308,7 +308,7 @@ def main(
     bin_name: Annotated[str, Parameter(required=True)],
     version: Annotated[str, Parameter(required=True)],
     formats: list[str] | None = None,
-    outdir: Optional[Path] = None,
+    outdir: Path | None = None,
     dry_run: bool = False,
 ):
     project_root = Path(__file__).resolve().parents[1]
@@ -444,7 +444,7 @@ def test_spy_and_record(cmd_mox, monkeypatch, tmp_path):
   manager for existing secrets) should precede writes or rotations.
 - Pure functions that accept configuration objects are preferred over global
   state so that tests can exercise logic deterministically.
-- Exit codes should follow UNIX (Portable Operating System Interface, POSIX)
+- Exit codes should follow Portable Operating System Interface (POSIX)
   conventions: `0` for success, non-zero for actionable failures.
   Human-friendly error messages should highlight remediation steps.
 - Dependencies must remain minimal. Any new package should be added to the `uv`
