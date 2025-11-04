@@ -301,8 +301,8 @@ token as evidence that the `then` branch was absent, producing a clear
 `expected expression for 'then' branch of 'if'` message.
 
 A subtle ambiguity arises from the shared `IDENT {` token sequence used by
-struct literals. To resolve this the implementation activates a struct-literal
-guard for the duration of the condition parse. While active it interprets
+struct literals. To resolve this, the implementation activates a struct-literal
+guard for the duration of the condition parse. While active, it interprets
 `IDENT {` as a variable followed by the branch, preventing the condition from
 consuming the branch braces. The guard automatically suspends inside
 parentheses, brace groups, and closure bodies so expressions such as
