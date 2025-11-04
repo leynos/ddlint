@@ -24,6 +24,14 @@ swap:
   flavors: flavours
   flavored: flavoured
   flavorful: flavourful
+  odor: odour
+  odors: odours
+  odored: odoured
+  odoring: odouring
+  savor: savour
+  savored: savoured
+  savoring: savouring
+  savory: savoury
   honor: honour
   honors: honours
   honored: honoured
@@ -36,9 +44,26 @@ swap:
   armor: armour
   armors: armours
   armored: armoured
+  harbor: harbour
+  harbors: harbours
+  harbored: harboured
+  harboring: harbouring
   rumor: rumour
   rumors: rumours
   rumored: rumoured
+  '\blabor\b': labour
+  labors: labours
+  labored: laboured
+  laboring: labouring
+  endeavor: endeavour
+  endeavors: endeavours
+  endeavored: endeavoured
+  endeavoring: endeavouring
+  tumor: tumour
+  tumors: tumours
+  vigor: vigour
+  valor: valour
+  glamor: glamour
   favorite: favourite
   favorites: favourites
   favoritism: favouritism

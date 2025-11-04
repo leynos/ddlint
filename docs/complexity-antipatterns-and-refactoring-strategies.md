@@ -2,7 +2,7 @@
 
 ## 1. Introduction: the challenge of software complexity
 
-Software development is an inherently complex endeavor. As systems evolve and
+Software development is an inherently complex endeavour. As systems evolve and
 features are added, the intricacy of the codebase tends to increase, often
 leading to challenges in maintenance, scalability, and developer productivity.
 "Any fool can write code that a computer can understand. Good programmers write
@@ -85,9 +85,9 @@ Core Principles of Calculation:
 Cognitive Complexity is incremented based on three main rules[^8]:
 
 1. **Breaks in Linear Flow:** Each time the code breaks the normal linear
-   reading flow (e.g., loops, conditionals like `if`/`else`/`switch`,
-   `try-catch` blocks, jumps to labels, and sequences of logical operators like
-   `&&` and `||`), a penalty is applied.
+   reading flow (e.g., loops, conditionals like
+   `if`/`else`/`switch`, `try-catch` blocks, jumps to labels, and sequences of
+   logical operators like `&&` and `||`), a penalty is applied.
 
 2. **Nesting:** Each level of nesting of these flow-breaking structures adds an
    additional penalty. This is because deeper nesting makes it harder to keep

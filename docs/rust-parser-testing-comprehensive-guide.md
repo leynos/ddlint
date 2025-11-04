@@ -843,8 +843,8 @@ still reproduces the failure, making debugging far easier.2
 The core workflow of property-based testing is:
 
 1. **Define a Property:** A function that takes one or more generated inputs and
-   asserts an invariant. For example, for any list `v`,
-   `v.reverse().reverse() == v`.
+   asserts an invariant. For example, for any list
+   `v`, `v.reverse().reverse() == v`.
 
 2. **Generate Inputs:** `proptest` uses "strategies" to generate random inputs
    that conform to certain rules (e.g., integers within a range, strings
@@ -1026,7 +1026,7 @@ critical component of the testing infrastructure.
 
 ## Section 6: conclusion: a holistic testing philosophy for language engineering
 
-The development of a robust parser is a complex endeavor that demands a testing
+The development of a robust parser is a complex endeavour that demands a testing
 strategy as sophisticated as the parser itself. This guide has detailed a
 multi-layered approach, leveraging the strengths of the modern Rust testing
 ecosystem to build confidence in a parser constructed with `logos`, `chumsky`,
