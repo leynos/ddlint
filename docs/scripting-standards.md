@@ -13,7 +13,7 @@ as a default.
 
 - Environment‑first configuration without glue. Cyclopts reads environment
   variables with a defined prefix (for example, `INPUT_`) and maps them to
-  parameters directly. Bash argument assembly and bespoke parsing can be
+  parameters directly. Bash argument assembly, and bespoke parsing, can be
   removed.
 - Typed lists and paths from env. Parameters annotated as `list[str]` or
   `list[pathlib.Path]` are populated from whitespace‑ or delimiter‑separated
@@ -441,9 +441,9 @@ def test_spy_and_record(cmd_mox, monkeypatch, tmp_path):
 
 - Scripts must be idempotent. Re‑running should converge state without
   destructive side effects. Guard conditions (for example, checking the secrets
-  manager for existing secrets) should precede writes or rotations.
+  manager to confirm existing secrets) should precede writes or rotations.
 - Pure functions that accept configuration objects are preferred over global
-  state so that tests can exercise logic deterministically.
+  state, so tests can exercise logic deterministically.
 - Exit codes should follow Portable Operating System Interface (POSIX)
   conventions: `0` for success, non-zero for actionable failures.
   Human-friendly error messages should highlight remediation steps.
