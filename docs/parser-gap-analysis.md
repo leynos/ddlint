@@ -18,7 +18,7 @@
   parsing to obey the spec’s “only fully qualified calls are parsed as calls”
   rule.
 
-In this analysis, RHS (right-hand side) refers to the rule body, not the rule
+In this analysis, right-hand side (RHS) refers to the rule body, not the rule
 head.
 
 ## Where the implementation deviates (or is missing) vs the spec
@@ -41,7 +41,7 @@ head.
   **fit checks**. Code: numbers are parsed as **opaque text** `Literal::Number`
   with no width/signedness semantics. **Action:** teach the tokenizer to
   recognize width/base/signedness; add parse-time validation and a shaped
-  abstract syntax tree representation (or rich literal node) so lints can
+  abstract syntax tree representation (or rich literal node), so lints can
   reason about sizes.
 
 ### 2) Operators and precedence
