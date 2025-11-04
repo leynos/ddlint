@@ -28,8 +28,8 @@ The key steps are:
 3. **Implement the Parser**: Build the `chumsky` parser using `chumsky::pratt`.
 
 4. **Integrate with the CST**: Ensure that when the expression parser is
-   invoked, the resulting AST is correctly represented within a `rowan`
-   `GreenNode`.
+   invoked, the resulting AST is correctly represented within a
+   `rowan` `GreenNode`.
 
 ______________________________________________________________________
 
@@ -445,7 +445,7 @@ operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
-Literal tokens are normalised in a dedicated helper, so prefix parsing remains
+Literal tokens are normalized in a dedicated helper, so prefix parsing remains
 readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE`, and `K_FALSE` to
 `ast::Literal` variants, ensuring numbers, strings, and booleans appear
 directly in the resulting AST.
@@ -454,8 +454,8 @@ Operator precedence is centralized in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
-The precedence for type and control operators is, from highest to lowest: `:`,
-`as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
+The precedence for type and control operators is, from highest to lowest:
+`:`, `as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
 parses as `(a and b) = c`. Ascription and cast bind more tightly than
 assignment but looser than arithmetic operators.
 

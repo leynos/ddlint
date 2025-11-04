@@ -82,7 +82,7 @@ for private functions must either be marked as
 
 `ignore`, forgoing the test guarantee, or be duplicated in separate unit tests,
 violating the "Don't Repeat Yourself" (DRY) principle.[^1] This reveals that
-`rustdoc`'s design implicitly prioritises the integrity of the public contract
+`rustdoc`'s design implicitly prioritizes the integrity of the public contract
 over the convenience of a single, unified system for testable documentation of
 both public and private code.
 
