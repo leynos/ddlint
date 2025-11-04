@@ -1,54 +1,22 @@
-# Flag missing commas before coordinating conjunctions that join two
-# independent clauses, and provide a quick fix.
-extends: sequence
+# Flag missing commas before coordinating conjunctions that introduce a
+# second independent clause. Focus on FANBOYS joins with an explicit subject
+# and finite verb on the right.
+extends: existence
 level: warning
 ignorecase: true
 link: https://www.chicagomanualofstyle.org/qanda/data/faq/topics/Commas/faq0026.html
-message: >
-  Add a comma before "%[2]s": it joins two independent clauses.
+message: "Add a comma before the coordinating conjunction: \"%s\" joins two independent clauses."
 
-# Keep this to sentence text; avoid headings/lists where fragments are common.
 scope:
   - sentence
   - ~heading
   - ~list
 
-# Heuristic:
-#  - there’s a verb before the coordinator,
-#  - the coordinator is one of FANBOYS,
-#  - a likely subject starts the following clause,
-#  - and a verb occurs soon after that subject.
-tokens:
-  # Any finite verb or modal somewhere before the conjunction (left clause).
-  - tag: VBZ|VBP|VBD|MD
-    skip: 80
+raw: '(?:^|[^-,;:–—])[[:space:]]+(for|and|nor|but|or|yet|so)\b(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}[[:space:]]+(?:I|you|he|she|it|we|they|this|that|these|those|there|the|a|an|[A-Z][A-Za-z0-9_-]+|[0-9]+)(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}[[:space:]]+\b(?:is|are|was|were|do|does|did|has|have|had|can|could|may|might|must|shall|should|will|would|continues?|continue|remains?|remain|becomes?|become)\b'
 
-  # The coordinating conjunction.
-  - pattern: '(?:for|and|nor|but|or|yet|so)'
-
-  # Likely subject starting the right-hand clause (pronoun/noun/determiner/etc.).
-  - tag: PRP|PRP\$|EX|DT|WDT|WP|NN|NNS|NNP|NNPS|CD
-    skip: 5
-
-  # A finite verb or modal shortly after that subject. This excludes bare verbs.
-  - tag: VBZ|VBP|VBD|MD
-    skip: 4
-
-# Quick Fix: turn the single whitespace before the coordinator into ", ".
-# The regex runs against the matched sequence and only fires if there’s NOT
-# already a comma/colon/semicolon/dash immediately before the conjunction.
 action:
   name: edit
   params:
     - regex
-    - '(?<![,;:–—-])\s+(?i:(for|and|nor|but|or|yet|so))\b'
-    - ', $1'
-
-# Known constructions that shouldn't take a comma even though they contain a
-# coordinator. Add these patterns to TokenIgnores in .vale.ini if they become
-# noisy:
-#   \bnot only\b.+\bbut also\b
-#   \bboth\b.+\band\b
-#   \beither\b.+\bor\b
-#   \bneither\b.+\bnor\b
-#   \bso that\b
+    - '([^-,;:–—[:space:]])[[:space:]]+(for|and|nor|but|or|yet|so)\b'
+    - '$1, $2'
