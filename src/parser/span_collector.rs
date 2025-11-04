@@ -94,7 +94,7 @@ mod tests {
     //! Tests for `SpanCollector` using the `TokenStream` abstraction.
     //!
     //! These tests validate that the collector exposes its token stream
-    //! correctly and that extra state can be retrieved without consuming the
+    //! correctly, and that extra state can be retrieved without consuming the
     //! collected spans.
     use super::*;
     use crate::test_util::tokenize;
