@@ -2,7 +2,7 @@
 //! AST wrapper for type definitions in `DDlog`.
 //!
 //! This module exposes the `TypeDef` struct for both regular `typedef` and
-//! `extern type` declarations. It enables extraction of the type name and
+//! `extern type` declarations. It enables extraction of the type name, and
 //! whether the declaration is marked as `extern`.
 
 use super::AstNode;
