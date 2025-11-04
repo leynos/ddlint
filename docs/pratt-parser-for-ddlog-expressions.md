@@ -342,8 +342,8 @@ node. The header is handled in three parts:
 - **Pattern extraction:** tokens before `in` are sliced directly from the source
   so destructuring patterns remain verbatim. The range is trimmed to remove
   surrounding whitespace but the inner formatting is untouched.
-- **Iterable expression:** parsed with struct literals temporarily re-enabled so
-  constructs like `for (row in Rows { … })` continue to work.
+- **Iterable expression:** parsed with struct literals temporarily re-enabled,
+  so constructs like `for (row in Rows { … })` continue to work.
 - **Guard:** if the header contains `if`, the guard expression reuses
   `parse_if_clause` which already implements precise diagnostics for missing or
   malformed expressions. Guards are stored as `Option<Box<Expr>>` and omitted
