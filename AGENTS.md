@@ -115,7 +115,7 @@ management. Contributors should follow these best practices when working on the
 project:
 
 - Run `make check-fmt`, `make lint`, and `make test` before committing. These
-  targets wrap the following commands so contributors understand the precise
+  targets wrap the following commands, so contributors understand the precise
   semantics and policy enforced:
   - `make check-fmt` executes:
 
