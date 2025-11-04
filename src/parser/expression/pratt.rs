@@ -280,7 +280,7 @@ where
 
     /// Parse a type expression following `:` or `as`.
     ///
-    /// The RHS of ascriptions and casts should not consume infix operators
+    /// The RHS of ascriptions, and casts, should not consume infix operators
     /// belonging to the outer expression. Parsing the type with the highest
     /// possible binding power ensures only atomic type expressions are captured.
     pub(super) fn parse_type(&mut self) -> Option<Expr> {
