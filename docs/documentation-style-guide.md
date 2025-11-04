@@ -61,7 +61,7 @@ Apply these rules to keep the documentation clear and consistent for developers.
 - Do not wrap tables.
 - Use GitHub-flavoured numeric footnotes referenced as `[^1]`.
 - Footnotes must be numbered in order of appearance in the document.
-- Tables and diagrams must be captioned.
+- Caption every table, and caption every diagram.
 
 ## Example snippet
 
@@ -126,7 +126,7 @@ flowchart TD
 
 ## Roadmap task writing guidelines
 
-When documenting development roadmap items, write them so that they are
+When documenting development roadmap items, write them in a way that keeps them
 achievable, measurable, and structured. This ensures the roadmap functions as a
 practical planning tool rather than a vague wishlist. Do not commit to
 timeframes in the roadmap. Development effort should be roughly consistent from
