@@ -48,11 +48,12 @@ delimiter stack. Parameters end when a comma or the closing `)` of the list is
 reached.
 
 Missing colons between a parameter name and type trigger
-`ParseError::MissingColon`. The span of the terminating comma or parenthesis is
-attached, so diagnostics point at the error. Helper functions
-`collect_parameter_name` and `ParameterBuilder` keep the main loop small.
+`ParseError::MissingColon`. The diagnostic attaches the span of whichever token
+ended the parameter (either a comma or a closing parenthesis), so the highlight
+points at the error. Helper functions `collect_parameter_name` and
+`ParameterBuilder` keep the main loop small.
 
-Empty names and types are reported with `ParseError::MissingName` and
+Empty names trigger `ParseError::MissingName`, while empty types emit
 `ParseError::MissingType`. Both `collect_parameter_name` and `parse_type_expr`
 skip whitespace and comment tokens, so no trivia appears in the extracted text.
 `parse_type_expr` reports mismatched delimiters with a `ParseError::Delimiter`
@@ -64,9 +65,9 @@ also available under the transitional alias `extract_parenthesized`) can also
 surface unclosed-delimiter errors, which likewise report the opening token’s
 span.
 
-A hierarchy of error types supports rich diagnostics when delimiters do not
-match or names and types are missing. Short description: the following diagram
-shows delimiter tracking and related error types.
+A hierarchy of error types supports rich diagnostics for two scenarios:
+mismatched delimiters and missing names or types. Short description: the
+following diagram shows delimiter tracking and related error types.
 
 ```mermaid
 classDiagram
@@ -114,4 +115,4 @@ classDiagram
 
 The `count` argument on `open` and `close` represents how many delimiter units
 are encoded in a single token. When the lexer emits combined delimiters such as
-`<<`, it calls `open` with `count` set to two so nesting remains accurate.
+`<<`, it calls `open` with `count` set to two, so nesting remains accurate.
