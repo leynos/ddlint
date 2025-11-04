@@ -10,8 +10,8 @@ use crate::SyntaxKind;
 
 /// Represents the four types of delimiters tracked during parsing.
 ///
-/// `DelimStack` records these variants as delimiters are opened so
-/// mismatches and unclosed delimiters can be reported precisely.
+/// `DelimStack` records these variants as delimiters are opened, ensuring each
+/// mismatch or unclosed-delimiter error receives a precise report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Delim {
     Paren,
@@ -104,7 +104,7 @@ impl DelimStack {
     /// Opens one or more delimiters of the same type.
     ///
     /// Pushes `count` instances of `delim` onto the stack, each recording the
-    /// `span` of the opening token so it can be reported if left unclosed.
+    /// `span` of the opening token, so it can be reported if left unclosed.
     pub(super) fn open(&mut self, delim: Delim, span: TextRange, count: usize) {
         for _ in 0..count {
             self.0.push(OpenDelimiter { kind: delim, span });
@@ -115,7 +115,7 @@ impl DelimStack {
     ///
     /// Pops up to `count` matching delimiters from the stack and returns the
     /// number of delimiters actually closed. The operation stops if the stack is
-    /// empty or the top delimiter does not match `delim`.
+    /// empty, or the top delimiter does not match `delim`.
     pub(super) fn close(&mut self, delim: Delim, count: usize) -> usize {
         let mut closed = 0;
         for _ in 0..count {
