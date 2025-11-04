@@ -562,7 +562,7 @@ X(x) :- group_by(sum(x)). // error: expected 2 arguments
 - **Non‑extern transformer:**
 
 ```ddlog
-transformer Foo() ; // error: transformer must be extern
+transformer Foo(); // error: transformer must be extern
 ```
 
 - **Attribute on index:**
