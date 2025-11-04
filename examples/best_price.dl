@@ -1,0 +1,7 @@
+/* Compute best observed price per item using grouping */
+input relation Price(item: string, vendor: string, price: u64)
+output relation BestPrice(item: string, price: u64)
+
+BestPrice(item, min_price) :-
+    Price(.item = item, .price = p),
+    var min_price = p.group_by(item).min().

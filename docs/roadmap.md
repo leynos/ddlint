@@ -96,8 +96,8 @@ control flow. This phase aims to build a complete grammar.
 - [ ] **Implement Detailed Expression Parsing**
 
   - [x] Design and implement a Pratt parser for DDlog expressions to correctly
-    handle operator precedence and associativity, as outlined in the Haskell
-    parser analysis (`docs/haskell-parser-analysis.md`).
+    handle operator precedence and associativity, as defined in the updated
+    syntax specification (`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
   - [x] Add support for parsing all literal types within expressions (e.g.,
     strings, numbers, booleans). The `SyntaxKind` enum already defines these.
@@ -128,6 +128,48 @@ control flow. This phase aims to build a complete grammar.
 
   - [ ] Add support for parsing aggregations and `FlatMap` constructs within
     rules.
+
+- [ ] **Align Parser with Updated DDlog Syntax**
+
+  - [ ] Extend the tokenizer and literal parser to support raw and interpolated
+    string forms, their interned variants, and to reject interpolated strings
+    inside patterns as specified in
+    `docs/differential_datalog_parser_syntax_spec_updated.md`.
+
+  - [ ] Parse width-qualified numeric literals (signed and unsigned integers,
+    floats) with range validation and a shaped literal AST so later passes can
+    reason about widths.
+
+  - [ ] Complete the operator table to match the specification, including
+    `++`, `^`, and `=>`, and add precedence tests that cover their interaction
+    with existing operators.
+
+  - [ ] Introduce a dedicated pattern parser that produces AST nodes for use in
+    `match` arms, `for` bindings, and flatmap constructs instead of storing
+    pattern text.
+
+  - [ ] Teach the rule parser to accept multi-head rules, head `@` locations,
+    delay `-<N>` markers, and diff `'` adornments, and to lower by-ref heads to
+    `ref_new`.
+
+  - [ ] Implement vector and map literal parsing with the builder desugarings
+    defined in the specification.
+
+  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing so
+    downstream analyses see the normalized representation.
+
+  - [ ] Desugar top-level `for` statements in rule contexts into equivalent
+    rules, matching the specification's semantics.
+
+  - [ ] Parse `apply` items and enforce that `transformer` declarations outwith
+    `extern` blocks raise diagnostics.
+
+  - [ ] Enforce the qualified-call rule so only fully scoped identifiers parse
+    as function calls, deferring bare `name(…)` disambiguation to name
+    resolution.
+
+  - [ ] Add validators for attribute placement and name uniqueness to mirror
+    the specification's guarantees.
 
 ______________________________________________________________________
 

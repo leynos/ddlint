@@ -1,0 +1,14 @@
+/* Explicit record type relation, primary key, and a simple index */
+typedef Person = Person{
+    name: string,
+    nationality: string,
+    occupation: string
+}
+
+input relation Person[Person]
+primary key (x) (x.name)
+
+output relation TargetAudience[Person]
+TargetAudience[p] :- Person[p], (p.nationality == "USA") and (p.occupation == "student").
+
+index Person_by_nationality(n: string) on Person(.nationality = n)

@@ -1,0 +1,20 @@
+/* Algebraic data types, Option, and pattern matching */
+typedef IPAddress = IPv4Address{ipv4addr: bit<32>} | IPv6Address{ipv6addr: bit<128>}
+typedef OptionalIPAddress = Option<IPAddress>
+
+function last_byte(a: OptionalIPAddress): bit<8> {
+    match (a) {
+        None -> 0,
+        Some{IPv4Address{ipv4addr = addr}} -> addr[7:0],
+        Some{IPv6Address{ipv6addr = addr}} -> addr[7:0]
+    }
+}
+
+input relation Host(address: OptionalIPAddress)
+output relation IPv6Addr(addr: bit<128>)
+output relation HostLastByte(address: OptionalIPAddress, last: bit<8>)
+
+// Extract IPv6 addresses by matching Some{IPv6Address{addr}} and emitting addr.
+IPv6Addr(addr) :- Host(.address = Some{IPv6Address{addr}}).
+// Preserve the OptionalIPAddress and emit last_byte(addr) to HostLastByte.
+HostLastByte(addr, last_byte(addr)) :- Host(.address = addr).

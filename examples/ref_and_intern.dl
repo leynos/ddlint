@@ -1,0 +1,8 @@
+/* Using reference-backed relations and interned strings */
+typedef Student = Student{id: u64, name: istring, school: istring}
+
+/* `&Student(...)` desugars to a relation of `Ref<Student>` */
+input relation &Student(id: u64, name: istring, school: istring)
+
+output relation StudentName(name: istring)
+StudentName(n) :- &Student{.name = n}.

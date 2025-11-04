@@ -1,0 +1,10 @@
+/* Transitive closure while excluding certain nodes */
+typedef node_t = u64
+
+input relation Edge(from: node_t, to: node_t)
+input relation Exclude(node: node_t)
+
+output relation Path(src: node_t, dst: node_t)
+
+Path(x, y) :- Edge(x, y), not Exclude(y).
+Path(x, z) :- Path(x, y), Edge(y, z), not Exclude(z).

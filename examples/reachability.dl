@@ -1,0 +1,8 @@
+/* Transitive closure over a directed graph */
+typedef node_t = u64
+
+input relation Edge(from: node_t, to: node_t)
+output relation Path(src: node_t, dst: node_t)
+
+Path(x, y) :- Edge(x, y).
+Path(x, z) :- Path(x, y), Edge(y, z).

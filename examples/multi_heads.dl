@@ -1,0 +1,6 @@
+/* Two heads fed by the same body */
+input relation X(x: u32)
+output relation Sum(x: u32, y: u32, s: u32)
+output relation Prod(x: u32, y: u32, p: u32)
+
+Sum(x, y, x + y), Prod(x, y, x * y) :- X(x), X(y).
