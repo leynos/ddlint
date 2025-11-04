@@ -19,10 +19,9 @@ explicitly superseded in the spec:
 
 - Reservation of host‑language (Rust) keywords as identifiers.
 - Explicit handling status for legacy/compatibility tokens (e.g.,
-  `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,
-  `float`,`as`).
+  `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,`float`,`as`).
 - Statement forms `break`, `continue`, and `return` (parsers and keywords are
-  present in code/roadmaps, but they are not formalised in the spec’s
+  present in code/roadmaps, but they are not formalized in the spec’s
   Statements grammar).
 - A few reserved operator tokens visible in the Haskell parser (`#`, `<=>`)
   that the spec neither reserves nor explicitly deprecates.
