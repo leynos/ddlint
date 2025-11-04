@@ -55,7 +55,7 @@
   - New functionality or changes in observable system responses are fully
     validated by relevant unit tests and scenario tests.
   - Where a bug is being fixed, a unittest has been provided demonstrating the
-    scenario being corrected both to validate the fix and to guard against
+    scenario being corrected, both to validate the fix and to guard against
     regression.
   - Passes all relevant unit and scenario tests according to the guidelines
     above.
