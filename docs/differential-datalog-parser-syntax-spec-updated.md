@@ -14,7 +14,7 @@ ______________________________________________________________________
 
 A Differential Datalog (DDlog) program consists of imports, type definitions,
 functions, (extern) transformers, relation declarations, index declarations,
-rules, and apply statements. The parser constructs a `DatalogProgram` from
+rules, and applies. The parser constructs a `DatalogProgram` from
 these elements, performs a limited set of tree rewrites (e.g., `group_by`
 extraction, legacy `Aggregate` lowering, literal lowering to builder calls),
 enforces name‑uniqueness invariants, and records source provenance.
@@ -168,8 +168,8 @@ Attributed(X) ::= Attribute+ X
 Attribute     ::= '#[' AttrBody ']'
 ```
 
-**Attribute placement:** Attributes are permitted **only** on `Typedef`,
-`Function`, and `RelationDecl`. Any other placement is an error.
+**Attribute placement:** Attributes are permitted **only** on
+`Typedef`, `Function`, and `RelationDecl`. Any other placement is an error.
 
 ### 5.2 Imports and types
 
