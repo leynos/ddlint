@@ -57,8 +57,8 @@ where
     ParameterBuilder::new(state, ProcessingContext::new(iter, errors)).build()
 }
 
-/// Consumes a trailing `,` and returns `false` to continue; consumes `)` and
-/// returns `true` to signal termination. Returns `false` for other tokens.
+/// Consuming a trailing `,` returns `false` to continue; consuming `)` returns
+/// `true` to signal termination. Returns `false` for other tokens.
 fn handle_parameter_separator<I>(iter: &mut std::iter::Peekable<I>) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
