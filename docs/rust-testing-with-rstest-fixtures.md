@@ -317,11 +317,12 @@ another. If fixtures were shared by default, a mutation to a fixture's state in
 one test could lead to unpredictable behaviour or failures in subsequent tests
 that use the same fixture. Such dependencies would make tests order-dependent,
 significantly harder to debug, and less trustworthy. By providing a fresh
-instance for each test (unless explicitly specified otherwise using `#[once]`),
-`rstest` upholds this cornerstone of reliable testing, ensuring each test
-operates on a known, independent baseline. The `#[once]` attribute, discussed
-later, provides an explicit mechanism to opt into shared fixture state when
-isolation is not a concern or when the cost of fixture creation is prohibitive.
+instance for each test (unless explicitly specified otherwise using
+`#[once]`), `rstest` upholds this cornerstone of reliable testing, ensuring
+each test operates on a known, independent baseline. The `#[once]` attribute,
+discussed later, provides an explicit mechanism to opt into shared fixture
+state when isolation is not a concern or when the cost of fixture creation is
+prohibitive.
 
 ## IV. Parameterized tests with `rstest`
 
@@ -620,7 +621,7 @@ impl User {
 
 #[fixture]
 fn user_fixture(
-    name: &str,
+    #[default("DefaultUser")] name: &str,
     #[default(30)] age: u8,
     #[default("Viewer")] role: &str,
 ) -> User {
@@ -641,12 +642,8 @@ fn test_admin_user(#[with("AdminUser", 42, "Admin")] user_fixture: User) {
     assert_eq!(user_fixture.role, "Admin");
 }
 
-// Example of overriding only specific arguments (syntax may vary based on rstest version for named overrides)
-// The provided snippets (e.g., `#[with(3)] second: i32`) suggest positional overrides.
-// For named overrides, one might need to define intermediate fixtures or check specific rstest version capabilities.
-// Assuming positional override for the first argument (name):
 #[rstest]
-fn test_custom_name_user(user_fixture: User) {
+fn test_custom_name_user(#[with("SpecificName")] user_fixture: User) {
     assert_eq!(user_fixture.name, "SpecificName");
     assert_eq!(user_fixture.age, 30); // Age uses default
     assert_eq!(user_fixture.role, "Viewer"); // Role uses default
@@ -726,9 +723,9 @@ because `rstest` simply awaits the returned future.
 
 Test functions themselves can also be `async fn`. `rstest` polls the future the
 test returns but does not install or default to an async runtime. Annotate the
-test with the runtime's attribute (for example, `#[tokio::test]`,
-`#[async_std::test]`, or `#[actix_rt::test]`) alongside `#[rstest]` so the
-runtime drives execution.
+test with the runtime's attribute (for example,
+`#[tokio::test]`, `#[async_std::test]`, or `#[actix_rt::test]`) alongside
+`#[rstest]` so the runtime drives execution.
 
 ```rust,no_run
 use rstest::*;
@@ -1179,8 +1176,7 @@ become verbose for scenarios involving shared setup or parameterization.
 
 The following table summarizes key differences:
 
-**Table 1:** `rstest` **vs. Standard Rust** `#[test]` **for Fixture Management
-and Parameterization**
+**Table 1:** `rstest` vs standard Rust `#[test]` for fixture management and parameterisation
 
 | Feature                                  | Standard #[test] Approach                                     | rstest Approach                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
@@ -1347,7 +1343,7 @@ resources are recommended:
 The following table provides a quick reference to some of the key attributes
 provided by `rstest`:
 
-**Table 2: Key** `rstest` **Attributes Quick Reference**
+**Table 2:** Key `rstest` attributes quick reference
 
 | Attribute                    | Core Purpose                                                                                 |
 | ---------------------------- | -------------------------------------------------------------------------------------------- |
