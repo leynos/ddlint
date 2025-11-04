@@ -1,4 +1,4 @@
-# A systematic guide to effective, ergonomic, and "Don't repeat yourself" (DRY) doctests in Rust
+# A systematic guide to effective, ergonomic, and "Don't Repeat Yourself" (DRY) doctests in Rust
 
 ## The `rustdoc` compilation model: a foundational perspective
 
@@ -82,8 +82,7 @@ for private functions must either be marked as
 
 `ignore`, forgoing the test guarantee, or be duplicated in separate unit tests,
 violating the "Don't Repeat Yourself" (DRY) principle.[^1] This reveals that
-
-`rustdoc`'s design implicitly prioritizes the integrity of the public contract
+`rustdoc`'s design implicitly prioritises the integrity of the public contract
 over the convenience of a single, unified system for testable documentation of
 both public and private code.
 
@@ -201,9 +200,8 @@ human-readable example, and what constitutes a complete, compilable program.
 Its primary use cases include:
 
 1. **Hiding** `main` **Wrappers**: As demonstrated in the error-handling
-   examples, the entire `fn main() -> Result<...> {... }` and `Ok(())`
-   scaffolding can be hidden, presenting the user with only the relevant
-   code.[^9]
+   examples, the entire `fn main() -> Result<…> { … }` and `Ok(())` scaffolding
+   can be hidden, presenting the user with only the relevant code.[^9]
 
 2. **Hiding Setup Code**: If an example requires some preliminary setup—like
    creating a temporary file, defining a helper struct for the test, or
@@ -330,7 +328,7 @@ the library:
 /// # }
 /// ```
 pub fn my_func_that_needs_env(ctx: &mut TestContext) -> Result<(), ()> {
-    //... function logic...
+    //… function logic…
     Ok(())
 }
 
@@ -342,19 +340,19 @@ mod doctest_helpers {
     use std::io::Result;
 
     pub struct TestContext {
-        //... fields for the test context...
+        //… fields for the test context…
     }
 
     pub fn setup_test_environment() -> Result<TestContext> {
         // All the complex, shared setup logic lives here once.
-        println!("Setting up test environment...");
-        Ok(TestContext { /*... */ })
+        println!("Setting up test environment…");
+        Ok(TestContext { /*… */ })
     }
 }
 
 // A struct that might be needed by the public function signature.
 // It can be defined normally.
-pub struct TestContext { /*... */ }
+pub struct TestContext { /*… */ }
 ```
 
 This pattern is the most effective way to achieve DRY doctests. It centralizes
@@ -414,11 +412,10 @@ This distinction highlights the "cfg duality." The `#[cfg(doc)]` attribute
 controls the *table of contents* of the documentation; it determines which
 items are parsed and rendered. The actual compilation of a doctest, however,
 happens in a separate, later stage. In that stage, the `doc` cfg is *not*
-passed to the compiler.[^13] The compiler only sees the host
-
-`cfg` (e.g., `target_os = "windows"`), so the `UnixSocket` type is not
-available, and the test fails to compile. `#[cfg(doc)]` affects what is
-documented, not what is testable.
+passed to the compiler.[^13] The compiler only sees the host `cfg` (e.g.,
+`target_os = "windows"`), so the `UnixSocket` type is not available, and the
+test fails to compile. `#[cfg(doc)]` affects what is documented, not what is
+testable.
 
 ### 5.2 Executing doctests conditionally: feature flags
 
@@ -474,12 +471,12 @@ This approach provides clearer feedback but is significantly more verbose and
 less ergonomic, especially when applied to outer (`///`) doc comments, as the
 `cfg_attr` must be applied to every single line of the comment.[^14]
 
-### 5.3 Displaying feature requirements in docs: `#[doc(cfg(...))]`
+### 5.3 Displaying feature requirements in docs: `#[doc(cfg(…))]`
 
 To complement conditional execution, Rust provides a way to visually flag
 feature-gated items in the generated documentation. This is achieved with the
-`#[doc(cfg(...))]` attribute, which requires enabling the
-`#![feature(doc_cfg)]` feature gate at the crate root.
+`#[doc(cfg(…))]` attribute, which requires enabling the `#![feature(doc_cfg)]`
+feature gate at the crate root.
 
 ```rust,no_run
 // At the crate root (lib.rs)
@@ -488,7 +485,7 @@ feature-gated items in the generated documentation. This is achieved with the
 // On the feature-gated item
 #[cfg(feature = "serde")]
 #[doc(cfg(feature = "serde"))]
-pub fn function_requiring_serde() { /*... */ }
+pub fn function_requiring_serde() { /*… */ }
 ```
 
 This will render a banner in the documentation for `function_requiring_serde`
@@ -515,7 +512,7 @@ its own purpose:
 
 - **Unit tests (`#[test]` in `src/`)**: These are for testing the
   nitty-gritty details of the implementation. They are placed in submodules
-  within the source files (often `mod tests {... }`) and are compiled only with
+  within the source files (often `mod tests { … }`) and are compiled only with
   `#[cfg(test)]`. Because they live inside the crate, they can access private
   functions and modules, making them perfect for testing internal logic, edge
   cases, and specific error conditions.[^1]
@@ -561,7 +558,7 @@ real-world challenges when working with doctests.
 
 - **The** `README.md` **Dilemma**: A project's `README.md` file serves multiple
   audiences. It needs to render cleanly on platforms like GitHub and
-  [crates.io](http://crates.io), where hidden lines (`#...`) look like ugly,
+  [crates.io](http://crates.io), where hidden lines (`#…`) look like ugly,
   commented-out code. At the same time, it should contain testable examples,
   which often require hidden lines for setup.[^10] The best practice is to
   avoid maintaining the README manually. Instead, use a tool like
@@ -601,14 +598,14 @@ mastering doctests:
    the reader's attention on the relevant code.
 
 3. **Handle Errors Gracefully**: For examples of fallible functions, always use
-   the `fn main() -> Result<...>` pattern, hiding the boilerplate. Avoid
+   the `fn main() -> Result<…>` pattern, hiding the boilerplate. Avoid
    `.unwrap()` to promote robust error-handling practices.
 
 4. **Be DRY**: When setup logic is shared across multiple examples, centralize
    it in a helper module guarded by `#[cfg(doctest)]` to avoid repetition.
 
 5. **Master** `cfg`: Use `#[cfg(doc)]` to control an item's *visibility* in the
-   final documentation. Use `#[cfg(feature = "...")]` or other `cfg` flags
+   final documentation. Use `#[cfg(feature = "…")]` or other `cfg` flags
    *inside* the test block to control its conditional *execution*. Do not
    confuse the two.
 

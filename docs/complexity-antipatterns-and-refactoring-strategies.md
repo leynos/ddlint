@@ -610,7 +610,7 @@ represented as dictionaries.[^24]
       if "key_name" in event_data:
           key = event_data["key_name"]
           handle_keypress(key)
-  #... and so on for other event types
+  #… and so on for other event types
 
    ```
 
@@ -706,7 +706,7 @@ void handleMessage(Message msg) {
         case "TYPE_B":
             processTypeB(msg);
             break;
-        //... more cases
+        //… more cases
         default:
             handleUnknown(msg);
     }
@@ -726,14 +726,14 @@ class TypeAHandler implements MessageHandler {
 class TypeBHandler implements MessageHandler {
     public void handle(Message msg) { /* processTypeB logic */ }
 }
-//... other handlers
+//… other handlers
 
 class MessageDispatcher {
     private Map<String, MessageHandler> handlers = new HashMap<>();
     public MessageDispatcher() {
         handlers.put("TYPE_A", new TypeAHandler());
         handlers.put("TYPE_B", new TypeBHandler());
-        //... register other handlers
+        //… register other handlers
     }
     public void dispatch(Message msg) {
         MessageHandler handler = handlers.getOrDefault(msg.getType(), this::handleUnknown);
@@ -741,7 +741,7 @@ class MessageDispatcher {
             handler.handle(msg);
         }
     }
-    private void handleUnknown(Message msg) { /*... */ }
+    private void handleUnknown(Message msg) { /*… */ }
 }
 ```
 

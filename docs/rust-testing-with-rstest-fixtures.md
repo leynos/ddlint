@@ -718,18 +718,17 @@ async fn async_data_fetcher() -> String {
 // This fixture will be used in an async test later.
 ```
 
-The example above uses `async_std::task::sleep`, aligning with `rstest`'s
-default async runtime support, but the fixture logic can be any async code.
+The example above uses `async_std::task::sleep` purely as a convenient
+stand-in; the fixture may call into whichever runtime your project adopts
+because `rstest` simply awaits the returned future.
 
 ### B. Writing asynchronous tests (`async fn` with `#[rstest]`)
 
-Test functions themselves can also be `async fn`. `rstest` will manage the
-execution of these async tests. By default, `rstest` often uses
-`#[async_std::test]` to annotate the generated async test functions. However,
-it is designed to be largely runtime-agnostic and can be integrated with other
-popular async runtimes like Tokio or Actix. This is typically done by adding
-the runtime's specific test attribute (e.g., `#[tokio::test]` or
-`#[actix_rt::test]`) alongside `#[rstest]`.
+Test functions themselves can also be `async fn`. `rstest` polls the future the
+test returns but does not install or default to an async runtime. Annotate the
+test with the runtime's attribute (for example, `#[tokio::test]`,
+`#[async_std::test]`, or `#[actix_rt::test]`) alongside `#[rstest]` so the
+runtime drives execution.
 
 ```rust,no_run
 use rstest::*;

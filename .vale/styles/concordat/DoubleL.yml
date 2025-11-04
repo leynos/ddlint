@@ -5,8 +5,11 @@ level: error
 ignorecase: true
 nonword: true
 swap:
+  cancelation: cancellation
+  cancelations: cancellations
   canceled: cancelled
   canceling: cancelling
+  cancelable: cancellable
   counselor: counsellor
   counseling: counselling
   counseled: counselled
