@@ -3,9 +3,9 @@
 extends: sequence
 level: warning
 ignorecase: true
-link: https://owl.purdue.edu/owl/general_writing/punctuation/commas/extended_rules_for_commas.html
+link: https://www.chicagomanualofstyle.org/qanda/data/faq/topics/Commas/faq0026.html
 message: >
-  Add a comma before "%[2]s": it links two independent clauses.
+  Add a comma before "%[2]s": it joins two independent clauses.
 
 # Keep this to sentence text; avoid headings/lists where fragments are common.
 scope:
@@ -19,19 +19,20 @@ scope:
 #  - a likely subject starts the following clause,
 #  - and a verb occurs soon after that subject.
 tokens:
-  # Any finite/aux verb somewhere before the conjunction (left clause).
-  - tag: VB|VBD|VBP|VBZ|VBG|VBN|MD
-    skip: 60
+  # Any finite verb or modal somewhere before the conjunction (left clause).
+  - tag: VBZ|VBP|VBD|MD
+    skip: 80
 
   # The coordinating conjunction.
   - pattern: '(?:for|and|nor|but|or|yet|so)'
 
-  # Likely subject starting the right-hand clause.
-  - tag: PRP|EX|DT|NN|NNS|NNP|NNPS
-    skip: 8
+  # Likely subject starting the right-hand clause (pronoun/noun/determiner/etc.).
+  - tag: PRP|PRP\$|EX|DT|WDT|WP|NN|NNS|NNP|NNPS|CD
+    skip: 5
 
-  # And then a verb (or modal) within a few tokens.
-  - tag: VB|VBD|VBP|VBZ|VBG|VBN|MD
+  # A finite verb or modal shortly after that subject. This excludes bare verbs.
+  - tag: VBZ|VBP|VBD|MD
+    skip: 4
 
 # Quick Fix: turn the single whitespace before the coordinator into ", ".
 # The regex runs against the matched sequence and only fires if there’s NOT
