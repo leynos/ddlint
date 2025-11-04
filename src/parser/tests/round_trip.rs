@@ -1,7 +1,7 @@
 //! Round-trip parser tests.
 //!
 //! These tests ensure parsing followed by pretty-printing reproduces the
-//! original source and that basic program structure is detected correctly.
+//! original source, and that basic program structure is detected correctly.
 
 use super::helpers::{parse_err, parse_ok, pretty_print, round_trip};
 use crate::SyntaxKind;
