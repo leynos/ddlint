@@ -2,7 +2,7 @@
 
 This document records the gaps between the historical Haskell parser analysis
 and the updated, normative DDlog syntax specification, then sets out an
-implementation plan to migrate any still‑relevant information into the spec so
+implementation plan to migrate any still‑relevant information into the spec, so
 the Haskell analysis can be fully deprecated.
 
 Terminology: references to the rule right-hand side (RHS) denote the rule body;
@@ -20,8 +20,8 @@ explicitly superseded in the spec:
 - Reservation of host‑language (Rust) keywords as identifiers.
 - Explicit handling status for legacy/compatibility tokens (e.g.,
   `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,`float`,`as`).
-- Statement forms `break`, `continue`, and `return` (parsers and keywords are
-  present in code/roadmaps, but they are not formalized in the spec’s
+- Statement forms `break`, `continue`, and `return` (both the parsers and the
+  keywords are present in code/roadmaps, yet they are not formalized in the
   Statements grammar).
 - A few reserved operator tokens visible in the Haskell parser (`#`, `<=>`)
   that the spec neither reserves nor explicitly deprecates.
@@ -36,14 +36,14 @@ ______________________________________________________________________
 
 ## Findings: content not yet superseded by the spec
 
-1) Host‑language keyword reservation
+1. Host‑language keyword reservation
 
    - The Haskell analysis documents reserving a broad set of Rust keywords to
      avoid code‑generation and embedding conflicts.
    - The current spec lists only DDlog keywords and reserved operators; it does
      not state the host‑language reservation policy.
 
-2) Legacy/compatibility tokens and spellings
+2. Legacy/compatibility tokens and spellings
 
    - The Haskell analysis lists tokens such as
      `Aggregate`, `FlatMap`, `Inspect`, `typedef`, `signed`, `bigint`, `bit`,
@@ -53,25 +53,25 @@ ______________________________________________________________________
      full set of legacy tokens nor specify their acceptance/deprecation status
      (accept with lowering, parse‑time error, or reserved but unused).
 
-3) Control‑flow statements: `break`, `continue`, `return`
+3. Control‑flow statements: `break`, `continue`, `return`
 
    - The Haskell parser (and the published roadmap) recognize these constructs.
    - The spec’s Statements grammar covers `for`/`if`/`match`/`skip`/`block` and
      assignments, but does not include `break`, `continue`, or `return`.
 
-4) Additional reserved operators in Haskell
+4. Additional reserved operators in Haskell
 
    - The Haskell token set includes `#` and `<=>` as single tokens.
-   - The spec’s operator table and special tokens do not mention them, nor state
-     whether they are reserved or removed.
+   - Neither the spec’s operator table nor its special tokens list mentions
+     them, nor states whether they are reserved or removed.
 
-5) Parser entry points
+5. Parser entry points
 
    - The Haskell module exposes both a full‑program parser and an
      expression‑only parser (useful for tests and tooling).
    - The spec documents only the full‑program input/output.
 
-6) Implementation compatibility notes
+6. Implementation compatibility notes
 
    - The Haskell analysis spells out pre‑lexing tab normalization and position
      mapping. The spec references this but could explicitly tie it to entry
