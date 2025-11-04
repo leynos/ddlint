@@ -37,9 +37,9 @@ impl std::error::Error for UnclosedDelimiterError {}
 /// Extract the text inside the first matching pair of delimiters.
 ///
 /// The iterator advances until `open_kind` is encountered and then collects all
-/// elements until the matching `close_kind`. Nested delimiters are balanced so
-/// nested structures are handled correctly. If the closing delimiter is not
-/// found the partially collected text is returned in
+/// elements until the matching `close_kind`. Nested delimiters are balanced.
+/// As a result, nested structures are handled correctly. If the closing delimiter is not
+/// found, the partially collected text is returned in
 /// [`UnclosedDelimiterError`].
 ///
 /// # Example
@@ -62,8 +62,8 @@ impl std::error::Error for UnclosedDelimiterError {}
 ///
 /// # Errors
 ///
-/// Returns an [`UnclosedDelimiterError`] if the opening delimiter is absent or
-/// the closing delimiter is missing.
+/// Returns an [`UnclosedDelimiterError`] if the opening delimiter is absent, or
+/// if the closing delimiter is missing.
 #[must_use = "discarding the extracted text loses delimiter content"]
 pub fn extract_delimited<I>(
     iter: &mut std::iter::Peekable<I>,
