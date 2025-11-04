@@ -492,11 +492,11 @@ for robust argument parsing in the Rust ecosystem.
 
 The core commands will be:
 
-- `ddlint <FILES...>`: This is the default invocation. It will lint a list of
+- `ddlint <FILES…>`: This is the default invocation. It will lint a list of
   specified files or directories, recursively searching for `.dl` files. It
   will respect ignore patterns and output diagnostics to standard error.
 
-- `ddlint --fix <FILES...>`: This command performs the same linting process but
+- `ddlint --fix <FILES…>`: This command performs the same linting process but
   will also apply any safe, automatic fixes suggested by the rules.
 
 - `ddlint rules`: This utility command will list all available lint rules,

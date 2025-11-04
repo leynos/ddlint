@@ -178,7 +178,7 @@ last_commit = git["--no-pager", "log", "-1", "--pretty=%H"]().strip()
 rc, out, err = git["status"].run(retcode=None)
 if rc != 0:
     # handle gracefully; err is available for logging
-    ...
+    …
 
 # Pipelines via the | operator
 shortlog = (git["--no-pager", "log", "--oneline"] | grep["fix"])()
@@ -453,12 +453,12 @@ def test_spy_and_record(cmd_mox, monkeypatch, tmp_path):
 ## Migration guidance (Typer → Cyclopts)
 
 1. Dependencies: replace Typer with Cyclopts in the script’s `uv` block.
-2. Entry point: replace `app = typer.Typer(...)` with `app = App(...)` and
+2. Entry point: replace `app = typer.Typer(…)` with `app = App(…)` and
    configure `Env("INPUT_", command=False)` where environment variables are
    authoritative in CI.
-3. Parameters: replace `typer.Option(...)` with annotations and
-   `Parameter(...)`. Mark required options with `required=True`. Map any
-   non‑matching environment names via `env_var=...`.
+3. Parameters: replace `typer.Option(…)` with annotations and
+   `Parameter(…)`. Mark required options with `required=True`. Map any
+   non‑matching environment names via `env_var=…`.
 4. Lists: remove custom split/trim code. Use list‑typed parameters; add
    `env_var_split=","` where a non‑whitespace delimiter is required.
 5. Compatibility: retain legacy flag names using `aliases=["--old-name"]`.
