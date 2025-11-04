@@ -373,7 +373,7 @@ use std::fmt::Debug;
 
 pub fn assert_lex<'a, T>(
     source: &'a str,
-    expected_tokens: &
+    expected_tokens: &[(T, &'a str, std::ops::Range<usize>)],
 ) 
 where
     T: Logos<'a> + PartialEq + Debug,
@@ -415,7 +415,13 @@ mod tests {
         let source = "let x = 10;";
         assert_lex(
             source,
-            &,
+            &[
+                (Token::Let, "let", 0..3),
+                (Token::Ident("x"), "x", 4..5),
+                (Token::Assign, "=", 6..7),
+                (Token::Integer(10), "10", 8..10),
+                (Token::Semicolon, ";", 10..11),
+            ],
         );
     }
 }
