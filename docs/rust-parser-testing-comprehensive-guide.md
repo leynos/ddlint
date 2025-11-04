@@ -608,7 +608,7 @@ The resulting snapshot should show an error message like "Expected semicolon"
 and an AST that contains *both* the `let x = 1` and `let y = 2;` statements,
 proving that recovery was successful. Experimenting with different recovery
 strategies (e.g., `recover_with(skip_then_retry_until(...))`) and snapshotting
-the results is the most effective way to fine-tune how the parser responds on
+the results is the most effective way to fine-tune how the parser responds to
 invalid input.23
 
 ### 3.4 Validating Pratt parsers (expression parsing)

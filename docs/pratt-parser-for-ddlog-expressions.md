@@ -305,7 +305,7 @@ guard for the duration of the condition parse. While active it interprets
 `IDENT {` as a variable followed by the branch, preventing the condition from
 consuming the branch braces. The guard automatically suspends inside
 parentheses, brace groups, and closure bodies so expressions such as
-`if (Point { x: 1 }) { ... }` or `if cond { Point { x: 1 } }` continue to parse
+`if (Point { x: 1 }) { … }` or `if cond { Point { x: 1 } }` continue to parse
 as intended. This strategy eliminates spurious `expected T_COLON` diagnostics
 without restricting legitimate struct literal usage.
 
@@ -444,7 +444,7 @@ operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
-Literal tokens are normalized in a dedicated helper so prefix parsing remains
+Literal tokens are normalized in a dedicated helper, so prefix parsing remains
 readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE`, and `K_FALSE` to
 `ast::Literal` variants, ensuring numbers, strings, and booleans appear
 directly in the resulting AST.
