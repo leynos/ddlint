@@ -14,10 +14,10 @@ ______________________________________________________________________
 
 A Differential Datalog (DDlog) program consists of imports, type definitions,
 functions, (extern) transformers, relation declarations, index declarations,
-rules, and applies. The parser constructs a `DatalogProgram` from
-these elements, performs a limited set of tree rewrites (e.g., `group_by`
-extraction, legacy `Aggregate` lowering, literal lowering to builder calls),
-enforces name‑uniqueness invariants, and records source provenance.
+rules, and applies. The parser constructs a `DatalogProgram` from these
+elements, performs a limited set of tree rewrites (e.g., `group_by` extraction,
+legacy `Aggregate` lowering, literal lowering to builder calls), enforces
+name‑uniqueness invariants, and records source provenance.
 
 ### 1.1 Entry points and products
 
@@ -286,8 +286,8 @@ LhsAssign       ::= Pattern | Expr       // implementation permits pattern LHS
 ```
 
 **Top‑level `for`:** A top‑level `for` statement is **converted into one or
-more rules** during parsing (desugaring). This affects scoping and where
-variables may appear.
+more rules** during parsing (desugaring). This affects scoping, and it governs
+where variables may appear.
 
 **Break/Continue/Return:**
 
@@ -343,7 +343,7 @@ ______________________________________________________________________
 - The parser extracts `group_by` into an explicit `RHSGroupBy` node bound to
   the magic variable `__group`. The remainder of the expression is re‑emitted
   as a condition/assignment referencing `__group`.
-- Multiple `group_by` occurrences or wrong arity are parse‑time errors.
+- Multiple `group_by` occurrences, or the wrong arity, are parse‑time errors.
 
 ### 6.2 Legacy `Aggregate(…)`
 
@@ -354,8 +354,7 @@ ______________________________________________________________________
 ### 6.3 Head by‑reference (`&Rel{…}`) → `ref_new`
 
 - In a **rule head**, `&Rel{…}` (or bracket form) is rewritten to a call to
-  **`ref_new(Rel{…})`** so that downstream stages can materialize reference
-  values.
+  **`ref_new(Rel{…})`**, so downstream stages can materialize reference values.
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
 
@@ -593,7 +592,7 @@ ______________________________________________________________________
 - **Function resolution:** treat unqualified calls as variables until name
   resolution; only `module::func` is parsed as a function call token.
 - **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
-  parser (or immediately after) so later phases can assume a uniform
+  parser (or immediately after), so later phases can assume a uniform
   representation (`RHSGroupBy`).
 - **Tabs and positions:** perform any tab normalization before lexing and
   preserve a mapping for accurate diagnostics.
