@@ -162,7 +162,7 @@ Guidance:
   config_out: Annotated[Path | None, Parameter(env_var="INPUT_CONFIG_PATH")] = None
   ```
 
-## plumbum: command calling and pipelines
+## Plumbum: command calling and pipelines
 
 ### Basics: command calls, capturing output, handling failures
 
@@ -228,7 +228,7 @@ assert out.splitlines() == ["1.2.3", "2.0.0"]
 count = (git["--no-pager", "log", "--oneline"] | grep["chore"] | wc["-l"])().strip()
 ```
 
-## pathlib: robust path manipulation
+## Pathlib: robust path manipulation
 
 ### Project roots, joins, and ensuring directories
 
@@ -282,7 +282,7 @@ except FileNotFoundError:
     pass
 ```
 
-## Cyclopts + plumbum + pathlib together (reference script)
+## Cyclopts + Plumbum + Pathlib together (reference script)
 
 ```python
 #!/usr/bin/env -S uv run python
