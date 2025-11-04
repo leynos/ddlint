@@ -300,7 +300,7 @@ This phase focuses on creating a polished and usable tool for the end-user.
   - [ ] Replace the placeholder `main.rs` with a full CLI using the `clap`
     crate.
 
-  - [ ] Implement the default linting command: `ddlint <FILES...>`.
+  - [ ] Implement the default linting command: `ddlint <FILES…>`.
 
   - [ ] Implement the `ddlint rules` subcommand to list all available rules.
 

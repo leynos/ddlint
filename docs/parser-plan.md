@@ -76,7 +76,7 @@ sequenceDiagram
     participant ASTRoot
     Parser->>SpanCollector: collect_function_spans(tokens, src)
     SpanCollector-->>Parser: (function_spans, errors)
-    Parser->>CSTBuilder: build_green_tree(..., spans, ...)
+    Parser->>CSTBuilder: build_green_tree(…, spans, …)
     CSTBuilder-->>ASTRoot: Root::from_green(green)
     ASTRoot->>ASTRoot: functions() -> Vec<Function>
 ```

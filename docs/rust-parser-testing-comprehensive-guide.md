@@ -248,7 +248,7 @@ order of declaration in the
 
 `enum` can influence which token is matched. While `logos` attempts to
 prioritize longer matches, complex regex interactions can sometimes lead to
-surprising results. The `#[token(..., priority = N)]` attribute can be used to
+surprising results. The `#[token(…, priority = N)]` attribute can be used to
 explicitly resolve these ambiguities by assigning a higher priority to more
 specific tokens.
 
@@ -457,12 +457,12 @@ pub enum Stmt<'a> {
         name: &'a str,
         value: Expr<'a>,
     },
-    //... other statements
+    //… other statements
 }
 
 pub enum Expr<'a> {
     Literal(u64),
-    //... other expressions
+    //… other expressions
 }
 
 // And a parser function for 'let' statements:
@@ -607,7 +607,7 @@ fn snapshot_recovery_from_missing_semicolon() {
 The resulting snapshot should show an error message like "Expected semicolon"
 and an AST that contains *both* the `let x = 1` and `let y = 2;` statements,
 proving that recovery was successful. Experimenting with different recovery
-strategies (e.g., `recover_with(skip_then_retry_until(...))`) and snapshotting
+strategies (e.g., `recover_with(skip_then_retry_until(…))`) and snapshotting
 the results is the most effective way to fine-tune how the parser responds to
 invalid input.23
 
@@ -628,7 +628,7 @@ tree in a simple, readable format like S-expressions.
 // In ddlint, prefer: expr.to_sexpr().
 // The helper below is illustrative for this guide.
 fn to_sexpr(expr: &Expr) -> String {
-    //... implementation...
+    //… implementation…
     // e.g., Add(Box(Literal(1)), Box(Literal(2))) -> "(+ 1 2)"
 }
 

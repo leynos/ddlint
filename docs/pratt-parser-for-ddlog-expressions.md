@@ -59,7 +59,7 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     Tuple(Vec<Expr>),
-    // ... other expression types like Struct, Match, If-Else, etc.
+    // … other expression types like Struct, Match, If-Else, etc.
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -222,7 +222,7 @@ pub fn expression_parser() -> impl Parser<SyntaxKind, ast::Expr, Error = Simple<
             },
         )
         .left(),
-        // ... other comparison operators ...
+        // … other comparison operators …
 
         // Precedence level 3: && (Logical AND)
         Operator::new(
@@ -342,7 +342,7 @@ node. The header is handled in three parts:
   so destructuring patterns remain verbatim. The range is trimmed to remove
   surrounding whitespace but the inner formatting is untouched.
 - **Iterable expression:** parsed with struct literals temporarily re-enabled so
-  constructs like `for (row in Rows { ... })` continue to work.
+  constructs like `for (row in Rows { … })` continue to work.
 - **Guard:** if the header contains `if`, the guard expression reuses
   `parse_if_clause` which already implements precise diagnostics for missing or
   malformed expressions. Guards are stored as `Option<Box<Expr>>` and omitted
@@ -417,7 +417,7 @@ impl Expression {
                 // Reconstruct the (SyntaxKind, Span) stream at this point
                 // This part needs careful implementation.
             }
-            // ...
+            // …
         });
 
         // expression_parser().parse(tokens)
@@ -467,7 +467,7 @@ variants. This design allows chaining like `foo.bar(x).0` without extra
 precedence rules.
 
 Struct literals, tuple literals, and closures extend the prefix grammar. Struct
-construction recognizes `Ident { field: expr, ... }` and records field order in
+construction recognizes `Ident { field: expr, … }` and records field order in
 the AST. Tuple literals are distinguished from grouped expressions by the
 presence of a comma or an empty pair of parentheses. Both structs and tuples
 accept trailing commas. Closure literals parse a pipe-delimited parameter list
