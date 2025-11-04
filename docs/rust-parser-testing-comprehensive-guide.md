@@ -29,7 +29,7 @@ build a truly resilient and maintainable parsing pipeline.
 ## Section 1: Foundational testing paradigms for Rust parsers
 
 Before delving into the specifics of testing each component, it is crucial to
-establish a conceptual framework. A robust testing strategy for a parser is not
+establish a conceptual framework. A parser's testing strategy is not
 monolithic; it is a layered approach where different techniques are applied to
 validate different aspects of the system. This section outlines this framework,
 adapting classic testing models to the domain of language engineering and
@@ -46,10 +46,10 @@ independent units but stages in a data transformation pipeline. A subtle change
 in a token definition within the lexer can have cascading effects, altering the
 structure of the final syntax tree or the quality of error messages.1
 
-This interconnectedness suggests that while unit tests for individual
-components are valuable, the highest leverage often comes from tests that
-validate the integration of these components. A single, well-designed test that
-verifies the entire process from source text to final Abstract Syntax Tree
+This interconnectedness suggests that unit tests focusing on individual
+components remain valuable, yet the highest leverage often comes from tests
+that validate the integration of these components. A single, well-designed test
+that verifies the entire process from source text to final Abstract Syntax Tree
 (AST) can provide more assurance than hundreds of isolated unit tests.
 Consequently, the ideal testing structure for a parser often resembles a
 "diamond" or an "inverted pyramid" more than a classic one. The base is still
@@ -74,11 +74,11 @@ the parser's long-term correctness and maintainability.
 A well-organized test suite is critical for maintainability. Rust's standard
 testing conventions provide a solid foundation.4
 
-- **Unit Tests:** Tests for individual lexer tokens or isolated parser rules are
-  best placed within a `mod tests` block, annotated with `#[cfg(test)]`, inside
-  the source file where the code under test is defined. This co-location makes
-  it easy to find and update tests when the corresponding implementation
-  changes.
+- **Unit Tests:** Tests covering individual lexer tokens, or isolated parser
+  rules, are best placed within a `mod tests` block, annotated with
+  `#[cfg(test)]`, inside the source file where the code under test is defined.
+  This co-location makes it easy to find and update tests when the
+  corresponding implementation changes.
 
 - **Integration and Corpus-Based Tests:** Larger tests, especially those that
   operate on entire source files, are typically placed in a top-level `tests/`
@@ -96,7 +96,7 @@ To navigate the different testing methodologies, the following table summarizes
 the primary tools and their roles within the context of parser development. It
 serves as a mental model for selecting the right tool for a given testing task.
 
-The main strategies and tools are:
+The main strategies, along with their supporting tools, are:
 
 - **Example-Based Testing** with `rstest`: Verifies specific scenarios and
   handles edge cases or known bugs. Best used for token validation, precedence
@@ -108,8 +108,8 @@ The main strategies and tools are:
   random input generation and round-trip validation. Best used for parser
   robustness, AST round-trips, and invariant testing.
 
-This structured approach, combining conventional file organization, a clear
-understanding of each testing paradigm's purpose, and targeted tooling, lays
+This structured approach—combining conventional file organization, a clear
+understanding of each testing paradigm's purpose, plus targeted tooling—lays
 the groundwork for the robust and maintainable test suite detailed in the
 following sections.
 
@@ -200,10 +200,10 @@ source.21
 
 Therefore, a bug in a token's span is not merely a lexer issue; it is a
 critical flaw that will manifest as misleading error diagnostics or a corrupted
-syntax tree. Testing spans and slices must be treated as a first-class concern,
-on par with testing the token kind itself. The `logos::Lexer` provides the
-`span()` and `slice()` methods to access this information, and these should be
-asserted in every relevant test.15
+syntax tree. Testing spans, together with slices, must be treated as a
+first-class concern, on par with testing the token kind itself. The
+`logos::Lexer` provides the `span()` and `slice()` methods to access this
+information, and these should be asserted in every relevant test.15
 
 ```rust,no_run
 // Continuing in #[cfg(test)] mod tests
@@ -303,7 +303,7 @@ correct. This includes testing successful transformations, error conditions,
 and special lexer actions like `logos::Skip`. The `logos` repository's own test
 suite provides excellent examples of these patterns.22
 
-Consider a callback for parsing hexadecimal integer literals that can fail if
+Consider a callback that parses hexadecimal integer literals; it can fail if
 the number is too large:
 
 ```rust,no_run
@@ -613,16 +613,16 @@ fn snapshot_recovery_from_missing_semicolon() {
 The resulting snapshot should show an error message like "Expected semicolon"
 and an AST that contains *both* the `let x = 1` and `let y = 2;` statements,
 proving that recovery was successful. Experimenting with different recovery
-strategies (e.g., `recover_with(skip_then_retry_until(…))`) and snapshotting
-the results is the most effective way to fine-tune how the parser responds to
+strategies (e.g., `recover_with(skip_then_retry_until(…))`), and snapshotting
+the results, is the most effective way to fine-tune how the parser responds to
 invalid input.23
 
 ### 3.4 Validating Pratt parsers (expression parsing)
 
-Parsing expressions with operator precedence and associativity is a classic
-parsing problem. `chumsky` provides a built-in `pratt` parser that simplifies
-this immensely.24 Testing a Pratt parser involves systematically verifying that
-it respects the defined precedence and associativity rules.
+Parsing expressions with operator precedence, as well as associativity, is a
+classic parsing problem. `chumsky` provides a built-in `pratt` parser that
+simplifies this immensely.24 Testing a Pratt parser involves systematically
+verifying that it respects the defined precedence and associativity rules.
 
 `rstest` is again an excellent choice for creating a table of expression inputs
 and their expected AST representations.
@@ -660,13 +660,13 @@ notoriously tricky part of any language, matches the specification precisely.
 
 ## Section 4: Ensuring the integrity of `rowan` lossless syntax trees
 
-The final output of the `logos` and `chumsky` pipeline is often a `rowan` tree.
-`rowan` provides data structures for creating a Concrete Syntax Tree (CST).
-Unlike a traditional Abstract Syntax Tree (AST), a `rowan` CST is "lossless" or
-"full-fidelity," meaning it represents the source text exactly, including all
-whitespace, comments, and even syntax errors.21 This makes it an ideal data
-structure for tooling that needs to inspect or modify source code without
-losing formatting, such as IDEs, formatters, and refactoring engines.29
+The final output of the combined `logos` and `chumsky` pipeline is often a
+`rowan` tree. `rowan` provides data structures for creating a Concrete Syntax
+Tree (CST). Unlike a traditional Abstract Syntax Tree (AST), a `rowan` CST is
+"lossless" or "full-fidelity," meaning it represents the source text exactly,
+including all whitespace, comments, and even syntax errors.21 This makes it an
+ideal data structure for tooling that needs to inspect or modify source code
+without losing formatting, such as IDEs, formatters, and refactoring engines.29
 
 ### 4.1 The `rowan` philosophy: losslessness and its testing implications
 
@@ -792,10 +792,11 @@ methods for navigating the tree, as demonstrated in `rowan`'s
 
 For example, a `FunctionDef` struct might wrap a `SyntaxNode` of kind `FN_DEF`
 and provide methods like `name() -> Option<SyntaxToken>` and
-`body() -> Option<BlockExpr>`. Tests for this layer should verify that these
-navigational methods work correctly. They should check that the accessors
+`body() -> Option<BlockExpr>`. Tests targeting this layer should verify that
+these navigational methods work correctly. They should check that the accessors
 return the expected node types (`Some` for well-formed input, `None` for
-malformed input) and that the returned nodes are themselves correct.
+malformed input), and they should confirm that the returned nodes are
+themselves correct.
 
 ```rust,no_run
 // Assuming a typed AST layer exists
@@ -861,12 +862,12 @@ The core workflow of property-based testing is:
    fails, `proptest` begins a shrinking process, iteratively simplifying the
    failing input to find a minimal counterexample.
 
-For parsers, this approach is invaluable for uncovering obscure bugs that would
-be nearly impossible to find with handwritten tests.
+For parsers, this approach is invaluable, because it uncovers obscure bugs that
+would be nearly impossible to find with handwritten tests.
 
 ### 5.2 Fuzzing the lexer and parser for panics
 
-The simplest and most fundamental property of any robust program is "it does
+The simplest, and most fundamental, property of any robust program is "it does
 not crash." Applying this to a parser means that, regardless of the input
 quality, it should never panic. It should either parse successfully or return a
 structured error.
@@ -900,8 +901,8 @@ turning a discovered bug into a permanent regression test.13
 
 ### 5.3 The ultimate property: AST round-trip testing
 
-The most powerful property for a parser is round-trip correctness: for any
-valid AST, pretty-printing it to a string, and parsing that string back should
+The most powerful property, for a parser, is round-trip correctness: for any
+valid AST, pretty-printing it to a string, and parsing that string back, should
 result in an identical AST. This can be expressed as
 `parse(pretty_print(ast)) == Ok(ast)`. If this property holds, it provides
 exceptionally strong evidence that the parser can correctly handle any valid
@@ -1025,20 +1026,20 @@ example, if the pretty-printer fails to add necessary parentheses around a
 lower-precedence operation, the `parse` function will correctly interpret the
 resulting string according to its precedence rules, leading to a different AST,
 which triggers a test failure. This forces the developer to ensure that the
-parser and pretty-printer are perfectly synchronized, significantly improving
-the overall quality and correctness of the language implementation. This
-symbiotic relationship elevates the pretty-printer from a simple utility to a
-critical component of the testing infrastructure.
+parser, and the pretty-printer, remain perfectly synchronized, significantly
+improving the overall quality and correctness of the language implementation.
+This symbiotic relationship elevates the pretty-printer from a simple utility
+to a critical component of the testing infrastructure.
 
 ## Section 6: conclusion: a holistic testing philosophy for language engineering
 
-The development of a robust parser is a complex endeavour that demands a testing
-strategy as sophisticated as the parser itself. This guide has detailed a
-multi-layered approach, leveraging the strengths of the modern Rust testing
+The development of a robust parser is a complex endeavour that demands a
+testing strategy as sophisticated as the parser itself. This guide has detailed
+a multi-layered approach, leveraging the strengths of the modern Rust testing
 ecosystem to build confidence in a parser constructed with `logos`, `chumsky`,
 and `rowan`. By moving from foundational unit tests to comprehensive snapshot
 and property-based tests, developers can create a formidable shield against
-regressions and uncover bugs that would otherwise remain hidden.
+regressions, and they can uncover bugs that would otherwise remain hidden.
 
 The key takeaways from this analysis can be synthesized into a holistic testing
 philosophy:
@@ -1071,8 +1072,8 @@ philosophy:
    structure.
 
 For integration into a Continuous Integration (CI) and Continuous Deployment
-(CD) pipeline, a tiered approach is recommended. The fast-running unit tests
-and snapshot tests should be executed on every commit to provide rapid
+(CD) pipeline, a tiered approach is recommended. The fast-running unit tests,
+and the snapshot tests, should be executed on every commit to provide rapid
 feedback. The more computationally expensive `proptest` suites, particularly
 the AST round-trip test, can be run nightly, or as a mandatory check before a
 release, ensuring that deeper, more subtle bugs are caught without slowing down
