@@ -341,7 +341,7 @@ node. The header is handled in three parts:
 
 - **Pattern extraction:** tokens before `in` are sliced directly from the source
   so destructuring patterns remain verbatim. The range is trimmed to remove
-  surrounding whitespace but the inner formatting is untouched.
+  surrounding whitespace, but the inner formatting is untouched.
 - **Iterable expression:** parsed with struct literals temporarily re-enabled,
   so constructs like `for (row in Rows { … })` continue to work.
 - **Guard:** if the header contains `if`, the guard expression reuses
@@ -395,7 +395,7 @@ layout of `ast::expr`. Tests should continue using the helpers in `test_util`
 for common patterns, but direct use of `MatchArm` is available whenever bespoke
 arm construction is clearer than chaining builders.
 
-The typed AST wrapper for this new node would look something like this:
+A typed AST wrapper describing this new node would look something like this:
 
 ```rust,no_run
 // In src/parser/ast/mod.rs or a new file
@@ -454,7 +454,7 @@ Operator precedence is centralized in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
-The precedence for type and control operators is, from highest to lowest:
+Type and control operators follow this precedence, from highest to lowest:
 `:`, `as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
 parses as `(a and b) = c`. Ascription and cast bind more tightly than
 assignment but looser than arithmetic operators.
