@@ -33,10 +33,10 @@ tags transparently.
 Use `chumsky`'s text utilities (or integrate a `logos` lexer if preferred) to
 convert the source text into a stream of `(SyntaxKind, Span)` pairs. Each span
 records byte offsets so that the resulting CST can precisely mirror the input.
-Whitespace and comments should produce tokens so they can be preserved. The
-current implementation opts for a small `logos` lexer because it keeps the
-token definitions declarative while still interoperating smoothly with
-`chumsky` parsers. Keyword lookups use a `phf::Map` for zero-cost perfect
+Whitespace together with comments should produce tokens, so they can be
+preserved. The current implementation opts for a small `logos` lexer because it
+keeps the token definitions declarative while still interoperating smoothly
+with `chumsky` parsers. Keyword lookups use a `phf::Map` for zero-cost perfect
 hashing.
 
 ```mermaid
@@ -82,9 +82,9 @@ sequenceDiagram
 ```
 
 `build_green_tree` expects every list of statement spans to be sorted by start
-offset and free from overlaps. The function checks all span lists and panics
-with aggregated messages if any are misordered, preventing mismatched nodes in
-the resulting CST.
+offset and free from overlaps. The function checks all span lists, and it
+panics with aggregated messages if any are misordered, preventing mismatched
+nodes in the resulting CST.
 
 ## 5. Map CST nodes to AST structures
 
@@ -130,6 +130,7 @@ requests.
 
 ## 10. Modelling trivia tokens
 
-Whitespace and comments are tokenized as `T_WHITESPACE` and `T_COMMENT`
-variants, so the CST preserves them. AST wrappers skip over these trivia nodes,
-ensuring that semantic analyses operate on significant tokens only.
+Whitespace tokens, together with comment tokens, are emitted as `T_WHITESPACE`
+and `T_COMMENT` variants, so the CST preserves them. AST wrappers skip over
+these trivia nodes, ensuring that semantic analyses operate on significant
+tokens only.
