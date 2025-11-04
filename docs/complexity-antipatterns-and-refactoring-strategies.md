@@ -2,8 +2,8 @@
 
 ## 1. Introduction: the challenge of software complexity
 
-Software development is an inherently complex endeavour. As systems evolve and
-features are added, the intricacy of the codebase tends to increase, often
+Software development is an inherently complex endeavour. As systems evolve, and
+as features are added, the intricacy of the codebase tends to increase, often
 leading to challenges in maintenance, scalability, and developer productivity.
 "Any fool can write code that a computer can understand. Good programmers write
 code that humans can understand".[^1] This adage underscores a fundamental
@@ -38,13 +38,13 @@ quantitative measure of the number of linearly independent paths through a
 program's source code.[^3] It essentially quantifies the structural complexity
 of a program by counting decision points that can affect the execution
 flow.[^4] This metric is computed using the control-flow graph of the program,
-where nodes represent indivisible groups of commands and directed edges connect
-nodes if one command can immediately follow another.[^3]
+where nodes represent indivisible groups of commands, and directed edges
+connect nodes if one command can immediately follow another.[^3]
 
-The formula for Cyclomatic Complexity is often given as M=E−N+2P, where E is
+Cyclomatic Complexity is often expressed with the formula M=E−N+2P, where E is
 the number of edges, N is the number of nodes, and P is the number of connected
 components (typically 1 for a single program or method).[^3] A simpler
-formulation for a single subroutine is
+formulation applies to a single subroutine:
 
 M = number of decision points + 1, where decision points include constructs
 like `if` statements and conditional loops.[^3]
@@ -66,9 +66,9 @@ Complexity scores[^3]:
 - 51+: Untestable code, very high risk.[^5]
 
   SonarQube suggests similar thresholds, with scores above 20 generally
-  indicating a need for refactoring.[^1] While Cyclomatic Complexity is
-  valuable for assessing how difficult code will be to test, it doesn't always
-  align with how difficult it is for a human to understand.[^6]
+  indicating a need for refactoring.[^1] While Cyclomatic Complexity helps
+  assess how difficult code will be to test, the metric doesn't always align
+  with how difficult it is for a human to understand.[^6]
 
 ### B. Cognitive complexity: measuring understandability
 
@@ -156,8 +156,8 @@ when looking at the code's shape.[^9]
 A method exhibiting the Bumpy Road antipattern typically contains multiple
 sections, each characterized by deep nesting of conditional logic or loops.[^9]
 Each "bump" in the road—a segment of deeply indented code—often signifies a
-distinct responsibility or a separate logical chunk that has not been properly
-encapsulated.[^9]
+distinct responsibility, or even a separate logical chunk, that has not been
+properly encapsulated.[^9]
 
 Key characteristics include[^6]:
 
@@ -192,7 +192,7 @@ The severity of a Bumpy Road can be assessed by[^6]:
 
 Fundamentally, a Bumpy Road signifies a function that is trying to do too many
 things, violating the Single Responsibility Principle. It acts as an obstacle
-to comprehension, forcing developers to slow down so they must pay meticulous
+to comprehension, forcing developers to slow down, so they must pay meticulous
 attention, much like a physical bumpy road slows down driving.[^9]
 
 ### B. How it forms and its impact
@@ -201,11 +201,11 @@ The Bumpy Road antipattern, like many software antipatterns, often emerges from
 development practices that prioritize short-term speed over long-term
 structural integrity.[^2] Rushed development cycles, lack of clear design, or
 cutting corners on maintenance can lead to the gradual accumulation of
-conditional logic within a single function.[^2] As new requirements or edge
-cases are handled, developers might add additional conditional branches to an
-existing method. Examples include an `if` statement, a loop, or a deeply nested
-match added in haste when a team could instead step back to refactor and create
-appropriate abstractions.
+conditional logic within a single function.[^2] As new requirements emerge
+alongside additional edge cases, developers might add conditional branches to
+an existing method. Examples include an `if` statement, a loop, or a deeply
+nested match added in haste when a team could instead step back to refactor and
+create appropriate abstractions.
 
 The impact of this antipattern is significant:
 
@@ -213,10 +213,10 @@ The impact of this antipattern is significant:
   it extremely difficult for developers to follow the logic and understand the
   method's overall purpose.[^9]
 
-- **Increased Maintenance Costs:** Modifying or debugging such code is
-  time-consuming and error-prone. A change in one "bump" can have unintended
-  consequences in another, especially if state is shared or manipulated across
-  these logical chunks.[^2]
+- **Increased Maintenance Costs:** Modifying that code, as well as debugging
+  it, is time-consuming and error-prone. A change in one "bump" can have
+  unintended consequences in another, especially if state is shared or
+  manipulated across these logical chunks.[^2]
 
 - **Higher Defect Rates:** The heavy tax on working memory and the risk of
   feature entanglement contribute to a higher likelihood of introducing
@@ -246,8 +246,9 @@ Preventing the Bumpy Road begins with a commitment to sound software
 engineering principles from the outset.
 
 1. **Adherence to the Single Responsibility Principle:** Ensure that each
-   function or method has one clear, well-defined responsibility.[^8] When a
-   function handles multiple distinct logical blocks, decompose it immediately.
+   function, and each method, has one clear, well-defined responsibility.[^8]
+   When a function handles multiple distinct logical blocks, decompose it
+   immediately.
 
 2. **Incremental Refactoring:** Don't wait for complexity to accumulate.
    Refactor code regularly as part of the development process, not as a
@@ -347,7 +348,8 @@ Recognizing early warning signs can prevent minor complexity issues from
 escalating into full-blown Bumpy Roads.
 
 1. **Increasing Cognitive Complexity Scores:** A rising Cognitive Complexity
-   score for a method in static analysis tools is a direct indicator.[^8]
+   score, as reported for a method in static analysis tools, is a direct
+   indicator.[^8]
 
 2. **Deeply Nested Logic:** Even a single area of deep nesting (more than 2–3
    levels) should be a concern. If multiple such areas appear in the same
@@ -382,8 +384,8 @@ teams can maintain a smoother, more navigable codebase.
 ## 5. Broader implications and clean refactoring approaches
 
 High complexity and antipatterns like the Bumpy Road stem from violations of
-fundamental software design principles. Understanding these connections and
-applying sophisticated refactoring techniques are essential for building
+fundamental software design principles. Understanding these connections, while
+applying sophisticated refactoring techniques, is essential for building
 maintainable systems.
 
 ### A. Relation to separation of concerns and command query responsibility segregation
@@ -397,7 +399,7 @@ code of a computer program. Modularity is achieved by encapsulating information
 within a section of code that has a well-defined interface.[^13]
 
 The Bumpy Road antipattern is a direct violation of SoC. Each "bump" in the
-code often represents a distinct concern or responsibility that has been
+code often represents a distinct concern, or responsibility, that has been
 improperly co-located within a single method.[^9] For example, a single method
 might handle input validation, business logic processing for different cases,
 data transformation, and error handling for each case, all intermingled.
@@ -441,7 +443,7 @@ distinct command-like operations, are tangled together.
   smaller, more focused methods or handlers for each command and query,
   reducing the likelihood of a single method accumulating many "bumps" of
   unrelated logic.[^14] For instance, a method that both fetches data for a
-  complex report and then allows modifications based on that report could
+  complex report, and then allows modifications based on that report, could
   become very complex. Command Query Responsibility Segregation would split
   this into a query to fetch the data and separate commands for any
   modifications.
@@ -537,9 +539,9 @@ pieces—making it as difficult to follow as the original spaghetti.[^17]
 
 7. **Focus on System Flow:** While individual components in Ravioli code might
    be simple, the difficulty lies in tracing the overall execution flow. Ensure
-   that the interactions and dependencies between components are clear and easy
-   to follow. A slightly larger, more cohesive component often proves superior
-   to many tiny ones when it improves overall system behaviour clarity.
+   that the interactions, and the dependencies between components, are clear
+   and easy to follow. A slightly larger, more cohesive component often proves
+   superior to many tiny ones when it improves overall system behaviour clarity.
 
 The goal is not to have the fewest classes or methods, but to have a structure
 where each component is easy to understand in isolation, and the interactions
@@ -751,8 +753,9 @@ adding new handler classes and registering them with the dispatcher, often
 without modifying existing dispatcher code (aligning with the Open/Closed
 Principle). However, it's important to ensure that the dispatch mechanism
 itself remains clear and that the proliferation of small classes doesn't lead
-to Ravioli Code, where the overall system flow becomes obscured.[^17] Clear
-naming conventions and logical organization are vital.[^31]
+to Ravioli Code, where the overall system flow becomes obscured.[^17] Maintain
+clear naming conventions, and ensure the logical organization remains
+consistent.[^31]
 
 The **State pattern** is a related behavioural pattern useful when an object's
 behaviour changes depending on its internal state.[^32] Instead of using large
@@ -764,7 +767,7 @@ effective for refactoring state machines implemented with complex
 `if/else` or `switch` statements.[^32]
 
 Thoughtfully apply these refactoring strategies to significantly reduce
-cognitive complexity and create codebases that are more understandable,
+cognitive complexity, and to create codebases that are more understandable,
 maintainable, and adaptable to future changes.
 
 ## 6. Conclusion: towards a more maintainable and understandable codebase
@@ -802,8 +805,9 @@ through a proactive and disciplined approach. This includes regular code
 reviews, monitoring complexity metrics, and fostering a team culture that
 values code quality and continuous improvement. The oft-quoted wisdom, "Good
 programmers write code that humans can understand"[^1], remains the guiding
-principle. Strive for this ideal to build systems that are powerful, efficient,
-and genuinely enjoyable for the team to evolve and maintain.
+principle. Strive for this ideal. That focus delivers systems that are
+powerful, efficient, and genuinely enjoyable for the team to evolve and
+maintain.
 
 ## Works cited
 
