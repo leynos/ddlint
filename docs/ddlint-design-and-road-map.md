@@ -9,10 +9,10 @@ mission of this project is to enhance developer productivity and code quality
 within the DDlog ecosystem by providing a performant, configurable, and
 user-friendly linter.
 
-The design philosophy is centered on delivering a superior Developer Experience
-(DX), not only for the end-users who will consume the linter's diagnostics but
-also for the engineers who will contribute to its development. This is achieved
-through a carefully selected, modern technology stack coupled with an
+Developer Experience (DX) sits at the core of the design philosophy. The linter
+must satisfy the end-users who will consume the diagnostics, and it must
+empower the engineers who contribute to its development. This is achieved
+through a carefully selected, modern technology stack, coupled with an
 architecture that prioritizes clarity, modularity, and extensibility. Every
 design choice, from the foundational data structures to the user-facing output,
 is made with the goal of creating a tool that is both powerful in its analysis
@@ -181,7 +181,7 @@ strategy where each part reinforces the others.
 
 ## 2. The parsing pipeline: from source text to syntax tree
 
-The first and most critical step in the linting process is the transformation
+The first, and most critical, step in the linting process is the transformation
 of raw DDlog source text into the structured `rowan` CST that the rest of the
 system consumes. The quality and resilience of this parsing stage directly
 determine the linter's ability to provide value, especially when evaluating
@@ -371,11 +371,11 @@ development, rather than a rigid "gatekeeper" that only runs after the fact.
 
 ## 3. The rule ecosystem: definition, configuration, and management
 
-The true power and utility of a linter are derived from its set of rules. A
-well-designed rule ecosystem is one that is easy for contributors to extend,
-simple for users to configure, and logically organized. This section details
-the anatomy of a lint rule, the tools for its creation, and the initial catalog
-of rules to be implemented.
+The true power, and the resulting utility, of a linter are derived from its set
+of rules. A well-designed rule ecosystem is one that is easy for contributors
+to extend, simple for users to configure, and logically organized. This section
+details the anatomy of a lint rule, the tools for its creation, and the initial
+catalog of rules to be implemented.
 
 ### 3.1. Anatomy of a lint rule
 
@@ -479,8 +479,8 @@ adopters.
 ## 4. User interface and configuration layer
 
 The success of a developer tool depends heavily on its user interface. A
-powerful analysis engine is of little use if it is difficult to configure or
-its output is hard to understand. This section defines the command-line
+powerful analysis engine is of little use if it is difficult to configure, or
+if its output is hard to understand. This section defines the command-line
 interface (CLI) and configuration system for `ddlint`, designed to be intuitive
 for new users while remaining powerful for advanced use cases.
 
@@ -508,7 +508,7 @@ The core commands will be:
   directly from the doc comments in the `declare_lint!` macro.6 This allows
   users to understand a warning without leaving their terminal.
 
-Key command-line arguments and flags will include:
+Key command-line arguments, and their flags, will include:
 
 - `--format <compact|json|rich>`: Controls the output format. The `rich` format
   (default) will use `miette` for beautiful, annotated output. `json` will
@@ -558,7 +558,7 @@ be simple and extensible. The following table specifies the initial schema.
 | Key                       | Type             | Default                                            | Description                                                                                                                                                         |
 | ------------------------- | ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | extends                   | String           | (none)                                             | A path to a base configuration file. Settings from the current file will override settings from the extended file.                                                  |
-| ignore_patterns           | Array of Strings | [".git/", "build/", "target/"]                     | A list of glob patterns for files and directories that should be excluded from linting.                                                                             |
+| ignore_patterns           | Array of Strings | [".git/", "build/", "target/"]                     | A list of glob patterns that exclude specific files and directories from linting.                                                                                   |
 | [rules]                   | Table            | (empty)                                            | This section is the primary location for configuring individual rule severities and options.                                                                        |
 | [rules].`<rule-name>`     | String           | (rule default)                                     | Sets the severity for a rule. Valid values are "allow" (disables the rule), "warn", or "error". An error will cause the linter to exit with a non-zero status code. |
 | [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The level is set alongside rule-specific configuration keys.                                                                     |
@@ -645,9 +645,9 @@ automatically when run with the `--fix` flag.
 
 The implementation of this feature must be carefully designed to work with the
 immutable `rowan` tree and the parallelized rule runner. The core data
-structure for a fix will be a "suggestion," which consists of a `TextRange`
-(the slice of the original source text to be replaced) and a `String` (the new
-text to insert).
+structure for a fix, called a "suggestion," consists of a `TextRange` (the
+slice of the original source text to be replaced) and a `String` (the new text
+to insert).
 
 The autofixing workflow will proceed as follows:
 
@@ -660,8 +660,8 @@ The autofixing workflow will proceed as follows:
    because applying a fix in-place would invalidate the text ranges for all
    other nodes, making parallel execution impossible.
 
-3. After the parallel run is complete and all suggestions have been collected,
-   the runner checks if the `--fix` flag was provided.
+3. After the parallel run is complete, and after all suggestions have been
+   collected, the runner checks if the `--fix` flag was provided.
 
 4. If it was, the runner first filters the suggestions to ensure there are no
    overlapping fixes, as applying two fixes to the same piece of code is
@@ -680,10 +680,10 @@ The autofixing workflow will proceed as follows:
 
 Autofixing is an immensely powerful feature, but it is also inherently
 dangerous. A bug in the fixing logic can silently corrupt a user's source code,
-leading to a catastrophic loss of trust in the tool. Therefore, the testing
-strategy for autofixable rules must be exceptionally rigorous, going beyond
-simply testing the diagnostic output. It must validate the correctness of the
-code transformation itself.
+leading to a catastrophic loss of trust in the tool. Therefore, testing
+autofixable rules demands an exceptionally rigorous strategy, one that goes
+beyond simply testing the diagnostic output. It must validate the correctness
+of the code transformation itself.
 
 This leads to a "dual snapshot" testing approach. For any autofixable rule, two
 distinct types of tests are required. The first is the standard diagnostic
@@ -705,9 +705,10 @@ structured as follows:
 4. It uses `insta::assert_snapshot!` to assert this modified string against a
    stored snapshot.
 
-The workflow for a developer implementing a new fix is seamless. The first time
-they run this new test, it will fail because no snapshot exists. `insta` will
-save the transformed code into a `.snap.new` file.10 The developer then uses
+Developers implementing a new fix follow an intentionally seamless workflow.
+The first time they run this new test, it will fail because no snapshot exists.
+`insta` will save the transformed code into a `.snap.new` file.10 The developer
+then uses
 
 `cargo insta review` to examine the proposed change. If the code transformation
 is correct, they accept it, and it becomes the new, approved snapshot. From
@@ -739,8 +740,8 @@ that takes a string of DDlog code and the specific rule to be tested as input.
 It will then execute the full parsing and linting pipeline but *only* for that
 single rule, returning the list of diagnostics it produced.
 
-Test cases for each rule will be written to cover both positive and negative
-scenarios. For example, for the `unused-relation` rule, there would be a
+Each rule will have test cases covering both positive and negative scenarios.
+For example, for the `unused-relation` rule, there would be a
 `test_unused_relation_positive` case with an unused relation that asserts a
 diagnostic is produced, and a `test_unused_relation_negative` case where all
 relations are used, which asserts that no diagnostics are produced. This
