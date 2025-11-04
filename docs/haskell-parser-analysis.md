@@ -43,7 +43,7 @@ ddlogKeywords =
 
 【F:Parse.hs†L70-L96】
 
-Operators and punctuation recognized as single tokens are listed under
+Operators, and punctuation recognized as single tokens, are listed under
 `reservedOpNames`:
 
 ```haskell
@@ -109,8 +109,8 @@ exprGrammar    = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 isolated expression. Both delegate to individual rules described below.
 
 `parseDatalogString` wraps the Parsec `parse` function in `ExceptT`. This
-ensures the caller receives a clear error message when parsing fails and that
-IO exceptions remain separated from parse errors.
+ensures the caller receives a clear error message when parsing fails, and it
+keeps IO exceptions separated from parse errors.
 
 ## Grammar productions and abstract syntax tree (AST) mapping
 
@@ -146,9 +146,10 @@ spec = do
 ### Declarations
 
 `decl` recognizes one of several declaration forms, each constructing a
-specific syntax tree node (`Import`, `TypeDef`, `Relation`, `Index`,
-`Function`, `Transformer`, `Rule` or `Apply`). Attributes encountered before
-the item are attached to the resulting node when applicable.
+specific syntax tree node
+(`Import`, `TypeDef`, `Relation`, `Index`, `Function`, `Transformer`, `Rule` or
+`Apply`). Attributes encountered before the item are attached to the resulting
+node when applicable.
 
 ```haskell
 decl =  do attrs <- attributes
@@ -280,8 +281,8 @@ withPos x = (\ s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
 allow downstream analyses to preserve accurate source spans.
 
 Each rule constructs an appropriate structure from
-`Language.DifferentialDatalog.Syntax`, ensuring that positions and attributes
-are preserved.
+`Language.DifferentialDatalog.Syntax`, ensuring that positions, along with all
+attributes, are preserved.
 
 ## Lexical elements
 
