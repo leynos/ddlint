@@ -29,9 +29,9 @@
   documentation should omit examples where the example serves only to reiterate
   the test logic.
 - **Keep file size manageable.** No single code file may be longer than 400
-  lines.  Long switch statements or dispatch tables should be broken up by
-  feature and constituents colocated with targets. Large blocks of test data
-  should be moved to external data files.
+  lines. Break up long switch statements, and colocate dispatch tables with
+  their targets so each constituent stays near its feature. Large blocks of
+  test data should be moved to external data files.
 
 ## Documentation maintenance
 
@@ -52,8 +52,8 @@
   subsequent commit) should represent a single logical unit of work.
 - **Quality Gates:** Before considering a change complete or proposing a commit,
   ensure it meets the following criteria:
-  - New functionality or changes in observable system responses are fully
-    validated by relevant unit tests and scenario tests.
+  - New functionality, and any changes in observable system responses, must be
+    fully validated by relevant unit tests and scenario tests.
   - Where a bug is being fixed, a unittest has been provided demonstrating the
     scenario being corrected, both to validate the fix and to guard against
     regression.
@@ -81,8 +81,9 @@
 - **Recognizing Refactoring Needs:** Regularly assess the codebase for potential
   refactoring opportunities. Consider refactoring when the following indicators
   appear:
-  - **Long Methods/Functions:** Functions or methods that are excessively long
-    or try to do too many things.
+  - **Long Methods/Functions:** Functions or methods become refactoring
+    candidates when they are excessively long, or when they try to do too many
+    things.
   - **Duplicated Code:** Identical or very similar code blocks appearing in
     multiple places.
   - **Complex Conditionals:** Deeply nested or overly complex `if`/`else` or
@@ -149,13 +150,13 @@ project:
   Segregation pattern.
 - Where a function has too many parameters, group related parameters in
   meaningfully named structs.
-- Where a function is returning a large error, consider using `Arc` to reduce the
-  amount of data returned.
+- Where a function is returning a large error, consider using `Arc` to reduce
+  the amount of data returned.
 - Write unit and scenario tests for new functionality. Run both before and
   after making any change.
 - Every module **must** begin with a module level (`//!`) comment explaining the
   module's purpose and utility.
-- Document public APIs using Rustdoc comments (`///`) so documentation can be
+- Document public APIs using Rustdoc comments (`///`), so documentation can be
   generated with cargo doc.
 - Prefer immutable data and avoid unnecessary `mut` bindings.
 - Handle errors with the `Result` type instead of panicking where feasible.
@@ -194,15 +195,15 @@ project:
   wrappers. For path-centric wrappers, implement `AsRef<Path>` alongside
   `into_inner()` and `to_path_buf()`; avoid attempting
   `impl From<Wrapper> for PathBuf` because of the orphan rule. Prefer explicit
-  tuple structs whenever bespoke validation or tailored trait surfaces are
-  required, customizing `Deref`, `AsRef`, and `TryFrom` per type. Use
-  `the-newtype` when defining traits and needing blanket implementations that
-  apply across wrappers satisfying `Newtype + AsRef/AsMut<Inner>`, or when
-  establishing a coherent internal convention that keeps trait forwarding
-  consistent without per-type boilerplate. Combine approaches: lean on
-  `newt-hype` for the common case, tuple structs for outliers, and
-  `the-newtype` to unify semantics when the maintainers own the trait
-  definitions.
+  tuple structs whenever bespoke validation is needed, or when the code
+  requires tailored trait surfaces, customizing `Deref`, `AsRef`, and `TryFrom`
+  per type. Use `the-newtype` when defining traits and needing blanket
+  implementations that apply across wrappers satisfying
+  `Newtype + AsRef/AsMut<Inner>`, or when establishing a coherent internal
+  convention that keeps trait forwarding consistent without per-type
+  boilerplate. Combine approaches: lean on `newt-hype` for the common case,
+  tuple structs for outliers, and `the-newtype` to unify semantics when the
+  maintainers own the trait definitions.
 
 ### Dependency management
 
@@ -221,8 +222,8 @@ project:
 ### Error handling
 
 - **Prefer semantic error enums**. Derive `std::error::Error` (via the
-  `thiserror` crate) for any condition the caller might inspect, retry, or map
-  to an HTTP status.
+  `thiserror` crate), so callers can inspect, retry, or map the condition to an
+  HTTP status.
 - **Use an *opaque* error only at the app boundary**. Use `eyre::Report` for
   human-readable logs; these should not be exposed in public APIs.
 - **Never export the opaque type from a library**. Convert to domain enums at
@@ -235,9 +236,10 @@ project:
 - Run `make fmt` after any documentation changes to format all Markdown
   files and fix table markup.
 - Validate Mermaid diagrams in Markdown files by running `make nixie`.
-- Markdown paragraphs and bullet points must be wrapped at 80 columns.
+- Markdown paragraphs must be wrapped at 80 columns, and bullet points need
+  the same limit.
 - Code blocks must be wrapped at 120 columns.
-- Tables and headings must not be wrapped.
+- Tables must not be wrapped, and headings must remain unwrapped.
 - Use dashes (`-`) for list bullets.
 - Use GitHub-flavoured Markdown footnotes (`[^1]`) for references and
   footnotes.
