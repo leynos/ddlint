@@ -120,21 +120,54 @@ n := len(s)
 
 comment_ranges := []
 ignore_ranges := []
+ignore_ranges_sorted := true
 
 add_ignore_range := func(begin, end) {
   ignore_ranges = append(ignore_ranges, {"begin": begin, "end": end})
+  ignore_ranges_sorted = false
+}
+
+sort_ignore_ranges := func() {
+  if ignore_ranges_sorted {
+    return
+  }
+
+  total := len(ignore_ranges)
+  for i := 1; i < total; i += 1 {
+    rng := ignore_ranges[i]
+    j := i - 1
+
+    for j >= 0 && ignore_ranges[j]["begin"] > rng["begin"] {
+      ignore_ranges[j+1] = ignore_ranges[j]
+      j -= 1
+    }
+
+    ignore_ranges[j+1] = rng
+  }
+
+  ignore_ranges_sorted = true
 }
 
 ignore_range_end := func(idx) {
-  total := len(ignore_ranges)
-  current := 0
+  sort_ignore_ranges()
 
-  for current < total {
-    rng := ignore_ranges[current]
+  total := len(ignore_ranges)
+  left := 0
+  right := total - 1
+
+  for left <= right {
+    mid := (left + right) / 2
+    rng := ignore_ranges[mid]
+
     if idx >= rng["begin"] && idx < rng["end"] {
       return rng["end"]
     }
-    current += 1
+
+    if idx < rng["begin"] {
+      right = mid - 1
+    } else {
+      left = mid + 1
+    }
   }
 
   return -1

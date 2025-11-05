@@ -928,9 +928,8 @@ linting logic into a reusable library is the key enabler for this.
      handling, etc.).
 
   3. The `lsp-types` crate will be used for all LSP-defined data
-     structures.[^14]
-    This ensures protocol compliance and provides strongly typed Rust
-    representations for messages like
+     structures.[^14] This ensures protocol compliance and provides strongly
+     typed Rust representations for messages like
 
      `PublishDiagnosticsParams` and `Diagnostic`.[^15]
 
