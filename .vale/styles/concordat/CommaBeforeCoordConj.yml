@@ -5,7 +5,7 @@ extends: sequence
 level: warning
 ignorecase: true
 link: https://www.chicagomanualofstyle.org/qanda/data/faq/topics/Commas/faq0026.html
-message: 'Add a comma before "%[2]s": it joins two independent clauses.'
+message: 'Add a comma before the coordinating conjunction; it joins two independent clauses.'
 
 scope:
   - sentence
@@ -17,8 +17,8 @@ tokens:
   - tag: VBD|VBP|VBZ|MD
     skip: 80
 
-  # FANBOYS anchor, excluding "so that" purpose clauses.
-  - pattern: '(?i:(?:for|and|nor|but|or|yet|so))(?![[:space:]]+that\b)'
+  # FANBOYS anchor, but skip cases where punctuation already precedes the conjunction.
+  - pattern: '(?<![,;:–—-]\s{0,5})(?<=\s)(?i:(?:for|and|nor|but|or|yet|so))(?!\s+that\b)'
 
   # Right-hand clause must start with an explicit subject token.
   - tag: PRP|PRP\$|EX|DT|NN|NNS|NNP|NNPS|CD
