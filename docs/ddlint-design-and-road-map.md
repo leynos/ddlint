@@ -208,6 +208,8 @@ sequenceDiagram
     Parser-->>User: Parsed { green, root }
 ```
 
+*Figure 2: Parsing pipeline from tokenisation to typed syntax trees.*
+
 After tokenization the parser wraps the vector of tokens in a lightweight
 `TokenStream`. This structure manages the current cursor and exposes helper
 methods such as `line_end` or `skip_ws_inline`. Navigating tokens through this

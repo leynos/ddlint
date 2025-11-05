@@ -124,6 +124,8 @@ flowchart TD
     C --> D[Merge]
 ```
 
+_Figure 1: Documentation workflow from draft through merge review._
+
 ## Roadmap task writing guidelines
 
 When documenting development roadmap items, write them to be achievable,

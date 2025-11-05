@@ -7,3 +7,9 @@ input relation &Student(id: u64, name: istring, school: istring)
 
 output relation StudentName(name: istring)
 StudentName(n) :- &Student{.name = n}.
+
+output relation UniqueSchools(school: istring)
+UniqueSchools(s) :- &Student{.school = s}.
+
+output relation OxfordStudents(id: u64, name: istring)
+OxfordStudents(i, n) :- &Student{.id = i, .name = n, .school = "Oxford University"}.

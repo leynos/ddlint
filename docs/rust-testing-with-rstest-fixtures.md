@@ -780,33 +780,27 @@ async fn base_value_async() -> u32 {
 }
 
 #[rstest]
-#[case(async { 2 })] // This case argument is an async block
-#[async_std::test]
-#[awt] // Apply await to all #[future] arguments
-async fn test_with_awt_function(
-    #[future] base_value_async: u32, // Type is u32, not impl Future<Output = u32>
-    #[future] #[case] divisor_async: u32, // Also u32
-) {
-    // base_value_async and divisor_async are automatically awaited before use here
-    assert_eq!(base_value_async / divisor_async, 21);
-}
-
-#[rstest]
 #[case(async { 7 })]
 #[async_std::test]
 async fn test_with_future_awt_arg(
     #[future] base_value_async: u32,
     #[future(awt)] #[case] divisor_async: u32, // Only divisor_async is auto-awaited
 ) {
-    // Need to explicitly await base_value_async if it's not covered by a function-level #[awt]
-    // However, if base_value_async is a simple fixture (not a case) and the test is async,
-    // rstest might await it automatically when #[awt] is not used.
-    // The precise behaviour of auto-awaiting non-case futures without #[awt] should be verified.
-    // For clarity, using #[awt] or explicit.await is recommended.
-    // Assuming base_value_async needs explicit await here if no function-level #[awt]:
-    // assert_eq!(base_value_async.await / divisor_async, 6);
-    // If base_value_async fixture is also awaited by rstest implicitly:
-    assert_eq!(base_value_async / divisor_async, 6); // Example suggests this works
+    // Make awaiting explicit for clarity:
+    let base = base_value_async.await;
+    assert_eq!(base / divisor_async, 6);
+}
+
+#[rstest]
+#[case(async { 7 })]
+#[async_std::test]
+#[awt] // Applies await to every #[future] argument automatically.
+async fn test_with_future_awt_arg_awt(
+    #[future] base_value_async: u32,
+    #[future] #[case] divisor_async: u32,
+) {
+    // #[awt] removes the need for manual .await calls.
+    assert_eq!(base_value_async / divisor_async, 6);
 }
 ```
 
