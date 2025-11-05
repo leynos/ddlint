@@ -42,6 +42,7 @@ allow := {
   "LIT": true,
   "MD": true,
   "MIT": true,
+  "MUST": true,
   "NODE": true,
   "NOT": true,
   "NUMBER": true,
