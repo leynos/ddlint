@@ -105,7 +105,7 @@ exprGrammar    = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
 【F:Parse.hs†L214-L215】
 
-`datalogGrammar` parses an entire source file while `exprGrammar` parses an
+`datalogGrammar` parses an entire source file, while `exprGrammar` parses an
 isolated expression. Both delegate to individual rules described below.
 
 `parseDatalogString` wraps the Parsec `parse` function in `ExceptT`. This
@@ -189,7 +189,7 @@ rule = withPos $
 
 - `statement` and its helpers – parse imperative statements used within rules.
 - `expr` – an expression parser built via `buildExpressionParser`; it handles
-  literals, operators and function calls.
+  literals, operators, and function calls.
 
 ### Control-flow statements
 
@@ -291,12 +291,12 @@ The complete set of lexical tokens derived from the parser includes:
 - **Keywords** – the union of `ddlogKeywords` and `rustKeywords`.
 - **Operators** – all strings in `reservedOpNames` such as `::`, `=>`, `==`,
   `>=`, and so on.
-- **Punctuation** – parentheses, brackets, braces, commas, semicolons, dots and
-  colons as provided by the `TokenParser` helpers.
+- **Punctuation** – parentheses, brackets, braces, commas, semicolons, dots,
+  and colons as provided by the `TokenParser` helpers.
 - **Comments** – block comments delimited by `/*` and `*/` and line comments
   starting with `//`.
 - **Identifiers** – parsed using `identifier`, `lcIdentifier` and `ucIdentifier`
-  which enforce naming rules for variables, types and constructors.
+  which enforce naming rules for variables, types, and constructors.
 
 These lexical elements will translate directly into `SyntaxKind` token variants
 in the Rust implementation.
