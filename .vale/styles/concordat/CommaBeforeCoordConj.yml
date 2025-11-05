@@ -10,9 +10,13 @@ message: "Add a comma before the coordinating conjunction: \"%s\" joins two inde
 scope:
   - sentence
   - ~heading
-  - ~list
 
-raw: '(?:^|[^-,;:–—])[[:space:]]+(for|and|nor|but|or|yet|so)\b(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}[[:space:]]+(?:I|you|he|she|it|we|they|this|that|these|those|there|the|a|an|[A-Z][A-Za-z0-9_-]+|[0-9]+)(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}[[:space:]]+\b(?:is|are|was|were|do|does|did|has|have|had|can|could|may|might|must|shall|should|will|would|continues?|continue|remains?|remain|becomes?|become)\b'
+# Guard against prepositional "for" phrases by requiring explicit subjects:
+# pronouns/determiners, capitalised proper nouns, plural common nouns, or
+# coordinated noun phrases (e.g., "runtime and dependency expectations").
+# Skip "so that" constructions, which form purpose clauses rather than
+# coordinating two independents.
+raw: '(?:^|[^-,;:–—])[[:space:]]+(for|and|nor|but|or|yet|so(?![[:space:]]+that\b))\b(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}?[[:space:]]+(?:I|you|he|she|it|we|they|this|that|these|those|there|the|a|an|(?-i:[A-Z][A-Za-z0-9_-]+)|[0-9]+|(?-i:[a-z][A-Za-z0-9_-]*s)\b|(?:(?-i:[a-z][A-Za-z0-9_-]+)[[:space:]]+(?:and|or)[[:space:]]+[A-Za-z0-9_-]+))(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}?[[:space:]]+\b(?:is|are|was|were|do|does|did|has|have|had|can|could|may|might|must|shall|should|will|would|continues?|continue|remains?|remain|becomes?|become|travels?|travelled|traveled)\b'
 
 action:
   name: edit
