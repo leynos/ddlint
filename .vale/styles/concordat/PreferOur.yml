@@ -51,7 +51,7 @@ swap:
   rumor: rumour
   rumors: rumours
   rumored: rumoured
-  labor: labour
+  '\\blabor\\b': labour
   labors: labours
   labored: laboured
   laboring: labouring
