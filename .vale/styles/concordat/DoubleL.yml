@@ -5,6 +5,8 @@ level: error
 ignorecase: true
 nonword: true
 swap:
+  cancelability: cancellability
+  cancelabilities: cancellabilities
   cancelation: cancellation
   cancelations: cancellations
   cancelable: cancellable
@@ -13,16 +15,25 @@ swap:
   canceler: canceller
   cancelers: cancellers
   canceling: cancelling
+  cancelings: cancellings
   counselor: counsellor
   counselors: counsellors
   counseling: counselling
+  counselings: counsellings
   counseled: counselled
+  marveled: marvelled
+  marveler: marveller
+  marvelers: marvellers
+  marveling: marvelling
+  marvelings: marvellings
   traveled: travelled
   traveler: traveller
   traveling: travelling
   travelers: travellers
-  marveled: marvelled
+  travelings: travellings
   marvelous: marvellous
+  marvelousness: marvellousness
+  marvelousnesses: marvellousnesses
   marvelously: marvellously
   cruelest: cruellest
   crueler: crueller

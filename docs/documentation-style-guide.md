@@ -126,8 +126,8 @@ flowchart TD
 
 ## Roadmap task writing guidelines
 
-When documenting development roadmap items, write them in a way that keeps them
-achievable, measurable, and structured. This ensures the roadmap functions as a
+When documenting development roadmap items, write them to be achievable,
+measurable, and structured. This ensures the roadmap functions as a
 practical planning tool rather than a vague wishlist. Do not commit to
 timeframes in the roadmap. Development effort should be roughly consistent from
 task to task.

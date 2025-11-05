@@ -111,9 +111,9 @@ Add the following lines to the project's `Cargo.toml` under the
 
 ```toml
 [dev-dependencies]
-rstest = "0.18" # Or the latest version available on crates.io
+rstest = "0.26.1" # Or the latest version available on crates.io
 # rstest_macros may also be needed explicitly depending on usage or version
-# rstest_macros = "0.18" # Check crates.io for the latest version
+# rstest_macros = "0.26.1" # Check crates.io for the latest version
 ```
 
 It is advisable to check `crates.io` for the latest stable version of `rstest`
@@ -130,7 +130,7 @@ dev-only dependency:
 ```toml
 [dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["test-util"] }
-rstest = "0.18"
+rstest = "0.26.1"
 ```
 
 ### B. First fixture: defining with `#[fixture]`

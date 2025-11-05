@@ -2,6 +2,11 @@ matches := []
 defined := {}
 reported := {}
 
+// Vale executes Tengo scripts without filesystem access, so this inlined
+// allow map mirrors the always-on acronyms from
+// .vale/Vocab/concordat/accept.txt. Keep both lists in sync: accept.txt
+// remains the canonical vocabulary reference, whilst this subset prevents the
+// first-use rule from repeatedly flagging ubiquitous abbreviations.
 allow := {
   // Commonly accepted initialisms in this repo
   "AGENTS": true,
@@ -82,6 +87,9 @@ allow := {
   "XII": true
 }
 
+// Character classification helpers operate on ASCII bytes only. Multi-byte
+// UTF-8 letters (for example, "É" or "Ü") are treated as non-letters and will
+// not be considered when deciding whether a token is an acronym.
 is_upper := func(ch) { return len(ch) == 1 && ch >= "A" && ch <= "Z" }
 is_lower := func(ch) { return len(ch) == 1 && ch >= "a" && ch <= "z" }
 is_digit := func(ch) { return len(ch) == 1 && ch >= "0" && ch <= "9" }
