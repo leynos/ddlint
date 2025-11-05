@@ -85,9 +85,9 @@ Core Principles of Calculation:
 Cognitive Complexity is incremented based on three main rules[^8]:
 
 1. **Breaks in Linear Flow:** Each time the code breaks the normal linear
-   reading flow (e.g., loops, conditionals like
-   `if`/`else`/`switch`, `try-catch` blocks, jumps to labels, and sequences of
-   logical operators like `&&` and `||`), a penalty is applied.
+   reading flow (e.g., loops, conditionals like `if`/`else`/`switch`,
+   `try-catch` blocks, jumps to labels, and sequences of logical operators like
+   `&&` and `||`), a penalty is applied.
 
 2. **Nesting:** Each level of nesting of these flow-breaking structures adds an
    additional penalty. This is because deeper nesting makes it harder to keep
@@ -479,7 +479,7 @@ diverse responsibilities.[^14]
 
 ### B. Avoiding spaghetti code turning into ravioli code
 
-When refactoring complex, tangled code (often called "Spaghetti Code" 2), a
+When refactoring complex, tangled code (often called "Spaghetti Code"[^2]), a
 common approach is to break it down into smaller pieces, such as helper
 functions, focused classes, or dedicated modules. However, without careful
 consideration for cohesion along with appropriate abstraction levels, this
@@ -574,12 +574,12 @@ and method structure.
   - Benefit: removes large conditional blocks
   - Solves complex switch statements
 
-1. Structural pattern matching
+#### 1. Structural pattern matching
 
 Structural pattern matching—available in languages like Python (since 3.10 with
 match-case) and C#—offers a declarative and expressive way to handle complex
 conditional logic, often replacing verbose if-elif-else chains or switch
-statements.21.
+statements.[^21]
 
 It works by allowing code to match against the *structure* of data—such as its
 type, shape, or specific values within sequences like lists or tuples, or
@@ -636,7 +636,7 @@ understand the conditions and data extraction. Key features like guards (`if`
 conditions on `case` statements) allow for additional non-structural checks,
 further enhancing its power.[^22]
 
-2\. Embracing Declarative Programming
+#### 2. Embracing Declarative Programming
 
 Declarative programming focuses on describing what result is desired, rather
 than detailing how to achieve it step-by-step, as is typical in imperative
@@ -665,7 +665,7 @@ effectiveness of declarative programming relies on well-designed underlying
 abstractions; a poorly designed declarative layer might not successfully hide
 complexity or could introduce its own.[^27]
 
-3\. Employing Dispatcher and Command Patterns
+#### 3. Employing Dispatcher and Command Patterns
 
 For managing complex conditional logic that selects different behaviours (often
 found in Bumpy Roads or large switch statements), these complementary patterns

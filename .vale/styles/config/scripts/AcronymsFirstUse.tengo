@@ -82,6 +82,8 @@ allow := {
   "XII": true
 }
 
+// Character classification helpers operate on ASCII only; multi-byte UTF-8
+// letters fall through and are treated as non-matching.
 is_upper := func(ch) { return len(ch) == 1 && ch >= "A" && ch <= "Z" }
 is_lower := func(ch) { return len(ch) == 1 && ch >= "a" && ch <= "z" }
 is_digit := func(ch) { return len(ch) == 1 && ch >= "0" && ch <= "9" }

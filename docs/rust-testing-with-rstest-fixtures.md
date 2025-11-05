@@ -111,9 +111,9 @@ Add the following lines to the project's `Cargo.toml` under the
 
 ```toml
 [dev-dependencies]
-rstest = "0.18" # Or the latest version available on crates.io
+rstest = "0.26.1" # Or the latest version available on crates.io
 # rstest_macros may also be needed explicitly depending on usage or version
-# rstest_macros = "0.18" # Check crates.io for the latest version
+# rstest_macros = "0.26.1" # Check crates.io for the latest version
 ```
 
 It is advisable to check `crates.io` for the latest stable version of `rstest`
@@ -130,7 +130,7 @@ dev-only dependency:
 ```toml
 [dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["test-util"] }
-rstest = "0.18"
+rstest = "0.26.1"
 ```
 
 ### B. First fixture: defining with `#[fixture]`
@@ -317,12 +317,11 @@ another. If fixtures were shared by default, a mutation to a fixture's state in
 one test could lead to unpredictable behaviour or failures in subsequent tests
 that use the same fixture. Such dependencies would make tests order-dependent,
 significantly harder to debug, and less trustworthy. By providing a fresh
-instance for each test (unless explicitly specified otherwise using
-`#[once]`), `rstest` upholds this cornerstone of reliable testing, ensuring
-each test operates on a known, independent baseline. The `#[once]` attribute,
-discussed later, provides an explicit mechanism to opt into shared fixture
-state when isolation is not a concern, or when the cost of fixture creation is
-prohibitive.
+instance for each test (unless explicitly specified otherwise using `#[once]`),
+`rstest` upholds this cornerstone of reliable testing, ensuring each test
+operates on a known, independent baseline. The `#[once]` attribute, discussed
+later, provides an explicit mechanism to opt into shared fixture state when
+isolation is not a concern, or when the cost of fixture creation is prohibitive.
 
 ## IV. Parameterized tests with `rstest`
 
@@ -723,9 +722,9 @@ because `rstest` simply awaits the returned future.
 
 Test functions themselves can also be `async fn`. `rstest` polls the future the
 test returns but does not install or default to an async runtime. Annotate the
-test with the runtime's attribute (for example,
-`#[tokio::test]`, `#[async_std::test]`, or `#[actix_rt::test]`) alongside
-`#[rstest]` so the runtime drives execution.
+test with the runtime's attribute (for example, `#[tokio::test]`,
+`#[async_std::test]`, or `#[actix_rt::test]`) alongside `#[rstest]` so the
+runtime drives execution.
 
 ```rust,no_run
 use rstest::*;

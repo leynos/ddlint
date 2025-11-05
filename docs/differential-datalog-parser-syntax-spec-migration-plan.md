@@ -19,7 +19,8 @@ explicitly superseded in the spec:
 
 - Reservation of host‑language (Rust) keywords as identifiers.
 - Explicit handling status for legacy/compatibility tokens (e.g.,
-  `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,`float`,`as`).
+  `Aggregate`,`FlatMap`,`Inspect`,`typedef`,`signed`,`bigint`,`bit`,`double`,
+  `float`,`as`).
 - Statement forms `break`, `continue`, and `return` (both the parsers and the
   keywords are present in code/roadmaps, yet they are not formalized in the
   Statements grammar).
@@ -106,10 +107,11 @@ document.
      - `FlatMap`: surface syntax represented via pattern binds on the right-hand
        side; no distinct keyword in the updated language.
      - `typedef`, `signed`, `bigint`, `bit`, `double`, `float`, `as`, `Inspect`
-       (and any others present in the historical lexer): define status per
-       token as one of: accepted alias (with diagnostic), parse‑time error, or
-       reserved (tokenized but rejected with a targeted message). If a token is
-       not used today, mark as “reserved, not part of the grammar”.
+       (and any others present in the historical lexer): define each token’s
+       status as either an accepted alias (with diagnostic), a parse‑time
+       error, or reserved (tokenized but rejected with a targeted message). If
+       a token is not used today, mark it as “reserved, not part of the
+       grammar”.
    - Extend the Statements grammar to include `break`, `continue`, and `return`:
      - `break`/`continue`: allowed only in loop bodies; error elsewhere.
      - `return`: allowed in function/closure bodies; not valid in rule bodies.

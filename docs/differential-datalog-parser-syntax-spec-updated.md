@@ -168,8 +168,8 @@ Attributed(X) ::= Attribute+ X
 Attribute     ::= '#[' AttrBody ']'
 ```
 
-**Attribute placement:** Attributes are permitted **only** on
-`Typedef`, `Function`, and `RelationDecl`. Any other placement is an error.
+**Attribute placement:** Attributes are permitted **only** on `Typedef`,
+`Function`, and `RelationDecl`. Any other placement is an error.
 
 ### 5.2 Imports and types
 
@@ -561,7 +561,7 @@ X(x) :- group_by(sum(x)). // error: expected 2 arguments
 - **Non‑extern transformer:**
 
 ```ddlog
-transformer Foo(); // error: transformer must be extern
+transformer Foo(); // error: transformers must be extern
 ```
 
 - **Attribute on index:**
