@@ -132,6 +132,17 @@ ignore_range_end := func(idx) {
   return -1
 }
 
+advance_past_ignore := func(idx) {
+  skip := ignore_range_end(idx)
+  if skip == -1 {
+    return idx
+  }
+  if skip <= idx {
+    return idx + 1
+  }
+  return skip
+}
+
 pos := 0
 for pos < n {
   if pos+4 <= n && s[pos:pos+4] == "<!--" {
@@ -248,13 +259,9 @@ if in_fence {
 
 inline_pos := 0
 for inline_pos < n {
-  skip_inline := ignore_range_end(inline_pos)
-  if skip_inline != -1 {
-    if skip_inline <= inline_pos {
-      inline_pos += 1
-    } else {
-      inline_pos = skip_inline
-    }
+  next_inline := advance_past_ignore(inline_pos)
+  if next_inline != inline_pos {
+    inline_pos = next_inline
     continue
   }
 
@@ -270,13 +277,9 @@ for inline_pos < n {
       search := j
       found := false
       for search < n {
-        skip_search := ignore_range_end(search)
-        if skip_search != -1 {
-          if skip_search <= search {
-            search += 1
-          } else {
-            search = skip_search
-          }
+        next_search := advance_past_ignore(search)
+        if next_search != search {
+          search = next_search
           continue
         }
 
@@ -311,13 +314,9 @@ for inline_pos < n {
 
 link_pos := 0
 for link_pos < n {
-  skip_link := ignore_range_end(link_pos)
-  if skip_link != -1 {
-    if skip_link <= link_pos {
-      link_pos += 1
-    } else {
-      link_pos = skip_link
-    }
+  next_link := advance_past_ignore(link_pos)
+  if next_link != link_pos {
+    link_pos = next_link
     continue
   }
 
@@ -326,13 +325,9 @@ for link_pos < n {
   if ch_link == "[" {
     close := link_pos + 1
     for close < n {
-      skip_close := ignore_range_end(close)
-      if skip_close != -1 {
-        if skip_close <= close {
-          close += 1
-        } else {
-          close = skip_close
-        }
+      next_close := advance_past_ignore(close)
+      if next_close != close {
+        close = next_close
         continue
       }
 
@@ -346,13 +341,9 @@ for link_pos < n {
       paren := close + 2
       depth := 1
       for paren < n {
-        skip_paren := ignore_range_end(paren)
-        if skip_paren != -1 {
-          if skip_paren <= paren {
-            paren += 1
-          } else {
-            paren = skip_paren
-          }
+        next_paren := advance_past_ignore(paren)
+        if next_paren != paren {
+          paren = next_paren
           continue
         }
 
@@ -377,13 +368,9 @@ for link_pos < n {
   } else if ch_link == "<" {
     end := link_pos + 1
     for end < n {
-      skip_end := ignore_range_end(end)
-      if skip_end != -1 {
-        if skip_end <= end {
-          end += 1
-        } else {
-          end = skip_end
-        }
+      next_end := advance_past_ignore(end)
+      if next_end != end {
+        end = next_end
         continue
       }
 
@@ -406,13 +393,10 @@ for link_pos < n {
 i := 0
 
 for i < n {
-  skip := ignore_range_end(i)
-  if skip != -1 {
-    if skip <= i {
-      i += 1
-    } else {
-      i = skip
-    }
+  next_i := advance_past_ignore(i)
+  if next_i != i {
+    // Acronym detection only runs when the cursor sits outside any ignore range.
+    i = next_i
     continue
   }
 
@@ -429,6 +413,7 @@ for i < n {
         continue
       }
       if uppers >= 2 && is_digit(curr) {
+        // Permit alphanumeric acronyms such as "F16" or "TLS1".
         j += 1
         continue
       }
@@ -436,8 +421,8 @@ for i < n {
     }
 
     if uppers >= 2 {
-      // Skip CamelCase fragments like "DDlog" where the acronym is
-      // immediately followed by a lowercase character.
+      // Avoid treating CamelCase prefixes (e.g., "DDlog") as acronyms when a
+      // lowercase character immediately follows.
       if j < n && is_lower(s[j:j+1]) {
         i = j
         continue
@@ -469,6 +454,7 @@ for i < n {
       }
 
       if prev == "(" {
+        // Mark "(ACRONYM" sequences as definitions so subsequent uses are silent.
         defined[base] = true
       } else {
         if !defined[base] && !allow[base] && !reported[base] {
