@@ -178,6 +178,8 @@ advance_past_ignore := func(idx) {
   if skip == -1 {
     return idx
   }
+  // Guard against malformed ranges: well-formed [begin, end) keep skip > idx.
+  // Step forward cautiously to avoid infinite loops if range construction errs.
   if skip <= idx {
     return idx + 1
   }

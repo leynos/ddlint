@@ -539,7 +539,7 @@ logic, run the tests, and then interactively review the new AST structures
 before accepting them as the new "golden" standard. This dramatically
 accelerates iteration and refactoring.12
 
-The best practice is to snapshot the entire `ParseResult`, which includes both
+The best practice is to snapshot the entire `ParseResult`, which contains both
 the (potentially partial) AST and the list of errors. This provides a complete
 picture of the parser's output for a given input.
 
@@ -862,7 +862,7 @@ The core workflow of property-based testing is:
    fails, `proptest` begins a shrinking process, iteratively simplifying the
    failing input to find a minimal counterexample.
 
-For parsers, this approach is invaluable, because it uncovers obscure bugs that
+For parsers, this approach is invaluable because it uncovers obscure bugs that
 would be nearly impossible to find with handwritten tests.
 
 ### 5.2 Fuzzing the lexer and parser for panics

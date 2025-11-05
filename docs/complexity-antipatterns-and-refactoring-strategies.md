@@ -636,7 +636,7 @@ understand the conditions and data extraction. Key features like guards (`if`
 conditions on `case` statements) allow for additional non-structural checks,
 further enhancing its power.[^22]
 
-#### 2. Embracing Declarative Programming
+#### 2. Embracing declarative programming
 
 Declarative programming focuses on describing what result is desired, rather
 than detailing how to achieve it step-by-step, as is typical in imperative
@@ -665,7 +665,7 @@ effectiveness of declarative programming relies on well-designed underlying
 abstractions; a poorly designed declarative layer might not successfully hide
 complexity or could introduce its own.[^27]
 
-#### 3. Employing Dispatcher and Command Patterns
+#### 3. Employing dispatcher and command patterns
 
 For managing complex conditional logic that selects different behaviours (often
 found in Bumpy Roads or large switch statements), these complementary patterns
