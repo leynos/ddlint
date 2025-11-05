@@ -167,7 +167,7 @@ Guidance:
 ### Basics: command calls, capturing output, handling failures
 
 ```python
-from __future__ import annotations
+from __future__ import annotations  # Enables postponed annotation evaluation
 from plumbum import local
 from plumbum.cmd import git, grep
 
@@ -233,7 +233,7 @@ count = (git["--no-pager", "log", "--oneline"] | grep["chore"] | wc["-l"])().str
 ### Project roots, joins, and ensuring directories
 
 ```python
-from __future__ import annotations
+from __future__ import annotations  # Enables postponed annotation evaluation
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

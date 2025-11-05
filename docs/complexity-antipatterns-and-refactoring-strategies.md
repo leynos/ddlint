@@ -85,9 +85,9 @@ Core Principles of Calculation:
 Cognitive Complexity is incremented based on three main rules[^8]:
 
 1. **Breaks in Linear Flow:** Each time the code breaks the normal linear
-   reading flow (e.g., loops, conditionals like
-   `if`/`else`/`switch`, `try-catch` blocks, jumps to labels, and sequences of
-   logical operators like `&&` and `||`), a penalty is applied.
+   reading flow (e.g., loops, conditionals like `if`/`else`/`switch`,
+   `try-catch` blocks, jumps to labels, and sequences of logical operators like
+   `&&` and `||`), a penalty is applied.
 
 2. **Nesting:** Each level of nesting of these flow-breaking structures adds an
    additional penalty. This is because deeper nesting makes it harder to keep
@@ -837,7 +837,7 @@ maintain.
       <https://sammancoaching.org/code_smells/bumpy_road.html>
 [^11]: Adam Tornhill, *Code as a Crime Scene*, Second Edition,
        <https://media.pragprog.com/titles/atcrime2/logic.pdf>
-[^12]: The software anti patterns that are killing development speed | Okoone,
+[^12]: The software antipatterns that are killing development speed | Okoone,
        <https://www.okoone.com/spark/strategy-transformation/the-software-anti-patterns-that-are-killing-development-speed/>
 [^13]: How to *resist* refactoring a large spaghetti codebase? :
        r/SoftwareEngineering — Reddit,
@@ -872,7 +872,7 @@ maintain.
 [^25]: Another pasta-themed programming problem is "ravioli code". That …,
        <https://news.ycombinator.com/item?id=4537664>
 [^26]: Ravioli Code — C2 wiki, <https://wiki.c2.com/?RavioliCode>
-[^27]: Ravioli code — why an anti-pattern? — Stack Overflow,
+[^27]: Ravioli code — why an antipattern? — Stack Overflow,
        <https://stackoverflow.com/questions/2052017/ravioli-code-why-an-anti-pattern>
 [^28]: A Guide to Data Abstraction and Its Significant Benefits — CelerData,
        <https://celerdata.com/glossary/a-guide-to-data-abstraction>

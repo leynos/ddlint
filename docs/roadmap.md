@@ -101,7 +101,8 @@ as control flow constructs. This phase aims to build a complete grammar.
 
   - [x] Design and implement a Pratt parser for DDlog expressions to correctly
     handle operator precedence and associativity, as defined in the updated
-    syntax specification (`docs/differential-datalog-parser-syntax-spec-updated.md`).
+    syntax specification
+    (`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
   - [x] Add support for parsing all literal types within expressions (e.g.,
     strings, numbers, and booleans). The `SyntaxKind` enum already defines
