@@ -1,36 +1,21 @@
-# Flag missing commas when FANBOYS join two explicit independent clauses.
-# Lean on Vale's POS tagging to find an explicit subject + finite verb after
-# the coordinator instead of guessing with token counts.
-extends: sequence
+# Flag missing commas before coordinating conjunctions that join two
+# independent clauses. Use a regex-based heuristic that insists on an explicit
+# subject and finite verb after the conjunction and ensures no punctuation is
+# already in place.
+extends: existence
 level: warning
 ignorecase: true
 link: https://www.chicagomanualofstyle.org/qanda/data/faq/topics/Commas/faq0026.html
 message: 'Add a comma before the coordinating conjunction; it joins two independent clauses.'
 
 scope:
-  - sentence
-  - ~heading
-  - ~list
+  - raw
 
-tokens:
-  # Left-hand clause already has a finite verb or modal.
-  - tag: VBD|VBP|VBZ|MD
-    skip: 80
-
-  # FANBOYS anchor, but skip cases where punctuation already precedes the conjunction.
-  - pattern: '(?<![,;:–—-]\s{0,5})(?<=\s)(?i:(?:for|and|nor|but|or|yet|so))(?!\s+that\b)'
-
-  # Right-hand clause must start with an explicit subject token.
-  - tag: PRP|PRP\$|EX|DT|NN|NNS|NNP|NNPS|CD
-    skip: 6
-
-  # Demand a finite verb or modal shortly after the subject.
-  - tag: VBD|VBP|VBZ|MD
-    skip: 6
+raw: '(?:[^,;:–—\s-]\s+)\b(nor|but|yet|so(?!\s+that\b))\b(?:\s+(?!\b(?:nor|but|yet|so)\b)[^\s,;:.!?]+){0,3}\s+(?:(?:I|you|he|she|it|we|they|this|that|these|those|there)|(?:the|this|that|these|those|each|every|any|either|neither|no|some|many|few|several|such|both)\s+[a-z][A-Za-z0-9_-]*s|(?:[A-Z][A-Za-z0-9_-]+(?:\s+[A-Z][A-Za-z0-9_-]+){0,2})|(?:[0-9]+)|(?:[a-z][A-Za-z0-9_-]*s)|(?:[a-z][A-Za-z0-9_-]+\s+(?:and|or)\s+[a-z][A-Za-z0-9_-]+(?:\s+[a-z][A-Za-z0-9_-]+){0,2}))(?:\s+(?!\b(?:nor|but|yet|so)\b)[^\s,;:.!?]+){0,5}\s+\b(?:is|are|was|were|do|does|did|has|have|had|can|could|may|might|must|shall|should|will|would|continue|continues|continued|remain|remains|remained|become|becomes|became|travel|travels|travelled|traveled|start|starts|started|maintain|maintains|maintained|ensure|ensures|ensured|provide|provides|provided|create|creates|created)\b'
 
 action:
   name: edit
   params:
     - regex
-    - '(?<![,;:–—-])\s+(?i:(for|and|nor|but|or|yet|so))\b'
-    - ', $1'
+    - '(?i)([^,;:–—\s])\s+(nor|but|yet|so)\b'
+    - '$1, $2'
