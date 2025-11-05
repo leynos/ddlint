@@ -11,6 +11,9 @@ message: 'Add a comma before the coordinating conjunction; it joins two independ
 scope:
   - raw
 
+# Skip "for/and/or" since they trigger mountains of prepositional or compound
+# subject hits (e.g., "for example", "component A and component B") that lack
+# a second independent clause; rely on other rules for their comma handling.
 raw: '(?:[^,;:–—\s-]\s+)\b(nor|but|yet|so(?!\s+that\b))\b(?:\s+(?!\b(?:nor|but|yet|so)\b)[^\s,;:.!?]+){0,3}\s+(?:(?:I|you|he|she|it|we|they|this|that|these|those|there)|(?:the|this|that|these|those|each|every|any|either|neither|no|some|many|few|several|such|both)\s+[a-z][A-Za-z0-9_-]*s|(?:[A-Z][A-Za-z0-9_-]+(?:\s+[A-Z][A-Za-z0-9_-]+){0,2})|(?:[0-9]+)|(?:[a-z][A-Za-z0-9_-]*s)|(?:[a-z][A-Za-z0-9_-]+\s+(?:and|or)\s+[a-z][A-Za-z0-9_-]+(?:\s+[a-z][A-Za-z0-9_-]+){0,2}))(?:\s+(?!\b(?:nor|but|yet|so)\b)[^\s,;:.!?]+){0,5}\s+\b(?:is|are|was|were|do|does|did|has|have|had|can|could|may|might|must|shall|should|will|would|continue|continues|continued|remain|remains|remained|become|becomes|became|travel|travels|travelled|traveled|start|starts|started|maintain|maintains|maintained|ensure|ensures|ensured|provide|provides|provided|create|creates|created)\b'
 
 action:
