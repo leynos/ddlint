@@ -955,11 +955,13 @@ completing the vision of a truly interactive developer assistant.
 [^1]: `rowan` crate documentation. Lossless syntax tree utilities for Rust
       tooling. <https://crates.io/crates/rowan>
 
-[^2]: Rust Analyzer manual, "Syntax Trees". Explains the rowan red/green tree
-      design, `SyntaxKind` enums, and the `rowan::Language` bridge.
-      <https://rust-analyzer.github.io/manual.html#syntax-trees>
+[^2]: References:
 
-      metadata, and macros. <https://github.com/rslint/rslint>
+- Rust Analyzer manual, "Syntax Trees". Explains the rowan red/green
+        tree design, `SyntaxKind` enums, and the `rowan::Language` bridge.
+        <https://rust-analyzer.github.io/manual.html#syntax-trees>
+- `rslint_core` repository and architecture overview (CST-first linter
+        engine, rule metadata, macros). <https://github.com/rslint/rslint>
 
 [^4]: `rayon` crate documentation. Parallel iterators and thread pools for
       Rust. <https://crates.io/crates/rayon>
