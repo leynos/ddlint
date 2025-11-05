@@ -1,26 +1,43 @@
-# Flag missing commas before coordinating conjunctions that introduce a
-# second independent clause. Focus on FANBOYS joins with an explicit subject
-# and finite verb on the right.
-extends: existence
+# Flag missing commas when FANBOYS join two explicit independent clauses.
+# Lean on Vale's POS tagging to find an explicit subject + finite verb after
+# the coordinator instead of guessing with token counts.
+extends: sequence
 level: warning
 ignorecase: true
 link: https://www.chicagomanualofstyle.org/qanda/data/faq/topics/Commas/faq0026.html
-message: "Add a comma before the coordinating conjunction: \"%s\" joins two independent clauses."
+message: 'Add a comma before "%[2]s": it joins two independent clauses.'
 
 scope:
   - sentence
   - ~heading
+  - ~list
 
-# Guard against prepositional "for" phrases by requiring explicit subjects:
-# pronouns/determiners, capitalised proper nouns, plural common nouns, or
-# coordinated noun phrases (e.g., "runtime and dependency expectations").
-# Skip "so that" constructions, which form purpose clauses rather than
-# coordinating two independents.
-raw: '(?:^|[^-,;:–—])[[:space:]]+(for|and|nor|but|or|yet|so(?![[:space:]]+that\b))\b(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}?[[:space:]]+(?:I|you|he|she|it|we|they|this|that|these|those|there|the|a|an|(?-i:[A-Z][A-Za-z0-9_-]+)|[0-9]+|(?-i:[a-z][A-Za-z0-9_-]*s)\b|(?:(?-i:[a-z][A-Za-z0-9_-]+)[[:space:]]+(?:and|or)[[:space:]]+[A-Za-z0-9_-]+))(?:[[:space:]]+(?!\b(?:for|and|nor|but|or|yet|so)\b)[^[:space:],;:.!?]+){0,3}?[[:space:]]+\b(?:is|are|was|were|do|does|did|has|have|had|can|could|may|might|must|shall|should|will|would|continues?|continue|remains?|remain|becomes?|become|travels?|travelled|traveled)\b'
+tokens:
+  # Left-hand clause already has a finite verb or modal.
+  - tag: VBD|VBP|VBZ|MD
+    skip: 80
+
+  # FANBOYS anchor, excluding "so that" purpose clauses.
+  - pattern: '(?i:(?:for|and|nor|but|or|yet|so))(?![[:space:]]+that\b)'
+
+  # Right-hand clause must start with an explicit subject token.
+  - tag: PRP|PRP\$|EX|DT|NN|NNS|NNP|NNPS|CD
+    skip: 6
+
+  # Demand a finite verb or modal shortly after the subject.
+  - tag: VBD|VBP|VBZ|MD
+    skip: 6
 
 action:
   name: edit
   params:
     - regex
-    - '([^-,;:–—[:space:]])[[:space:]]+(for|and|nor|but|or|yet|so)\b'
-    - '$1, $2'
+    - '(?<![,;:–—-])\s+(?i:(for|and|nor|but|or|yet|so))\b'
+    - ', $1'
+
+exceptions:
+  - '\bnot only\b.+\bbut also\b'
+  - '\bboth\b.+\band\b'
+  - '\beither\b.+\bor\b'
+  - '\bneither\b.+\bnor\b'
+  - '\bso that\b'
