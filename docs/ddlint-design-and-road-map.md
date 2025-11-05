@@ -60,7 +60,8 @@ To implement this CST, the project will utilize the `rowan` library.[^1]
 
 `rowan` is a mature, generic, and battle-tested library for building lossless
 syntax trees, and its adoption by major projects like `rust-analyzer` validates
-its robustness and performance for production systems.[^1] The core innovation of
+its robustness and performance for production systems.[^1] The core innovation
+of
 
 `rowan` is its "Red/Green Tree" design.[^2] The "Green Tree" is the immutable,
 untyped core data structure that stores the tree's topology efficiently. It is
@@ -78,8 +79,8 @@ adapt the mature and performant model pioneered by `rslint_core`.[^2] The
 
 `rslint` project demonstrates a highly effective architecture for a CST-based
 linter, featuring parallelized rule execution, a clean separation of concerns,
-and deliberate maintainability safeguards.[^2] Adopting this model allows the team
-to leverage proven patterns and focus on implementing DDlog-specific logic.
+and deliberate maintainability safeguards.[^2] Adopting this model allows the
+team to leverage proven patterns and focus on implementing DDlog-specific logic.
 
 The heart of this adapted engine will be a set of core traits that define the
 structure and behaviour of every lint rule:
@@ -124,9 +125,9 @@ as follows:
    `check_node`), passing it the node itself and the `RuleCtx`.
 
 4. To maximize performance, these invocations will be dispatched to a thread
-   pool (such as one managed by the `rayon` crate[^4]), allowing multiple rules to
-   be checked against multiple nodes concurrently, a pattern proven effective
-   by `rslint`.[^2]
+   pool (such as one managed by the `rayon` crate[^4]), allowing multiple rules
+   to be checked against multiple nodes concurrently, a pattern proven
+   effective by `rslint`.[^2]
 
 ### 1.3. The CST-centric toolchain
 
@@ -223,11 +224,11 @@ like relations, rules, and expressions).
 
 A crucial aspect of this enum is its machine representation. It must be defined
 with `#[repr(u16)]` and derive the `FromPrimitive` and `ToPrimitive` traits
-from the `num-derive` crate[^7]. This is because `rowan`'s internal `GreenNode`s
-are untyped and use a `rowan::SyntaxKind`, which is a newtype wrapper around a
-`u16`, for their type tags. These derivations provide a safe and efficient
-mechanism to convert between the strongly typed `SyntaxKind` enum and `rowan`'s
-generic `u16` representation.[^2] A special
+from the `num-derive` crate[^7]. This is because `rowan`'s internal
+`GreenNode`s are untyped and use a `rowan::SyntaxKind`, which is a newtype
+wrapper around a `u16`, for their type tags. These derivations provide a safe
+and efficient mechanism to convert between the strongly typed `SyntaxKind` enum
+and `rowan`'s generic `u16` representation.[^2] A special
 
 `N_ERROR` variant will also be included to represent locations in the tree
 where the parser encountered a syntax error but was able to recover.
@@ -293,14 +294,14 @@ First, its use of expressive combinators allows for the definition of a grammar
 in a declarative, readable, and highly maintainable way. Complex parsers are
 built by composing smaller, simpler, and reusable parsers, a methodology
 analogous to using Rust's `Iterator` trait to build complex data processing
-pipelines.[^8] This makes the parser easier to reason about, debug, and evolve as
-the DDlog language itself changes.
+pipelines.[^8] This makes the parser easier to reason about, debug, and evolve
+as the DDlog language itself changes.
 
 Second, and most importantly for a linter, `chumsky` provides first-class,
-flexible error recovery strategies out of the box.[^8] A linter is most valuable
-when providing feedback on code as it is being written, which means the code is
-frequently in a syntactically invalid state. A traditional parser would fail at
-the first error, rendering the linter useless.
+flexible error recovery strategies out of the box.[^8] A linter is most
+valuable when providing feedback on code as it is being written, which means
+the code is frequently in a syntactically invalid state. A traditional parser
+would fail at the first error, rendering the linter useless.
 
 `chumsky`'s recovery strategies, however, allow the parser to recognize an
 error, encapsulate the invalid tokens into a special error node, and then
@@ -487,8 +488,8 @@ for new users while remaining powerful for advanced use cases.
 ### 4.1. CLI design
 
 The primary user interaction with the linter will be through its command-line
-binary, `ddlint`. The CLI will be built using the `clap` crate[^9], the standard
-for robust argument parsing in the Rust ecosystem.
+binary, `ddlint`. The CLI will be built using the `clap` crate[^9], the
+standard for robust argument parsing in the Rust ecosystem.
 
 The core commands will be:
 
@@ -534,15 +535,15 @@ scenarios.[^10]
 
 To provide persistent and project-specific configuration, `ddlint` will support
 a configuration file named `ddlint.toml`. The `config-rs` crate will be used to
- manage all aspects of configuration.[^11] This library is an excellent choice due
-to its powerful layered configuration system. It can merge settings from
+manage all aspects of configuration.[^11] This library is an excellent choice
+due to its powerful layered configuration system. It can merge settings from
 multiple sources with a defined precedence: built-in defaults, values from a
 configuration file, and overrides from environment variables. This provides
 users with maximum flexibility. While
 
- `config-rs` supports Tom's Obvious, Minimal Language (TOML), YAML, and JSON out
- of the box, and TOML will be the documented standard due to its prevalence and
- readability in the Rust ecosystem.[^11]
+ `config-rs` supports Tom's Obvious, Minimal Language (TOML), YAML, and JSON
+ out of the box, and TOML will be the documented standard due to its prevalence
+ and readability in the Rust ecosystem.[^11]
 
 The linter will automatically search for a `ddlint.toml` file in the current
 working directory and then traverse up through parent directories, allowing for
@@ -707,8 +708,8 @@ structured as follows:
 
 Developers implementing a new fix follow an intentionally seamless workflow.
 The first time they run this new test, it will fail because no snapshot exists.
-`insta` will save the transformed code into a `.snap.new` file.[^6] The developer
-then uses
+`insta` will save the transformed code into a `.snap.new` file.[^6] The
+developer then uses
 
 `cargo insta review` to examine the proposed change. If the code transformation
 is correct, they accept it, and it becomes the new, approved snapshot. From
@@ -757,12 +758,12 @@ emphasis styling, as this output is difficult to test with traditional string
 assertions.
 
 The `insta` crate is the de-facto standard for snapshot testing in the Rust
-ecosystem and will be the primary tool for this purpose.[^6] The testing workflow
-will involve creating a suite of small DDlog code snippets. Each snippet is
-designed to trigger one or more specific diagnostics. A test function will run
-the linter on a snippet and capture the resulting diagnostic string. This
-string is then asserted against a stored reference value (the "snapshot") using
-a macro like
+ecosystem and will be the primary tool for this purpose.[^6] The testing
+workflow will involve creating a suite of small DDlog code snippets. Each
+snippet is designed to trigger one or more specific diagnostics. A test
+function will run the linter on a snippet and capture the resulting diagnostic
+string. This string is then asserted against a stored reference value (the
+"snapshot") using a macro like
 
 `insta::assert_snapshot!` or `insta::assert_debug_snapshot!`.[^6]
 
@@ -926,7 +927,8 @@ linting logic into a reusable library is the key enabler for this.
      (JavaScript Object Notation (JSON) Remote Procedure Call (RPC), message
      handling, etc.).
 
-  3. The `lsp-types` crate will be used for all LSP-defined data structures.[^14]
+  3. The `lsp-types` crate will be used for all LSP-defined data
+     structures.[^14]
     This ensures protocol compliance and provides strongly typed Rust
     representations for messages like
 
@@ -958,7 +960,6 @@ completing the vision of a truly interactive developer assistant.
       design, `SyntaxKind` enums, and the `rowan::Language` bridge.
       <https://rust-analyzer.github.io/manual.html#syntax-trees>
 
-[^3]: `rslint` project architecture guidances, including `rslint_core`, rule
       metadata, and macros. <https://github.com/rslint/rslint>
 
 [^4]: `rayon` crate documentation. Parallel iterators and thread pools for
@@ -987,10 +988,12 @@ completing the vision of a truly interactive developer assistant.
        loading for Rust applications. <https://crates.io/crates/config>
 
 [^12]: Rust compiler diagnostics guide. Overview of how `rustc` presents
-       annotated error output. <https://doc.rust-lang.org/rustc/diagnostics.html>
+       annotated error output.
+       <https://doc.rust-lang.org/rustc/diagnostics.html>
 
 [^13]: *The Rust Programming Language*, Chapter 11.3 "Integration Tests".
-       Explains the `/tests` convention. <https://doc.rust-lang.org/book/ch11-03-test-organization.html#integration-tests>
+       Explains the `/tests` convention.
+       <https://doc.rust-lang.org/book/ch11-03-test-organization.html#integration-tests>
 
 [^14]: `tower-lsp` crate documentation. Language Server Protocol tooling for
        Rust. <https://crates.io/crates/tower-lsp>
