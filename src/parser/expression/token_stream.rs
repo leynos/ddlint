@@ -44,7 +44,7 @@ where
 
     /// Performs an O(n) traversal by cloning the iterator and using `nth`.
     ///
-    /// Avoid large lookaheads on hot paths; prefer caching or specialised
+    /// Avoid large lookaheads on hot paths; prefer caching or specialized
     /// peekers for repeated deep inspection.
     pub(super) fn peek_nth_kind(&mut self, n: usize) -> Option<SyntaxKind>
     where

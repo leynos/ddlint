@@ -1,8 +1,8 @@
-# Assistant Instructions
+# Assistant instructions
 
-## Code Style and Structure
+## Code style and structure
 
-- **Code is for humans.** Write your code with clarity and empathy—assume a
+- **Code is for humans.** Write code with clarity and empathy—assume a
   tired teammate will need to debug it at 3 a.m.
 - **Comment *why*, not *what*.** Explain assumptions, edge cases, trade-offs, or
   complexity. Don't echo the obvious.
@@ -29,11 +29,11 @@
   documentation should omit examples where the example serves only to reiterate
   the test logic.
 - **Keep file size manageable.** No single code file may be longer than 400
-  lines.  Long switch statements or dispatch tables should be broken up by
-  feature and constituents colocated with targets. Large blocks of test data
-  should be moved to external data files.
+  lines. Break up long switch statements, and colocate dispatch tables with
+  their targets, so each constituent stays near its feature. Large blocks of
+  test data should be moved to external data files.
 
-## Documentation Maintenance
+## Documentation maintenance
 
 - **Reference:** Use the markdown files within the `docs/` directory as a
   knowledge base and source of truth for project requirements, dependency
@@ -43,23 +43,23 @@
   relevant file(s) in the `docs/` directory to reflect the latest state.
   **Ensure the documentation remains accurate and current.**
 - Documentation must use en-GB-oxendict ("-ize" / "-yse" / "-our") spelling
-  and grammar. (EXCEPTION: the naming of the "LICENSE" file, which is to be
+  and grammar. (Exception: the naming of the "LICENSE" file, which is to be
   left unchanged for community consistency.)
 
-## Change Quality & Committing
+## Change quality & committing
 
 - **Atomicity:** Aim for small, focused, atomic changes. Each change (and
   subsequent commit) should represent a single logical unit of work.
 - **Quality Gates:** Before considering a change complete or proposing a commit,
   ensure it meets the following criteria:
-  - New functionality or changes in behaviour are fully validated by relevant
-    unit tests and behavioural tests.
+  - New functionality, and any changes in observable system responses, must be
+    fully validated by relevant unit tests and scenario tests.
   - Where a bug is being fixed, a unittest has been provided demonstrating the
-    behaviour being corrected both to validate the fix and to guard against
+    scenario being corrected, both to validate the fix and to guard against
     regression.
-  - Passes all relevant unit and behavioural tests according to the guidelines
+  - Passes all relevant unit and scenario tests according to the guidelines
     above.
-  - Passes lint checks
+  - Passes lint checks.
   - Adheres to formatting standards tested using a formatting validator.
 - **Committing:**
   - Only changes that meet all the quality gates above should be committed.
@@ -76,12 +76,14 @@
       code snippets) within the commit message body.
   - Do not commit changes that fail any of the quality gates.
 
-## Refactoring Heuristics & Workflow
+## Refactoring heuristics & workflow
 
 - **Recognizing Refactoring Needs:** Regularly assess the codebase for potential
-  refactoring opportunities. Consider refactoring when you observe:
-  - **Long Methods/Functions:** Functions or methods that are excessively long
-    or try to do too many things.
+  refactoring opportunities. Consider refactoring when the following indicators
+  appear:
+  - **Long Methods/Functions:** Functions or methods become refactoring
+    candidates when they are excessively long, or when they try to do too many
+    things.
   - **Duplicated Code:** Identical or very similar code blocks appearing in
     multiple places.
   - **Complex Conditionals:** Deeply nested or overly complex `if`/`else` or
@@ -103,19 +105,19 @@
 - **Separate Atomic Refactors:** If refactoring is deemed necessary:
   - Perform the refactoring as a **separate, atomic commit** *after* the
     functional change commit.
-  - Ensure the refactoring adheres to the testing guidelines (behavioral tests
+  - Ensure the refactoring adheres to the testing guidelines (scenario tests
     pass before and after, unit tests added for new units).
   - Ensure the refactoring commit itself passes all quality gates.
 
-## Rust Specific Guidance
+## Rust specific guidance
 
 This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
 project:
 
 - Run `make check-fmt`, `make lint`, and `make test` before committing. These
-  targets wrap the following commands so contributors understand the exact
-  behaviour and policy enforced:
+  targets wrap the following commands, so contributors understand the precise
+  semantics and policy enforced:
   - `make check-fmt` executes:
 
     ```bash
@@ -140,20 +142,21 @@ project:
     running the full workspace test suite. Use `make fmt`
     (`cargo fmt --workspace`) to apply formatting fixes reported by the
     formatter check.
-- Clippy warnings MUST be disallowed.
+- Clippy warnings must be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.
 - Where a function is too long, extract meaningfully named helper functions
-  adhering to separation of concerns and CQRS.
+  adhering to separation of concerns and the Command Query Responsibility
+  Segregation pattern.
 - Where a function has too many parameters, group related parameters in
   meaningfully named structs.
-- Where a function is returning a large error consider using `Arc` to reduce the
-  amount of data returned.
-- Write unit and behavioural tests for new functionality. Run both before and
+- Where a function is returning a large error, consider using `Arc` to reduce
+  the amount of data returned.
+- Write unit and scenario tests for new functionality. Run both before and
   after making any change.
 - Every module **must** begin with a module level (`//!`) comment explaining the
   module's purpose and utility.
-- Document public APIs using Rustdoc comments (`///`) so documentation can be
+- Document public APIs using Rustdoc comments (`///`), so documentation can be
   generated with cargo doc.
 - Prefer immutable data and avoid unnecessary `mut` bindings.
 - Handle errors with the `Result` type instead of panicking where feasible.
@@ -167,41 +170,42 @@ project:
 - Lint rule suppressions must be tightly scoped and include a clear reason.
 - Prefer `expect` over `allow`.
 - Use `rstest` fixtures for shared setup.
-- Replace duplicated tests with `#[rstest(...)]` parameterised cases.
+- Replace duplicated tests with `#[rstest(…)]` parameterized cases.
 - Prefer `mockall` for mocks/stubs.
 - Prefer `.expect()` over `.unwrap()`.
 - Use `concat!()` to combine long string literals rather than escaping newlines
   with a backslash.
-- Prefer single line versions of functions where appropriate. I.e.,
+- Prefer single line versions of functions where appropriate. For example,
 
-  ```rust
+  ```rust,no_run
   pub fn new(id: u64) -> Self { Self(id) }
   ```
 
   Instead of:
 
-  ```rust
+  ```rust,no_run
   pub fn new(id: u64) -> Self {
       Self(id)
   }
   ```
 
 - Use NewTypes to model domain values and eliminate "integer soup". Reach for
-  `newt-hype` when introducing many homogeneous wrappers that share behaviour;
+  `newt-hype` when introducing many homogeneous wrappers that share semantics;
   add small shims such as `From<&str>` and `AsRef<str>` for string-backed
-  wrappers. For path-centric wrappers implement `AsRef<Path>` alongside
+  wrappers. For path-centric wrappers, implement `AsRef<Path>` alongside
   `into_inner()` and `to_path_buf()`; avoid attempting
   `impl From<Wrapper> for PathBuf` because of the orphan rule. Prefer explicit
-  tuple structs whenever bespoke validation or tailored trait surfaces are
-  required, customising `Deref`, `AsRef`, and `TryFrom` per type. Use
-  `the-newtype` when defining traits and needing blanket implementations that
-  apply across wrappers satisfying `Newtype + AsRef/AsMut<Inner>`, or when
-  establishing a coherent internal convention that keeps trait forwarding
-  consistent without per-type boilerplate. Combine approaches: lean on
-  `newt-hype` for the common case, tuple structs for outliers, and
-  `the-newtype` to unify behaviour when you own the trait definitions.
+  tuple structs whenever bespoke validation is needed, or when the code
+  requires tailored trait surfaces, customizing `Deref`, `AsRef`, and `TryFrom`
+  per type. Use `the-newtype` when defining traits and needing blanket
+  implementations that apply across wrappers satisfying
+  `Newtype + AsRef/AsMut<Inner>`, or when establishing a coherent internal
+  convention that keeps trait forwarding consistent without per-type
+  boilerplate. Combine approaches: lean on `newt-hype` for the common case,
+  tuple structs for outliers, and `the-newtype` to unify semantics when the
+  maintainers own the trait definitions.
 
-### Dependency Management
+### Dependency management
 
 - **Mandate caret requirements for all dependencies.** All crate versions
   specified in `Cargo.toml` must use SemVer-compatible caret requirements
@@ -215,26 +219,27 @@ project:
   (`~`) should only be used where a dependency must be locked to patch-level
   updates for a specific, documented reason.
 
-### Error Handling
+### Error handling
 
 - **Prefer semantic error enums**. Derive `std::error::Error` (via the
-  `thiserror` crate) for any condition the caller might inspect, retry, or map
-  to an HTTP status.
+  `thiserror` crate), so callers can inspect, retry, or map the condition to an
+  HTTP status.
 - **Use an *opaque* error only at the app boundary**. Use `eyre::Report` for
   human-readable logs; these should not be exposed in public APIs.
 - **Never export the opaque type from a library**. Convert to domain enums at
   API boundaries, and to `eyre` only in the main `main()` entrypoint or
   top-level async task.
 
-## Markdown Guidance
+## Markdown guidance
 
 - Validate Markdown files using `make markdownlint`.
 - Run `make fmt` after any documentation changes to format all Markdown
   files and fix table markup.
 - Validate Mermaid diagrams in Markdown files by running `make nixie`.
-- Markdown paragraphs and bullet points must be wrapped at 80 columns.
+- Markdown paragraphs must be wrapped at 80 columns, and bullet points need
+  the same limit.
 - Code blocks must be wrapped at 120 columns.
-- Tables and headings must not be wrapped.
+- Tables must not be wrapped, and headings must remain unwrapped.
 - Use dashes (`-`) for list bullets.
 - Use GitHub-flavoured Markdown footnotes (`[^1]`) for references and
   footnotes.
@@ -245,19 +250,21 @@ The following tooling is available in this environment:
 
 - `mbake` – A Makefile validator. Run using `mbake validate Makefile`.
 - `strace` – Traces system calls and signals made by a process; useful for
-  debugging runtime behaviour and syscalls.
-- `gdb` – The GNU Debugger, for inspecting and controlling programs as they
-  execute (or post-mortem via core dumps).
+  debugging runtime characteristics and syscalls.
+- `gdb` – The Gnu's Not Unix (GNU) Project debugger, for inspecting and
+  controlling
+  programs as they execute (or post-mortem via core dumps).
 - `ripgrep` – Fast, recursive text search tool (`grep` alternative) that
   respects `.gitignore` files.
 - `ltrace` – Traces calls to dynamic library functions made by a process.
 - `valgrind` – Suite for detecting memory leaks, profiling, and debugging
   low-level memory errors.
-- `bpftrace` – High-level tracing tool for eBPF, using a custom scripting
-  language for kernel and application tracing.
+- `bpftrace` – High-level tracing tool for the Berkeley Packet Filter (BPF)
+  and its extended Berkeley Packet Filter (eBPF) variant, using a custom
+  scripting language for kernel and application tracing.
 - `lsof` – Lists open files and the processes using them.
 - `htop` – Interactive process viewer (visual upgrade to `top`).
-- `iotop` – Displays and monitors I/O usage by processes.
+- `iotop` – Displays and monitors input/output usage by processes.
 - `ncdu` – NCurses-based disk usage viewer for finding large files/folders.
 - `tree` – Displays directory structure as a tree.
 - `bat` – `cat` clone with syntax highlighting, Git integration, and paging.
@@ -265,7 +272,7 @@ The following tooling is available in this environment:
 - `tcpdump` – Captures and analyses network traffic at the packet level.
 - `nmap` – Network scanner for host discovery, port scanning, and service
   identification.
-- `lldb` – LLVM debugger, alternative to `gdb`.
+- `lldb` – The Low Level Virtual Machine debugger, alternative to `gdb`.
 - `eza` – Modern `ls` replacement with more features and better defaults.
 - `fzf` – Interactive fuzzy finder for selecting files, commands, etc.
 - `hyperfine` – Command-line benchmarking tool with statistical output.
@@ -278,7 +285,7 @@ The following tooling is available in this environment:
 - `difft` **(Difftastic)** – Semantic diff tool that compares code structure
   rather than just text differences.
 
-## Key Takeaway
+## Key takeaway
 
 These practices help maintain a high-quality codebase and facilitate
 collaboration.

@@ -3,7 +3,7 @@
 //! This module provides small utilities for collecting parameter names and
 //! types from the CST, recursively parsing type expressions, and parsing
 //! transformer output identifiers. `Function`, `Relation`, and `Transformer`
-//! nodes import these helpers so they can share the same logic when
+//! nodes import these helpers, allowing them to share the same logic when
 //! interpreting their declarations. See
 //! `docs/function-parsing-design.md` for an overview.
 

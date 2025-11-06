@@ -12,7 +12,7 @@ use crate::{
 use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
 
-/// Tokenise `src` into `(SyntaxKind, Span)` pairs using
+/// Tokenize `src` into `(SyntaxKind, Span)` pairs using
 /// [`tokenize_with_trivia`].
 ///
 /// # Examples
@@ -329,7 +329,8 @@ pub fn assert_no_parse_errors<E: std::fmt::Debug>(errors: &[E]) {
 /// ```
 ///
 /// # Panics
-/// Panics if `errors` is empty or the message or span do not match.
+/// Panics if `errors` is empty. It also panics when the message fails to
+/// match. The same applies if the span differs.
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_parse_error(
@@ -420,7 +421,7 @@ fn assert_delimiter_error_of_kind(
 /// Assert that a parser error indicates a delimiter mismatch.
 ///
 /// # Panics
-/// Panics if `errors` is empty or the error does not match `expected_pattern`.
+/// Panics if `errors` is empty, or if the error does not match `expected_pattern`.
 #[track_caller]
 pub fn assert_delimiter_error(
     errors: &[Simple<SyntaxKind>],
@@ -438,12 +439,12 @@ pub fn assert_delimiter_error(
 
 /// Assert that a parser error indicates an unclosed delimiter.
 ///
-/// This verifies the error span points to the opening delimiter and that no
+/// This verifies the error span points to the opening delimiter, and that no
 /// closing token was found while matching the expected pattern.
 ///
 /// # Panics
-/// Panics if `errors` is empty or the error kind does not indicate an unclosed
-/// delimiter.
+/// Panics if `errors` is empty, or if the error kind does not indicate an
+/// unclosed delimiter.
 #[track_caller]
 pub fn assert_unclosed_delimiter_error(
     errors: &[Simple<SyntaxKind>],

@@ -45,8 +45,8 @@ fn parses_continue_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
 #[case("(return)", Expr::Group(Box::new(return_expr(None))))]
 #[case("(return,)", tuple(vec![return_expr(None)]))]
-// Returning before a terminator (`)`, `}`, `,`, `;`, or `->`) synthesises unit
-// `()` so match arms can elide a value safely.
+// Returning before a terminator (`)`, `}`, `,`, `;`, or `->`) synthesizes unit
+// `()`, enabling match arms to elide a value safely.
 #[case(
     "match (x) { _ -> return }",
     match_expr(var("x"), vec![match_arm("_", return_expr(None))]),

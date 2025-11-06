@@ -33,7 +33,8 @@ where
     /// Records the first and most recent span for an opening delimiter.
     ///
     /// Increments the provided depth counter and captures the start and end of
-    /// the delimiter so later diagnostics can refer to the original location.
+    /// the delimiter, ensuring later diagnostics can refer to the original
+    /// location.
     ///
     /// # Parameters
     ///
@@ -55,7 +56,7 @@ where
     /// Applies delimiter depth tracking for a closing token.
     ///
     /// Returns the span end when the closing token matches an outstanding
-    /// delimiter. Emits a diagnostic and returns `None` when the close is
+    /// delimiter. Emits a diagnostic, and returns `None`, when the close is
     /// unmatched.
     ///
     /// # Parameters
@@ -79,15 +80,16 @@ where
 
     /// Handles a closing parenthesis whilst collecting a for-loop pattern.
     ///
-    /// Returns the updated depth and span end when the parenthesis matches,
-    /// or `None` if the parser emits a diagnostic for an unmatched token or a
-    /// missing `in` keyword.
+    /// Returns the updated depth and span end when the parenthesis matches.
+    /// Returns `None` if the parser emits a diagnostic for an unmatched token
+    /// or a missing `in` keyword.
     ///
     /// # Parameters
     ///
     /// - `span`: span covering the closing parenthesis.
     /// - `paren_depth`: the current parenthesis nesting depth.
-    /// - `other_delimiters_open`: whether braces or brackets remain open.
+    /// - `other_delimiters_open`: flag indicating whether braces remain open
+    ///   alongside any brackets.
     pub(super) fn handle_close_paren(
         &mut self,
         span: &Span,
@@ -132,7 +134,7 @@ where
     /// to zero.
     ///
     /// Emits diagnostics anchored at the most recent span (or EOF) when
-    /// imbalance is detected and returns whether the delimiters are balanced.
+    /// imbalance is detected, and returns whether the delimiters are balanced.
     ///
     /// # Parameters
     ///

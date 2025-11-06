@@ -1,6 +1,6 @@
 //! Integration tests for the tokenizer module.
 //!
-//! Tests verify that the logos-based lexer correctly tokenises `DDlog` source
+//! Tests verify that the logos-based lexer correctly tokenizes `DDlog` source
 //! code into `(SyntaxKind, Span)` pairs, covering keywords, literals, trivia,
 //! and error cases.
 
@@ -304,7 +304,7 @@ fn empty_input_produces_no_tokens() {
 fn complex_expression() {
     let src = "R(a, b) :- Q(a) && S(b).";
     let tokens = tokenize(src);
-    // ensure we tokenise without errors and capture punctuation
+    // ensure tokenization succeeds and captures punctuation
     assert!(tokens.iter().all(|(k, _)| *k != SyntaxKind::N_ERROR));
     assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_IMPLIES));
     assert!(tokens.iter().any(|(k, _)| *k == SyntaxKind::T_DOT));

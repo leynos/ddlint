@@ -2,8 +2,8 @@
 //!
 //! This module groups small parsers and utilities shared across the
 //! parsing pipeline. They operate on token streams produced by the
-//! tokenizer and are kept lightweight so they can be reused easily in
-//! different parsing contexts.
+//! tokenizer, keeping them lightweight for easy reuse in different parsing
+//! contexts.
 
 use chumsky::prelude::*;
 
@@ -44,7 +44,7 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
 ///
 /// The macro expects a parsing context `ctx` with a `stream` field. It loops
 /// until the stream is exhausted, invoking the handler associated with each
-/// recognised kind. Handlers must advance the stream to consume the tokens they
+/// recognized kind. Handlers must advance the stream to consume the tokens they
 /// process. Any unhandled kind is skipped.
 ///
 /// # Examples
@@ -83,10 +83,10 @@ macro_rules! token_dispatch {
     }};
 }
 
-/// Parser recognising whitespace and comment tokens.
+/// Parser recognizing whitespace and comment tokens.
 ///
-/// The combinator is useful for padding other parsers where whitespace is
-/// allowed. It matches [`SyntaxKind::T_WHITESPACE`] and
+/// The combinator is useful when padding other parsers that allow whitespace.
+/// It matches [`SyntaxKind::T_WHITESPACE`] and
 /// [`SyntaxKind::T_COMMENT`] tokens and discards them.
 ///
 /// # Examples
@@ -144,8 +144,8 @@ pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> 
 /// Parser for a balanced token block such as parentheses or braces.
 ///
 /// The parser consumes the opening delimiter, then all tokens until the
-/// matching closing delimiter while tracking nested pairs. Whitespace and
-/// comments are permitted between tokens. An error is produced if a closing
+/// matching closing delimiter while tracking nested pairs. Whitespace, and
+/// comments, are permitted between tokens. An error is produced if a closing
 /// token appears without a corresponding opener.
 fn balanced_block_with_min(
     open: SyntaxKind,

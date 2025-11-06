@@ -1,4 +1,4 @@
-# Differential Datalog Parser & Syntax Specification (Updated)
+# Differential Datalog parser and syntax specification (updated)
 
 **Audience:** Implementing engineers porting or extending the frontend;
 linter/IDE authors.
@@ -14,10 +14,10 @@ ______________________________________________________________________
 
 A Differential Datalog (DDlog) program consists of imports, type definitions,
 functions, (extern) transformers, relation declarations, index declarations,
-rules, and apply statements. The parser constructs a `DatalogProgram` from
-these elements, performs a limited set of tree rewrites (e.g., `group_by`
-extraction, legacy `Aggregate` lowering, literal lowering to builder calls),
-enforces name‑uniqueness invariants, and records source provenance.
+rules, and applies. The parser constructs a `DatalogProgram` from these
+elements, performs a limited set of tree rewrites (e.g., `group_by` extraction,
+legacy `Aggregate` lowering, literal lowering to builder calls), enforces
+name‑uniqueness invariants, and records source provenance.
 
 ### 1.1 Entry points and products
 
@@ -25,8 +25,9 @@ enforces name‑uniqueness invariants, and records source provenance.
 - **Output:** a `DatalogProgram` comprising:
   - `imports`, `typedefs`, `functions` (grouped by name; overload by arity
     permitted), `transformers`, `relations`, `indexes`, `rules`, `applys`.
-- **Transformations performed pre‑AST:** `group_by` and `Aggregate` lowering;
-  map/vector literal lowering; `&` in rule heads → `ref_new`.
+- **Transformations performed pre‑Abstract Syntax Tree (AST):** `group_by` and
+  `Aggregate` lowering; map/vector literal lowering; `&` in rule heads →
+  `ref_new`.
 
 #### 1.1.1 Expression‑only parsing
 
@@ -55,7 +56,7 @@ ______________________________________________________________________
   - **`LcScopedIdentifier`**: `^(_|[a-z])[A-Za-z0-9_]*$` (variables, fields,
     local functions if unqualified).
   - **`LcGlobalIdentifier`**: as above but **must** include at least one `::`
-    segment (i.e., is fully qualified).
+    segment (that is, fully qualified).
 
 **Resolution rule:** Only **fully qualified** `module::func` names parse as
 function calls at parse time. A bare `name(…)` parses as a variable application
@@ -150,7 +151,7 @@ semantics are described in §7.3.
 
 ______________________________________________________________________
 
-## 5. Grammar (mini‑EBNF)
+## 5. Grammar (mini‑Extended Backus–Naur Form (EBNF))
 
 Notation: `A?` optional, `A*` zero or more, `A+` one or more, alternatives with
 `|`. Terminals in `'single quotes'`.
@@ -283,8 +284,8 @@ LhsAssign       ::= Pattern | Expr       // implementation permits pattern LHS
 ```
 
 **Top‑level `for`:** A top‑level `for` statement is **converted into one or
-more rules** during parsing (desugaring). This affects scoping and where
-variables may appear.
+more rules** during parsing (desugaring). This affects scoping, and it governs
+where variables may appear.
 
 **Break/Continue/Return:**
 
@@ -292,7 +293,7 @@ variables may appear.
 - `return` is permitted in function/closure bodies; it is not valid in rule
   bodies. Misuse must be reported with a clear diagnostic.
 
-### 5.10 Conditions and assignments in rule RHS
+### 5.10 Conditions and assignments in the rule right-hand side (RHS)
 
 `Condition` is any expression in a boolean context. The parser accepts
 assignment‑like forms (e.g., pattern `=` expression) inside RHS to support
@@ -340,7 +341,7 @@ ______________________________________________________________________
 - The parser extracts `group_by` into an explicit `RHSGroupBy` node bound to
   the magic variable `__group`. The remainder of the expression is re‑emitted
   as a condition/assignment referencing `__group`.
-- Multiple `group_by` occurrences or wrong arity are parse‑time errors.
+- Multiple `group_by` occurrences, or the wrong arity, are parse‑time errors.
 
 ### 6.2 Legacy `Aggregate(…)`
 
@@ -351,8 +352,7 @@ ______________________________________________________________________
 ### 6.3 Head by‑reference (`&Rel{…}`) → `ref_new`
 
 - In a **rule head**, `&Rel{…}` (or bracket form) is rewritten to a call to
-  **`ref_new(Rel{…})`** so that downstream stages can materialize reference
-  values.
+  **`ref_new(Rel{…})`**, so downstream stages can materialize reference values.
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
 
@@ -414,7 +414,8 @@ clear diagnostic that includes a span:
   `type`, `function`, or `relation`.
 - **Non‑extern transformer:** `transformer` lacking the `extern` qualifier.
 - **Duplicate definition:** repeated name for
-  type/relation/index/transformer/import; or function with same `(name, arity)`.
+  type/relation/index/transformer/import, or function with the same
+  `(name, arity)`.
 - **`group_by` misuse:** more than one `group_by` in an expression or wrong
   arity (≠ 2).
 - **String pattern interpolation:** an interpolated string in a pattern context.
@@ -558,7 +559,7 @@ X(x) :- group_by(sum(x)). // error: expected 2 arguments
 - **Non‑extern transformer:**
 
 ```ddlog
-transformer Foo() ; // error: transformer must be extern
+transformer Foo(); // error: transformer declarations must be extern
 ```
 
 - **Attribute on index:**
@@ -589,9 +590,9 @@ ______________________________________________________________________
 - **Function resolution:** treat unqualified calls as variables until name
   resolution; only `module::func` is parsed as a function call token.
 - **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
-  parser (or immediately after) so later phases can assume a uniform
+  parser (or immediately after), so later phases can assume a uniform
   representation (`RHSGroupBy`).
-- **Tabs and positions:** if you normalize tabs, do so before lexing and
+- **Tabs and positions:** perform any tab normalization before lexing and
   preserve a mapping for accurate diagnostics.
 - **Compatibility policy:** legacy constructs accepted for compatibility must
   either be lowered to the canonical AST (e.g., `Aggregate`) or rejected with a

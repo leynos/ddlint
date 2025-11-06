@@ -198,8 +198,8 @@ fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) ->
 }
 
 /// Parses an optional type following a colon. Returns:
-/// - `Some(type_text)` when a colon is present and a non-empty type is parsed
-/// - `None` when no colon is present or the next token is a terminator (`{` or
+/// - `Some(type_text)` when a colon is present, and a non-empty type is parsed
+/// - `None` when no colon is present, or when the next token is a terminator (`{` or
 ///   `;`)
 pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
 where

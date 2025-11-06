@@ -12,8 +12,8 @@ type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
 
 /// Collect the text of a syntax subtree.
 ///
-/// This helper iteratively traverses the tree using an explicit stack so
-/// deeply nested inputs do not risk recursion overflow. It enables
+/// This helper iteratively traverses the tree using an explicit stack,
+/// ensuring deeply nested inputs do not risk recursion overflow. It enables
 /// round-trip tests that assert the printed output matches the original
 /// source.
 pub(super) fn pretty_print(node: &SyntaxNode) -> String {
@@ -38,13 +38,13 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
 /// Collapse runs of whitespace into single spaces.
 ///
 /// ```
-/// assert_eq!(normalise_whitespace("a  b\n c"), "a b c");
+/// assert_eq!(normalize_whitespace("a  b\n c"), "a b c");
 /// ```
-pub(super) fn normalise_whitespace(text: &str) -> String {
+pub(super) fn normalize_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Parse `src` and assert that the program is well formed.
+/// Parse `src`, and assert that the program is well formed.
 #[track_caller]
 pub(super) fn parse_ok(src: &str) -> crate::Parsed {
     let parsed = parse(src);

@@ -127,7 +127,7 @@ impl<'a> TokenStream<'a> {
     ///
     /// ```rust,ignore
     /// use parser::token_stream::TokenStream;
-    /// // Assume tokens is a Vec<(SyntaxKind, Span)> and src is the source string.
+    /// // Assume tokens is a Vec<(SyntaxKind, Span)>, while src holds the source string.
     /// let mut stream = TokenStream::new(&tokens, src);
     /// stream.skip_until(42);
     /// // The cursor now points to the first token whose span ends after position 42.
@@ -170,11 +170,12 @@ impl<'a> TokenStream<'a> {
         end
     }
 
-    /// Advances the cursor past whitespace and comment tokens that do not contain newlines.
+    /// Advances the cursor past whitespace tokens, and comment tokens, that do not contain
+    /// newlines.
     ///
-    /// Skips over consecutive whitespace or comment tokens as long as their spans do not
-    /// include a newline character. Stops at the first token that is not whitespace/comment
-    /// or contains a newline.
+    /// Skips over consecutive whitespace or comment tokens while their spans stay free of
+    /// newline characters. Stops at the first token that is not whitespace/comment, or at the
+    /// first token containing a newline.
     ///
     /// # Examples
     ///

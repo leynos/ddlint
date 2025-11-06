@@ -2,12 +2,12 @@
 //! Light-weight AST wrappers built around `rowan` syntax nodes.
 //!
 //! These wrappers expose typed navigation over the CST produced by the parser.
-//! They stay intentionally small so that higher layers can interact with the
-//! tree without depending on a fully fledged semantic model.
+//! They stay intentionally small, so higher layers can interact with the tree
+//! without depending on a fully fledged semantic model.
 //!
-//! The façade re-exports expression helpers, including [`MatchArm`], so tests
-//! and fixtures can assemble match expressions without dipping into private
-//! modules.
+//! The façade re-exports expression helpers, including [`MatchArm`], enabling
+//! tests and fixtures to assemble match expressions without dipping into
+//! private modules.
 
 use rowan::SyntaxElement;
 
@@ -92,7 +92,7 @@ fn skip_to_transformer_keyword(
 
 /// Extract the first identifier token from the iterator.
 ///
-/// Whitespace and comments are skipped. If a non-identifier token is
+/// Whitespace, and comments, are skipped. If a non-identifier token is
 /// encountered before an identifier, `None` is returned.
 ///
 /// # Parameters
@@ -141,8 +141,8 @@ mod type_def;
 
 /// Expression AST nodes and helpers used across tests and fixtures.
 ///
-/// Re-exports [`MatchArm`] so callers can assemble match expressions without
-/// reaching into private modules.
+/// Re-exports [`MatchArm`], allowing callers to assemble match expressions
+/// without reaching into private modules.
 pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;

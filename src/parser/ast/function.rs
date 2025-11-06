@@ -1,7 +1,7 @@
 //!
 //! AST wrapper for function declarations and definitions.
 //!
-//! Provides access to function names, parameters, return types and whether the
+//! Provides access to function names, parameters, return types, and whether the
 //! function is declared as `extern`.
 
 use super::AstNode;

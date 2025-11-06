@@ -1,7 +1,8 @@
 //! Parsers for relation declarations and clauses.
 //!
 //! These helpers parse relation column lists and `primary key` clauses using
-//! `chumsky` so callers can validate structure without manual token juggling.
+//! `chumsky`, allowing callers to validate structure without manual token
+//! juggling.
 //! They are shared by the span scanner and AST helpers to keep behaviour
 //! consistent.
 

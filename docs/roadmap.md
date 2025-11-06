@@ -4,21 +4,25 @@ This roadmap breaks down the work into logical phases, from the foundational
 parsing layer to the implementation of the linter engine and user-facing
 features.
 
+Terminology: references to the Abstract Syntax Tree (AST) describe the typed
+tree produced after parsing, while the Concrete Syntax Tree (CST) captures the
+lossless token-level structure built during parsing.
+
 ______________________________________________________________________
 
-## **Phase 1: Foundational Components (Largely Complete)**
+## **Phase 1: foundational components (largely complete)**
 
 This phase covers the core infrastructure for turning source text into a
 navigable syntax tree.
 
-- [x] **Project Scaffolding & CI**
+- [x] **Project Scaffolding & Continuous Integration (CI)**
 
   - [x] Set up the Cargo project with a library and binary structure.
 
   - [x] Configure strict Clippy lints in `clippy.toml` and `Cargo.toml`.
 
-  - [x] Establish a CI pipeline using GitHub Actions for formatting, linting,
-    and testing (`.github/workflows/ci.yml`).
+  - [x] Establish a Continuous Integration (CI) pipeline using GitHub Actions
+        for formatting, linting, and testing (`.github/workflows/ci.yml`).
 
   - [x] Define project documentation standards and agent instructions
     (`AGENTS.md`, `docs/documentation-style-guide.md`).
@@ -87,20 +91,22 @@ navigable syntax tree.
 
 ______________________________________________________________________
 
-## **Phase 2: Parser Grammar Expansion**
+## **Phase 2: parser grammar expansion**
 
 The current parser excels at identifying top-level statements but has a
-simplified understanding of statement bodies, particularly expressions and
-control flow. This phase aims to build a complete grammar.
+simplified understanding of statement bodies, particularly expressions, as well
+as control flow constructs. This phase aims to build a complete grammar.
 
 - [ ] **Implement Detailed Expression Parsing**
 
   - [x] Design and implement a Pratt parser for DDlog expressions to correctly
     handle operator precedence and associativity, as defined in the updated
-    syntax specification (`docs/differential-datalog-parser-syntax-spec-updated.md`).
+    syntax specification
+    (`docs/differential-datalog-parser-syntax-spec-updated.md`).
 
   - [x] Add support for parsing all literal types within expressions (e.g.,
-    strings, numbers, booleans). The `SyntaxKind` enum already defines these.
+    strings, numbers, and booleans). The `SyntaxKind` enum already defines
+    these.
 
   - [x] Implement parsers for variable references (`e_var`) and function calls
     (`e_func`).
@@ -133,11 +139,11 @@ control flow. This phase aims to build a complete grammar.
 
   - [ ] Extend the tokenizer and literal parser to support raw and interpolated
     string forms, their interned variants, and to reject interpolated strings
-    inside patterns as specified in
-    `docs/differential_datalog_parser_syntax_spec_updated.md`.
+    inside patterns as specified in the updated
+    [parser syntax spec](docs/differential-datalog-parser-syntax-spec-updated.md).
 
   - [ ] Parse width-qualified numeric literals (signed and unsigned integers,
-    floats) with range validation and a shaped literal AST so later passes can
+    floats) with range validation and a shaped literal AST, so later passes can
     reason about widths.
 
   - [ ] Complete the operator table to match the specification, including
@@ -155,13 +161,13 @@ control flow. This phase aims to build a complete grammar.
   - [ ] Implement vector and map literal parsing with the builder desugarings
     defined in the specification.
 
-  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing so
+  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
     downstream analyses see the normalized representation.
 
   - [ ] Desugar top-level `for` statements in rule contexts into equivalent
     rules, matching the specification's semantics.
 
-  - [ ] Parse `apply` items and enforce that `transformer` declarations outwith
+  - [ ] Parse `apply` items and enforce that `transformer` declarations outside
     `extern` blocks raise diagnostics.
 
   - [ ] Enforce the qualified-call rule so only fully scoped identifiers parse
@@ -173,7 +179,7 @@ control flow. This phase aims to build a complete grammar.
 
 ______________________________________________________________________
 
-## **Phase 3: Linter Engine and Semantic Analysis**
+## **Phase 3: linter engine and semantic analysis**
 
 This phase involves building the core engine that will execute lint rules, as
 envisioned in `ddlint-design-and-road-map.md`.
@@ -188,7 +194,7 @@ envisioned in `ddlint-design-and-road-map.md`.
   - [ ] Create the `CstRuleStore` to register and manage all available lint
     rules.
 
-  - [ ] Build the visitor-based, parallelised Rule Runner (using `rayon`) that
+  - [ ] Build the visitor-based, parallelized Rule Runner (using `rayon`) that
     traverses the CST and invokes the appropriate rules for each node.
 
   - [ ] Implement the `declare_lint!` macro to simplify rule creation.
@@ -210,7 +216,7 @@ envisioned in `ddlint-design-and-road-map.md`.
 
 ______________________________________________________________________
 
-## **Phase 4: Lint Rule Implementation**
+## **Phase 4: lint rule implementation**
 
 With the engine and semantic analysis in place, the initial set of lint rules
 from the design document can be implemented.
@@ -222,8 +228,8 @@ from the design document can be implemented.
     - Requires the symbol table.
 
     - Logic: Iterate through all declared relations in the symbol table. For
-      each, check if it has any usage sites (i.e., appears in a rule body). If
-      not, emit a diagnostic.
+      each, check for usage sites (for example, a rule body reference). If none
+      exist, emit a diagnostic.
 
   - [ ] `unused-variable`:
 
@@ -286,7 +292,7 @@ from the design document can be implemented.
 
 ______________________________________________________________________
 
-## **Phase 5: User Interface and Experience**
+## **Phase 5: user interface and experience**
 
 This phase focuses on creating a polished and usable tool for the end-user.
 
@@ -295,7 +301,7 @@ This phase focuses on creating a polished and usable tool for the end-user.
   - [ ] Replace the placeholder `main.rs` with a full CLI using the `clap`
     crate.
 
-  - [ ] Implement the default linting command: `ddlint <FILES...>`.
+  - [ ] Implement the default linting command: `ddlint <FILES…>`.
 
   - [ ] Implement the `ddlint rules` subcommand to list all available rules.
 
@@ -315,7 +321,7 @@ This phase focuses on creating a polished and usable tool for the end-user.
 
 ______________________________________________________________________
 
-## **Phase 6: Advanced Features and Future Work**
+## **Phase 6: advanced features and future work**
 
 - [ ] **Autofixing**
 

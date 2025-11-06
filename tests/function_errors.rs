@@ -1,6 +1,6 @@
 //! Integration tests for function parameter error handling.
 //!
-//! These tests feed malformed function declarations into the parser and assert
+//! These tests feed malformed function declarations into the parser, ensuring
 //! that specific delimiter issues are reported with precise spans.
 
 use ddlint::parser::parse;

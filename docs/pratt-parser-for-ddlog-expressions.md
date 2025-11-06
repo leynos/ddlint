@@ -35,10 +35,10 @@ ______________________________________________________________________
 
 ## 2. Expression AST definition
 
-First, we need a data structure to represent the parsed expressions. This will
-live alongside the other AST definitions in `src/parser/ast/`.
+First, the parser needs a data structure to represent the parsed expressions.
+This will live alongside the other AST definitions in `src/parser/ast/`.
 
-```rust
+```rust,no_run
 // In a new file, e.g., src/parser/ast/expr.rs
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +59,7 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     Tuple(Vec<Expr>),
-    // ... other expression types like Struct, Match, If-Else, etc.
+    // … other expression types like Struct, Match, If-Else, etc.
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -101,13 +101,13 @@ ______________________________________________________________________
 ## 3. Pratt parser implementation with `chumsky`
 
 The heart of the implementation uses `chumsky::pratt`. This requires defining
-the atoms (the simplest parts of an expression, like literals or variables) and
+the atoms—the simplest parts of an expression such as literals or variables—and
 then defining the operators and their binding power (precedence).
 
 This logic would be added to the `span_scanner.rs` or a new module it delegates
 to.
 
-```rust
+```rust,no_run
 // In a parser module, e.g., src/parser/expression_parser.rs
 
 use chumsky::prelude::*;
@@ -222,7 +222,7 @@ pub fn expression_parser() -> impl Parser<SyntaxKind, ast::Expr, Error = Simple<
             },
         )
         .left(),
-        // ... other comparison operators ...
+        // … other comparison operators …
 
         // Precedence level 3: && (Logical AND)
         Operator::new(
@@ -301,14 +301,14 @@ token as evidence that the `then` branch was absent, producing a clear
 `expected expression for 'then' branch of 'if'` message.
 
 A subtle ambiguity arises from the shared `IDENT {` token sequence used by
-struct literals. To resolve this we activate a struct-literal guard for the
-duration of the condition parse. While active it interprets `IDENT {` as a
-variable followed by the branch, preventing the condition from consuming the
-branch braces. The guard automatically suspends inside parentheses, brace
-groups, and closure bodies so expressions such as `if (Point { x: 1 }) { ... }`
-or `if cond { Point { x: 1 } }` continue to parse as intended. This strategy
-eliminates spurious `expected T_COLON` diagnostics without restricting
-legitimate struct literal usage.
+struct literals. To resolve this, the implementation activates a struct-literal
+guard for the duration of the condition parse. While active, it interprets
+`IDENT {` as a variable followed by the branch, preventing the condition from
+consuming the branch braces. The guard automatically suspends inside
+parentheses, brace groups, and closure bodies so expressions such as
+`if (Point { x: 1 }) { … }` or `if cond { Point { x: 1 } }` continue to parse
+as intended. This strategy eliminates spurious `expected T_COLON` diagnostics
+without restricting legitimate struct literal usage.
 
 ### Handling `match` expressions
 
@@ -335,24 +335,26 @@ arms without triggering the guard.
 
 ### Handling `for` loop expressions
 
-Rules may contain `for` loops with optional guards. The Pratt parser recognises
+Rules may contain `for` loops with optional guards. The Pratt parser recognizes
 the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
 node. The header is handled in three parts:
 
-- **Pattern extraction:** tokens before `in` are sliced directly from the source
+- **Pattern extraction:** tokens before `in` are sliced directly from the
+  source,
   so destructuring patterns remain verbatim. The range is trimmed to remove
-  surrounding whitespace but the inner formatting is untouched.
-- **Iterable expression:** parsed with struct literals temporarily re-enabled so
-  constructs like `for (row in Rows { ... })` continue to work.
+  surrounding whitespace, but the inner formatting is untouched.
+- **Iterable expression:** parsed with struct literals temporarily re-enabled,
+  so constructs like `for (row in Rows { … })` continue to work.
 - **Guard:** if the header contains `if`, the guard expression reuses
   `parse_if_clause` which already implements precise diagnostics for missing or
   malformed expressions. Guards are stored as `Option<Box<Expr>>` and omitted
   when absent.
 
-The loop body is parsed using the standard expression entry point, allowing
-single atoms or grouped blocks. Treating loops as expressions means
-`rule_body_span` can continue validating rule bodies by invoking the Pratt
-parser; control-flow errors surface alongside other expression diagnostics.
+The loop body is parsed using the standard expression entry point. That parser
+handles both single atoms and grouped blocks. Treating loops as expressions
+means `rule_body_span` can continue validating rule bodies by invoking the
+Pratt parser; control-flow errors surface alongside other expression
+diagnostics.
 
 ______________________________________________________________________
 
@@ -377,7 +379,7 @@ The strategy is as follows:
 4. The main parser will wrap the sequence of tokens that were successfully
    parsed by `expression_parser()` in an `N_EXPR_NODE` `SyntaxKind`.
 
-This way, we get the best of both worlds:
+This approach delivers the best of both worlds:
 
 - A structured `ast::Expr` for immediate semantic validation or interpretation.
 
@@ -388,15 +390,15 @@ This way, we get the best of both worlds:
 ### Public AST helpers
 
 Integration and fixture code build Pratt parser expectations through the
-`parser::ast` façade. The module now re-exports `MatchArm` alongside `Expr` so
+`parser::ast` façade. The module now re-exports `MatchArm` alongside `Expr`, so
 callers can construct match expressions without reaching into the private
 layout of `ast::expr`. Tests should continue using the helpers in `test_util`
 for common patterns, but direct use of `MatchArm` is available whenever bespoke
 arm construction is clearer than chaining builders.
 
-The typed AST wrapper for this new node would look something like this:
+A typed AST wrapper describing this new node would look something like this:
 
-```rust
+```rust,no_run
 // In src/parser/ast/mod.rs or a new file
 
 pub struct Expression(rowan::SyntaxNode<DdlogLanguage>);
@@ -414,10 +416,10 @@ impl Expression {
     pub fn to_structured_ast(&self) -> Result<ast::Expr, Vec<Simple<SyntaxKind>>> {
         let tokens = self.syntax().children_with_tokens().filter_map(|elem| {
             if let rowan::NodeOrToken::Token(token) = elem {
-                // Here you would reconstruct the (SyntaxKind, Span) stream
+                // Reconstruct the (SyntaxKind, Span) stream at this point
                 // This part needs careful implementation.
             }
-            // ...
+            // …
         });
 
         // expression_parser().parse(tokens)
@@ -444,16 +446,16 @@ operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
-Literal tokens are normalised in a dedicated helper so prefix parsing remains
-readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE` and `K_FALSE` to
-`ast::Literal` variants, ensuring numbers, strings and booleans appear directly
-in the resulting AST.
+Literal tokens are normalized via a dedicated helper, keeping prefix parsing
+readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE`, and `K_FALSE` to
+`ast::Literal` variants, ensuring numbers, strings, and booleans appear
+directly in the resulting AST.
 
-Operator precedence is centralised in `src/parser/ast/precedence.rs`. Both the
+Operator precedence is centralized in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
-The precedence for type and control operators is, from highest to lowest:
+Type and control operators follow this precedence, from highest to lowest:
 `:`, `as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
 parses as `(a and b) = c`. Ascription and cast bind more tightly than
 assignment but looser than arithmetic operators.
@@ -467,7 +469,7 @@ variants. This design allows chaining like `foo.bar(x).0` without extra
 precedence rules.
 
 Struct literals, tuple literals, and closures extend the prefix grammar. Struct
-construction recognizes `Ident { field: expr, ... }` and records field order in
+construction recognizes `Ident { field: expr, … }` and records field order in
 the AST. Tuple literals are distinguished from grouped expressions by the
 presence of a comma or an empty pair of parentheses. Both structs and tuples
 accept trailing commas. Closure literals parse a pipe-delimited parameter list
@@ -482,5 +484,5 @@ token is a terminator such as `)`, `}`, `,`, `;`, or `->`, it emits a unit
 tuple to mirror the Haskell parser's default. Otherwise, it parses a full
 expression, while respecting the struct-literal suppression guard, surfacing a
 targeted diagnostic if the expression is missing. This keeps imperative
-statements usable inside expression contexts and aligns our behaviour with
+statements usable inside expression contexts and aligns the behaviour with
 upstream DDlog semantics.
