@@ -492,7 +492,13 @@ mod tests {
 
     #[test]
     fn test_valid_let_statement() {
-        let tokens = vec!;
+        let tokens = vec![
+            (Token::Let, "let", 0..3),
+            (Token::Ident("x"), "x", 4..5),
+            (Token::Assign, "=", 6..7),
+            (Token::Integer(42), "42", 8..10),
+            (Token::Semicolon, ";", 10..11),
+        ];
 
         let result = let_parser().parse(&tokens).into_result();
 
@@ -504,7 +510,12 @@ mod tests {
 
     #[test]
     fn test_invalid_let_statement_missing_semicolon() {
-        let tokens = vec!;
+        let tokens = vec![
+            (Token::Let, "let", 0..3),
+            (Token::Ident("x"), "x", 4..5),
+            (Token::Assign, "=", 6..7),
+            (Token::Integer(42), "42", 8..10),
+        ];
 
         let (ast, errs) = let_parser().parse(&tokens).into_output_errors();
 
@@ -539,7 +550,7 @@ logic, run the tests, and then interactively review the new AST structures
 before accepting them as the new "golden" standard. This dramatically
 accelerates iteration and refactoring.12
 
-The best practice is to snapshot the entire `ParseResult`, which contains both
+The best practice is to snapshot the entire `ParseResult`, which includes both
 the (potentially partial) AST and the list of errors. This provides a complete
 picture of the parser's output for a given input.
 
@@ -962,7 +973,24 @@ impl Arbitrary for Expr {
         leaf.prop_recursive(
             8, // Max recursion depth
             256, // Max total nodes
-|inner| prop_oneof!
+            |inner| prop_oneof![
+                // Recursive branches for unary and binary operators
+                prop_oneof![UnaryOp::Plus, UnaryOp::Minus]
+                    .prop_flat_map(|op| {
+                        any::<u64>().prop_map(move |_| Expr::Unary {
+                            op: op.clone(),
+                            expr: Box::new(Expr::Literal(0)),
+                        })
+                    }),
+                prop_oneof![BinaryOp::Add, BinaryOp::Sub, BinaryOp::Mul, BinaryOp::Div]
+                    .prop_flat_map(|op| {
+                        (inner.clone(), inner.clone()).prop_map(move |(l, r)| Expr::Binary {
+                            op: op.clone(),
+                            lhs: Box::new(l),
+                            rhs: Box::new(r),
+                        })
+                    }),
+            ]
         ).boxed()
     }
 }

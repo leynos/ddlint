@@ -3,4 +3,5 @@ input relation X(x: u32)
 output relation Sum(x: u32, y: u32, s: u32)
 output relation Prod(x: u32, y: u32, p: u32)
 
+/* Generates all pairs (x, y) from X, including self-pairs where x = y. */
 Sum(x, y, x + y), Prod(x, y, x * y) :- X(x), X(y).

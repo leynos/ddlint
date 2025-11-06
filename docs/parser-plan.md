@@ -21,7 +21,8 @@ Follow the guidance in the design document:
 - Create a `SyntaxKind` enum covering every token and node in the grammar.
 - Derive `FromPrimitive` and `ToPrimitive` and use `#[repr(u16)]` so that each
   kind can map to `rowan::SyntaxKind`. The design notes this pattern explicitly
-  ([design document](docs/ddlint-design-and-road-map.md#L71-L122)).
+  in Section 1.2 of the
+  [design document](docs/ddlint-design-and-road-map.md#12-the-linter-core-adapting-the-rslint_core-model).
 - Include an `N_ERROR` variant for error recovery.
 
 Implement `rowan::Language` for a `DdlogLanguage` newtype, using the
