@@ -28,8 +28,8 @@ The key steps are:
 3. **Implement the Parser**: Build the `chumsky` parser using `chumsky::pratt`.
 
 4. **Integrate with the CST**: Ensure that when the expression parser is
-   invoked, the resulting AST is correctly represented within a `rowan`
-   `GreenNode`.
+   invoked, the resulting AST is correctly represented within a
+   `rowan` `GreenNode`.
 
 ______________________________________________________________________
 
@@ -339,7 +339,8 @@ Rules may contain `for` loops with optional guards. The Pratt parser recognizes
 the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
 node. The header is handled in three parts:
 
-- **Pattern extraction:** tokens before `in` are sliced directly from the source
+- **Pattern extraction:** tokens before `in` are sliced directly from the
+  source,
   so destructuring patterns remain verbatim. The range is trimmed to remove
   surrounding whitespace, but the inner formatting is untouched.
 - **Iterable expression:** parsed with struct literals temporarily re-enabled,
@@ -389,7 +390,7 @@ This approach delivers the best of both worlds:
 ### Public AST helpers
 
 Integration and fixture code build Pratt parser expectations through the
-`parser::ast` façade. The module now re-exports `MatchArm` alongside `Expr` so
+`parser::ast` façade. The module now re-exports `MatchArm` alongside `Expr`, so
 callers can construct match expressions without reaching into the private
 layout of `ast::expr`. Tests should continue using the helpers in `test_util`
 for common patterns, but direct use of `MatchArm` is available whenever bespoke
@@ -454,8 +455,8 @@ Operator precedence is centralized in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
-Type and control operators follow this precedence, from highest to lowest: `:`,
-`as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
+Type and control operators follow this precedence, from highest to lowest:
+`:`, `as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
 parses as `(a and b) = c`. Ascription and cast bind more tightly than
 assignment but looser than arithmetic operators.
 

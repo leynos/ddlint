@@ -208,7 +208,7 @@ sequenceDiagram
     Parser-->>User: Parsed { green, root }
 ```
 
-*Figure 2: Parsing pipeline from tokenisation to typed syntax trees.*
+*Figure 2: Parsing pipeline from tokenization to typed syntax trees.*
 
 After tokenization the parser wraps the vector of tokens in a lightweight
 `TokenStream`. This structure manages the current cursor and exposes helper
@@ -679,7 +679,7 @@ The autofixing workflow will proceed as follows:
 6. Finally, the modified text buffer is written back to the original file on
    disk.
 
-### 5.3. The "trust but verify" principle of autofixing
+### 5.3. The "trust, but verify" principle of autofixing
 
 Autofixing is an immensely powerful feature, but it is also inherently
 dangerous. A bug in the fixing logic can silently corrupt a user's source code,
@@ -959,7 +959,7 @@ completing the vision of a truly interactive developer assistant.
 
 [^2]: References:
 
-- Rust Analyzer manual, "Syntax Trees". Explains the rowan red/green
+- `rust-analyzer` manual, "Syntax Trees". Explains the rowan red/green
         tree design, `SyntaxKind` enums, and the `rowan::Language` bridge.
         <https://rust-analyzer.github.io/manual.html#syntax-trees>
 - `rslint_core` repository and architecture overview (CST-first linter

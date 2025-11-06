@@ -35,7 +35,7 @@ Left-recursive rules make top-down parsers seize up like Marvin’s shoulder
 joints. Rewrite them with repetition combinators (`many()`, `foldl()`), or use
 a precedence-climbing expression parser.
 
-Forward references? Wrap them in `recursive(|expr| { … })` so Chumsky can see
+Forward references? Wrap them in `recursive(|expr| { … })`, so Chumsky can see
 round corners.
 
 Ambiguity? Break overlapping prefixes into separate branches *first* and only

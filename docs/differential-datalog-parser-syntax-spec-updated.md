@@ -68,9 +68,7 @@ The following **keywords** and **reserved operators** cannot be used as
 identifiers (final list should be kept 1:1 with the lexer):
 
 - **Keywords:** `type`, `function`, `extern`, `transformer`, `input`, `output`,
-  `internal`, `relation`, `stream`, `multiset`, `index`, `on`, `primary`,
-  `key`, `apply`, `match`, `if`, `else`, `for`, `in`, `then`, `skip`, `true`,
-  `false`, `var`, `mut`, `return`, `break`, `continue`.
+  `internal`,`relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`,`break`,`continue`.
 - **Special tokens:** `@`, `:-`, `,`, `;`, `:`, `::`, `.`, `&`, `'` (diff
   marker), `-<` (delay introducer), `=>` (implies), brackets and braces
   `()[]{}`.
@@ -168,8 +166,8 @@ Attributed(X) ::= Attribute+ X
 Attribute     ::= '#[' AttrBody ']'
 ```
 
-**Attribute placement:** Attributes are permitted **only** on `Typedef`,
-`Function`, and `RelationDecl`. Any other placement is an error.
+**Attribute placement:** Attributes are permitted **only** on
+`Typedef`, `Function`, and `RelationDecl`. Any other placement is an error.
 
 ### 5.2 Imports and types
 

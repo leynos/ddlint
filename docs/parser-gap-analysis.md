@@ -4,8 +4,8 @@
 
 - The expression engine is in **good shape**: a clean Pratt parser with tuples,
   struct literals, closures, if/match/for control-flow, decent delimiter
-  diagnostics, and tidy test coverage (`src/parser/expression/*`,
-  `src/parser/tests`, `tests/*`).
+  diagnostics, and tidy test coverage
+  (`src/parser/expression/*`, `src/parser/tests`, `tests/*`).
 - The **surface language** in the spec is **wider** than what’s implemented
   today. Notable gaps: rich string forms & interning, width-qualified numeric
   literals, collection literals (map/vector) + their desugarings,
@@ -48,14 +48,15 @@ head.
 
 - **Operator table completeness**
   Spec mandates an authoritative table incl. `++` (concat), bit-xor `^`,
-  implication `=>`, the usual arithmetic/logic, and tight postfix (`f(…)`,
-  `e[expr]`, `e.name`) precedence. Code: postfix/index/call/member access and
-  most arithmetic/logic exist (see `src/parser/expression/infix.rs`,
-  `src/parser/ast/precedence.rs`). Implication `=>` is tokenized (search shows
-  `T_IMPLIES`), but tests do not exercise it under Pratt; concat `++`/xor `^`
-  aren’t visible in tests either. **Action:** (a) ensure all spec’d tokens are
-  wired into Pratt with correct binding power/associativity; (b) add focused
-  tests for `=>`, `^`, `++` to lock precedence.
+  implication `=>`, the usual arithmetic/logic, and tight postfix
+  (`f(…)`, `e[expr]`, `e.name`) precedence. Code: postfix/index/call/member
+  access and most arithmetic/logic exist (see
+  `src/parser/expression/infix.rs`, `src/parser/ast/precedence.rs`).
+  Implication `=>` is tokenized (search shows `T_IMPLIES`), but tests do not
+  exercise it under Pratt; concat `++`/xor `^` aren’t visible in tests either.
+  **Action:** (a) ensure all spec’d tokens are wired into Pratt with correct
+  binding power/associativity; (b) add focused tests for `=>`, `^`, `++` to
+  lock precedence.
 
 - **Call parsing for unqualified names**
   Spec: “Only **fully qualified** `module::func` parses as a function call at
@@ -82,9 +83,9 @@ head.
   `src/parser/ast/expr.rs`) and collects them via delimiter-balanced slicing
   (`expression/pattern_collection.rs`). **Deviation:** the current code does
   not build the **pattern tree** the spec expects. **Action:** add a **pattern
-  parser** that produces nodes like `PVar`, `PTuple`, `PStruct`, `PLit`,
-  `PTyped`, … and use it for **match arms**, **for-loop bindings**, and
-  **right-hand-side flatmap binds**.
+  parser** that produces nodes like
+  `PVar`, `PTuple`, `PStruct`, `PLit`, `PTyped`, … and use it for **match
+  arms**, **for-loop bindings**, and **right-hand-side flatmap binds**.
 
 - **`for` loops**
   Spec: `for (Pattern in Expr) if Guard? Statement` acts as an imperative form

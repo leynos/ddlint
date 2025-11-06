@@ -83,7 +83,7 @@ contents of the manual.
   argument.
 - Document the return value with `# Returns`.
 - Document any panics or errors with `# Panics` or `# Errors` as appropriate.
-- Place examples under `# Examples` and mark the code block with `no_run` so
+- Place examples under `# Examples` and mark the code block with `no_run`, so
   they do not execute during documentation tests.
 - Put function attributes after the doc comment.
 
