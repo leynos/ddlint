@@ -43,9 +43,8 @@ fn nested_for_loop_rule() -> &'static str {
 }
 
 #[rstest]
-#[case::simple_rule(simple_rule(), true)]
-// TODO: rules with multiple body literals should parse without errors once supported
-#[case::multi_literal_rule(multi_literal_rule(), true)]
+#[case::simple_rule(simple_rule(), false)]
+#[case::multi_literal_rule(multi_literal_rule(), false)]
 #[case::fact_rule(fact_rule(), false)]
 #[case::for_loop_rule(for_loop_rule(), false)]
 #[case::for_loop_if_iterable(for_loop_with_if_iterable(), false)]
