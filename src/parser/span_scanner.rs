@@ -7,7 +7,7 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::expression_span::{rule_body_span, validate_expression};
+use crate::parser::expression_span::validate_expression;
 use crate::{Span, SyntaxKind};
 
 use super::{
@@ -483,9 +483,9 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
 
     let atom_p = atom();
 
-    let statement = rule_statement(ws.clone());
+    let literal = rule_body_literal(ws.clone());
 
-    let body = statement
+    let body = literal
         .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
         .allow_trailing()
         .at_least(1)
@@ -504,91 +504,125 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
         .map_with_span(|_, sp: Span| sp)
 }
 
-fn rule_statement(
-    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
-) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    recursive(|stmt| {
-        let ws = ws.clone();
-        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE);
-        let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
-        let atom_stmt = atom();
-
-        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
-
-        let if_stmt = just(SyntaxKind::K_IF)
-            .padded_by(ws.clone())
-            .ignore_then(condition.clone())
-            .then(stmt.clone().padded_by(ws.clone()))
-            .then(
-                just(SyntaxKind::K_ELSE)
-                    .padded_by(ws.clone())
-                    .ignore_then(stmt.clone())
-                    .or_not(),
-            )
-            .ignored();
-
-        let header_expr = for_header(ws.clone());
-
-        let for_stmt = just(SyntaxKind::K_FOR)
-            .padded_by(ws.clone())
-            .ignore_then(header_expr)
-            .then(stmt.clone().padded_by(ws.clone()))
-            .ignored();
-
-        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt))
-            .padded_by(ws.clone())
-            .ignored()
-    })
-}
-
-fn for_header(
+fn rule_body_literal(
     ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    just(SyntaxKind::T_LPAREN)
+    let grouped = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+    ));
+
+    let token = grouped.or(
+        filter(|kind: &SyntaxKind| {
+            !matches!(
+                kind,
+                SyntaxKind::T_COMMA
+                    | SyntaxKind::T_DOT
+                    | SyntaxKind::T_WHITESPACE
+                    | SyntaxKind::T_COMMENT
+            )
+        })
+        .ignored(),
+    );
+
+    token
         .padded_by(ws.clone())
-        .ignore_then(for_binding_complete(ws.clone()))
-        .then_ignore(just(SyntaxKind::T_RPAREN))
+        .repeated()
+        .at_least(1)
         .padded_by(ws)
         .ignored()
 }
 
-fn for_binding_complete(
-    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
-) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    let nested = choice((
-        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
-        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
-        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
-    ));
+fn is_trivia_kind(kind: SyntaxKind) -> bool {
+    matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+}
 
-    let binding_token = nested.clone().or(filter(|kind: &SyntaxKind| {
-        matches!(
-            kind,
-            SyntaxKind::T_IDENT
-                | SyntaxKind::K_UNDERSCORE
-                | SyntaxKind::T_COMMA
-                | SyntaxKind::T_COLON
-                | SyntaxKind::T_COLON_COLON
-                | SyntaxKind::T_DOT
-                | SyntaxKind::T_AT
-                | SyntaxKind::T_HASH
-                | SyntaxKind::T_NUMBER
-                | SyntaxKind::T_STRING
-                | SyntaxKind::T_APOSTROPHE
-        )
-    })
-    .ignored());
+fn is_top_level(paren_depth: usize, brace_depth: usize, bracket_depth: usize) -> bool {
+    paren_depth == 0 && brace_depth == 0 && bracket_depth == 0
+}
 
-    let header_token =
-        nested.or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored());
+fn collect_rule_literal_spans(
+    tokens: &[(SyntaxKind, Span)],
+    start_idx: usize,
+    end: usize,
+) -> Vec<Span> {
+    fn push_literal_span(spans: &mut Vec<Span>, start: &mut Option<usize>, end: &mut Option<usize>) {
+        if let (Some(s), Some(e)) = (start.take(), end.take()) {
+            if s < e {
+                spans.push(s..e);
+            }
+        } else {
+            *start = None;
+            *end = None;
+        }
+    }
 
-    binding_token
-        .padded_by(ws.clone())
-        .repeated()
-        .at_least(1)
-        .then_ignore(just(SyntaxKind::K_IN).padded_by(ws.clone()))
-        .then(header_token.padded_by(ws).repeated().at_least(1))
-        .ignored()
+    let mut idx = start_idx;
+    let mut found_body = false;
+    while let Some((kind, span)) = tokens.get(idx) {
+        if span.start >= end {
+            break;
+        }
+        if *kind == SyntaxKind::T_IMPLIES {
+            found_body = true;
+            idx += 1;
+            break;
+        }
+        idx += 1;
+    }
+
+    if !found_body {
+        return Vec::new();
+    }
+
+    let mut spans = Vec::new();
+    let mut paren_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut literal_start: Option<usize> = None;
+    let mut literal_end: Option<usize> = None;
+
+    while let Some((kind, span)) = tokens.get(idx) {
+        if span.start >= end {
+            break;
+        }
+
+        if *kind == SyntaxKind::T_DOT && is_top_level(paren_depth, brace_depth, bracket_depth) {
+            push_literal_span(&mut spans, &mut literal_start, &mut literal_end);
+            break;
+        }
+
+        if *kind == SyntaxKind::T_COMMA && is_top_level(paren_depth, brace_depth, bracket_depth) {
+            push_literal_span(&mut spans, &mut literal_start, &mut literal_end);
+            idx += 1;
+            continue;
+        }
+
+        if is_trivia_kind(*kind) {
+            idx += 1;
+            continue;
+        }
+
+        literal_start.get_or_insert(span.start);
+        literal_end = Some(span.end);
+
+        match kind {
+            SyntaxKind::T_LPAREN => paren_depth += 1,
+            SyntaxKind::T_RPAREN => paren_depth = paren_depth.saturating_sub(1),
+            SyntaxKind::T_LBRACE => brace_depth += 1,
+            SyntaxKind::T_RBRACE => brace_depth = brace_depth.saturating_sub(1),
+            SyntaxKind::T_LBRACKET => bracket_depth += 1,
+            SyntaxKind::T_RBRACKET => bracket_depth = bracket_depth.saturating_sub(1),
+            _ => {}
+        }
+
+        idx += 1;
+    }
+
+    push_literal_span(&mut spans, &mut literal_start, &mut literal_end);
+
+    spans
 }
 
 /// Return `true` if `span` begins a new line in the source.
@@ -631,7 +665,7 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     let start_idx = st.stream.cursor();
     let end = parse_and_handle_rule(st, span);
 
-    if let Some(span) = rule_body_span(st.stream.tokens(), start_idx, end) {
+    for span in collect_rule_literal_spans(st.stream.tokens(), start_idx, end) {
         if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
             match err {
                 crate::parser::expression_span::ExpressionError::Parse(errs) => {
@@ -682,16 +716,7 @@ mod tests {
     //! Tests for the span scanner helper utilities.
     use super::*;
     use crate::test_util::tokenize;
-    use chumsky::Stream;
     use rstest::rstest;
-
-    fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<Simple<SyntaxKind>>) {
-        let tokens = tokenize(src);
-        let ws = inline_ws().repeated().ignored();
-        let parser = rule_statement(ws);
-        let stream = Stream::from_iter(0..src.len(), tokens.into_iter());
-        parser.parse_recovery(stream)
-    }
 
     #[rstest]
     #[case("import foo\n", vec![0..11], true)]
@@ -707,37 +732,43 @@ mod tests {
         assert_eq!(errs.is_empty(), errs_empty);
     }
 
-    #[rstest]
-    #[case("if (cond) if (nested) Process(nested) else Skip() else Handle()")]
-    #[case("for (a in A(a)) for (b in B(b)) ProcessPair(a, b)")]
-    #[case("for (item in if cond { Items(item) } else { Others(item) }) Process(item)")]
-    #[case("for (item in Items(item)) if (item > 10) Process(item)")]
-    #[case("for (item in Items(item) if item.active) Process(item)")]
-    #[case(
-        "if (outer) { for (item in Items(item)) if (should(item)) Process(item) } else { Skip() }"
-    )]
-    fn rule_statement_parses_control_flow(#[case] src: &str) {
-        let (res, errs) = parse_rule_statement_input(src);
-        assert!(res.is_some(), "expected successful parse for {src}");
-        assert!(errs.is_empty(), "unexpected errors for {src:?}: {errs:?}");
+    fn literal_texts(src: &str, spans: &[Span]) -> Vec<String> {
+        spans
+            .iter()
+            .map(|sp| src.get(sp.clone()).unwrap_or_default().trim().to_string())
+            .collect()
     }
 
     #[rstest]
-    #[case("if (cond { Process(cond) }")]
-    #[case("for (item in Items(item) Process(item)")]
-    #[case("for (item in Items(item) if item > 10 Process(item)")]
-    fn rule_statement_reports_errors(#[case] src: &str) {
-        let (res, errs) = parse_rule_statement_input(src);
-        if res.is_some() {
-            assert!(
-                !errs.is_empty(),
-                "expected errors for {src}, but parser recovered without diagnostics",
-            );
-        } else {
-            assert!(
-                !errs.is_empty(),
-                "expected errors for {src}, but parser reported none",
-            );
-        }
+    #[case(
+        "R(x) :- A(x).",
+        vec!["A(x)"],
+    )]
+    #[case(
+        "R(x) :- A(x), B(x).",
+        vec!["A(x)", "B(x)"],
+    )]
+    #[case(
+        "R(x) :- if (cond) Do(cond) else Skip(), for (entry in Items(entry)) Process(entry).",
+        vec![
+            "if (cond) Do(cond) else Skip()",
+            "for (entry in Items(entry)) Process(entry)",
+        ],
+    )]
+    #[case(
+        "R(x) :- match (value) { 1 -> One(), _ -> Other() }.",
+        vec!["match (value) { 1 -> One(), _ -> Other() }"],
+    )]
+    #[case(
+        "R(x) :- 1 + 2 * 3, tuple(First(x), Second(x, y[0, 1])).",
+        vec!["1 + 2 * 3", "tuple(First(x), Second(x, y[0, 1]))"],
+    )]
+    fn collect_rule_spans_extracts_literals(#[case] src: &str, #[case] expected: Vec<&str>) {
+        let tokens = tokenize(src);
+        let (_rule_spans, expr_spans, errs) = collect_rule_spans(&tokens, src);
+        assert!(errs.is_empty(), "unexpected errors: {errs:?}");
+        let texts = literal_texts(src, &expr_spans);
+        let expected_texts: Vec<String> = expected.into_iter().map(str::to_string).collect();
+        assert_eq!(texts, expected_texts);
     }
 }
