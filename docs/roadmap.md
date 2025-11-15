@@ -128,7 +128,7 @@ as control flow constructs. This phase aims to build a complete grammar.
 
 - [ ] **Enhance Rule Body Parsing**
 
-  - [ ] Refactor the current `rule.rs` and `span_scanner.rs` to use the new
+  - [x] Refactor the current `rule.rs` and `span_scanner.rs` to use the new
     expression and control-flow parsers, replacing the simple `atom` parser.
     This allows for detailed analysis of rule bodies.
 

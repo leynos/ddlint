@@ -150,7 +150,7 @@ pub use index::Index;
 pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
 pub use relation::Relation;
 pub use root::Root;
-pub use rule::Rule;
+pub use rule::{Rule, RuleBodyExpression};
 pub use transformer::Transformer;
 pub use type_def::TypeDef;
 

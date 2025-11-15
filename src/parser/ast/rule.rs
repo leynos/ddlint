@@ -27,7 +27,10 @@
 //! assert_eq!(rule.body_literals(), vec!["S(x)".into(), "T(x)".into()]);
 //! ```
 
-use super::AstNode;
+use chumsky::error::Simple;
+
+use super::{AstNode, Expr};
+use crate::parser::expression::parse_expression;
 use crate::{DdlogLanguage, SyntaxKind};
 
 /// Typed wrapper for a rule declaration.
@@ -61,96 +64,75 @@ impl Rule {
         }
     }
 
+    /// Return the CST nodes representing the rule body expressions.
+    #[must_use]
+    pub fn body_expression_nodes(&self) -> Vec<RuleBodyExpression> {
+        self.syntax
+            .children()
+            .filter(|n| n.kind() == SyntaxKind::N_EXPR_NODE)
+            .map(|syntax| RuleBodyExpression { syntax })
+            .collect()
+    }
+
     /// Text of each body literal in order of appearance.
     #[must_use]
     pub fn body_literals(&self) -> Vec<String> {
-        let mut iter = self
-            .syntax
-            .children_with_tokens()
-            .skip_while(|e| e.kind() != SyntaxKind::T_IMPLIES);
+        self.body_expression_nodes()
+            .into_iter()
+            .map(|expr| expr.text().trim().to_string())
+            .collect()
+    }
 
-        if matches!(iter.next().map(|e| e.kind()), Some(SyntaxKind::T_IMPLIES)) {
-            Self::extract_literals_from_body(iter)
+    /// Parse the body literals into structured expressions.
+    ///
+    /// # Errors
+    /// Returns aggregated expression parser diagnostics if any literal fails to parse.
+    pub fn body_expressions(&self) -> Result<Vec<Expr>, Vec<Simple<SyntaxKind>>> {
+        let mut exprs = Vec::new();
+        let mut errors = Vec::new();
+
+        for literal in self.body_expression_nodes() {
+            let text = literal.text();
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            match parse_expression(trimmed) {
+                Ok(expr) => exprs.push(expr),
+                Err(mut errs) => errors.append(&mut errs),
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(exprs)
         } else {
-            Vec::new()
-        }
-    }
-
-    /// Iterate over the body and collect literals.
-    fn extract_literals_from_body<I>(iter: I) -> Vec<String>
-    where
-        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
-    {
-        let mut buf = String::new();
-        let mut lits = Vec::new();
-
-        for e in iter {
-            if Self::process_body_element(e, &mut buf, &mut lits) {
-                break;
-            }
-        }
-
-        lits
-    }
-
-    /// Process a single syntax element of the rule body.
-    ///
-    /// Returns `true` if the body has ended.
-    fn process_body_element(
-        element: rowan::SyntaxElement<DdlogLanguage>,
-        buf: &mut String,
-        lits: &mut Vec<String>,
-    ) -> bool {
-        use rowan::NodeOrToken;
-
-        match element {
-            NodeOrToken::Token(t) => Self::process_token(&t, buf, lits),
-            NodeOrToken::Node(n) => {
-                buf.push_str(&n.text().to_string());
-                false
-            }
-        }
-    }
-
-    /// Handle a token in the rule body.
-    ///
-    /// Returns `true` when the terminating `.` is encountered.
-    fn process_token(
-        token: &rowan::SyntaxToken<DdlogLanguage>,
-        buf: &mut String,
-        lits: &mut Vec<String>,
-    ) -> bool {
-        match token.kind() {
-            SyntaxKind::T_COMMA => {
-                Self::add_literal_if_not_empty(buf, lits);
-                buf.clear();
-                false
-            }
-            SyntaxKind::T_DOT => {
-                Self::add_literal_if_not_empty(buf, lits);
-                true
-            }
-            _ => {
-                buf.push_str(token.text());
-                false
-            }
-        }
-    }
-
-    /// Add a literal to the list if it contains non-whitespace text.
-    fn add_literal_if_not_empty(buf: &str, lits: &mut Vec<String>) {
-        let lit = buf.trim();
-        if !lit.is_empty() {
-            lits.push(lit.to_string());
+            Err(errors)
         }
     }
 }
 
 impl_ast_node!(Rule);
 
+/// Wrapper for a single rule body expression CST node.
+#[derive(Debug, Clone)]
+pub struct RuleBodyExpression {
+    syntax: rowan::SyntaxNode<DdlogLanguage>,
+}
+
+impl RuleBodyExpression {
+    /// Full text of the expression as written in the source.
+    #[must_use]
+    pub fn text(&self) -> String {
+        self.syntax.text().to_string()
+    }
+}
+
+impl_ast_node!(RuleBodyExpression);
+
 #[cfg(test)]
 mod tests {
 
+    use super::Expr;
     use crate::parse;
 
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
@@ -165,5 +147,23 @@ mod tests {
             .expect("rule missing");
         assert_eq!(rule.head().as_deref(), Some("A(x)"));
         assert_eq!(rule.body_literals(), vec!["B(x)".to_string()]);
+    }
+
+    #[expect(clippy::expect_used, reason = "test requires parsed expressions")]
+    #[test]
+    fn body_expressions_parse_control_flow() {
+        let src = "R(x) :- for (item in Items(item)) Process(item), if (ready(x)) { Accept(x) } else { Skip() }.";
+        let parsed = parse(src);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
+        let rule = parsed
+            .root()
+            .rules()
+            .first()
+            .cloned()
+            .expect("rule missing");
+        let exprs = rule.body_expressions().expect("expressions should parse");
+        assert_eq!(exprs.len(), 2);
+        assert!(matches!(exprs.first(), Some(Expr::ForLoop { .. })));
+        assert!(matches!(exprs.get(1), Some(Expr::IfElse { .. })));
     }
 }
