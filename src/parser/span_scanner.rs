@@ -691,9 +691,6 @@ mod tests {
             .cloned()
             .and_then(|sp| src.get(sp))
             .expect("second span text missing");
-        assert_eq!(
-            second.trim(),
-            "if ready(x) { Accept(x) } else { Skip() }"
-        );
+        assert_eq!(second.trim(), "if ready(x) { Accept(x) } else { Skip() }");
     }
 }
