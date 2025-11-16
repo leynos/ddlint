@@ -1,3 +1,4 @@
+use crate::test_util::assert_no_parse_errors;
 use crate::{SyntaxKind, parse};
 
 #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
@@ -5,10 +6,7 @@ use crate::{SyntaxKind, parse};
 fn rule_body_expression_creates_node() {
     let src = "R(x) :- 1 + 2 * 3.";
     let parsed = parse(src);
-    // The span scanner does not currently recover from invalid rule bodies, so
-    // errors are expected. The expression parser should still process the body
-    // tokens.
-    assert!(!parsed.errors().is_empty());
+    assert_no_parse_errors(parsed.errors());
     let root = parsed.root().syntax();
     let mut expr_nodes = root
         .descendants()

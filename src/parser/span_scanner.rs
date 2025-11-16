@@ -505,18 +505,90 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
 }
 
 fn rule_statement(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    recursive(|stmt| {
+        let ws = ws.clone();
+        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE);
+        let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
+        let atom_stmt = atom();
+
+        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
+
+        let if_stmt = just(SyntaxKind::K_IF)
+            .padded_by(ws.clone())
+            .ignore_then(condition.clone())
+            .then(stmt.clone().padded_by(ws.clone()))
+            .then(
+                just(SyntaxKind::K_ELSE)
+                    .padded_by(ws.clone())
+                    .ignore_then(stmt.clone())
+                    .or_not(),
+            )
+            .ignored();
+
+        let header_expr = for_header(ws.clone());
+
+        let for_stmt = just(SyntaxKind::K_FOR)
+            .padded_by(ws.clone())
+            .ignore_then(header_expr)
+            .then(stmt.clone().padded_by(ws.clone()))
+            .ignored();
+
+        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt))
+            .padded_by(ws.clone())
+            .ignored()
+    })
+}
+
+fn for_header(
     ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    let token = choice((
+    just(SyntaxKind::T_LPAREN)
+        .padded_by(ws.clone())
+        .ignore_then(for_binding_complete(ws.clone()))
+        .then_ignore(just(SyntaxKind::T_RPAREN))
+        .padded_by(ws)
+        .ignored()
+}
+
+fn for_binding_complete(
+    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    let nested = choice((
         balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
-        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
         balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
-        filter(|kind: &SyntaxKind| !matches!(kind, SyntaxKind::T_COMMA | SyntaxKind::T_DOT))
-            .ignored()
-            .padded_by(ws.clone()),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
     ));
 
-    token.repeated().at_least(1).ignored()
+    let binding_token = nested.clone().or(filter(|kind: &SyntaxKind| {
+        matches!(
+            kind,
+            SyntaxKind::T_IDENT
+                | SyntaxKind::K_UNDERSCORE
+                | SyntaxKind::T_COMMA
+                | SyntaxKind::T_COLON
+                | SyntaxKind::T_COLON_COLON
+                | SyntaxKind::T_DOT
+                | SyntaxKind::T_AT
+                | SyntaxKind::T_HASH
+                | SyntaxKind::T_NUMBER
+                | SyntaxKind::T_STRING
+                | SyntaxKind::T_APOSTROPHE
+        )
+    })
+    .ignored());
+
+    let header_token =
+        nested.or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN).ignored());
+
+    binding_token
+        .padded_by(ws.clone())
+        .repeated()
+        .at_least(1)
+        .then_ignore(just(SyntaxKind::K_IN).padded_by(ws.clone()))
+        .then(header_token.padded_by(ws).repeated().at_least(1))
+        .ignored()
 }
 
 /// Return `true` if `span` begins a new line in the source.
