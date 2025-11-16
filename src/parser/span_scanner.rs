@@ -546,9 +546,18 @@ fn rule_statement(
             balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
             balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
             balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
-            filter(|kind: &SyntaxKind| !matches!(kind, SyntaxKind::T_COMMA | SyntaxKind::T_DOT))
-                .ignored()
-                .padded_by(ws.clone()),
+            filter(|kind: &SyntaxKind| {
+                !matches!(
+                    kind,
+                    SyntaxKind::T_COMMA
+                        | SyntaxKind::T_DOT
+                        | SyntaxKind::K_IF
+                        | SyntaxKind::K_FOR
+                        | SyntaxKind::K_SKIP
+                )
+            })
+            .ignored()
+            .padded_by(ws.clone()),
         ));
         let expr_stmt = expr_token.repeated().at_least(1).ignored();
 
@@ -740,9 +749,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("if (cond { Process(cond) }")]
+    #[case("if { Process(cond) }")]
+    #[case("for (item Items(item)) Process(item)")]
     #[case("for (item in Items(item) Process(item)")]
-    #[case("for (item in Items(item) if item > 10 Process(item)")]
     fn rule_statement_reports_errors(#[case] src: &str) {
         let (res, errs) = parse_rule_statement_input(src);
         if res.is_some() {
