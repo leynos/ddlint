@@ -513,7 +513,14 @@ fn rule_statement(
         let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
         let atom_stmt = atom();
 
-        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
+        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).or(filter(
+            |kind: &SyntaxKind| *kind != SyntaxKind::T_LBRACE,
+        )
+        .ignored()
+        .padded_by(ws.clone())
+        .repeated()
+        .at_least(1)
+        .ignored());
 
         let if_stmt = just(SyntaxKind::K_IF)
             .padded_by(ws.clone())
@@ -535,7 +542,17 @@ fn rule_statement(
             .then(stmt.clone().padded_by(ws.clone()))
             .ignored();
 
-        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt))
+        let expr_token = choice((
+            balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+            balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+            balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+            filter(|kind: &SyntaxKind| !matches!(kind, SyntaxKind::T_COMMA | SyntaxKind::T_DOT))
+                .ignored()
+                .padded_by(ws.clone()),
+        ));
+        let expr_stmt = expr_token.repeated().at_least(1).ignored();
+
+        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt, expr_stmt))
             .padded_by(ws.clone())
             .ignored()
     })
