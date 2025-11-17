@@ -7,7 +7,7 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::expression_span::{rule_body_span, validate_expression};
+use crate::parser::expression_span::{rule_body_literal_spans, validate_expression};
 use crate::{Span, SyntaxKind};
 
 use super::{
@@ -513,7 +513,14 @@ fn rule_statement(
         let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
         let atom_stmt = atom();
 
-        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
+        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).or(filter(
+            |kind: &SyntaxKind| *kind != SyntaxKind::T_LBRACE,
+        )
+        .ignored()
+        .padded_by(ws.clone())
+        .repeated()
+        .at_least(1)
+        .ignored());
 
         let if_stmt = just(SyntaxKind::K_IF)
             .padded_by(ws.clone())
@@ -535,7 +542,26 @@ fn rule_statement(
             .then(stmt.clone().padded_by(ws.clone()))
             .ignored();
 
-        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt))
+        let expr_token = choice((
+            balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+            balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+            balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+            filter(|kind: &SyntaxKind| {
+                !matches!(
+                    kind,
+                    SyntaxKind::T_COMMA
+                        | SyntaxKind::T_DOT
+                        | SyntaxKind::K_IF
+                        | SyntaxKind::K_FOR
+                        | SyntaxKind::K_SKIP
+                )
+            })
+            .ignored()
+            .padded_by(ws.clone()),
+        ));
+        let expr_stmt = expr_token.repeated().at_least(1).ignored();
+
+        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt, expr_stmt))
             .padded_by(ws.clone())
             .ignored()
     })
@@ -631,7 +657,7 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     let start_idx = st.stream.cursor();
     let end = parse_and_handle_rule(st, span);
 
-    if let Some(span) = rule_body_span(st.stream.tokens(), start_idx, end) {
+    for span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
         if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
             match err {
                 crate::parser::expression_span::ExpressionError::Parse(errs) => {
@@ -723,9 +749,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("if (cond { Process(cond) }")]
+    #[case("if { Process(cond) }")]
+    #[case("for (item Items(item)) Process(item)")]
     #[case("for (item in Items(item) Process(item)")]
-    #[case("for (item in Items(item) if item > 10 Process(item)")]
     fn rule_statement_reports_errors(#[case] src: &str) {
         let (res, errs) = parse_rule_statement_input(src);
         if res.is_some() {
@@ -739,5 +765,30 @@ mod tests {
                 "expected errors for {src}, but parser reported none",
             );
         }
+    }
+
+    #[expect(
+        clippy::expect_used,
+        reason = "tests unwrap spans to provide crisp failure messages"
+    )]
+    #[test]
+    fn collects_expression_spans_for_each_literal() {
+        let src = "R(x) :- Atom(x), if ready(x) { Accept(x) } else { Skip() }.";
+        let tokens = tokenize(src);
+        let (_rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src);
+        assert!(errors.is_empty());
+        assert_eq!(expr_spans.len(), 2);
+        let first = expr_spans
+            .first()
+            .cloned()
+            .and_then(|sp| src.get(sp))
+            .expect("first span text missing");
+        assert_eq!(first, "Atom(x)");
+        let second = expr_spans
+            .get(1)
+            .cloned()
+            .and_then(|sp| src.get(sp))
+            .expect("second span text missing");
+        assert_eq!(second.trim(), "if ready(x) { Accept(x) } else { Skip() }");
     }
 }

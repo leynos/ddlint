@@ -28,8 +28,8 @@ The key steps are:
 3. **Implement the Parser**: Build the `chumsky` parser using `chumsky::pratt`.
 
 4. **Integrate with the CST**: Ensure that when the expression parser is
-   invoked, the resulting AST is correctly represented within a
-   `rowan` `GreenNode`.
+   invoked, the resulting AST is correctly represented within a `rowan`
+   `GreenNode`.
 
 ______________________________________________________________________
 
@@ -340,9 +340,8 @@ the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
 node. The header is handled in three parts:
 
 - **Pattern extraction:** tokens before `in` are sliced directly from the
-  source,
-  so destructuring patterns remain verbatim. The range is trimmed to remove
-  surrounding whitespace, but the inner formatting is untouched.
+  source, so destructuring patterns remain verbatim. The range is trimmed to
+  remove surrounding whitespace, but the inner formatting is untouched.
 - **Iterable expression:** parsed with struct literals temporarily re-enabled,
   so constructs like `for (row in Rows { … })` continue to work.
 - **Guard:** if the header contains `if`, the guard expression reuses
@@ -455,8 +454,8 @@ Operator precedence is centralized in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
 consistent binding power definitions across the codebase.
 
-Type and control operators follow this precedence, from highest to lowest:
-`:`, `as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
+Type and control operators follow this precedence, from highest to lowest: `:`,
+`as`, `=`, `=>`, `;`. Logical `and` and `or` outrank `=`, so `a and b = c`
 parses as `(a and b) = c`. Ascription and cast bind more tightly than
 assignment but looser than arithmetic operators.
 
@@ -486,3 +485,19 @@ expression, while respecting the struct-literal suppression guard, surfacing a
 targeted diagnostic if the expression is missing. This keeps imperative
 statements usable inside expression contexts and aligns the behaviour with
 upstream DDlog semantics.
+
+### 5.4 Rule body integration
+
+Rule bodies now reuse the Pratt parser end-to-end. The span scanner slices the
+token stream between `:-` and the terminating `.` into comma-separated literal
+spans using delimiter-aware depth tracking. Each span becomes its own
+`N_EXPR_NODE`, so the CST stores one expression node per clause instead of a
+single blob.
+
+Every literal span is validated by `parse_expression`, which surfaces syntax
+errors from control-flow constructs (e.g., `if` or `for`) alongside standard
+expression diagnostics. The `Rule` AST wrapper exposes the resulting nodes via
+`body_expression_nodes()` and a convenience `body_expressions()` helper that
+re-parses the stored text into structured `Expr` values. Downstream analyses
+can therefore reason about rule bodies without rebuilding bespoke parsers or
+retokenising the source.

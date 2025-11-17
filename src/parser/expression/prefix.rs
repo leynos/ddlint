@@ -16,6 +16,7 @@ where
         }
         match kind {
             SyntaxKind::T_IDENT => self.parse_identifier_or_struct(&span),
+            SyntaxKind::K_UNDERSCORE => Some(Expr::Variable("_".to_string())),
             SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACE => self.parse_brace_group(),

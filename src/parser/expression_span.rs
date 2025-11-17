@@ -11,41 +11,145 @@ use thiserror::Error;
 use crate::parser::expression::parse_expression;
 use crate::{Span, SyntaxKind};
 
-/// Find the span of a rule body expression within a slice of tokens.
+/// Split a rule body into the spans of its comma-separated literals.
 ///
-/// The function scans the tokens starting at `start_idx` until `end`. It
-/// returns the range of bytes between the token following `T_IMPLIES` and the
-/// preceding `T_DOT`. `None` is returned if a well formed range cannot be
-/// determined.
+/// The function walks the token slice starting at `start_idx` and ending when
+/// the byte offset `end` is reached. Each literal span is trimmed to exclude
+/// trivia so downstream consumers can parse expressions without re-trimming.
 #[must_use]
-pub(crate) fn rule_body_span(
+pub(crate) fn rule_body_literal_spans(
     tokens: &[(SyntaxKind, Span)],
     start_idx: usize,
     end: usize,
-) -> Option<Span> {
-    let mut expr_start = None;
-    let mut expr_end = None;
+) -> Vec<Span> {
+    let Some((body_start, body_end)) = locate_body_bounds(tokens, start_idx, end) else {
+        return Vec::new();
+    };
+
+    split_literals(tokens, body_start, body_end)
+}
+
+fn locate_body_bounds(
+    tokens: &[(SyntaxKind, Span)],
+    start_idx: usize,
+    end: usize,
+) -> Option<(usize, usize)> {
     let mut idx = start_idx;
-    while let Some(tok) = tokens.get(idx) {
-        if tok.1.start >= end {
+    let mut body_start = None;
+    let mut body_end = None;
+
+    while let Some((kind, span)) = tokens.get(idx) {
+        if span.start >= end {
             break;
         }
-        match tok.0 {
-            SyntaxKind::T_IMPLIES => {
-                expr_start = tokens.get(idx + 1).map(|t| t.1.start);
-            }
+
+        match kind {
+            SyntaxKind::T_IMPLIES => body_start = Some(idx + 1),
             SyntaxKind::T_DOT => {
-                expr_end = Some(tok.1.start);
+                body_end = Some(idx);
                 break;
             }
             _ => {}
         }
+
         idx += 1;
     }
-    match (expr_start, expr_end) {
-        (Some(s), Some(e)) if s < e => Some(s..e),
-        _ => None,
+
+    let start = body_start?;
+    let end_idx = body_end.unwrap_or(idx);
+    if start >= end_idx {
+        None
+    } else {
+        Some((start, end_idx))
     }
+}
+
+fn split_literals(tokens: &[(SyntaxKind, Span)], start: usize, end: usize) -> Vec<Span> {
+    let mut spans = Vec::new();
+    let mut literal_start = None;
+    let mut paren_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut bracket_depth = 0usize;
+
+    let mut idx = start;
+    while idx < end {
+        let Some((kind, _)) = tokens.get(idx) else {
+            break;
+        };
+
+        if literal_start.is_none() {
+            literal_start = Some(idx);
+        }
+
+        match kind {
+            SyntaxKind::T_LPAREN => paren_depth += 1,
+            SyntaxKind::T_RPAREN => paren_depth = paren_depth.saturating_sub(1),
+            SyntaxKind::T_LBRACE => brace_depth += 1,
+            SyntaxKind::T_RBRACE => brace_depth = brace_depth.saturating_sub(1),
+            SyntaxKind::T_LBRACKET => bracket_depth += 1,
+            SyntaxKind::T_RBRACKET => bracket_depth = bracket_depth.saturating_sub(1),
+            _ => {}
+        }
+
+        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
+        if at_top_level
+            && matches!(kind, SyntaxKind::T_COMMA)
+            && let Some(start_idx) = literal_start.take()
+            && let Some(sp) = trim_literal_span(tokens, start_idx, idx)
+        {
+            spans.push(sp);
+        }
+
+        idx += 1;
+    }
+
+    if let Some(start_idx) = literal_start
+        && let Some(sp) = trim_literal_span(tokens, start_idx, end)
+    {
+        spans.push(sp);
+    }
+
+    spans
+}
+
+fn trim_literal_span(
+    tokens: &[(SyntaxKind, Span)],
+    start_idx: usize,
+    end_idx: usize,
+) -> Option<Span> {
+    if start_idx >= end_idx {
+        return None;
+    }
+
+    let mut first = start_idx;
+    while first < end_idx {
+        match tokens.get(first) {
+            Some((kind, _)) if is_trivia(*kind) => first += 1,
+            Some(_) => break,
+            None => return None,
+        }
+    }
+
+    if first >= end_idx {
+        return None;
+    }
+
+    let mut last = end_idx - 1;
+    while last > first {
+        match tokens.get(last) {
+            Some((kind, _)) if is_trivia(*kind) => last -= 1,
+            Some(_) => break,
+            None => return None,
+        }
+    }
+
+    let start = tokens.get(first)?.1.start;
+    let end = tokens.get(last)?.1.end;
+    (start < end).then_some(start..end)
+}
+
+fn is_trivia(kind: SyntaxKind) -> bool {
+    matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 
 /// Parse the text within `span` using the expression parser.
