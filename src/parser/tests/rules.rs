@@ -3,8 +3,8 @@
 //! Ensures rule heads, bodies, and error cases are handled.
 
 use super::helpers::{parse_err, parse_ok, pretty_print};
-use crate::parser::ast::AstNode;
-use crate::test_util::{ErrorPattern, assert_parse_error};
+use crate::parser::ast::{AggregationSource, AstNode, RuleBodyTerm};
+use crate::test_util::{ErrorPattern, assert_parse_error, call, var};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -64,6 +64,87 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
         pretty_print(rule.syntax()),
         rule_input,
         "round trip mismatch"
+    );
+}
+
+#[test]
+fn body_terms_capture_flatmap_assignments() {
+    let src = "Flat(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)).";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let terms = match rule.body_terms() {
+        Ok(terms) => terms,
+        Err(errs) => panic!("body terms should parse: {errs:?}"),
+    };
+    assert_eq!(terms.len(), 2);
+    let assignment = match terms.get(1) {
+        Some(RuleBodyTerm::Assignment(assign)) => assign,
+        other => panic!("expected assignment term, got {other:?}"),
+    };
+    assert_eq!(assignment.pattern, "var ip");
+    assert_eq!(
+        assignment.value,
+        call("FlatMap", vec![call("extract_ips", vec![var("addrs")])])
+    );
+}
+
+#[test]
+fn body_terms_detect_group_by_aggregation() {
+    let src =
+        "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let terms = match rule.body_terms() {
+        Ok(terms) => terms,
+        Err(errs) => panic!("body terms should parse: {errs:?}"),
+    };
+    assert_eq!(terms.len(), 3);
+    let aggregation = match terms.get(1) {
+        Some(RuleBodyTerm::Aggregation(agg)) => agg,
+        other => panic!("expected aggregation term, got {other:?}"),
+    };
+    assert_eq!(aggregation.source, AggregationSource::GroupBy);
+    assert_eq!(aggregation.project, call("sum", vec![var("amt")]));
+    assert_eq!(aggregation.key, var("user"));
+}
+
+#[test]
+fn body_terms_error_on_group_by_wrong_arity() {
+    let src = "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected aggregation arity error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    let literal = "group_by(sum(amt))";
+    let Some(start) = src.find(literal) else {
+        panic!("group_by literal missing");
+    };
+    let end = start + literal.len();
+    assert_parse_error(
+        &errors,
+        "group_by expects exactly two arguments",
+        start,
+        end,
     );
 }
 
