@@ -123,13 +123,20 @@ pub(super) fn ident() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>>
 /// let parser = atom();
 /// ```
 pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    let args = choice((
-        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
-        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
-    ));
     ident()
         .clone()
-        .then(args)
+        .then(
+            just(SyntaxKind::T_LPAREN)
+                .padded_by(inline_ws().repeated())
+                .ignore_then(
+                    filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN)
+                        .ignored()
+                        .padded_by(inline_ws().repeated())
+                        .repeated(),
+                )
+                .then_ignore(just(SyntaxKind::T_RPAREN))
+                .or_not(),
+        )
         .ignored()
         .padded_by(inline_ws().repeated())
 }

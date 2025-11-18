@@ -561,7 +561,7 @@ fn rule_statement(
         ));
         let expr_stmt = expr_token.repeated().at_least(1).ignored();
 
-        choice((for_stmt, if_stmt, block, skip_stmt, atom_stmt, expr_stmt))
+        choice((for_stmt, if_stmt, block, skip_stmt, expr_stmt, atom_stmt))
             .padded_by(ws.clone())
             .ignored()
     })
