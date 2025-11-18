@@ -151,12 +151,7 @@ pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
 pub use relation::Relation;
 pub use root::Root;
 pub use rule::{
-    AggregationSource,
-    Rule,
-    RuleAssignment,
-    RuleAggregation,
-    RuleBodyExpression,
-    RuleBodyTerm,
+    AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
 };
 pub use transformer::Transformer;
 pub use type_def::TypeDef;
