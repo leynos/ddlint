@@ -9,7 +9,7 @@ use chumsky::error::Simple;
 use thiserror::Error;
 
 use crate::parser::expression::parse_expression;
-use crate::{Span, SyntaxKind};
+use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 /// Split a rule body into the spans of its comma-separated literals.
 ///
@@ -170,7 +170,52 @@ pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Expressio
     let text = src
         .get(span.clone())
         .ok_or(ExpressionError::OutOfBounds { span })?;
+    if literal_has_assignment(text) {
+        return Ok(());
+    }
     parse_expression(text)
         .map(|_| ())
         .map_err(ExpressionError::Parse)
+}
+
+fn literal_has_assignment(text: &str) -> bool {
+    #[derive(Default)]
+    struct Depths {
+        paren: usize,
+        brace: usize,
+        bracket: usize,
+    }
+
+    impl Depths {
+        fn apply(&mut self, kind: SyntaxKind) {
+            match kind {
+                SyntaxKind::T_LPAREN => self.paren += 1,
+                SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
+                SyntaxKind::T_LBRACE => self.brace += 1,
+                SyntaxKind::T_RBRACE => self.brace = self.brace.saturating_sub(1),
+                SyntaxKind::T_LBRACKET => self.bracket += 1,
+                SyntaxKind::T_RBRACKET => self.bracket = self.bracket.saturating_sub(1),
+                _ => {}
+            }
+        }
+
+        fn at_top_level(&self) -> bool {
+            self.paren == 0 && self.brace == 0 && self.bracket == 0
+        }
+    }
+
+    let mut depths = Depths::default();
+    for (kind, _) in tokenize_without_trivia(text) {
+        match kind {
+            SyntaxKind::T_LPAREN
+            | SyntaxKind::T_RPAREN
+            | SyntaxKind::T_LBRACE
+            | SyntaxKind::T_RBRACE
+            | SyntaxKind::T_LBRACKET
+            | SyntaxKind::T_RBRACKET => depths.apply(kind),
+            SyntaxKind::T_EQ if depths.at_top_level() => return true,
+            _ => {}
+        }
+    }
+    false
 }
