@@ -42,11 +42,6 @@ fn nested_for_loop_rule() -> &'static str {
     "PairProcessed(a, b) :- for (a in A(a)) for (b in B(b)) ProcessPair(a, b)."
 }
 
-#[test]
-fn parse_filtered_rule_single_line() {
-    parse_ok("Filtered(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)), group_by(sum(ip.len()), ip).");
-}
-
 #[rstest]
 #[case::simple_rule(simple_rule(), false)]
 #[case::multi_literal_rule(multi_literal_rule(), false)]

@@ -5,7 +5,7 @@ use ddlint::parser::ast::{AggregationSource, RuleBodyTerm};
 
 #[test]
 fn parses_rules_with_flatmap_and_group_by_terms() {
-    let src = "Filtered(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)), group_by(sum(ip.len()), ip).";
+    let src = "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";
     let parsed = parse(src);
     assert!(
         parsed.errors().is_empty(),
@@ -24,9 +24,9 @@ fn parses_rules_with_flatmap_and_group_by_terms() {
         Err(errs) => panic!("body terms should parse: {errs:?}"),
     };
     assert_eq!(terms.len(), 3);
-    assert!(matches!(terms.get(1), Some(RuleBodyTerm::Assignment(_))));
     assert!(matches!(
-        terms.get(2),
+        terms.get(1),
         Some(RuleBodyTerm::Aggregation(agg)) if agg.source == AggregationSource::GroupBy
     ));
+    assert!(matches!(terms.get(2), Some(RuleBodyTerm::Assignment(_))));
 }

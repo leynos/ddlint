@@ -622,15 +622,35 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
     if st.stream.cursor() == 0 {
         return true;
     }
-    let prev_end = st
-        .stream
-        .tokens()
-        .get(st.stream.cursor() - 1)
-        .map_or(0, |t| t.1.end);
-    st.stream
-        .src()
-        .get(prev_end..span.start)
-        .is_some_and(|text| text.contains('\n'))
+
+    let tokens = st.stream.tokens();
+    let src = st.stream.src();
+    let mut idx = st.stream.cursor();
+    while idx > 0 {
+        idx -= 1;
+        let (kind, prev_span) = tokens[idx].clone();
+        match kind {
+            SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {
+                if src
+                    .get(prev_span.clone())
+                    .is_some_and(|text| text.contains('\n'))
+                {
+                    return true;
+                }
+                continue;
+            }
+            _ => {
+                if src
+                    .get(prev_span.end..span.start)
+                    .is_some_and(|text| text.contains('\n'))
+                {
+                    return true;
+                }
+                return kind == SyntaxKind::T_DOT;
+            }
+        }
+    }
+    true
 }
 
 /// Parse a rule starting at `span` and return the end position.
