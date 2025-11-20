@@ -5,7 +5,8 @@ use ddlint::parser::ast::{AggregationSource, RuleBodyTerm};
 
 #[test]
 fn parses_rules_with_flatmap_and_group_by_terms() {
-    let src = "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";
+    let src =
+        "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";
     let parsed = parse(src);
     assert!(
         parsed.errors().is_empty(),
