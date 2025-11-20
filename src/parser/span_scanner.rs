@@ -628,7 +628,9 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
     let mut idx = st.stream.cursor();
     while idx > 0 {
         idx -= 1;
-        let (kind, prev_span) = tokens[idx].clone();
+        let Some((kind, prev_span)) = tokens.get(idx) else {
+            break;
+        };
         match kind {
             SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {
                 if src
@@ -637,7 +639,6 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
                 {
                     return true;
                 }
-                continue;
             }
             _ => {
                 if src
@@ -646,7 +647,7 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
                 {
                     return true;
                 }
-                return kind == SyntaxKind::T_DOT;
+                return *kind == SyntaxKind::T_DOT;
             }
         }
     }
