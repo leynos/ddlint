@@ -654,6 +654,10 @@ fn for_binding_complete(
 }
 
 /// Return `true` if `span` begins a new line in the source.
+///
+/// This walks backwards over trivia to detect an intervening newline. A dot
+/// token keeps the rule grammar aligned with line starts even without a
+/// newline.
 fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
     if st.stream.cursor() == 0 {
         return true;
@@ -667,27 +671,28 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
         let Some((kind, prev_span)) = tokens.get(idx) else {
             break;
         };
-        match kind {
-            SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT => {
-                if src
-                    .get(prev_span.clone())
-                    .is_some_and(|text| text.contains('\n'))
-                {
-                    return true;
-                }
+        if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
+            if trivia_contains_newline(src, prev_span) {
+                return true;
             }
-            _ => {
-                if src
-                    .get(prev_span.end..span.start)
-                    .is_some_and(|text| text.contains('\n'))
-                {
-                    return true;
-                }
-                return *kind == SyntaxKind::T_DOT;
-            }
+            continue;
         }
+
+        if gap_contains_newline(src, prev_span.end, span.start) {
+            return true;
+        }
+        return *kind == SyntaxKind::T_DOT;
     }
-    true
+    false
+}
+
+fn trivia_contains_newline(src: &str, span: &Span) -> bool {
+    src.get(span.clone())
+        .is_some_and(|text| text.contains('\n'))
+}
+
+fn gap_contains_newline(src: &str, start: usize, end: usize) -> bool {
+    src.get(start..end).is_some_and(|text| text.contains('\n'))
 }
 
 /// Parse a rule starting at `span` and return the end position.

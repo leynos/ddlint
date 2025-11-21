@@ -30,8 +30,9 @@
 use chumsky::error::Simple;
 
 use super::{AstNode, Expr};
+use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
-use crate::{DdlogLanguage, Span, SyntaxKind, tokenize_without_trivia};
+use crate::{DdlogLanguage, Span, SyntaxKind};
 
 /// Typed wrapper for a rule declaration.
 #[derive(Debug, Clone)]
@@ -225,6 +226,15 @@ pub enum AggregationSource {
     LegacyAggregate,
 }
 
+impl AggregationSource {
+    fn label(self) -> &'static str {
+        match self {
+            Self::GroupBy => "group_by",
+            Self::LegacyAggregate => "Aggregate",
+        }
+    }
+}
+
 /// Aggregation literal extracted from the rule body.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuleAggregation {
@@ -269,20 +279,10 @@ fn classify_expression(
 ) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
     match expr {
         Expr::Call { callee, args } => {
-            if let Expr::Variable(name) = &*callee {
-                match name.as_str() {
-                    "group_by" => {
-                        return build_aggregation(args, literal_span, AggregationSource::GroupBy);
-                    }
-                    "Aggregate" => {
-                        return build_aggregation(
-                            args,
-                            literal_span,
-                            AggregationSource::LegacyAggregate,
-                        );
-                    }
-                    _ => {}
-                }
+            if let Expr::Variable(name) = &*callee
+                && let Some(source) = aggregation_source_for(name.as_str())
+            {
+                return classify_aggregation(args, literal_span, source);
             }
             Ok(Some(RuleBodyTerm::Expression(Expr::Call { callee, args })))
         }
@@ -290,26 +290,30 @@ fn classify_expression(
     }
 }
 
-fn build_aggregation(
+fn aggregation_source_for(name: &str) -> Option<AggregationSource> {
+    match name {
+        "group_by" => Some(AggregationSource::GroupBy),
+        "Aggregate" => Some(AggregationSource::LegacyAggregate),
+        _ => None,
+    }
+}
+
+fn classify_aggregation(
     args: Vec<Expr>,
     literal_span: &Span,
     source: AggregationSource,
 ) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
-    let label = match source {
-        AggregationSource::GroupBy => "group_by",
-        AggregationSource::LegacyAggregate => "Aggregate",
-    };
     if args.len() != 2 {
-        return Err(aggregation_arity_error(literal_span, label));
+        return Err(aggregation_arity_error(literal_span, source));
     }
 
     let mut iter = args.into_iter();
     let first = iter
         .next()
-        .ok_or_else(|| aggregation_arity_error(literal_span, label))?;
+        .ok_or_else(|| aggregation_arity_error(literal_span, source))?;
     let second = iter
         .next()
-        .ok_or_else(|| aggregation_arity_error(literal_span, label))?;
+        .ok_or_else(|| aggregation_arity_error(literal_span, source))?;
     let (project, key) = match source {
         AggregationSource::GroupBy => (first, second),
         AggregationSource::LegacyAggregate => (second, first),
@@ -322,55 +326,27 @@ fn build_aggregation(
     })))
 }
 
-fn aggregation_arity_error(literal_span: &Span, label: &str) -> Vec<Simple<SyntaxKind>> {
+fn aggregation_arity_error(
+    literal_span: &Span,
+    source: AggregationSource,
+) -> Vec<Simple<SyntaxKind>> {
     vec![Simple::custom(
         literal_span.clone(),
-        format!("{label} expects exactly two arguments"),
+        format!("{} expects exactly two arguments", source.label()),
     )]
 }
 
 #[derive(Debug)]
-struct AssignmentParts {
-    pattern: String,
-    value: String,
+pub(crate) struct AssignmentParts {
+    pub(crate) pattern: String,
+    pub(crate) value: String,
 }
 
-fn split_assignment(raw: &str) -> Option<AssignmentParts> {
-    let mut depths = DelimiterDepths::default();
-    for (kind, span) in tokenize_without_trivia(raw) {
-        depths.apply(kind);
-        if depths.is_top_level() && kind == SyntaxKind::T_EQ {
-            let pattern = raw.get(..span.start).unwrap_or("").trim().to_string();
-            let value = raw.get(span.end..).unwrap_or("").trim().to_string();
-            return Some(AssignmentParts { pattern, value });
-        }
-    }
-    None
-}
-
-#[derive(Default)]
-struct DelimiterDepths {
-    paren: usize,
-    brace: usize,
-    bracket: usize,
-}
-
-impl DelimiterDepths {
-    fn apply(&mut self, kind: SyntaxKind) {
-        match kind {
-            SyntaxKind::T_LPAREN => self.paren += 1,
-            SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
-            SyntaxKind::T_LBRACE => self.brace += 1,
-            SyntaxKind::T_RBRACE => self.brace = self.brace.saturating_sub(1),
-            SyntaxKind::T_LBRACKET => self.bracket += 1,
-            SyntaxKind::T_RBRACKET => self.bracket = self.bracket.saturating_sub(1),
-            _ => {}
-        }
-    }
-
-    fn is_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0
-    }
+pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
+    let eq_span = find_top_level_eq_span(raw)?;
+    let pattern = raw.get(..eq_span.start).unwrap_or("").trim().to_string();
+    let value = raw.get(eq_span.end..).unwrap_or("").trim().to_string();
+    Some(AssignmentParts { pattern, value })
 }
 
 fn text_range_to_span(range: rowan::TextRange) -> Span {

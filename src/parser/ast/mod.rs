@@ -135,7 +135,7 @@ mod index;
 mod precedence;
 mod relation;
 mod root;
-mod rule;
+pub(crate) mod rule;
 mod transformer;
 mod type_def;
 

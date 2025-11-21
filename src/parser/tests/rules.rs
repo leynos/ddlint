@@ -3,7 +3,8 @@
 //! Ensures rule heads, bodies, and error cases are handled.
 
 use super::helpers::{parse_err, parse_ok, pretty_print};
-use crate::parser::ast::{AggregationSource, AstNode, RuleBodyTerm};
+use crate::parser::ast::rule::split_assignment;
+use crate::parser::ast::{AggregationSource, AstNode, Expr, RuleBodyTerm};
 use crate::test_util::{ErrorPattern, assert_parse_error, call, var};
 use rstest::{fixture, rstest};
 
@@ -67,6 +68,59 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
     );
 }
 
+#[expect(
+    clippy::expect_used,
+    reason = "tests assert split_assignment succeeds for representative inputs"
+)]
+#[test]
+fn split_assignment_ignores_equals_in_parens() {
+    let src = "foo = bar(baz = 1)";
+    let parts =
+        split_assignment(src).expect("expected split_assignment to find a top-level assignment");
+
+    assert_eq!(parts.pattern, "foo");
+    assert_eq!(parts.value, "bar(baz = 1)");
+}
+
+#[expect(
+    clippy::expect_used,
+    reason = "tests assert split_assignment succeeds for representative inputs"
+)]
+#[test]
+fn split_assignment_ignores_equals_in_brackets_and_braces() {
+    let src_brackets = r#"foo = map["a=b"]"#;
+    let parts = split_assignment(src_brackets)
+        .expect("expected split_assignment to split at the top-level =");
+    assert_eq!(parts.pattern, "foo");
+    assert_eq!(parts.value, r#"map["a=b"]"#);
+
+    let src_braces = "foo = { key = value }";
+    let parts = split_assignment(src_braces)
+        .expect("expected split_assignment to split at the top-level =");
+    assert_eq!(parts.pattern, "foo");
+    assert_eq!(parts.value, "{ key = value }");
+}
+
+#[expect(
+    clippy::expect_used,
+    reason = "tests assert split_assignment succeeds for representative inputs"
+)]
+#[test]
+fn split_assignment_trims_pattern_and_value_whitespace() {
+    let src = "   foo   =   bar(baz)   ";
+    let parts =
+        split_assignment(src).expect("expected split_assignment to split at the top-level =");
+
+    assert_eq!(parts.pattern, "foo");
+    assert_eq!(parts.value, "bar(baz)");
+
+    let src_mixed = "foo=   bar   ";
+    let parts =
+        split_assignment(src_mixed).expect("expected split_assignment to split at the top-level =");
+    assert_eq!(parts.pattern, "foo");
+    assert_eq!(parts.value, "bar");
+}
+
 #[test]
 fn body_terms_capture_flatmap_assignments() {
     let src = "Flat(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)).";
@@ -120,6 +174,51 @@ fn body_terms_detect_group_by_aggregation() {
     assert_eq!(aggregation.key, var("user"));
 }
 
+#[expect(
+    clippy::expect_used,
+    reason = "tests assert aggregation is present when parsing Aggregate literals"
+)]
+#[test]
+fn body_terms_detect_legacy_aggregate_aggregation() {
+    let src = "Totals(user, total) :- \
+               Orders(user, amt), \
+               Aggregate((user), sum(amt)), \
+               total = __group.";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let terms = match rule.body_terms() {
+        Ok(terms) => terms,
+        Err(errs) => panic!("body terms should parse: {errs:?}"),
+    };
+    let aggregation = terms
+        .iter()
+        .find_map(|term| {
+            if let RuleBodyTerm::Aggregation(agg) = term {
+                Some(agg)
+            } else {
+                None
+            }
+        })
+        .expect("expected a RuleBodyTerm::Aggregation from Aggregate(..)");
+
+    assert_eq!(
+        aggregation.source,
+        AggregationSource::LegacyAggregate,
+        "expected AggregationSource::LegacyAggregate for Aggregate"
+    );
+    assert_eq!(aggregation.project, call("sum", vec![var("amt")]));
+    match &aggregation.key {
+        Expr::Group(inner) => assert_eq!(**inner, var("user")),
+        other => panic!("expected grouped key Expr, got {other:?}"),
+    }
+}
+
 #[test]
 fn body_terms_error_on_group_by_wrong_arity() {
     let src = "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).";
@@ -143,6 +242,37 @@ fn body_terms_error_on_group_by_wrong_arity() {
     assert_parse_error(
         &errors,
         "group_by expects exactly two arguments",
+        start,
+        end,
+    );
+}
+
+#[test]
+fn body_terms_error_on_legacy_aggregate_wrong_arity() {
+    let src = "Totals(user, total) :- \
+               Orders(user, amt), \
+               Aggregate((user), sum(amt), extra_arg), \
+               total = __group.";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected aggregation arity error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    let literal = "Aggregate((user), sum(amt), extra_arg)";
+    let Some(start) = src.find(literal) else {
+        panic!("Aggregate literal missing");
+    };
+    let end = start + literal.len();
+    assert_parse_error(
+        &errors,
+        "Aggregate expects exactly two arguments",
         start,
         end,
     );
