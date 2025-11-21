@@ -28,7 +28,14 @@ pub(super) fn parse_tokens(
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
     let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
-    let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src);
+    let mut non_rule_spans = Vec::new();
+    non_rule_spans.extend(import_spans.iter().cloned());
+    non_rule_spans.extend(typedef_spans.iter().cloned());
+    non_rule_spans.extend(relation_spans.iter().cloned());
+    non_rule_spans.extend(index_spans.iter().cloned());
+    non_rule_spans.extend(function_spans.iter().cloned());
+    non_rule_spans.extend(transformer_spans.iter().cloned());
+    let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
 
     let mut all_errors = errors;
     all_errors.extend(relation_errors);
@@ -707,12 +714,33 @@ fn handle_implies(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
 fn collect_rule_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
+    exclusions: &[Span],
 ) -> (Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st = State::new(tokens, src, Vec::new());
     let mut expr_spans = Vec::new();
 
+    let mut excluded = exclusions.to_vec();
+    excluded.sort_by_key(|sp| sp.start);
+    let mut exclude_idx = 0usize;
+
     while let Some(&(kind, ref span_ref)) = st.stream.peek() {
         let span = span_ref.clone();
+
+        while let Some(ex) = excluded.get(exclude_idx) {
+            if ex.end > span.start {
+                break;
+            }
+            exclude_idx += 1;
+        }
+
+        if let Some(ex) = excluded.get(exclude_idx)
+            && ex.start <= span.start
+            && span.start < ex.end
+        {
+            st.stream.skip_until(ex.end);
+            continue;
+        }
+
         match kind {
             SyntaxKind::T_IDENT => handle_ident(&mut st, span, &mut expr_spans),
             SyntaxKind::T_IMPLIES => handle_implies(&mut st, span, &mut expr_spans),
@@ -796,7 +824,7 @@ mod tests {
     fn collects_expression_spans_for_each_literal() {
         let src = "R(x) :- Atom(x), if ready(x) { Accept(x) } else { Skip() }.";
         let tokens = tokenize(src);
-        let (_rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src);
+        let (_rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src, &[]);
         assert!(errors.is_empty());
         assert_eq!(expr_spans.len(), 2);
         let first = expr_spans
