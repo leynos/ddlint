@@ -28,13 +28,23 @@ pub(super) fn parse_tokens(
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
     let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
-    let mut non_rule_spans = Vec::new();
+
+    let non_rule_span_capacity = import_spans.len()
+        + typedef_spans.len()
+        + relation_spans.len()
+        + index_spans.len()
+        + function_spans.len()
+        + transformer_spans.len();
+
+    let mut non_rule_spans = Vec::with_capacity(non_rule_span_capacity);
     non_rule_spans.extend(import_spans.iter().cloned());
     non_rule_spans.extend(typedef_spans.iter().cloned());
     non_rule_spans.extend(relation_spans.iter().cloned());
     non_rule_spans.extend(index_spans.iter().cloned());
     non_rule_spans.extend(function_spans.iter().cloned());
     non_rule_spans.extend(transformer_spans.iter().cloned());
+    let non_rule_spans = merge_spans(non_rule_spans);
+
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
 
     let mut all_errors = errors;
@@ -57,6 +67,25 @@ pub(super) fn parse_tokens(
             .build(),
         all_errors,
     )
+}
+
+/// Return a sorted, merged copy of the provided spans.
+///
+/// Adjacent or overlapping spans are coalesced to minimise skip checks during
+/// rule scanning.
+fn merge_spans(mut spans: Vec<Span>) -> Vec<Span> {
+    spans.sort_by_key(|sp| sp.start);
+    let mut merged: Vec<Span> = Vec::with_capacity(spans.len());
+    for span in spans {
+        if let Some(last) = merged.last_mut()
+            && span.start <= last.end
+        {
+            last.end = last.end.max(span.end);
+            continue;
+        }
+        merged.push(span);
+    }
+    merged
 }
 
 /// Parse a statement and record its span on success.
@@ -711,6 +740,11 @@ fn handle_implies(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
     parse_rule_at_line_start(st, span, exprs);
 }
 
+/// Collect rule spans while skipping any tokens covered by `exclusions`.
+///
+/// The `exclusions` slice **must** be sorted by start position and contain no
+/// overlapping spans. Adjacent spans are also expected to be merged to avoid
+/// redundant skips.
 fn collect_rule_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -719,21 +753,19 @@ fn collect_rule_spans(
     let mut st = State::new(tokens, src, Vec::new());
     let mut expr_spans = Vec::new();
 
-    let mut excluded = exclusions.to_vec();
-    excluded.sort_by_key(|sp| sp.start);
     let mut exclude_idx = 0usize;
 
     while let Some(&(kind, ref span_ref)) = st.stream.peek() {
         let span = span_ref.clone();
 
-        while let Some(ex) = excluded.get(exclude_idx) {
+        while let Some(ex) = exclusions.get(exclude_idx) {
             if ex.end > span.start {
                 break;
             }
             exclude_idx += 1;
         }
 
-        if let Some(ex) = excluded.get(exclude_idx)
+        if let Some(ex) = exclusions.get(exclude_idx)
             && ex.start <= span.start
             && span.start < ex.end
         {
@@ -839,5 +871,94 @@ mod tests {
             .and_then(|sp| src.get(sp))
             .expect("second span text missing");
         assert_eq!(second.trim(), "if ready(x) { Accept(x) } else { Skip() }");
+    }
+
+    #[test]
+    fn merge_spans_merges_overlapping_and_adjacent() {
+        let spans = vec![0..5, 5..7, 10..12, 11..15];
+        let merged = merge_spans(spans);
+        assert_eq!(merged, vec![0..7, 10..15]);
+    }
+
+    #[test]
+    fn collect_rule_spans_respects_exclusions() {
+        let src = "import foo\nR(x) :- Foo(x).\n";
+        let tokens = tokenize(src);
+        let (imports, errors) = collect_import_spans(&tokens, src);
+        assert!(errors.is_empty());
+
+        let imports = merge_spans(imports);
+
+        let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &imports);
+        assert!(rule_errors.is_empty());
+        assert_eq!(rule_spans.len(), 1);
+        assert_eq!(expr_spans.len(), 1);
+
+        let rule_span = rule_spans
+            .first()
+            .cloned()
+            .unwrap_or_else(|| panic!("rule span missing for {src:?}"));
+        let rule_text = src
+            .get(rule_span.clone())
+            .unwrap_or_else(|| panic!("rule span {rule_span:?} out of bounds"));
+        assert!(
+            rule_text.starts_with("R("),
+            "unexpected rule text: {rule_text}"
+        );
+
+        let expr_span = expr_spans
+            .first()
+            .cloned()
+            .unwrap_or_else(|| panic!("expression span missing for {src:?}"));
+        let expr_text = src
+            .get(expr_span.clone())
+            .unwrap_or_else(|| panic!("expression span {expr_span:?} out of bounds"))
+            .trim();
+        assert_eq!(expr_text, "Foo(x)");
+    }
+
+    #[test]
+    fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
+        let src = concat!(
+            "import foo::bar\n",
+            "typedef T = string\n",
+            "input relation Log(id: u32) primary key (id)\n",
+            "index I_Log on Log(id)\n",
+            "function f(): u32 { return 1; }\n",
+            "extern transformer normalise(input: Log): Log\n",
+            "Rule(x) :- Log(x).\n"
+        );
+
+        let tokens = tokenize(src);
+        let (spans, errors) = parse_tokens(&tokens, src);
+
+        assert!(errors.is_empty());
+
+        assert_eq!(spans.rules().len(), 1);
+        let rule_span = spans
+            .rules()
+            .first()
+            .cloned()
+            .unwrap_or_else(|| panic!("missing rule span for {src:?}"));
+        let rule_text = src
+            .get(rule_span.clone())
+            .unwrap_or_else(|| panic!("rule span {rule_span:?} out of bounds"));
+        assert_eq!(rule_text.trim_end(), "Rule(x) :- Log(x).");
+
+        assert_eq!(
+            spans.expressions().len(),
+            1,
+            "expected one expression span for rule body"
+        );
+        let expr_span = spans
+            .expressions()
+            .first()
+            .cloned()
+            .unwrap_or_else(|| panic!("expression span missing for {src:?}"));
+        let expr_text = src
+            .get(expr_span.clone())
+            .unwrap_or_else(|| panic!("expression span {expr_span:?} out of bounds"))
+            .trim();
+        assert_eq!(expr_text, "Log(x)");
     }
 }
