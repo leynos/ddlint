@@ -132,7 +132,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     expression and control-flow parsers, replacing the simple `atom` parser.
     This allows for detailed analysis of rule bodies.
 
-  - [ ] Add support for parsing aggregations and `FlatMap` constructs within
+  - [x] Add support for parsing aggregations and `FlatMap` constructs within
     rules.
 
 - [ ] **Align Parser with Updated DDlog Syntax**

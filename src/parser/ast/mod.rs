@@ -135,7 +135,7 @@ mod index;
 mod precedence;
 mod relation;
 mod root;
-mod rule;
+pub(crate) mod rule;
 mod transformer;
 mod type_def;
 
@@ -150,7 +150,9 @@ pub use index::Index;
 pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
 pub use relation::Relation;
 pub use root::Root;
-pub use rule::{Rule, RuleBodyExpression};
+pub use rule::{
+    AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
+};
 pub use transformer::Transformer;
 pub use type_def::TypeDef;
 
