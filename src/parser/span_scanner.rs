@@ -653,11 +653,13 @@ fn for_binding_complete(
         .ignored()
 }
 
-/// Return `true` if `span` begins a new line in the source.
+/// Return `true` if `span` begins a new logical line in the source.
 ///
-/// This walks backwards over trivia to detect an intervening newline. A dot
-/// token keeps the rule grammar aligned with line starts even without a
-/// newline.
+/// The walk looks backwards for either a newline in trivia or a rule-terminator
+/// dot (`.`). Tokens separated only by inline whitespace or comments are **not**
+/// considered line starts, preserving continuation semantics. Multiple rules on
+/// one physical line are still recognised because a preceding `.` counts as a
+/// line start even without a newline (e.g., `R(x). S(x).`).
 fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
     if st.stream.cursor() == 0 {
         return true;
@@ -695,17 +697,19 @@ fn gap_contains_newline(src: &str, start: usize, end: usize) -> bool {
     src.get(start..end).is_some_and(|text| text.contains('\n'))
 }
 
-/// Parse a rule starting at `span` and return the end position.
-fn parse_and_handle_rule(st: &mut State<'_>, span: Span) -> usize {
+/// Parse a rule starting at `span`, returning the span (if successful) and end
+/// position to advance the token stream.
+fn parse_and_handle_rule(st: &mut State<'_>, span: Span) -> (Option<Span>, usize) {
     let parser = rule_decl();
     let (res, err) = st.parse_span(parser, span.start);
     if let Some(sp) = res {
         let end = sp.end;
+        let parsed_span = sp.clone();
         st.spans.push(sp);
-        end
+        (Some(parsed_span), end)
     } else {
         st.extra.extend(err);
-        st.stream.line_end(st.stream.cursor())
+        (None, st.stream.line_end(st.stream.cursor()))
     }
 }
 
@@ -717,7 +721,12 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     }
 
     let start_idx = st.stream.cursor();
-    let end = parse_and_handle_rule(st, span);
+    let (rule_span, end) = parse_and_handle_rule(st, span);
+
+    if rule_span.is_none() {
+        st.stream.skip_until(end);
+        return;
+    }
 
     for span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
         if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
