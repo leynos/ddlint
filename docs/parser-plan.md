@@ -105,11 +105,11 @@ literal into one of three variants:
   re-parsed once the dedicated pattern parser lands.
 - `Aggregation` – canonical `group_by(project, key)` calls and legacy
   `Aggregate((key), accumulator)` invocations. Legacy calls flip their
-  arguments during classification so downstream code always receives a
+  arguments during classification, so downstream code always receives a
   `(project, key)` pair regardless of the surface syntax.
 
 This keeps AST consumers from re-implementing literal splitting logic or
-grappling with `FlatMap`/`Aggregate` being tokenised as keywords.
+grappling with `FlatMap`/`Aggregate` being tokenized as keywords.
 
 ## 6. Testing strategy
 

@@ -310,10 +310,10 @@ fn classify_aggregation(
     let mut iter = args.into_iter();
     let first = iter
         .next()
-        .ok_or_else(|| aggregation_arity_error(literal_span, source))?;
+        .unwrap_or_else(|| unreachable!("len pre-checked as 2; first arg missing"));
     let second = iter
         .next()
-        .ok_or_else(|| aggregation_arity_error(literal_span, source))?;
+        .unwrap_or_else(|| unreachable!("len pre-checked as 2; second arg missing"));
     let (project, key) = match source {
         AggregationSource::GroupBy => (first, second),
         AggregationSource::LegacyAggregate => (second, first),

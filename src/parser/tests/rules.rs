@@ -43,6 +43,28 @@ fn nested_for_loop_rule() -> &'static str {
     "PairProcessed(a, b) :- for (a in A(a)) for (b in B(b)) ProcessPair(a, b)."
 }
 
+/// Assert that `body_terms()` reports the expected arity error for an
+/// aggregation literal found in `src`.
+fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str) {
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected aggregation arity error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    let Some(start) = src.find(literal) else {
+        panic!("{literal} literal missing");
+    };
+    let end = start + literal.len();
+    assert_parse_error(&errors, expected_error, start, end);
+}
+
 #[rstest]
 #[case::simple_rule(simple_rule(), false)]
 #[case::multi_literal_rule(multi_literal_rule(), false)]
@@ -222,28 +244,10 @@ fn body_terms_detect_legacy_aggregate_aggregation() {
 #[test]
 fn body_terms_error_on_group_by_wrong_arity() {
     let src = "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).";
-    let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let errors = match rule.body_terms() {
-        Ok(terms) => panic!("expected aggregation arity error, got {terms:?}"),
-        Err(errs) => errs,
-    };
-    let literal = "group_by(sum(amt))";
-    let Some(start) = src.find(literal) else {
-        panic!("group_by literal missing");
-    };
-    let end = start + literal.len();
-    assert_parse_error(
-        &errors,
+    assert_aggregation_arity_error(
+        src,
+        "group_by(sum(amt))",
         "group_by expects exactly two arguments",
-        start,
-        end,
     );
 }
 
@@ -253,28 +257,10 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
                Orders(user, amt), \
                Aggregate((user), sum(amt), extra_arg), \
                total = __group.";
-    let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let errors = match rule.body_terms() {
-        Ok(terms) => panic!("expected aggregation arity error, got {terms:?}"),
-        Err(errs) => errs,
-    };
-    let literal = "Aggregate((user), sum(amt), extra_arg)";
-    let Some(start) = src.find(literal) else {
-        panic!("Aggregate literal missing");
-    };
-    let end = start + literal.len();
-    assert_parse_error(
-        &errors,
+    assert_aggregation_arity_error(
+        src,
+        "Aggregate((user), sum(amt), extra_arg)",
         "Aggregate expects exactly two arguments",
-        start,
-        end,
     );
 }
 

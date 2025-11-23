@@ -655,22 +655,32 @@ fn for_binding_complete(
 
 /// Return `true` if `span` begins a new logical line in the source.
 ///
-/// The walk looks backwards for either a newline in trivia or a rule-terminator
-/// dot (`.`). Tokens separated only by inline whitespace or comments are **not**
-/// considered line starts, preserving continuation semantics. Multiple rules on
-/// one physical line are still recognised because a preceding `.` counts as a
-/// line start even without a newline (e.g., `R(x). S(x).`).
+/// Multiple rules on one physical line are recognised by treating a preceding
+/// `.` as a line start boundary. Otherwise, only trivia containing a newline
+/// counts; inline whitespace or comments keep the current line “open” so
+/// continuations are not misclassified.
 fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
     if st.stream.cursor() == 0 {
         return true;
     }
 
-    let tokens = st.stream.tokens();
-    let src = st.stream.src();
-    let mut idx = st.stream.cursor();
-    while idx > 0 {
-        idx -= 1;
-        let Some((kind, prev_span)) = tokens.get(idx) else {
+    line_start_boundary(
+        st.stream.tokens(),
+        st.stream.src(),
+        st.stream.cursor(),
+        span.start,
+    )
+}
+
+fn line_start_boundary(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    mut cursor: usize,
+    span_start: usize,
+) -> bool {
+    while cursor > 0 {
+        cursor -= 1;
+        let Some((kind, prev_span)) = tokens.get(cursor) else {
             break;
         };
         if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
@@ -680,7 +690,7 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
             continue;
         }
 
-        if gap_contains_newline(src, prev_span.end, span.start) {
+        if gap_contains_newline(src, prev_span.end, span_start) {
             return true;
         }
         return *kind == SyntaxKind::T_DOT;
@@ -758,7 +768,9 @@ fn handle_implies(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
 ///
 /// The `exclusions` slice **must** be sorted by start position and contain no
 /// overlapping spans. Adjacent spans are also expected to be merged to avoid
-/// redundant skips.
+/// redundant skips. Spans are treated as half-open ranges `[start, end)`, and
+/// callers must ensure `skip_until(ex.end)` advances to at least `ex.end` so
+/// excluded tokens are never revisited.
 fn collect_rule_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -889,9 +901,71 @@ mod tests {
 
     #[test]
     fn merge_spans_merges_overlapping_and_adjacent() {
-        let spans = vec![0..5, 5..7, 10..12, 11..15];
+        let spans = vec![10..12, 0..5, 5..7, 11..15];
         let merged = merge_spans(spans);
         assert_eq!(merged, vec![0..7, 10..15]);
+    }
+
+    #[test]
+    fn collect_rule_spans_skips_multiple_disjoint_exclusions() {
+        let src = "\
+import foo
+extern transformer normalize(input: Data): Data
+R1(x) :- A(x).
+function greet(name: string): string { }
+R2(x) :- B(x).
+";
+        let tokens = tokenize(src);
+
+        let (import_spans, import_errors) = collect_import_spans(&tokens, src);
+        assert!(import_errors.is_empty());
+        let typedef_spans = collect_typedef_spans(&tokens, src);
+        let (relation_spans, relation_errors) = collect_relation_spans(&tokens, src);
+        assert!(relation_errors.is_empty());
+        let (index_spans, index_errors) = collect_index_spans(&tokens, src);
+        assert!(index_errors.is_empty());
+        let (function_spans, function_errors) = collect_function_spans(&tokens, src);
+        assert!(function_errors.is_empty());
+        let (transformer_spans, transformer_errors) = collect_transformer_spans(&tokens, src);
+        assert!(transformer_errors.is_empty());
+
+        let mut non_rule_spans = Vec::new();
+        non_rule_spans.extend(import_spans);
+        non_rule_spans.extend(typedef_spans);
+        non_rule_spans.extend(relation_spans);
+        non_rule_spans.extend(index_spans);
+        non_rule_spans.extend(function_spans);
+        non_rule_spans.extend(transformer_spans);
+        let non_rule_spans = merge_spans(non_rule_spans);
+
+        let (rule_spans, expr_spans, rule_errors) =
+            collect_rule_spans(&tokens, src, &non_rule_spans);
+        assert!(rule_errors.is_empty());
+        assert_eq!(rule_spans.len(), 2, "expected two rules only");
+        assert_eq!(expr_spans.len(), 2, "expected one expression per rule");
+
+        let first_rule_span = rule_spans
+            .first()
+            .cloned()
+            .unwrap_or_else(|| panic!("expected first rule span in {src:?}"));
+        let first_rule = src
+            .get(first_rule_span.clone())
+            .unwrap_or_else(|| panic!("first rule span {first_rule_span:?} out of bounds"));
+        assert!(
+            first_rule.starts_with("R1("),
+            "unexpected first rule text: {first_rule}"
+        );
+        let second_rule_span = rule_spans
+            .get(1)
+            .cloned()
+            .unwrap_or_else(|| panic!("expected second rule span in {src:?}"));
+        let second_rule = src
+            .get(second_rule_span.clone())
+            .unwrap_or_else(|| panic!("second rule span {second_rule_span:?} out of bounds"));
+        assert!(
+            second_rule.starts_with("R2("),
+            "unexpected second rule text: {second_rule}"
+        );
     }
 
     #[test]
