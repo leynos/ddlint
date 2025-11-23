@@ -13,6 +13,7 @@ pub(crate) struct DelimiterDepths {
     paren: usize,
     brace: usize,
     bracket: usize,
+    angle: usize,
 }
 
 impl DelimiterDepths {
@@ -24,13 +25,15 @@ impl DelimiterDepths {
             SyntaxKind::T_RBRACE => self.brace = self.brace.saturating_sub(1),
             SyntaxKind::T_LBRACKET => self.bracket += 1,
             SyntaxKind::T_RBRACKET => self.bracket = self.bracket.saturating_sub(1),
+            SyntaxKind::T_LT => self.angle += 1,
+            SyntaxKind::T_GT => self.angle = self.angle.saturating_sub(1),
             _ => {}
         }
     }
 
     #[must_use]
     pub(crate) fn is_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0
+        self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0
     }
 }
 

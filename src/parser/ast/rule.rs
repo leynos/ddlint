@@ -89,26 +89,15 @@ impl Rule {
     /// # Errors
     /// Returns aggregated expression parser diagnostics if any literal fails to parse.
     pub fn body_expressions(&self) -> Result<Vec<Expr>, Vec<Simple<SyntaxKind>>> {
-        let mut exprs = Vec::new();
-        let mut errors = Vec::new();
-
-        for literal in self.body_expression_nodes() {
-            let text = literal.text();
-            let trimmed = text.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            match parse_expression(trimmed) {
-                Ok(expr) => exprs.push(expr),
-                Err(mut errs) => errors.append(&mut errs),
-            }
-        }
-
-        if errors.is_empty() {
-            Ok(exprs)
-        } else {
-            Err(errors)
-        }
+        let terms = self.body_terms()?;
+        let exprs = terms
+            .into_iter()
+            .filter_map(|term| match term {
+                RuleBodyTerm::Expression(expr) => Some(expr),
+                _ => None,
+            })
+            .collect();
+        Ok(exprs)
     }
 
     /// Parse the rule body into semantically distinct terms.
@@ -342,6 +331,10 @@ pub(crate) struct AssignmentParts {
     pub(crate) value: String,
 }
 
+/// Split a literal on a single top-level `=` into pattern/value parts.
+///
+/// Only `=` tokens at delimiter depth zero are treated as assignments; equality
+/// tests must use `==` (`T_EQEQ`) or occur inside delimiters.
 pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
     let eq_span = find_top_level_eq_span(raw)?;
     let pattern = raw.get(..eq_span.start).unwrap_or("").trim().to_string();

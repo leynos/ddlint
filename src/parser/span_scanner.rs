@@ -597,6 +597,10 @@ fn rule_statement(
         ));
         let expr_stmt = expr_token.repeated().at_least(1).ignored();
 
+        // Keep `expr_stmt` before `atom_stmt` so general expressions (including
+        // assignments/aggregations) win over the more restrictive atom grammar.
+        // This ordering guards future refactors from silently changing rule-body
+        // semantics.
         choice((for_stmt, if_stmt, block, skip_stmt, expr_stmt, atom_stmt))
             .padded_by(ws.clone())
             .ignored()
@@ -776,6 +780,12 @@ fn collect_rule_spans(
     src: &str,
     exclusions: &[Span],
 ) -> (Vec<Span>, Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    debug_assert!(
+        exclusions
+            .windows(2)
+            .all(|w| matches!((w.first(), w.get(1)), (Some(a), Some(b)) if a.end <= b.start)),
+        "exclusions must be sorted, non-overlapping, and merged"
+    );
     let mut st = State::new(tokens, src, Vec::new());
     let mut expr_spans = Vec::new();
 
@@ -849,6 +859,8 @@ mod tests {
     #[case(
         "if (outer) { for (item in Items(item)) if (should(item)) Process(item) } else { Skip() }"
     )]
+    #[case("Call(x)")]
+    #[case("foo = bar(baz)")]
     fn rule_statement_parses_control_flow(#[case] src: &str) {
         let (res, errs) = parse_rule_statement_input(src);
         assert!(res.is_some(), "expected successful parse for {src}");
@@ -880,15 +892,14 @@ mod tests {
     )]
     #[test]
     fn collects_expression_spans_for_each_literal() {
-        let src = "R(x) :- Atom(x), if ready(x) { Accept(x) } else { Skip() }.";
+        let src = "\n  R(x) :- Atom(x), if ready(x) { Accept(x) } else { Skip() }.";
         let tokens = tokenize(src);
         let (_rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src, &[]);
         assert!(errors.is_empty());
         assert_eq!(expr_spans.len(), 2);
         let first = expr_spans
             .first()
-            .cloned()
-            .and_then(|sp| src.get(sp))
+            .and_then(|sp| src.get(sp.clone()))
             .expect("first span text missing");
         assert_eq!(first, "Atom(x)");
         let second = expr_spans
@@ -904,6 +915,32 @@ mod tests {
         let spans = vec![10..12, 0..5, 5..7, 11..15];
         let merged = merge_spans(spans);
         assert_eq!(merged, vec![0..7, 10..15]);
+    }
+
+    #[test]
+    fn collect_rule_spans_handles_adjacent_exclusions() {
+        let src = "R1(x) :- A(x). R2(x) :- B(x).";
+        let tokens = tokenize(src);
+
+        let first_rule = "R1(x) :- A(x).";
+        let start = src
+            .find(first_rule)
+            .unwrap_or_else(|| panic!("missing first rule in {src:?}"));
+        let end = start + first_rule.len();
+        // Two adjacent exclusion spans covering the first rule.
+        let exclusions = vec![start..end - 1, end - 1..end];
+
+        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &exclusions);
+        assert!(errors.is_empty());
+        assert_eq!(rule_spans.len(), 1, "second rule should remain");
+        let remaining = rule_spans
+            .first()
+            .and_then(|sp| src.get(sp.clone()))
+            .unwrap_or_else(|| panic!("remaining rule span out of bounds"));
+        assert!(
+            remaining.starts_with("R2("),
+            "unexpected remaining rule: {remaining}"
+        );
     }
 
     #[test]
@@ -970,12 +1007,14 @@ R2(x) :- B(x).
 
     #[test]
     fn collect_rule_spans_respects_exclusions() {
-        let src = "import foo\nR(x) :- Foo(x).\n";
+        let src = "import foo\nextern function f(): void {}\nR(x) :- Foo(x).\n";
         let tokens = tokenize(src);
         let (imports, errors) = collect_import_spans(&tokens, src);
         assert!(errors.is_empty());
+        let (functions, fn_errors) = collect_function_spans(&tokens, src);
+        assert!(fn_errors.is_empty());
 
-        let imports = merge_spans(imports);
+        let imports = merge_spans([imports, functions].concat());
 
         let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &imports);
         assert!(rule_errors.is_empty());
@@ -1003,6 +1042,56 @@ R2(x) :- B(x).
             .unwrap_or_else(|| panic!("expression span {expr_span:?} out of bounds"))
             .trim();
         assert_eq!(expr_text, "Foo(x)");
+    }
+
+    #[test]
+    fn rule_not_treated_as_line_start_after_inline_spaces() {
+        let src = "   R(x) :- A(x).";
+        let tokens = tokenize(src);
+        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
+        assert!(errors.is_empty());
+        assert!(
+            rule_spans.is_empty(),
+            "rule should not start after inline spaces with no boundary"
+        );
+    }
+
+    #[test]
+    fn rule_treated_as_line_start_after_dot_same_line() {
+        let src = "Fact().   R(x) :- A(x).";
+        let tokens = tokenize(src);
+        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
+        assert!(errors.is_empty());
+        assert_eq!(
+            rule_spans.len(),
+            2,
+            "both fact and trailing rule should parse"
+        );
+        let rule_text = rule_spans
+            .last()
+            .and_then(|sp| src.get(sp.clone()))
+            .unwrap_or_else(|| panic!("trailing rule span missing or out of bounds"));
+        assert!(
+            rule_text.trim_start().starts_with("R("),
+            "unexpected rule text: {rule_text}"
+        );
+    }
+
+    #[test]
+    fn rule_treated_as_line_start_after_newline_trivia() {
+        let src = "/*c*/\n   // inline comment\nR(x) :- A(x).";
+        let tokens = tokenize(src);
+        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
+        assert!(errors.is_empty());
+        assert_eq!(rule_spans.len(), 1, "newline trivia should start rule");
+        let rule_text = rule_spans
+            .first()
+            .and_then(|sp| src.get(sp.clone()))
+            .unwrap_or_else(|| panic!("rule span missing or out of bounds"));
+        assert!(
+            rule_text.starts_with("R("),
+            "unexpected rule text: {rule_text}"
+        );
     }
 
     #[test]
