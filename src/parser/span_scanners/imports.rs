@@ -8,7 +8,7 @@ use chumsky::prelude::*;
 use crate::parser::lexer_helpers::{ident, inline_ws};
 use crate::{Span, SyntaxKind};
 
-use super::utils::{parse_and_record, State};
+use super::utils::{State, parse_and_record};
 
 pub(crate) fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],

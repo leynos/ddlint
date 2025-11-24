@@ -7,7 +7,7 @@ use chumsky::prelude::*;
 use crate::parser::lexer_helpers::{balanced_block_nonempty, ident, inline_ws};
 use crate::{Span, SyntaxKind};
 
-use super::utils::{parse_and_record, State};
+use super::utils::{State, parse_and_record};
 
 pub(crate) fn collect_index_spans(
     tokens: &[(SyntaxKind, Span)],

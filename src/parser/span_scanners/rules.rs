@@ -6,7 +6,7 @@
 use chumsky::prelude::*;
 
 use crate::parser::{
-    expression_span::{rule_body_literal_spans, validate_expression, ExpressionError},
+    expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
     lexer_helpers::{atom, balanced_block, inline_ws},
 };
 use crate::{Span, SyntaxKind};
