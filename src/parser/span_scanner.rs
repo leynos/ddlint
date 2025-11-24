@@ -828,27 +828,53 @@ mod tests {
     use chumsky::Stream;
     use rstest::rstest;
 
-    /// Assert rule span collection for a given source, with configurable span selection.
-    ///
-    /// - `src`: source text to parse.
-    /// - `expected_count`: expected number of rule spans collected.
-    /// - `count_message`: assertion message for the count check.
-    /// - `select_last`: pick the last span (true) or first span (false) for prefix validation.
-    /// - `trim_before_check`: trim leading whitespace before checking `expected_prefix`.
-    /// - `expected_prefix`: prefix that the selected rule text must start with.
-    fn assert_rule_span_collection(
-        src: &str,
+    /// Configuration for asserting rule span collection in tests.
+    struct RuleSpanAssertConfig<'a> {
         expected_count: usize,
-        count_message: &str,
+        count_message: &'a str,
         select_last: bool,
         trim_before_check: bool,
-        expected_prefix: &str,
-    ) {
+        expected_prefix: &'a str,
+    }
+
+    impl<'a> RuleSpanAssertConfig<'a> {
+        fn new(expected_count: usize, count_message: &'a str, expected_prefix: &'a str) -> Self {
+            Self {
+                expected_count,
+                count_message,
+                select_last: false,
+                trim_before_check: false,
+                expected_prefix,
+            }
+        }
+
+        fn select_last(self) -> Self {
+            Self {
+                select_last: true,
+                ..self
+            }
+        }
+
+        fn trim_before_check(self) -> Self {
+            Self {
+                trim_before_check: true,
+                ..self
+            }
+        }
+    }
+
+    /// Assert rule span collection for a given source, with configurable span selection.
+    fn assert_rule_span_collection(src: &str, config: &RuleSpanAssertConfig<'_>) {
         let tokens = tokenize(src);
         let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
         assert!(errors.is_empty());
-        assert_eq!(rule_spans.len(), expected_count, "{count_message}");
-        let span = if select_last {
+        assert_eq!(
+            rule_spans.len(),
+            config.expected_count,
+            "{}",
+            config.count_message
+        );
+        let span = if config.select_last {
             rule_spans
                 .last()
                 .cloned()
@@ -862,13 +888,13 @@ mod tests {
         let rule_text = src
             .get(span.clone())
             .unwrap_or_else(|| panic!("rule span {span:?} out of bounds"));
-        let checked = if trim_before_check {
+        let checked = if config.trim_before_check {
             rule_text.trim_start()
         } else {
             rule_text
         };
         assert!(
-            checked.starts_with(expected_prefix),
+            checked.starts_with(config.expected_prefix),
             "unexpected rule text: {rule_text}"
         );
     }
@@ -1105,11 +1131,9 @@ R2(x) :- B(x).
     fn rule_treated_as_line_start_after_dot_same_line() {
         assert_rule_span_collection(
             "Fact().   R(x) :- A(x).",
-            2,
-            "both fact and trailing rule should parse",
-            true,
-            true,
-            "R(",
+            &RuleSpanAssertConfig::new(2, "both fact and trailing rule should parse", "R(")
+                .select_last()
+                .trim_before_check(),
         );
     }
 
@@ -1117,11 +1141,7 @@ R2(x) :- B(x).
     fn rule_treated_as_line_start_after_newline_trivia() {
         assert_rule_span_collection(
             "/*c*/\n   // inline comment\nR(x) :- A(x).",
-            1,
-            "newline trivia should start rule",
-            false,
-            false,
-            "R(",
+            &RuleSpanAssertConfig::new(1, "newline trivia should start rule", "R("),
         );
     }
 
