@@ -93,6 +93,24 @@ Implement lightweight AST types that reference the CST. Each AST node should
 store a `SyntaxNode` from `rowan`, allowing rules to navigate the tree while
 still providing ergonomic typed access for semantic processing.
 
+### Rule body term extraction
+
+The `Rule` wrapper exposes a `body_terms()` helper that classifies each rule
+literal into one of three variants:
+
+- `Expression` – atoms, conditions, and control-flow statements parsed via the
+  Pratt expression parser.
+- `Assignment` – pattern binds such as `var ip = FlatMap(extract_ips(ips))`.
+  The pattern text is preserved verbatim (after trimming) so it can be
+  re-parsed once the dedicated pattern parser lands.
+- `Aggregation` – canonical `group_by(project, key)` calls and legacy
+  `Aggregate((key), accumulator)` invocations. Legacy calls flip their
+  arguments during classification, so downstream code always receives a
+  `(project, key)` pair regardless of the surface syntax.
+
+This keeps AST consumers from re-implementing literal splitting logic or
+grappling with `FlatMap`/`Aggregate` being tokenized as keywords.
+
 ## 6. Testing strategy
 
 1. Reuse examples from the Haskell project as fixtures. Ensure the new parser

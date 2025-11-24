@@ -166,8 +166,8 @@ Attributed(X) ::= Attribute+ X
 Attribute     ::= '#[' AttrBody ']'
 ```
 
-**Attribute placement:** Attributes are permitted **only** on
-`Typedef`, `Function`, and `RelationDecl`. Any other placement is an error.
+**Attribute placement:** Attributes are permitted **only** on `Typedef`,
+`Function`, and `RelationDecl`. Any other placement is an error.
 
 ### 5.2 Imports and types
 

@@ -861,8 +861,8 @@ still reproduces the failure, making debugging far easier.2
 The core workflow of property-based testing is:
 
 1. **Define a Property:** A function that takes one or more generated inputs and
-   asserts an invariant. For example, for any list
-   `v`, `v.reverse().reverse() == v`.
+   asserts an invariant. For example, for any list `v`,
+   `v.reverse().reverse() == v`.
 
 2. **Generate Inputs:** `proptest` uses "strategies" to generate random inputs
    that conform to certain rules (e.g., integers within a range, strings

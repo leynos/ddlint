@@ -8,6 +8,7 @@
 use chumsky::error::Simple;
 use thiserror::Error;
 
+use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
 use crate::{Span, SyntaxKind};
 
@@ -170,6 +171,29 @@ pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Expressio
     let text = src
         .get(span.clone())
         .ok_or(ExpressionError::OutOfBounds { span })?;
+    // Rule bodies allow pattern assignments that the expression parser on its
+    // own would reject. Validate their shape here so syntax errors still
+    // surface during span scanning.
+    if let Some(eq_span) = find_top_level_eq_span(text) {
+        let pattern = text.get(..eq_span.start).unwrap_or("").trim();
+        if pattern.is_empty() {
+            return Err(ExpressionError::Parse(vec![Simple::custom(
+                0..text.len(),
+                "expected pattern before '=' in rule literal",
+            )]));
+        }
+        let rhs_full = text.get(eq_span.end..).unwrap_or("");
+        let rhs_trimmed = rhs_full.trim();
+        if rhs_trimmed.is_empty() {
+            return Err(ExpressionError::Parse(vec![Simple::custom(
+                0..text.len(),
+                "expected expression after '=' in rule literal",
+            )]));
+        }
+        return parse_expression(rhs_trimmed)
+            .map(|_| ())
+            .map_err(ExpressionError::Parse);
+    }
     parse_expression(text)
         .map(|_| ())
         .map_err(ExpressionError::Parse)

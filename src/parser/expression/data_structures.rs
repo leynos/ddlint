@@ -14,7 +14,7 @@ where
         self.parse_ident_expression(name, span)
     }
 
-    fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
+    pub(super) fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
         if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_LBRACE)) {
             return Some(Expr::Variable(name));
         }

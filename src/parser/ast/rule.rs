@@ -30,8 +30,9 @@
 use chumsky::error::Simple;
 
 use super::{AstNode, Expr};
+use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
-use crate::{DdlogLanguage, SyntaxKind};
+use crate::{DdlogLanguage, Span, SyntaxKind};
 
 /// Typed wrapper for a rule declaration.
 #[derive(Debug, Clone)]
@@ -88,23 +89,53 @@ impl Rule {
     /// # Errors
     /// Returns aggregated expression parser diagnostics if any literal fails to parse.
     pub fn body_expressions(&self) -> Result<Vec<Expr>, Vec<Simple<SyntaxKind>>> {
-        let mut exprs = Vec::new();
+        let terms = self.body_terms()?;
+        let exprs = terms
+            .into_iter()
+            .filter_map(|term| match term {
+                RuleBodyTerm::Expression(expr) => Some(expr),
+                _ => None,
+            })
+            .collect();
+        Ok(exprs)
+    }
+
+    /// Parse the rule body into semantically distinct terms.
+    ///
+    /// This helper recognises aggregations (`group_by`/`Aggregate`) and
+    /// pattern-matching assignments (FlatMap-style binds), returning
+    /// [`RuleBodyTerm`] variants describing each literal.
+    ///
+    /// # Examples
+    /// ```rust
+    /// # use ddlint::parse;
+    /// # use ddlint::parser::ast::{AggregationSource, RuleBodyTerm};
+    /// let parsed = parse("Totals(u, total) :- Orders(u, amt), group_by(sum(amt), u).");
+    /// let rule = parsed.root().rules().first().cloned().expect("rule missing");
+    /// let terms = rule.body_terms().expect("body terms should parse");
+    /// assert!(matches!(
+    ///     terms.get(1),
+    ///     Some(RuleBodyTerm::Aggregation(agg)) if agg.source == AggregationSource::GroupBy
+    /// ));
+    /// ```
+    ///
+    /// # Errors
+    /// Returns aggregated literal diagnostics when assignments or aggregations
+    /// fail to parse.
+    pub fn body_terms(&self) -> Result<Vec<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+        let mut terms = Vec::new();
         let mut errors = Vec::new();
 
         for literal in self.body_expression_nodes() {
-            let text = literal.text();
-            let trimmed = text.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            match parse_expression(trimmed) {
-                Ok(expr) => exprs.push(expr),
+            match literal.parse_term() {
+                Ok(Some(term)) => terms.push(term),
+                Ok(None) => {}
                 Err(mut errs) => errors.append(&mut errs),
             }
         }
 
         if errors.is_empty() {
-            Ok(exprs)
+            Ok(terms)
         } else {
             Err(errors)
         }
@@ -125,9 +156,197 @@ impl RuleBodyExpression {
     pub fn text(&self) -> String {
         self.syntax.text().to_string()
     }
+
+    fn span(&self) -> Span {
+        text_range_to_span(self.syntax.text_range())
+    }
+
+    fn parse_term(&self) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+        let raw = self.text();
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return Ok(None);
+        }
+
+        let literal_span = self.span();
+
+        if let Some(parts) = split_assignment(&raw) {
+            return parse_assignment(parts, &literal_span);
+        }
+
+        match parse_expression(trimmed) {
+            Ok(expr) => classify_expression(expr, &literal_span),
+            Err(errs) => Err(errs),
+        }
+    }
 }
 
 impl_ast_node!(RuleBodyExpression);
+
+/// Structured literal produced when walking a rule body.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RuleBodyTerm {
+    /// Regular expression literal (atoms, conditions, control-flow, etc.).
+    Expression(Expr),
+    /// Pattern-matching assignment such as `var ip = FlatMap(extract_ips(ips))`.
+    Assignment(RuleAssignment),
+    /// Aggregation literal (`group_by` or legacy `Aggregate`).
+    Aggregation(RuleAggregation),
+}
+
+/// Pattern assignment extracted from a rule literal.
+///
+/// The `pattern` field stores the left-hand side exactly as written (after
+/// trimming), so later stages can re-parse it once a full pattern parser lands.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuleAssignment {
+    /// Left-hand pattern (e.g., `var ip` or `(key, value)`).
+    pub pattern: String,
+    /// Expression on the right-hand side.
+    pub value: Expr,
+}
+
+/// Indicates which surface form produced an aggregation literal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AggregationSource {
+    /// Canonical `group_by(project, key)` invocation.
+    GroupBy,
+    /// Legacy `Aggregate((key), accumulator)` form.
+    LegacyAggregate,
+}
+
+impl AggregationSource {
+    fn label(self) -> &'static str {
+        match self {
+            Self::GroupBy => "group_by",
+            Self::LegacyAggregate => "Aggregate",
+        }
+    }
+}
+
+/// Aggregation literal extracted from the rule body.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuleAggregation {
+    /// Projection expression (`sum(amt)` in `group_by(sum(amt), key)`).
+    pub project: Expr,
+    /// Grouping key (`key` in `group_by(sum(amt), key)`).
+    pub key: Expr,
+    /// Origin of the aggregation syntax.
+    pub source: AggregationSource,
+}
+
+fn parse_assignment(
+    parts: AssignmentParts,
+    literal_span: &Span,
+) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+    if parts.pattern.is_empty() {
+        return Err(vec![Simple::custom(
+            literal_span.clone(),
+            "expected pattern before '=' in rule literal",
+        )]);
+    }
+
+    if parts.value.is_empty() {
+        return Err(vec![Simple::custom(
+            literal_span.clone(),
+            "expected expression after '=' in rule literal",
+        )]);
+    }
+
+    match parse_expression(&parts.value) {
+        Ok(expr) => Ok(Some(RuleBodyTerm::Assignment(RuleAssignment {
+            pattern: parts.pattern,
+            value: expr,
+        }))),
+        Err(errs) => Err(errs),
+    }
+}
+
+fn classify_expression(
+    expr: Expr,
+    literal_span: &Span,
+) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+    match expr {
+        Expr::Call { callee, args } => {
+            if let Expr::Variable(name) = &*callee
+                && let Some(source) = aggregation_source_for(name.as_str())
+            {
+                return classify_aggregation(args, literal_span, source);
+            }
+            Ok(Some(RuleBodyTerm::Expression(Expr::Call { callee, args })))
+        }
+        other => Ok(Some(RuleBodyTerm::Expression(other))),
+    }
+}
+
+fn aggregation_source_for(name: &str) -> Option<AggregationSource> {
+    match name {
+        "group_by" => Some(AggregationSource::GroupBy),
+        "Aggregate" => Some(AggregationSource::LegacyAggregate),
+        _ => None,
+    }
+}
+
+fn classify_aggregation(
+    args: Vec<Expr>,
+    literal_span: &Span,
+    source: AggregationSource,
+) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+    if args.len() != 2 {
+        return Err(aggregation_arity_error(literal_span, source));
+    }
+
+    let mut iter = args.into_iter();
+    let first = iter
+        .next()
+        .unwrap_or_else(|| unreachable!("len pre-checked as 2; first arg missing"));
+    let second = iter
+        .next()
+        .unwrap_or_else(|| unreachable!("len pre-checked as 2; second arg missing"));
+    let (project, key) = match source {
+        AggregationSource::GroupBy => (first, second),
+        AggregationSource::LegacyAggregate => (second, first),
+    };
+
+    Ok(Some(RuleBodyTerm::Aggregation(RuleAggregation {
+        project,
+        key,
+        source,
+    })))
+}
+
+fn aggregation_arity_error(
+    literal_span: &Span,
+    source: AggregationSource,
+) -> Vec<Simple<SyntaxKind>> {
+    vec![Simple::custom(
+        literal_span.clone(),
+        format!("{} expects exactly two arguments", source.label()),
+    )]
+}
+
+#[derive(Debug)]
+pub(crate) struct AssignmentParts {
+    pub(crate) pattern: String,
+    pub(crate) value: String,
+}
+
+/// Split a literal on a single top-level `=` into pattern/value parts.
+///
+/// Only `=` tokens at delimiter depth zero are treated as assignments; equality
+/// tests must use `==` (`T_EQEQ`) or occur inside delimiters.
+pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
+    let eq_span = find_top_level_eq_span(raw)?;
+    let pattern = raw.get(..eq_span.start).unwrap_or("").trim().to_string();
+    let value = raw.get(eq_span.end..).unwrap_or("").trim().to_string();
+    Some(AssignmentParts { pattern, value })
+}
+
+fn text_range_to_span(range: rowan::TextRange) -> Span {
+    let start: usize = range.start().into();
+    let end: usize = range.end().into();
+    start..end
+}
 
 #[cfg(test)]
 mod tests {
