@@ -676,6 +676,14 @@ fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
     )
 }
 
+/// Determine whether `span_start` begins a logical line in the token stream.
+///
+/// A position is treated as a line start if:
+/// - A preceding `.` token is found (enabling multiple rules on one physical line)
+/// - Trivia (whitespace/comment) or a gap between tokens contains a newline
+///
+/// Positions preceded only by inline whitespace or comments (no newline) are *not*
+/// line starts, preserving single-line continuation semantics.
 fn line_start_boundary(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -860,7 +868,7 @@ mod tests {
     }
 
     /// Assert rule span collection for a given source, with configurable span selection.
-    fn assert_rule_span_collection(src: &str, config: RuleSpanAssertConfig<'_>) {
+    fn assert_rule_span_collection(src: &str, config: &RuleSpanAssertConfig<'_>) {
         let tokens = tokenize(src);
         let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
         assert!(errors.is_empty());
@@ -1127,11 +1135,7 @@ R2(x) :- B(x).
     fn rule_treated_as_line_start_after_dot_same_line() {
         assert_rule_span_collection(
             "Fact().   R(x) :- A(x).",
-<<<<<<< HEAD
             &RuleSpanAssertConfig::new(2, "both fact and trailing rule should parse", "R(")
-=======
-            RuleSpanAssertConfig::new(2, "both fact and trailing rule should parse", "R(")
->>>>>>> 5a4fe84 (refactor(tests): introduce RuleSpanAssertConfig for asserting rule spans)
                 .select_last()
                 .trim_before_check(),
         );
@@ -1141,11 +1145,7 @@ R2(x) :- B(x).
     fn rule_treated_as_line_start_after_newline_trivia() {
         assert_rule_span_collection(
             "/*c*/\n   // inline comment\nR(x) :- A(x).",
-<<<<<<< HEAD
             &RuleSpanAssertConfig::new(1, "newline trivia should start rule", "R("),
-=======
-            RuleSpanAssertConfig::new(1, "newline trivia should start rule", "R("),
->>>>>>> 5a4fe84 (refactor(tests): introduce RuleSpanAssertConfig for asserting rule spans)
         );
     }
 
