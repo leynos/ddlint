@@ -828,7 +828,7 @@ mod tests {
     use chumsky::Stream;
     use rstest::rstest;
 
-    /// Configuration for asserting rule span collection in tests.
+    /// Configuration for `assert_rule_span_collection`, allowing fluent toggling of optional behaviour.
     struct RuleSpanAssertConfig<'a> {
         expected_count: usize,
         count_message: &'a str,
@@ -848,23 +848,19 @@ mod tests {
             }
         }
 
-        fn select_last(self) -> Self {
-            Self {
-                select_last: true,
-                ..self
-            }
+        fn select_last(mut self) -> Self {
+            self.select_last = true;
+            self
         }
 
-        fn trim_before_check(self) -> Self {
-            Self {
-                trim_before_check: true,
-                ..self
-            }
+        fn trim_before_check(mut self) -> Self {
+            self.trim_before_check = true;
+            self
         }
     }
 
     /// Assert rule span collection for a given source, with configurable span selection.
-    fn assert_rule_span_collection(src: &str, config: &RuleSpanAssertConfig<'_>) {
+    fn assert_rule_span_collection(src: &str, config: RuleSpanAssertConfig<'_>) {
         let tokens = tokenize(src);
         let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
         assert!(errors.is_empty());
@@ -1131,7 +1127,11 @@ R2(x) :- B(x).
     fn rule_treated_as_line_start_after_dot_same_line() {
         assert_rule_span_collection(
             "Fact().   R(x) :- A(x).",
+<<<<<<< HEAD
             &RuleSpanAssertConfig::new(2, "both fact and trailing rule should parse", "R(")
+=======
+            RuleSpanAssertConfig::new(2, "both fact and trailing rule should parse", "R(")
+>>>>>>> 5a4fe84 (refactor(tests): introduce RuleSpanAssertConfig for asserting rule spans)
                 .select_last()
                 .trim_before_check(),
         );
@@ -1141,7 +1141,11 @@ R2(x) :- B(x).
     fn rule_treated_as_line_start_after_newline_trivia() {
         assert_rule_span_collection(
             "/*c*/\n   // inline comment\nR(x) :- A(x).",
+<<<<<<< HEAD
             &RuleSpanAssertConfig::new(1, "newline trivia should start rule", "R("),
+=======
+            RuleSpanAssertConfig::new(1, "newline trivia should start rule", "R("),
+>>>>>>> 5a4fe84 (refactor(tests): introduce RuleSpanAssertConfig for asserting rule spans)
         );
     }
 
