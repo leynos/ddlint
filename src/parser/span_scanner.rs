@@ -828,6 +828,51 @@ mod tests {
     use chumsky::Stream;
     use rstest::rstest;
 
+    /// Assert rule span collection for a given source, with configurable span selection.
+    ///
+    /// - `src`: source text to parse.
+    /// - `expected_count`: expected number of rule spans collected.
+    /// - `count_message`: assertion message for the count check.
+    /// - `select_last`: pick the last span (true) or first span (false) for prefix validation.
+    /// - `trim_before_check`: trim leading whitespace before checking `expected_prefix`.
+    /// - `expected_prefix`: prefix that the selected rule text must start with.
+    fn assert_rule_span_collection(
+        src: &str,
+        expected_count: usize,
+        count_message: &str,
+        select_last: bool,
+        trim_before_check: bool,
+        expected_prefix: &str,
+    ) {
+        let tokens = tokenize(src);
+        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
+        assert!(errors.is_empty());
+        assert_eq!(rule_spans.len(), expected_count, "{count_message}");
+        let span = if select_last {
+            rule_spans
+                .last()
+                .cloned()
+                .unwrap_or_else(|| panic!("expected at least one rule span"))
+        } else {
+            rule_spans
+                .first()
+                .cloned()
+                .unwrap_or_else(|| panic!("expected at least one rule span"))
+        };
+        let rule_text = src
+            .get(span.clone())
+            .unwrap_or_else(|| panic!("rule span {span:?} out of bounds"));
+        let checked = if trim_before_check {
+            rule_text.trim_start()
+        } else {
+            rule_text
+        };
+        assert!(
+            checked.starts_with(expected_prefix),
+            "unexpected rule text: {rule_text}"
+        );
+    }
+
     fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<Simple<SyntaxKind>>) {
         let tokens = tokenize(src);
         let ws = inline_ws().repeated().ignored();
@@ -1058,39 +1103,25 @@ R2(x) :- B(x).
 
     #[test]
     fn rule_treated_as_line_start_after_dot_same_line() {
-        let src = "Fact().   R(x) :- A(x).";
-        let tokens = tokenize(src);
-        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
-        assert!(errors.is_empty());
-        assert_eq!(
-            rule_spans.len(),
+        assert_rule_span_collection(
+            "Fact().   R(x) :- A(x).",
             2,
-            "both fact and trailing rule should parse"
-        );
-        let rule_text = rule_spans
-            .last()
-            .and_then(|sp| src.get(sp.clone()))
-            .unwrap_or_else(|| panic!("trailing rule span missing or out of bounds"));
-        assert!(
-            rule_text.trim_start().starts_with("R("),
-            "unexpected rule text: {rule_text}"
+            "both fact and trailing rule should parse",
+            true,
+            true,
+            "R(",
         );
     }
 
     #[test]
     fn rule_treated_as_line_start_after_newline_trivia() {
-        let src = "/*c*/\n   // inline comment\nR(x) :- A(x).";
-        let tokens = tokenize(src);
-        let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
-        assert!(errors.is_empty());
-        assert_eq!(rule_spans.len(), 1, "newline trivia should start rule");
-        let rule_text = rule_spans
-            .first()
-            .and_then(|sp| src.get(sp.clone()))
-            .unwrap_or_else(|| panic!("rule span missing or out of bounds"));
-        assert!(
-            rule_text.starts_with("R("),
-            "unexpected rule text: {rule_text}"
+        assert_rule_span_collection(
+            "/*c*/\n   // inline comment\nR(x) :- A(x).",
+            1,
+            "newline trivia should start rule",
+            false,
+            false,
+            "R(",
         );
     }
 
