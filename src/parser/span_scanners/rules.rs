@@ -44,38 +44,41 @@ pub(super) fn rule_statement(
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
     recursive(|stmt| {
         let ws = ws.clone();
-        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE);
-        let skip_stmt = just(SyntaxKind::K_SKIP).ignored();
-        let atom_stmt = atom();
+        let pad = |p: BoxedParser<'static, SyntaxKind, (), Simple<SyntaxKind>>| {
+            p.padded_by(ws.clone()).boxed()
+        };
 
-        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN).or(filter(
-            |kind: &SyntaxKind| *kind != SyntaxKind::T_LBRACE,
-        )
-        .ignored()
-        .padded_by(ws.clone())
-        .repeated()
-        .at_least(1)
-        .ignored());
+        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE).boxed();
+        let skip_stmt = just(SyntaxKind::K_SKIP).ignored().boxed();
+        let atom_stmt = atom().boxed();
+
+        let condition = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
+            .or(filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_LBRACE)
+                .ignored()
+                .repeated()
+                .at_least(1)
+                .ignored())
+            .boxed();
 
         let if_stmt = just(SyntaxKind::K_IF)
-            .padded_by(ws.clone())
-            .ignore_then(condition.clone())
-            .then(stmt.clone().padded_by(ws.clone()))
+            .then_ignore(pad(condition.clone()))
+            .then(pad(stmt.clone().boxed()))
             .then(
                 just(SyntaxKind::K_ELSE)
-                    .padded_by(ws.clone())
+                    .then_ignore(ws.clone())
                     .ignore_then(stmt.clone())
                     .or_not(),
             )
-            .ignored();
+            .ignored()
+            .boxed();
 
         let header_expr = for_header(ws.clone());
 
         let for_stmt = just(SyntaxKind::K_FOR)
-            .padded_by(ws.clone())
-            .ignore_then(header_expr)
-            .then(stmt.clone().padded_by(ws.clone()))
-            .ignored();
+            .then_ignore(pad(header_expr.boxed()))
+            .then(pad(stmt.clone().boxed()))
+            .ignored()
+            .boxed();
 
         let expr_token = choice((
             balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
@@ -162,7 +165,7 @@ fn for_binding_complete(
 /// `.` as a line start boundary. Otherwise, only trivia containing a newline
 /// counts; inline whitespace or comments keep the current line “open” so
 /// continuations are not misclassified.
-fn is_at_line_start(st: &State<'_>, span: Span) -> bool {
+fn is_at_line_start(st: &State<'_>, span: &Span) -> bool {
     if st.stream.cursor() == 0 {
         return true;
     }
@@ -187,13 +190,13 @@ fn line_start_boundary(
             break;
         };
         if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
-            if trivia_contains_newline(src, prev_span) {
+            if range_contains_newline(src, prev_span.clone()) {
                 return true;
             }
             continue;
         }
 
-        if gap_contains_newline(src, prev_span.end, span_start) {
+        if range_contains_newline(src, prev_span.end..span_start) {
             return true;
         }
         return *kind == SyntaxKind::T_DOT;
@@ -201,42 +204,29 @@ fn line_start_boundary(
     false
 }
 
-fn trivia_contains_newline(src: &str, span: &Span) -> bool {
-    src.get(span.clone())
-        .is_some_and(|text| text.contains('\n'))
-}
-
-fn gap_contains_newline(src: &str, start: usize, end: usize) -> bool {
-    src.get(start..end).is_some_and(|text| text.contains('\n'))
-}
-
-fn parse_and_handle_rule(st: &mut State<'_>, span: Span) -> (Option<Span>, usize) {
-    let parser = rule_decl();
-    let (res, err) = st.parse_span(parser, span.start);
-    if let Some(sp) = res {
-        let end = sp.end;
-        let parsed_span = sp.clone();
-        st.spans.push(sp);
-        (Some(parsed_span), end)
-    } else {
-        st.extra.extend(err);
-        (None, st.stream.line_end(st.stream.cursor()))
-    }
+fn range_contains_newline(src: &str, range: std::ops::Range<usize>) -> bool {
+    src.get(range).is_some_and(|text| text.contains('\n'))
 }
 
 fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
-    if !is_at_line_start(st, span.clone()) {
+    if !is_at_line_start(st, &span) {
         st.stream.advance();
         return;
     }
 
     let start_idx = st.stream.cursor();
-    let (rule_span, end) = parse_and_handle_rule(st, span);
+    let parser = rule_decl();
+    let (rule_span, err) = st.parse_span(parser, span.start);
 
-    if rule_span.is_none() {
+    let Some(rule_span) = rule_span else {
+        st.extra.extend(err);
+        let end = st.stream.line_end(st.stream.cursor());
         st.stream.skip_until(end);
         return;
-    }
+    };
+
+    let end = rule_span.end;
+    st.spans.push(rule_span.clone());
 
     for span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
         if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
@@ -254,14 +244,6 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     }
 
     st.stream.skip_until(end);
-}
-
-fn handle_ident(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
-    parse_rule_at_line_start(st, span, exprs);
-}
-
-fn handle_implies(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
-    parse_rule_at_line_start(st, span, exprs);
 }
 
 pub(crate) fn collect_rule_spans(
@@ -299,8 +281,9 @@ pub(crate) fn collect_rule_spans(
         }
 
         match kind {
-            SyntaxKind::T_IDENT => handle_ident(&mut st, span, &mut expr_spans),
-            SyntaxKind::T_IMPLIES => handle_implies(&mut st, span, &mut expr_spans),
+            SyntaxKind::T_IDENT | SyntaxKind::T_IMPLIES => {
+                parse_rule_at_line_start(&mut st, span, &mut expr_spans);
+            }
             _ => st.stream.advance(),
         }
     }

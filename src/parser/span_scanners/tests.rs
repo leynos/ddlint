@@ -167,6 +167,13 @@ fn merge_spans_merges_overlapping_and_adjacent() {
 }
 
 #[test]
+fn merge_spans_sorts_and_preserves_gaps() {
+    let spans = vec![30..35, 5..10, 20..22];
+    let merged = merge_spans(spans);
+    assert_eq!(merged, vec![5..10, 20..22, 30..35]);
+}
+
+#[test]
 fn collect_rule_spans_handles_adjacent_exclusions() {
     let src = "R1(x) :- A(x). R2(x) :- B(x).";
     let tokens = tokenize(src);
