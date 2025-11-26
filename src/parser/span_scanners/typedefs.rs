@@ -43,6 +43,5 @@ pub(crate) fn collect_typedef_spans(
         SyntaxKind::K_EXTERN => handle_extern,
     });
 
-    let (spans, errors) = st.into_parts();
-    (spans, errors)
+    st.into_parts()
 }

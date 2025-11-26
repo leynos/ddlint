@@ -80,11 +80,10 @@ fn handle_func(st: &mut State<'_>, span: Span, is_extern: bool) {
 pub(crate) fn collect_function_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+    ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
-    while let Some(&(kind, ref span_ref)) = st.stream.peek() {
-        let span = span_ref.clone();
+    while let Some((kind, span)) = st.stream.peek().cloned() {
         match kind {
             SyntaxKind::K_EXTERN => handle_func(&mut st, span, true),
             SyntaxKind::K_FUNCTION => handle_func(&mut st, span, false),

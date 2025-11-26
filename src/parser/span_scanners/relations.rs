@@ -11,50 +11,50 @@ use crate::parser::{
 };
 use crate::{Span, SyntaxKind};
 
-pub(crate) fn collect_relation_spans(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
-) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
-    #[derive(Debug)]
-    struct Extras<'a> {
-        src: &'a str,
-        errors: Vec<Simple<SyntaxKind>>,
-    }
+#[derive(Debug)]
+struct Extras<'a> {
+    src: &'a str,
+    errors: Vec<Simple<SyntaxKind>>,
+}
 
-    type State<'a> = SpanCollector<'a, Extras<'a>>;
+type State<'a> = SpanCollector<'a, Extras<'a>>;
 
-    fn record_relation(st: &mut State<'_>, start: usize) {
-        let parser = relation_columns()
-            .then(primary_key_clause(st.extra.src).or_not())
-            .map_with_span(|_, sp: Span| sp);
+fn record_relation(st: &mut State<'_>, start: usize) {
+    let parser = relation_columns()
+        .then(primary_key_clause(st.extra.src).or_not())
+        .map_with_span(|_, sp: Span| sp);
 
-        let (res, errs) = st.parse_span(parser, start);
-        st.extra.errors.extend(errs.clone());
+    let (res, errs) = st.parse_span(parser, start);
+    st.extra.errors.extend(errs.clone());
 
-        if let Some(sp) = res {
-            st.stream.skip_until(sp.end);
-            st.stream.skip_ws_inline();
-            if errs.is_empty() {
-                if let Some((_, span)) = st.stream.peek().cloned()
-                    && st.extra.src.get(span.clone()) == Some("primary")
-                {
-                    st.extra
-                        .errors
-                        .push(Simple::custom(span, "invalid primary key clause"));
-                    st.skip_line();
-                } else {
-                    let end = st.stream.line_end(st.stream.cursor());
-                    st.stream.skip_until(end);
-                    st.spans.push(start..end);
-                }
-            } else {
+    if let Some(sp) = res {
+        st.stream.skip_until(sp.end);
+        st.stream.skip_ws_inline();
+        if errs.is_empty() {
+            if let Some((_, span)) = st.stream.peek().cloned()
+                && st.extra.src.get(span.clone()) == Some("primary")
+            {
+                st.extra
+                    .errors
+                    .push(Simple::custom(span, "invalid primary key clause"));
                 st.skip_line();
+            } else {
+                let end = st.stream.line_end(st.stream.cursor());
+                st.stream.skip_until(end);
+                st.spans.push(start..end);
             }
         } else {
             st.skip_line();
         }
+    } else {
+        st.skip_line();
     }
+}
 
+pub(crate) fn collect_relation_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     fn handle_input(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
