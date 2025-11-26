@@ -80,7 +80,7 @@ fn handle_func(st: &mut State<'_>, span: Span, is_extern: bool) {
 pub(crate) fn collect_function_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-    ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
     while let Some((kind, span)) = st.stream.peek().cloned() {
