@@ -19,7 +19,7 @@ pub(super) fn parse_tokens(
     src: &str,
 ) -> (ParsedSpans, Vec<chumsky::error::Simple<SyntaxKind>>) {
     let (import_spans, errors) = collect_import_spans(tokens, src);
-    let typedef_spans = collect_typedef_spans(tokens, src);
+    let (typedef_spans, typedef_errors) = collect_typedef_spans(tokens, src);
     let (relation_spans, relation_errors) = collect_relation_spans(tokens, src);
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
@@ -44,6 +44,7 @@ pub(super) fn parse_tokens(
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
 
     let mut all_errors = errors;
+    all_errors.extend(typedef_errors);
     all_errors.extend(relation_errors);
     all_errors.extend(index_errors);
     all_errors.extend(function_errors);

@@ -46,9 +46,9 @@ where
     E: Extend<Simple<SyntaxKind>>,
 {
     let (res, errs) = st.parse_span(parser, start);
-    if let Some(sp) = res.clone() {
+    if let Some(ref sp) = res {
         st.stream.skip_until(sp.end);
-        st.spans.push(sp);
+        st.spans.push(sp.clone());
     } else {
         st.skip_line();
     }

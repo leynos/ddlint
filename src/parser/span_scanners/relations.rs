@@ -72,6 +72,7 @@ pub(crate) fn collect_relation_spans(
         }
     }
 
+    /// Outputs share the same grammar as inputs, so reuse the input handler.
     fn handle_output(st: &mut State<'_>, span: Span) {
         handle_input(st, span);
     }

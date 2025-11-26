@@ -203,7 +203,7 @@ fn collect_rule_spans_handles_adjacent_exclusions() {
 fn collect_rule_spans_skips_multiple_disjoint_exclusions() {
     let src = "\
 import foo
-extern transformer normalize(input: Data): Data
+extern transformer normalise(input: Data): Data
 R1(x) :- A(x).
 function greet(name: string): string { }
 R2(x) :- B(x).
@@ -212,7 +212,8 @@ R2(x) :- B(x).
 
     let (import_spans, import_errors) = collect_import_spans(&tokens, src);
     assert!(import_errors.is_empty());
-    let typedef_spans = collect_typedef_spans(&tokens, src);
+    let (typedef_spans, typedef_errors) = collect_typedef_spans(&tokens, src);
+    assert!(typedef_errors.is_empty());
     let (relation_spans, relation_errors) = collect_relation_spans(&tokens, src);
     assert!(relation_errors.is_empty());
     let (index_spans, index_errors) = collect_index_spans(&tokens, src);

@@ -19,21 +19,21 @@ pub(crate) fn collect_import_spans(
     let handle_import = |st: &mut State<'_>, span: Span| {
         let ws = inline_ws().repeated();
 
-        let ident = ident();
+        let ident_parser = ident();
 
-        let module_path = ident
+        let module_path = ident_parser
             .clone()
             .then(
                 just(SyntaxKind::T_COLON_COLON)
                     .padded_by(ws.clone())
-                    .ignore_then(ident.clone())
+                    .ignore_then(ident_parser.clone())
                     .repeated(),
             )
             .ignored();
 
         let alias = just(SyntaxKind::K_AS)
             .padded_by(ws.clone())
-            .ignore_then(ident.clone());
+            .ignore_then(ident_parser.clone());
 
         let parser = just(SyntaxKind::K_IMPORT)
             .padded_by(ws.clone())
