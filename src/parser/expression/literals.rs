@@ -5,9 +5,13 @@ use crate::{Span, SyntaxKind};
 
 use super::pratt::Pratt;
 
+fn is_valid_string_prefix(s: &str) -> bool {
+    s.starts_with('"') || s.starts_with("[|") || s.starts_with("$[|")
+}
+
 fn strip_intern_prefix(text: &str) -> (bool, &str) {
     if let Some(rest) = text.strip_prefix('i')
-        && (rest.starts_with('"') || rest.starts_with("[|") || rest.starts_with("$[|"))
+        && is_valid_string_prefix(rest)
     {
         return (true, rest);
     }
