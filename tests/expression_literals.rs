@@ -6,13 +6,22 @@
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, lit_bool, lit_num, lit_str,
+    assert_parse_error, assert_unclosed_delimiter_error, lit_bool,
+    lit_interned_raw_interpolated_str, lit_interned_raw_str, lit_interned_str,
+    lit_interpolated_str, lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str,
 };
 use rstest::rstest;
 
 #[rstest]
 #[case("42", lit_num("42"))]
 #[case("\"hi\"", lit_str("hi"))]
+#[case("\"hi ${user}\"", lit_interpolated_str("hi ${user}"))]
+#[case("\"\\${user}\"", lit_str("\\${user}"))]
+#[case("[|raw|]", lit_raw_str("raw"))]
+#[case("$[|raw ${x}|]", lit_raw_interpolated_str("raw ${x}"))]
+#[case("i\"hi\"", lit_interned_str("hi"))]
+#[case("i[|raw|]", lit_interned_raw_str("raw"))]
+#[case("i$[|raw ${x}|]", lit_interned_raw_interpolated_str("raw ${x}"))]
 #[case("true", lit_bool(true))]
 #[case("false", lit_bool(false))]
 fn parses_literal_expressions(#[case] src: &str, #[case] expected: Expr) {

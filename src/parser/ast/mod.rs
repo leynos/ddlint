@@ -143,7 +143,7 @@ mod type_def;
 ///
 /// Re-exports [`MatchArm`], allowing callers to assemble match expressions
 /// without reaching into private modules.
-pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
+pub use expr::{BinaryOp, Expr, Literal, MatchArm, StringKind, StringLiteral, UnaryOp};
 pub use function::Function;
 pub use import::Import;
 pub use index::Index;

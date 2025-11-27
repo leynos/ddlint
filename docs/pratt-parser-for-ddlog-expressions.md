@@ -118,7 +118,13 @@ pub fn expression_parser() -> impl Parser<SyntaxKind, ast::Expr, Error = Simple<
     // 1. Define the parser for atomic expressions (the base cases)
     let atom = select! {
         SyntaxKind::T_NUMBER => ast::Expr::Literal(ast::Literal::Number),
-        SyntaxKind::T_STRING => ast::Expr::Literal(ast::Literal::String),
+        SyntaxKind::T_STRING => ast::Expr::Literal(ast::Literal::String(
+            ast::StringLiteral {
+                body: String::new(), // populate from the token span
+                kind: ast::StringKind::Standard { interpolated: false },
+                interned: false,
+            },
+        )),
         SyntaxKind::K_TRUE => ast::Expr::Literal(ast::Literal::Bool(true)),
         SyntaxKind::K_FALSE => ast::Expr::Literal(ast::Literal::Bool(false)),
         SyntaxKind::T_IDENT => ast::Expr::Variable,
@@ -445,10 +451,15 @@ operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
-Literal tokens are normalized via a dedicated helper, keeping prefix parsing
+Literal tokens are normalised via a dedicated helper, keeping prefix parsing
 readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE`, and `K_FALSE` to
 `ast::Literal` variants, ensuring numbers, strings, and booleans appear
-directly in the resulting AST.
+directly in the resulting AST. String handling now classifies standard, raw,
+and raw-interpolated forms (plus their interned variants) into a
+`StringLiteral` that records the surface form and whether interpolation is
+present. The same helper powers pattern collection so interpolated strings in
+`match` arms or `for` bindings are rejected in line with the updated syntax
+specification.
 
 Operator precedence is centralized in `src/parser/ast/precedence.rs`. Both the
 Pratt parser and any future grammar extensions reference this table, ensuring
