@@ -15,6 +15,8 @@ mod token_stream;
 
 mod span_collector;
 
+mod span_scanners;
+
 mod span_scanner;
 use span_scanner::parse_tokens;
 mod cst_builder;
