@@ -9,74 +9,83 @@ fn is_valid_string_prefix(s: &str) -> bool {
     s.starts_with('"') || s.starts_with("[|") || s.starts_with("$[|")
 }
 
-fn strip_intern_prefix(text: &str) -> (bool, &str) {
-    if let Some(rest) = text.strip_prefix('i')
-        && is_valid_string_prefix(rest)
-    {
-        return (true, rest);
-    }
-    (false, text)
-}
-
 fn contains_unescaped_interpolation(body: &str) -> bool {
-    let bytes = body.as_bytes();
-    let mut idx = 0;
-    while let Some(window) = bytes.get(idx..idx + 2) {
-        if window == b"${" {
-            let mut escaped = false;
-            let mut back = idx;
-            while let Some(prev_idx) = back.checked_sub(1) {
-                let Some(prev) = bytes.get(prev_idx) else {
-                    break;
-                };
-                if *prev == b'\\' {
-                    escaped = !escaped;
-                    back -= 1;
-                    continue;
+    let mut backslashes = 0;
+    let mut chars = body.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\\' => backslashes += 1,
+            '$' => {
+                if backslashes & 1 == 0 && matches!(chars.peek(), Some('{')) {
+                    return true;
                 }
-                break;
+                backslashes = 0;
             }
-            if !escaped {
-                return true;
-            }
+            _ => backslashes = 0,
         }
-        idx += 1;
     }
+
     false
 }
 
-#[must_use]
-pub(super) fn parse_string_literal_text(text: &str) -> Option<StringLiteral> {
-    let (interned, rest) = strip_intern_prefix(text);
+enum StringPrefix {
+    Standard,
+    Raw { interpolated: bool },
+}
+
+fn parse_prefix(text: &str) -> (bool, StringPrefix, &str) {
+    let (interned, rest) = text.strip_prefix('i').map_or((false, text), |rest| {
+        if is_valid_string_prefix(rest) {
+            (true, rest)
+        } else {
+            (false, text)
+        }
+    });
 
     if let Some(content) = rest.strip_prefix("$[|") {
-        let body = content.strip_suffix("|]")?;
-        return Some(StringLiteral {
-            body: body.to_string(),
-            kind: StringKind::Raw { interpolated: true },
-            interned,
-        });
+        return (interned, StringPrefix::Raw { interpolated: true }, content);
     }
-
     if let Some(content) = rest.strip_prefix("[|") {
-        let body = content.strip_suffix("|]")?;
-        return Some(StringLiteral {
-            body: body.to_string(),
-            kind: StringKind::Raw {
+        return (
+            interned,
+            StringPrefix::Raw {
                 interpolated: false,
             },
-            interned,
-        });
+            content,
+        );
     }
 
-    let content = rest.strip_prefix('"')?;
-    let body = content.strip_suffix('"')?;
-    let interpolated = contains_unescaped_interpolation(body);
-    Some(StringLiteral {
-        body: body.to_string(),
-        kind: StringKind::Standard { interpolated },
-        interned,
-    })
+    (interned, StringPrefix::Standard, rest)
+}
+
+pub(super) fn parse_string_literal_text(text: &str) -> Result<StringLiteral, &'static str> {
+    let (interned, prefix, rest) = parse_prefix(text);
+
+    match prefix {
+        StringPrefix::Raw { interpolated } => {
+            let body = rest
+                .strip_suffix("|]")
+                .ok_or("unterminated raw string literal")?;
+            Ok(StringLiteral {
+                body: body.to_string(),
+                kind: StringKind::Raw { interpolated },
+                interned,
+            })
+        }
+        StringPrefix::Standard => {
+            let content = rest.strip_prefix('"').ok_or("expected '\"'")?;
+            let body = content
+                .strip_suffix('"')
+                .ok_or("unterminated string literal")?;
+            let interpolated = contains_unescaped_interpolation(body);
+            Ok(StringLiteral {
+                body: body.to_string(),
+                kind: StringKind::Standard { interpolated },
+                interned,
+            })
+        }
+    }
 }
 
 impl<I> Pratt<'_, I>
@@ -103,14 +112,13 @@ where
     pub(super) fn parse_literal(&mut self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
             SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.ts.slice(span)))),
-            SyntaxKind::T_STRING => parse_string_literal_text(&self.ts.slice(span))
-                .map(Literal::String)
-                .map(Expr::Literal)
-                .or_else(|| {
-                    self.ts
-                        .push_error(span.clone(), "invalid string literal".to_string());
+            SyntaxKind::T_STRING => match parse_string_literal_text(&self.ts.slice(span)) {
+                Ok(s) => Some(Expr::Literal(Literal::String(s))),
+                Err(msg) => {
+                    self.ts.push_error(span.clone(), msg.to_string());
                     None
-                }),
+                }
+            },
             SyntaxKind::K_TRUE => Some(Expr::Literal(Literal::Bool(true))),
             SyntaxKind::K_FALSE => Some(Expr::Literal(Literal::Bool(false))),
             _ => None,

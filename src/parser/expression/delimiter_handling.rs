@@ -31,7 +31,9 @@ where
                 self.process_closing_delimiter(token, state, context)?;
             }
             SyntaxKind::T_STRING => {
-                self.reject_interpolated_string_in_pattern(span)?;
+                if !self.reject_interpolated_string_in_pattern(span) {
+                    return None; // diagnostic already emitted
+                }
                 state.start.get_or_insert(span.start);
                 state.end = Some(span.end);
             }
@@ -115,11 +117,13 @@ where
         Some(())
     }
 
-    fn reject_interpolated_string_in_pattern(&mut self, span: &Span) -> Option<()> {
-        let Some(literal) = parse_string_literal_text(&self.ts.slice(span)) else {
-            self.ts
-                .push_error(span.clone(), "invalid string literal".to_string());
-            return None;
+    fn reject_interpolated_string_in_pattern(&mut self, span: &Span) -> bool {
+        let literal = match parse_string_literal_text(&self.ts.slice(span)) {
+            Ok(lit) => lit,
+            Err(msg) => {
+                self.ts.push_error(span.clone(), msg.to_string());
+                return false;
+            }
         };
 
         if literal.is_interpolated() {
@@ -127,9 +131,9 @@ where
                 span.clone(),
                 "interpolated strings are not allowed in patterns".to_string(),
             );
-            return None;
+            return false;
         }
 
-        Some(())
+        true
     }
 }

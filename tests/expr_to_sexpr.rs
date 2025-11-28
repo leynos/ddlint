@@ -220,6 +220,18 @@ fn interpolated_standard_literal_renders() {
 }
 
 #[test]
+fn non_interpolated_interned_standard_literal_renders() {
+    let expr = Expr::Literal(Literal::String(StringLiteral {
+        body: "hi".into(),
+        kind: StringKind::Standard {
+            interpolated: false,
+        },
+        interned: true,
+    }));
+    assert_eq!(expr.to_sexpr(), "i\"hi\"");
+}
+
+#[test]
 fn for_loop_renders() {
     let expr = Expr::ForLoop {
         pattern: "item".into(),
