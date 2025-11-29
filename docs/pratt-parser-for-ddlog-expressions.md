@@ -451,13 +451,13 @@ operator table analysed from the Haskell parser. Expression spans are now
 recorded by `span_scanner` and emitted as `N_EXPR_NODE` entries when building
 the CST.
 
-Literal tokens are normalised via a dedicated helper, keeping prefix parsing
+Literal tokens are normalized via a dedicated helper, keeping prefix parsing
 readable. The parser maps `T_NUMBER`, `T_STRING`, `K_TRUE`, and `K_FALSE` to
 `ast::Literal` variants, ensuring numbers, strings, and booleans appear
 directly in the resulting AST. String handling now classifies standard, raw,
 and raw-interpolated forms (plus their interned variants) into a
 `StringLiteral` that records the surface form and whether interpolation is
-present. The same helper powers pattern collection so interpolated strings in
+present. The same helper powers pattern collection, so interpolated strings in
 `match` arms or `for` bindings are rejected in line with the updated syntax
 specification.
 
