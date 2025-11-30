@@ -126,6 +126,10 @@ where
             }
         };
 
+        // Cache the parsed literal for later reuse
+        self.string_literal_cache
+            .insert(span.start, literal.clone());
+
         if literal.is_interpolated() {
             self.ts.push_error(
                 span.clone(),

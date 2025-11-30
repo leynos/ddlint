@@ -4,9 +4,11 @@
 //! [`parse_expression`] function which tokenizes the source and builds
 //! expression trees.
 
+use std::collections::HashMap;
+
 use chumsky::error::Simple;
 
-use crate::parser::ast::Expr;
+use crate::parser::ast::{Expr, StringLiteral};
 use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
@@ -22,6 +24,8 @@ where
     expr_depth: usize,
     /// Records contexts where bare struct literals should be disallowed or temporarily re-enabled.
     struct_literals: StructLiteralState,
+    /// Cache of parsed string literals keyed by start offset to avoid re-parsing.
+    pub(super) string_literal_cache: HashMap<usize, StringLiteral>,
 }
 
 #[derive(Default)]
@@ -115,6 +119,7 @@ where
             ts: TokenStream::new(tokens, src),
             expr_depth: 0,
             struct_literals: StructLiteralState::default(),
+            string_literal_cache: HashMap::new(),
         }
     }
 

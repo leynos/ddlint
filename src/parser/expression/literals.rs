@@ -10,20 +10,31 @@ fn is_valid_string_prefix(s: &str) -> bool {
 }
 
 fn contains_unescaped_interpolation(body: &str) -> bool {
-    let mut backslashes = 0;
-    let mut chars = body.chars().peekable();
+    let mut search_from = 0;
 
-    while let Some(ch) = chars.next() {
-        match ch {
-            '\\' => backslashes += 1,
-            '$' => {
-                if backslashes & 1 == 0 && matches!(chars.peek(), Some('{')) {
-                    return true;
-                }
-                backslashes = 0;
+    while let Some(pos) = body.get(search_from..).and_then(|s| s.find("${")) {
+        let absolute_pos = search_from + pos;
+
+        // Count consecutive backslashes before the '$'
+        let mut backslash_count = 0;
+        let mut check_pos = absolute_pos;
+
+        while check_pos > 0 {
+            check_pos -= 1;
+            if matches!(body.as_bytes().get(check_pos), Some(b'\\')) {
+                backslash_count += 1;
+            } else {
+                break;
             }
-            _ => backslashes = 0,
         }
+
+        // Even number of backslashes (including zero) means unescaped
+        if backslash_count & 1 == 0 {
+            return true;
+        }
+
+        // Move past this match and continue searching
+        search_from = absolute_pos + 1;
     }
 
     false
@@ -112,13 +123,21 @@ where
     pub(super) fn parse_literal(&mut self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
             SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.ts.slice(span)))),
-            SyntaxKind::T_STRING => match parse_string_literal_text(&self.ts.slice(span)) {
-                Ok(s) => Some(Expr::Literal(Literal::String(s))),
-                Err(msg) => {
-                    self.ts.push_error(span.clone(), msg.to_string());
-                    None
+            SyntaxKind::T_STRING => {
+                // Check cache first
+                if let Some(cached) = self.string_literal_cache.remove(&span.start) {
+                    return Some(Expr::Literal(Literal::String(cached)));
                 }
-            },
+
+                // Cache miss: parse as before
+                match parse_string_literal_text(&self.ts.slice(span)) {
+                    Ok(s) => Some(Expr::Literal(Literal::String(s))),
+                    Err(msg) => {
+                        self.ts.push_error(span.clone(), msg.to_string());
+                        None
+                    }
+                }
+            }
             SyntaxKind::K_TRUE => Some(Expr::Literal(Literal::Bool(true))),
             SyntaxKind::K_FALSE => Some(Expr::Literal(Literal::Bool(false))),
             _ => None,
