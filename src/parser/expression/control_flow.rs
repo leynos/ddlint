@@ -73,10 +73,7 @@ where
             return None;
         }
 
-        let Some(arms) = self.parse_match_arms() else {
-            let _ = self.ts.expect(SyntaxKind::T_RBRACE);
-            return None;
-        };
+        let arms = self.parse_match_arms()?;
 
         if !self.ts.expect(SyntaxKind::T_RBRACE) {
             return None;

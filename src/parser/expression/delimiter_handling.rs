@@ -6,6 +6,7 @@
 
 use crate::{Span, SyntaxKind};
 
+use super::literals::parse_string_literal_text;
 use super::pattern_collection::{DelimiterState, DelimiterToken, PatternContext};
 use super::pratt::Pratt;
 
@@ -28,6 +29,13 @@ where
             }
             SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACE | SyntaxKind::T_RBRACKET => {
                 self.process_closing_delimiter(token, state, context)?;
+            }
+            SyntaxKind::T_STRING => {
+                if !self.reject_interpolated_string_in_pattern(span) {
+                    return None; // diagnostic already emitted
+                }
+                state.start.get_or_insert(span.start);
+                state.end = Some(span.end);
             }
             _ => {
                 state.start.get_or_insert(span.start);
@@ -107,5 +115,29 @@ where
         }
 
         Some(())
+    }
+
+    fn reject_interpolated_string_in_pattern(&mut self, span: &Span) -> bool {
+        let literal = match parse_string_literal_text(&self.ts.slice(span)) {
+            Ok(lit) => lit,
+            Err(msg) => {
+                self.ts.push_error(span.clone(), msg.to_string());
+                return false;
+            }
+        };
+
+        // Cache the parsed literal for later reuse
+        self.string_literal_cache
+            .insert(span.start, literal.clone());
+
+        if literal.is_interpolated() {
+            self.ts.push_error(
+                span.clone(),
+                "interpolated strings are not allowed in patterns".to_string(),
+            );
+            return false;
+        }
+
+        true
     }
 }

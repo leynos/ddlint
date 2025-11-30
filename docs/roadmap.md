@@ -137,7 +137,7 @@ as control flow constructs. This phase aims to build a complete grammar.
 
 - [ ] **Align Parser with Updated DDlog Syntax**
 
-  - [ ] Extend the tokenizer and literal parser to support raw and interpolated
+  - [x] Extend the tokenizer and literal parser to support raw and interpolated
     string forms, their interned variants, and to reject interpolated strings
     inside patterns as specified in the updated
     [parser syntax spec](docs/differential-datalog-parser-syntax-spec-updated.md).

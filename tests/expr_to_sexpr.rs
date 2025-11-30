@@ -3,7 +3,7 @@
 //! These unit tests construct AST nodes directly and assert that
 //! `Expr::to_sexpr` yields the expected S-expression strings.
 
-use ddlint::parser::ast::{BinaryOp, Expr, Literal, UnaryOp};
+use ddlint::parser::ast::{BinaryOp, Expr, Literal, StringKind, StringLiteral, UnaryOp};
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
@@ -11,7 +11,21 @@ fn num(n: &str) -> Expr {
 }
 
 fn str_lit(s: &str) -> Expr {
-    Expr::Literal(Literal::String(s.into()))
+    Expr::Literal(Literal::String(StringLiteral {
+        body: s.into(),
+        kind: StringKind::Standard {
+            interpolated: false,
+        },
+        interned: false,
+    }))
+}
+
+fn raw_str(body: &str, interpolated: bool, interned: bool) -> Expr {
+    Expr::Literal(Literal::String(StringLiteral {
+        body: body.into(),
+        kind: StringKind::Raw { interpolated },
+        interned,
+    }))
 }
 
 fn bool_lit(b: bool) -> Expr {
@@ -181,6 +195,40 @@ fn string_literal_renders() {
     let expr = str_lit("a \"b\" (c)");
     let expected = format!("{:?}", "a \"b\" (c)");
     assert_eq!(expr.to_sexpr(), expected);
+}
+
+#[test]
+fn raw_string_literal_renders() {
+    let expr = raw_str("a ${literal}", false, false);
+    assert_eq!(expr.to_sexpr(), "[|a ${literal}|]");
+}
+
+#[test]
+fn interpolated_raw_interned_literal_renders() {
+    let expr = raw_str("hello ${name}", true, true);
+    assert_eq!(expr.to_sexpr(), "i$[|hello ${name}|]");
+}
+
+#[test]
+fn interpolated_standard_literal_renders() {
+    let expr = Expr::Literal(Literal::String(StringLiteral {
+        body: "hi ${name}".into(),
+        kind: StringKind::Standard { interpolated: true },
+        interned: true,
+    }));
+    assert_eq!(expr.to_sexpr(), "i\"hi ${name}\"");
+}
+
+#[test]
+fn non_interpolated_interned_standard_literal_renders() {
+    let expr = Expr::Literal(Literal::String(StringLiteral {
+        body: "hi".into(),
+        kind: StringKind::Standard {
+            interpolated: false,
+        },
+        interned: true,
+    }));
+    assert_eq!(expr.to_sexpr(), "i\"hi\"");
 }
 
 #[test]

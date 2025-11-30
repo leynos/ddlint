@@ -24,7 +24,9 @@ enum Token {
     Ident,
     #[regex(r"0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")]
     Number,
-    #[regex(r#""([^"\\]|\\.)*""#)]
+    #[regex(r#"(?s)i?\$?\[\|(?:\]|[^|]|\|[^]])*\|\]"#, priority = 3)]
+    RawString,
+    #[regex(r#"(?s)i?"(?:[^"\\]|\\.)*""#, priority = 2)]
     String,
     #[token("(")]
     LParen,
@@ -214,7 +216,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
             Token::Comment => SyntaxKind::T_COMMENT,
             Token::Ident => keyword_kind(text).unwrap_or(SyntaxKind::T_IDENT),
             Token::Number => SyntaxKind::T_NUMBER,
-            Token::String => SyntaxKind::T_STRING,
+            Token::RawString | Token::String => SyntaxKind::T_STRING,
             Token::LParen => SyntaxKind::T_LPAREN,
             Token::RParen => SyntaxKind::T_RPAREN,
             Token::LBrace => SyntaxKind::T_LBRACE,

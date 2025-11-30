@@ -7,8 +7,9 @@
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_num, lit_str,
-    match_arm, match_expr, return_expr, struct_expr, tuple, var,
+    assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_interned_str,
+    lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str, match_arm, match_expr, return_expr,
+    struct_expr, tuple, var,
 };
 use rstest::rstest;
 
@@ -24,6 +25,9 @@ use rstest::rstest;
 )]
 #[case("{ x }", Expr::Group(Box::new(var("x"))))]
 #[case("\"hi\"", lit_str("hi"))]
+#[case("[|raw|]", lit_raw_str("raw"))]
+#[case("$[|raw ${x}|]", lit_raw_interpolated_str("raw ${x}"))]
+#[case("i\"hi\"", lit_interned_str("hi"))]
 #[case("false", lit_bool(false))]
 #[case(
     "match (flag) { true -> 1 }",
@@ -62,6 +66,13 @@ use rstest::rstest;
             match_arm("Some(x)", var("x")),
             match_arm("_", lit_num("0")),
         ],
+    ),
+)]
+#[case(
+    "match (x) { \"\\${literal}\" -> 1 }",
+    match_expr(
+        var("x"),
+        vec![match_arm("\"\\${literal}\"", lit_num("1"))],
     ),
 )]
 fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
@@ -120,4 +131,40 @@ fn prefix_form_errors(
         let single = vec![error.clone()];
         assert_parse_error(&single, msg, start, end);
     }
+}
+
+#[test]
+fn match_pattern_rejects_interpolated_string() {
+    let src = r#"match (x) { "${y}" -> 1 }"#;
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    let Some(start) = src.find("\"${y}\"") else {
+        panic!("string literal span should exist in {src}");
+    };
+    let end = start + "\"${y}\"".len();
+    assert_parse_error(
+        &errors,
+        "interpolated strings are not allowed in patterns",
+        start,
+        end,
+    );
+}
+
+#[test]
+fn for_pattern_rejects_interpolated_raw_string() {
+    let src = "for ($[|user ${name}|] in items) user";
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    let Some(start) = src.find("$[|user ${name}|]") else {
+        panic!("raw string span should exist in {src}");
+    };
+    let end = start + "$[|user ${name}|]".len();
+    assert_parse_error(
+        &errors,
+        "interpolated strings are not allowed in patterns",
+        start,
+        end,
+    );
 }

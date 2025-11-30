@@ -46,6 +46,12 @@ mod expect_used {
     #[rstest]
     #[case("123", SyntaxKind::T_NUMBER)]
     #[case("\"foo\"", SyntaxKind::T_STRING)]
+    #[case("[|raw|]", SyntaxKind::T_STRING)]
+    #[case("$[|raw ${x}|]", SyntaxKind::T_STRING)]
+    #[case("i\"interned\"", SyntaxKind::T_STRING)]
+    #[case("i[|raw|]", SyntaxKind::T_STRING)]
+    #[case("i$[|raw ${x}|]", SyntaxKind::T_STRING)]
+    #[case("[|line1\nline2|]", SyntaxKind::T_STRING)]
     fn literal_tokens(#[case] source: &str, #[case] expected: SyntaxKind) {
         let tokens = tokenize(source);
         assert_eq!(tokens.len(), 1);
