@@ -15,8 +15,20 @@ mod transformers;
 mod types;
 
 use super::token_stream::TokenStream;
-use crate::{SyntaxKind, test_util::tokenize};
-use rstest::rstest;
+use crate::{Span, SyntaxKind, test_util::tokenize};
+use rstest::{fixture, rstest};
+
+#[fixture]
+fn typedef_stream() -> (
+    &'static str,
+    &'static [(SyntaxKind, Span)],
+    TokenStream<'static>,
+) {
+    let src: &'static str = Box::leak(String::from("typedef A = string\nnext").into_boxed_str());
+    let tokens: &'static [(SyntaxKind, Span)] = Box::leak(tokenize(src).into_boxed_slice());
+    let stream = TokenStream::new(tokens, src);
+    (src, tokens, stream)
+}
 
 /// Tests that `skip_until` advances the token stream cursor past the specified
 /// span end.
@@ -52,17 +64,25 @@ fn skip_until_advances_past_span() {
 /// let stream = TokenStream::new(&tokens, src);
 /// let start = 1; // token after 'typedef'
 /// let end = stream.line_end(start);
-/// let newline = src.find('\n').unwrap_or_else(|| panic!("newline missing"));
+/// let newline = src.find('\n').expect("newline missing");
 /// assert_eq!(end, newline + 1);
 /// ```
+#[expect(
+    clippy::expect_used,
+    reason = "tests require a newline span to compare against line_end"
+)]
 #[rstest]
-fn line_end_returns_span_end() {
-    let src = "typedef A = string\nnext";
-    let tokens = tokenize(src);
-    let stream = TokenStream::new(&tokens, src);
+fn line_end_returns_span_end(
+    typedef_stream: (
+        &'static str,
+        &'static [(SyntaxKind, Span)],
+        TokenStream<'static>,
+    ),
+) {
+    let (src, _, stream) = typedef_stream;
     let start = 1; // token after 'typedef'
     let end = stream.line_end(start);
-    let newline = src.find('\n').unwrap_or_else(|| panic!("newline missing"));
+    let newline = src.find('\n').expect("newline missing");
     assert_eq!(end, newline + 1);
 }
 
@@ -108,10 +128,14 @@ fn skip_ws_inline_skips_spaces() {
 /// assert_eq!(stream.line_end(start), src.len());
 /// ```
 #[rstest]
-fn line_end_out_of_bounds_returns_len() {
-    let src = "typedef A = string\n";
-    let tokens = tokenize(src);
-    let stream = TokenStream::new(&tokens, src);
+fn line_end_out_of_bounds_returns_len(
+    typedef_stream: (
+        &'static str,
+        &'static [(SyntaxKind, Span)],
+        TokenStream<'static>,
+    ),
+) {
+    let (src, tokens, stream) = typedef_stream;
     let start = tokens.len();
     assert_eq!(stream.line_end(start), src.len());
 }
