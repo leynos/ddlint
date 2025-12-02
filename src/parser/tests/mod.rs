@@ -19,15 +19,10 @@ use crate::{Span, SyntaxKind, test_util::tokenize};
 use rstest::{fixture, rstest};
 
 #[fixture]
-fn typedef_stream() -> (
-    &'static str,
-    &'static [(SyntaxKind, Span)],
-    TokenStream<'static>,
-) {
-    let src: &'static str = Box::leak(String::from("typedef A = string\nnext").into_boxed_str());
-    let tokens: &'static [(SyntaxKind, Span)] = Box::leak(tokenize(src).into_boxed_slice());
-    let stream = TokenStream::new(tokens, src);
-    (src, tokens, stream)
+fn typedef_stream() -> (String, Vec<(SyntaxKind, Span)>) {
+    let src = String::from("typedef A = string\nnext");
+    let tokens = tokenize(&src);
+    (src, tokens)
 }
 
 /// Tests that `skip_until` advances the token stream cursor past the specified
@@ -72,14 +67,9 @@ fn skip_until_advances_past_span() {
     reason = "tests require a newline span to compare against line_end"
 )]
 #[rstest]
-fn line_end_returns_span_end(
-    typedef_stream: (
-        &'static str,
-        &'static [(SyntaxKind, Span)],
-        TokenStream<'static>,
-    ),
-) {
-    let (src, _, stream) = typedef_stream;
+fn line_end_returns_span_end(typedef_stream: (String, Vec<(SyntaxKind, Span)>)) {
+    let (src, tokens) = typedef_stream;
+    let stream = TokenStream::new(&tokens, &src);
     let start = 1; // token after 'typedef'
     let end = stream.line_end(start);
     let newline = src.find('\n').expect("newline missing");
@@ -128,14 +118,9 @@ fn skip_ws_inline_skips_spaces() {
 /// assert_eq!(stream.line_end(start), src.len());
 /// ```
 #[rstest]
-fn line_end_out_of_bounds_returns_len(
-    typedef_stream: (
-        &'static str,
-        &'static [(SyntaxKind, Span)],
-        TokenStream<'static>,
-    ),
-) {
-    let (src, tokens, stream) = typedef_stream;
+fn line_end_out_of_bounds_returns_len(typedef_stream: (String, Vec<(SyntaxKind, Span)>)) {
+    let (src, tokens) = typedef_stream;
+    let stream = TokenStream::new(&tokens, &src);
     let start = tokens.len();
     assert_eq!(stream.line_end(start), src.len());
 }
