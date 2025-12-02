@@ -111,7 +111,7 @@ fn skip_ws_inline_skips_spaces() {
 /// # Examples
 ///
 /// ```no_run
-/// let src = "typedef A = string\n";
+/// let src = "typedef A = string\nnext";
 /// let tokens = tokenize(src);
 /// let stream = TokenStream::new(&tokens, src);
 /// let start = tokens.len();
