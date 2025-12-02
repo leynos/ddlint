@@ -43,7 +43,7 @@ fn typedef_stream() -> (
 /// stream.skip_until(end);
 /// assert_eq!(stream.cursor(), tokens.len());
 /// ```
-#[rstest]
+#[test]
 fn skip_until_advances_past_span() {
     let src = "import foo\n";
     let tokens = tokenize(src);
@@ -102,7 +102,7 @@ fn line_end_returns_span_end(
 ///     Some(SyntaxKind::K_TYPE)
 /// ));
 /// ```
-#[rstest]
+#[test]
 fn skip_ws_inline_skips_spaces() {
     let src = "extern    type Foo";
     let tokens = tokenize(src);
