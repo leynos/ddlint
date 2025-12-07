@@ -101,9 +101,8 @@ impl From<&str> for ErrorPattern {
 /// Construct a numeric [`Expr::Literal`].
 #[must_use]
 pub fn lit_num(n: &str) -> Expr {
-    let literal = parse_numeric_literal(n).unwrap_or_else(|err| {
-        panic!("failed to parse numeric literal '{n}': {}", err.message())
-    });
+    let literal = parse_numeric_literal(n)
+        .unwrap_or_else(|err| panic!("failed to parse numeric literal '{n}': {}", err.message()));
     Expr::Literal(Literal::Number(literal))
 }
 

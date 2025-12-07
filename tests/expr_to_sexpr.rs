@@ -8,9 +8,8 @@ use ddlint::parser::expression::parse_numeric_literal;
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
-    let literal = parse_numeric_literal(n).unwrap_or_else(|err| {
-        panic!("failed to parse numeric literal '{n}': {}", err.message())
-    });
+    let literal = parse_numeric_literal(n)
+        .unwrap_or_else(|err| panic!("failed to parse numeric literal '{n}': {}", err.message()));
     Expr::Literal(Literal::Number(literal))
 }
 
@@ -42,6 +41,7 @@ fn var(name: &str) -> Expr {
 
 #[rstest]
 #[case(num("1"), "1")]
+#[case(num("8'hFF"), "8'hFF")]
 #[case(bool_lit(true), "true")]
 fn literals_render(#[case] expr: Expr, #[case] expected: &str) {
     assert_eq!(expr.to_sexpr(), expected);

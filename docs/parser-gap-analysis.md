@@ -42,7 +42,9 @@ head.
   with no width/signedness semantics. **Action:** teach the tokenizer to
   recognize width/base/signedness; add parse-time validation and a shaped
   abstract syntax tree representation (or rich literal node), so lints can
-  reason about sizes.
+  reason about sizes. **Status:** implemented via structured `IntLiteral` /
+  `FloatLiteral` nodes, width-aware lexing, and `BigInt` fit checks that emit
+  diagnostics during parsing.
 
 ### 2) Operators and precedence
 

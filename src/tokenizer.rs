@@ -22,10 +22,7 @@ enum Token {
     Comment,
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*")]
     Ident,
-    #[regex(
-        r"[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?'[fF](?:32|64)",
-        priority = 2
-    )]
+    #[regex(r"[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?'[fF][0-9]+", priority = 2)]
     #[regex(r"[0-9]+'[sS]?[bBoOdDhH][+-]?[0-9a-fA-F]+", priority = 2)]
     #[regex(r"0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")]
     Number,

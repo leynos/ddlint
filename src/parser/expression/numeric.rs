@@ -7,7 +7,7 @@
 
 use crate::parser::ast::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 use num_bigint::BigInt;
-use num_traits::{One, Signed, Zero};
+use num_traits::{One, Signed};
 
 /// Error returned when a numeric literal fails validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,7 +25,11 @@ pub enum NumericLiteralError {
     /// Digits were not valid for the detected base.
     InvalidDigits(String),
     /// Integer did not fit the declared width.
-    IntOutOfRange { width: u32, signed: bool, value: BigInt },
+    IntOutOfRange {
+        width: u32,
+        signed: bool,
+        value: BigInt,
+    },
     /// Unsigned literal used a negative value.
     NegativeUnsigned { width: u32, value: BigInt },
     /// Float width other than 32 or 64 bits.
@@ -44,23 +48,35 @@ impl NumericLiteralError {
             Self::InvalidDigits(digits) => {
                 format!("invalid digits '{digits}' for numeric literal")
             }
-            Self::IntOutOfRange { width, signed, value } => {
+            Self::IntOutOfRange {
+                width,
+                signed,
+                value,
+            } => {
                 let kind = if *signed { "signed" } else { "unsigned" };
                 format!("value {value} does not fit {kind} width {width}")
             }
             Self::NegativeUnsigned { width, value } => {
                 format!("unsigned width {width} cannot encode negative value {value}")
             }
-            Self::UnsupportedFloatWidth(suffix) => format!(
-                "unsupported float width '{suffix}': only 'f32 and 'f64 are allowed"
-            ),
+            Self::UnsupportedFloatWidth(suffix) => {
+                format!("unsupported float width '{suffix}': only 'f32 and 'f64 are allowed")
+            }
         }
     }
 }
 
-#[must_use]
+/// Parse a numeric literal into a structured representation.
+///
+/// # Errors
+/// Returns a [`NumericLiteralError`] when the literal uses an invalid width,
+/// base, or value that does not fit the declared width, or when a float width
+/// other than `32`/`64` is specified.
 pub fn parse_numeric_literal(src: &str) -> Result<NumberLiteral, NumericLiteralError> {
     if let Some((width_part, rest)) = src.split_once('\'') {
+        if let Some(suffix) = rest.strip_prefix(['f', 'F']) {
+            return parse_width_float(src, suffix);
+        }
         return parse_width_qualified_literal(src, width_part, rest);
     }
     parse_unqualified_literal(src)
@@ -72,21 +88,18 @@ fn parse_width_qualified_literal(
     rest: &str,
 ) -> Result<NumberLiteral, NumericLiteralError> {
     let width = parse_width(width_part)?;
-    if let Some(float_width) = rest.strip_prefix(['f', 'F']) {
-        return parse_width_float(raw, width, float_width);
-    }
     parse_width_int(raw, width, rest)
 }
 
-fn parse_width_float(
-    raw: &str,
-    width: u32,
-    suffix: &str,
-) -> Result<NumberLiteral, NumericLiteralError> {
+fn parse_width_float(raw: &str, suffix: &str) -> Result<NumberLiteral, NumericLiteralError> {
     let float_width = match suffix {
         "32" => 32,
         "64" => 64,
-        other => return Err(NumericLiteralError::UnsupportedFloatWidth(other.to_string())),
+        other => {
+            return Err(NumericLiteralError::UnsupportedFloatWidth(
+                other.to_string(),
+            ));
+        }
     };
     Ok(NumberLiteral::Float(FloatLiteral {
         raw: raw.to_string(),
@@ -100,21 +113,21 @@ fn parse_width_int(
     rest: &str,
 ) -> Result<NumberLiteral, NumericLiteralError> {
     let (signed, base_and_digits) = rest
-        .strip_prefix('s')
+        .strip_prefix(['s', 'S'])
         .map_or((false, rest), |digits| (true, digits));
     let (base, digits) = split_base_digits(base_and_digits)?;
-    let literal = build_int_literal(raw, Some(width), signed, base, digits)?;
+    let literal = build_int_literal(raw, Some(width), signed, base, &digits)?;
     Ok(NumberLiteral::Int(literal))
 }
 
 fn parse_unqualified_literal(src: &str) -> Result<NumberLiteral, NumericLiteralError> {
-    if looks_like_float(src) {
+    let (base, digits) = classify_int_base(src);
+    if base == IntBase::Decimal && looks_like_decimal_float(src) {
         return Ok(NumberLiteral::Float(FloatLiteral {
             raw: src.to_string(),
             width: None,
         }));
     }
-    let (base, digits) = classify_int_base(src);
     let literal = build_int_literal(src, None, false, base, digits)?;
     Ok(NumberLiteral::Int(literal))
 }
@@ -129,7 +142,7 @@ fn parse_width(width_part: &str) -> Result<u32, NumericLiteralError> {
     Ok(width)
 }
 
-fn split_base_digits(input: &str) -> Result<(IntBase, &str), NumericLiteralError> {
+fn split_base_digits(input: &str) -> Result<(IntBase, String), NumericLiteralError> {
     let mut chars = input.chars();
     let base_char = chars.next().ok_or(NumericLiteralError::MissingBase)?;
     let base = match base_char {
@@ -143,7 +156,7 @@ fn split_base_digits(input: &str) -> Result<(IntBase, &str), NumericLiteralError
     if digits.is_empty() {
         return Err(NumericLiteralError::MissingDigits);
     }
-    Ok((base, digits.as_str()))
+    Ok((base, digits))
 }
 
 fn classify_int_base(src: &str) -> (IntBase, &str) {
@@ -183,17 +196,15 @@ fn build_int_literal(
     })
 }
 
-fn parse_int_value(
-    cleaned: &str,
-    base: IntBase,
-) -> Result<BigInt, NumericLiteralError> {
-    let (is_negative, magnitude) = if let Some(rest) = cleaned.strip_prefix('-') {
-        (true, rest)
-    } else if let Some(rest) = cleaned.strip_prefix('+') {
-        (false, rest)
-    } else {
-        (false, cleaned)
-    };
+fn parse_int_value(cleaned: &str, base: IntBase) -> Result<BigInt, NumericLiteralError> {
+    let (is_negative, magnitude) = cleaned.strip_prefix('-').map_or_else(
+        || {
+            cleaned
+                .strip_prefix('+')
+                .map_or((false, cleaned), |rest| (false, rest))
+        },
+        |rest| (true, rest),
+    );
 
     if magnitude.is_empty() {
         return Err(NumericLiteralError::MissingDigits);
@@ -205,11 +216,7 @@ fn parse_int_value(
     Ok(value)
 }
 
-fn validate_int_range(
-    width: u32,
-    signed: bool,
-    value: &BigInt,
-) -> Result<(), NumericLiteralError> {
+fn validate_int_range(width: u32, signed: bool, value: &BigInt) -> Result<(), NumericLiteralError> {
     if signed {
         let shift = usize::try_from(width.saturating_sub(1))
             .map_err(|_| NumericLiteralError::NonPositiveWidth(width))?;
@@ -244,7 +251,7 @@ fn validate_int_range(
     Ok(())
 }
 
-fn looks_like_float(src: &str) -> bool {
+fn looks_like_decimal_float(src: &str) -> bool {
     src.contains('.')
         || src.contains('e')
         || src.contains('E')

@@ -20,5 +20,5 @@ mod pratt;
 mod prefix;
 mod token_stream;
 
-pub use pratt::parse_expression;
 pub use numeric::parse_numeric_literal;
+pub use pratt::parse_expression;

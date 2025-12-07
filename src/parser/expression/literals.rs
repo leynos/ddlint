@@ -3,8 +3,8 @@
 use crate::parser::ast::{Expr, Literal, StringKind, StringLiteral};
 use crate::{Span, SyntaxKind};
 
-use super::pratt::Pratt;
 use super::numeric::parse_numeric_literal;
+use super::pratt::Pratt;
 
 fn is_valid_string_prefix(s: &str) -> bool {
     s.starts_with('"') || s.starts_with("[|") || s.starts_with("$[|")
