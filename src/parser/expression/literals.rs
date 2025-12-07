@@ -4,6 +4,7 @@ use crate::parser::ast::{Expr, Literal, StringKind, StringLiteral};
 use crate::{Span, SyntaxKind};
 
 use super::pratt::Pratt;
+use super::numeric::parse_numeric_literal;
 
 fn is_valid_string_prefix(s: &str) -> bool {
     s.starts_with('"') || s.starts_with("[|") || s.starts_with("$[|")
@@ -122,7 +123,13 @@ where
     /// ```
     pub(super) fn parse_literal(&mut self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
-            SyntaxKind::T_NUMBER => Some(Expr::Literal(Literal::Number(self.ts.slice(span)))),
+            SyntaxKind::T_NUMBER => match parse_numeric_literal(&self.ts.slice(span)) {
+                Ok(number) => Some(Expr::Literal(Literal::Number(number))),
+                Err(err) => {
+                    self.ts.push_error(span.clone(), err.message());
+                    None
+                }
+            },
             SyntaxKind::T_STRING => {
                 // Check cache first
                 if let Some(cached) = self.string_literal_cache.remove(&span.start) {

@@ -4,10 +4,14 @@
 //! `Expr::to_sexpr` yields the expected S-expression strings.
 
 use ddlint::parser::ast::{BinaryOp, Expr, Literal, StringKind, StringLiteral, UnaryOp};
+use ddlint::parser::expression::parse_numeric_literal;
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
-    Expr::Literal(Literal::Number(n.into()))
+    let literal = parse_numeric_literal(n).unwrap_or_else(|err| {
+        panic!("failed to parse numeric literal '{n}': {}", err.message())
+    });
+    Expr::Literal(Literal::Number(literal))
 }
 
 fn str_lit(s: &str) -> Expr {

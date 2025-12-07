@@ -14,9 +14,11 @@ mod delimiter_handling;
 mod delimiter_utils;
 mod infix;
 mod literals;
+pub(crate) mod numeric;
 mod pattern_collection;
 mod pratt;
 mod prefix;
 mod token_stream;
 
 pub use pratt::parse_expression;
+pub use numeric::parse_numeric_literal;
