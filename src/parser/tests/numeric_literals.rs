@@ -13,30 +13,45 @@ fn unwrap_int(expr: Expr) -> (Option<u32>, bool, IntBase, String) {
     }
 }
 
-#[test]
-fn parses_unsigned_width_hex_literal() {
-    let expr = match parse_expression("8'hFF") {
+/// Assert that parsing an input yields an integer literal with the expected properties.
+fn assert_int_literal(
+    input: &str,
+    expected_width: Option<u32>,
+    expected_signed: bool,
+    expected_base: IntBase,
+    expected_value: &str,
+) {
+    let expr = match parse_expression(input) {
         Ok(expr) => expr,
-        Err(errors) => panic!("parse should succeed, got {errors:?}"),
+        Err(errors) => panic!("parse of {input:?} should succeed, got {errors:?}"),
     };
     let (width, signed, base, value) = unwrap_int(expr);
-    assert_eq!(width, Some(8));
-    assert!(!signed);
-    assert_eq!(base, IntBase::Hex);
-    assert_eq!(value, "255");
+    assert_eq!(
+        width, expected_width,
+        "{input}: width mismatch: expected {expected_width:?}, got {width:?}"
+    );
+    assert_eq!(
+        signed, expected_signed,
+        "{input}: signedness mismatch: expected signed={expected_signed}, got signed={signed}"
+    );
+    assert_eq!(
+        base, expected_base,
+        "{input}: base mismatch: expected {expected_base:?}, got {base:?}"
+    );
+    assert_eq!(
+        value, expected_value,
+        "{input}: value mismatch: expected {expected_value}, got {value}"
+    );
+}
+
+#[test]
+fn parses_unsigned_width_hex_literal() {
+    assert_int_literal("8'hFF", Some(8), false, IntBase::Hex, "255");
 }
 
 #[test]
 fn parses_signed_width_decimal_literal() {
-    let expr = match parse_expression("16'sd-1") {
-        Ok(expr) => expr,
-        Err(errors) => panic!("parse should succeed, got {errors:?}"),
-    };
-    let (width, signed, base, value) = unwrap_int(expr);
-    assert_eq!(width, Some(16));
-    assert!(signed);
-    assert_eq!(base, IntBase::Decimal);
-    assert_eq!(value, "-1");
+    assert_int_literal("16'sd-1", Some(16), true, IntBase::Decimal, "-1");
 }
 
 #[test]
@@ -83,15 +98,7 @@ fn rejects_unsupported_float_width() {
 
 #[test]
 fn parses_plain_hex_without_float_confusion() {
-    let expr = match parse_expression("0x1e") {
-        Ok(expr) => expr,
-        Err(errors) => panic!("parse should succeed, got {errors:?}"),
-    };
-    let (width, signed, base, value) = unwrap_int(expr);
-    assert_eq!(width, None);
-    assert!(!signed);
-    assert_eq!(base, IntBase::Hex);
-    assert_eq!(value, "30");
+    assert_int_literal("0x1e", None, false, IntBase::Hex, "30");
 }
 
 #[test]

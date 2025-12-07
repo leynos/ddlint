@@ -9,6 +9,124 @@ use crate::parser::ast::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 use num_bigint::BigInt;
 use num_traits::{One, Signed};
 
+/// Raw source text preserved for AST.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawLiteral(String);
+
+impl RawLiteral {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl AsRef<str> for RawLiteral {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for RawLiteral {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+/// Width component before apostrophe.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WidthText(String);
+
+impl WidthText {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl AsRef<str> for WidthText {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for WidthText {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+/// Float width suffix (32/64).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FloatSuffix(String);
+
+impl FloatSuffix {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl AsRef<str> for FloatSuffix {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for FloatSuffix {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+/// Digit characters for parsing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DigitString(String);
+
+impl DigitString {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Remove underscores from the digit string.
+    pub fn remove_underscores(&self) -> Self {
+        Self(self.0.chars().filter(|c| *c != '_').collect())
+    }
+}
+
+impl AsRef<str> for DigitString {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for DigitString {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+/// Text after apostrophe in qualified literals.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QualifierRest(String);
+
+impl QualifierRest {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl AsRef<str> for QualifierRest {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for QualifierRest {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
 /// Error returned when a numeric literal fails validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumericLiteralError {
@@ -75,24 +193,31 @@ impl NumericLiteralError {
 pub fn parse_numeric_literal(src: &str) -> Result<NumberLiteral, NumericLiteralError> {
     if let Some((width_part, rest)) = src.split_once('\'') {
         if let Some(suffix) = rest.strip_prefix(['f', 'F']) {
-            return parse_width_float(src, suffix);
+            return parse_width_float(&RawLiteral::from(src), &FloatSuffix::from(suffix));
         }
-        return parse_width_qualified_literal(src, width_part, rest);
+        return parse_width_qualified_literal(
+            &RawLiteral::from(src),
+            &WidthText::from(width_part),
+            &QualifierRest::from(rest),
+        );
     }
     parse_unqualified_literal(src)
 }
 
 fn parse_width_qualified_literal(
-    raw: &str,
-    width_part: &str,
-    rest: &str,
+    raw: &RawLiteral,
+    width_part: &WidthText,
+    rest: &QualifierRest,
 ) -> Result<NumberLiteral, NumericLiteralError> {
     let width = parse_width(width_part)?;
     parse_width_int(raw, width, rest)
 }
 
-fn parse_width_float(raw: &str, suffix: &str) -> Result<NumberLiteral, NumericLiteralError> {
-    let float_width = match suffix {
+fn parse_width_float(
+    raw: &RawLiteral,
+    suffix: &FloatSuffix,
+) -> Result<NumberLiteral, NumericLiteralError> {
+    let float_width = match suffix.as_str() {
         "32" => 32,
         "64" => 64,
         other => {
@@ -102,19 +227,20 @@ fn parse_width_float(raw: &str, suffix: &str) -> Result<NumberLiteral, NumericLi
         }
     };
     Ok(NumberLiteral::Float(FloatLiteral {
-        raw: raw.to_string(),
+        raw: raw.as_str().to_string(),
         width: Some(float_width),
     }))
 }
 
 fn parse_width_int(
-    raw: &str,
+    raw: &RawLiteral,
     width: u32,
-    rest: &str,
+    rest: &QualifierRest,
 ) -> Result<NumberLiteral, NumericLiteralError> {
-    let (signed, base_and_digits) = rest
+    let rest_str = rest.as_str();
+    let (signed, base_and_digits) = rest_str
         .strip_prefix(['s', 'S'])
-        .map_or((false, rest), |digits| (true, digits));
+        .map_or((false, rest_str), |digits| (true, digits));
     let (base, digits) = split_base_digits(base_and_digits)?;
     let literal = build_int_literal(raw, Some(width), signed, base, &digits)?;
     Ok(NumberLiteral::Int(literal))
@@ -128,21 +254,28 @@ fn parse_unqualified_literal(src: &str) -> Result<NumberLiteral, NumericLiteralE
             width: None,
         }));
     }
-    let literal = build_int_literal(src, None, false, base, digits)?;
+    let literal = build_int_literal(
+        &RawLiteral::from(src),
+        None,
+        false,
+        base,
+        &DigitString::from(digits),
+    )?;
     Ok(NumberLiteral::Int(literal))
 }
 
-fn parse_width(width_part: &str) -> Result<u32, NumericLiteralError> {
+fn parse_width(width_part: &WidthText) -> Result<u32, NumericLiteralError> {
     let width = width_part
+        .as_str()
         .parse::<u32>()
-        .map_err(|_| NumericLiteralError::InvalidWidth(width_part.to_string()))?;
+        .map_err(|_| NumericLiteralError::InvalidWidth(width_part.as_str().to_string()))?;
     if width == 0 {
         return Err(NumericLiteralError::NonPositiveWidth(width));
     }
     Ok(width)
 }
 
-fn split_base_digits(input: &str) -> Result<(IntBase, String), NumericLiteralError> {
+fn split_base_digits(input: &str) -> Result<(IntBase, DigitString), NumericLiteralError> {
     let mut chars = input.chars();
     let base_char = chars.next().ok_or(NumericLiteralError::MissingBase)?;
     let base = match base_char {
@@ -156,7 +289,7 @@ fn split_base_digits(input: &str) -> Result<(IntBase, String), NumericLiteralErr
     if digits.is_empty() {
         return Err(NumericLiteralError::MissingDigits);
     }
-    Ok((base, digits))
+    Ok((base, DigitString::new(digits)))
 }
 
 fn classify_int_base(src: &str) -> (IntBase, &str) {
@@ -173,14 +306,14 @@ fn classify_int_base(src: &str) -> (IntBase, &str) {
 }
 
 fn build_int_literal(
-    raw: &str,
+    raw: &RawLiteral,
     width: Option<u32>,
     signed: bool,
     base: IntBase,
-    digits: &str,
+    digits: &DigitString,
 ) -> Result<IntLiteral, NumericLiteralError> {
-    let cleaned: String = digits.chars().filter(|c| *c != '_').collect();
-    if cleaned.is_empty() {
+    let cleaned = digits.remove_underscores();
+    if cleaned.as_str().is_empty() {
         return Err(NumericLiteralError::MissingDigits);
     }
     let value = parse_int_value(&cleaned, base)?;
@@ -188,7 +321,7 @@ fn build_int_literal(
         validate_int_range(width_bits, signed, &value)?;
     }
     Ok(IntLiteral {
-        raw: raw.to_string(),
+        raw: raw.as_str().to_string(),
         width,
         base,
         signed,
@@ -196,12 +329,13 @@ fn build_int_literal(
     })
 }
 
-fn parse_int_value(cleaned: &str, base: IntBase) -> Result<BigInt, NumericLiteralError> {
-    let (is_negative, magnitude) = cleaned.strip_prefix('-').map_or_else(
+fn parse_int_value(cleaned: &DigitString, base: IntBase) -> Result<BigInt, NumericLiteralError> {
+    let cleaned_str = cleaned.as_str();
+    let (is_negative, magnitude) = cleaned_str.strip_prefix('-').map_or_else(
         || {
-            cleaned
+            cleaned_str
                 .strip_prefix('+')
-                .map_or((false, cleaned), |rest| (false, rest))
+                .map_or((false, cleaned_str), |rest| (false, rest))
         },
         |rest| (true, rest),
     );
@@ -211,7 +345,7 @@ fn parse_int_value(cleaned: &str, base: IntBase) -> Result<BigInt, NumericLitera
     }
 
     let value = BigInt::parse_bytes(magnitude.as_bytes(), base.radix())
-        .ok_or_else(|| NumericLiteralError::InvalidDigits(cleaned.to_string()))?;
+        .ok_or_else(|| NumericLiteralError::InvalidDigits(cleaned_str.to_string()))?;
     let value = if is_negative { -value } else { value };
     Ok(value)
 }
