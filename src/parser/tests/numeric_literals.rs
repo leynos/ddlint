@@ -13,45 +13,68 @@ fn unwrap_int(expr: Expr) -> (Option<u32>, bool, IntBase, String) {
     }
 }
 
+/// Expected properties of an integer literal for testing.
+#[derive(Clone, Copy)]
+struct ExpectedIntLiteral {
+    width: Option<u32>,
+    signed: bool,
+    base: IntBase,
+    value: &'static str,
+}
+
 /// Assert that parsing an input yields an integer literal with the expected properties.
-fn assert_int_literal(
-    input: &str,
-    expected_width: Option<u32>,
-    expected_signed: bool,
-    expected_base: IntBase,
-    expected_value: &str,
-) {
+fn assert_int_literal(input: &str, expected: ExpectedIntLiteral) {
     let expr = match parse_expression(input) {
         Ok(expr) => expr,
         Err(errors) => panic!("parse of {input:?} should succeed, got {errors:?}"),
     };
     let (width, signed, base, value) = unwrap_int(expr);
     assert_eq!(
-        width, expected_width,
-        "{input}: width mismatch: expected {expected_width:?}, got {width:?}"
+        width, expected.width,
+        "{input}: width mismatch: expected {:?}, got {width:?}",
+        expected.width
     );
     assert_eq!(
-        signed, expected_signed,
-        "{input}: signedness mismatch: expected signed={expected_signed}, got signed={signed}"
+        signed, expected.signed,
+        "{input}: signedness mismatch: expected signed={}, got signed={signed}",
+        expected.signed
     );
     assert_eq!(
-        base, expected_base,
-        "{input}: base mismatch: expected {expected_base:?}, got {base:?}"
+        base, expected.base,
+        "{input}: base mismatch: expected {:?}, got {base:?}",
+        expected.base
     );
     assert_eq!(
-        value, expected_value,
-        "{input}: value mismatch: expected {expected_value}, got {value}"
+        value, expected.value,
+        "{input}: value mismatch: expected {}, got {value}",
+        expected.value
     );
 }
 
 #[test]
 fn parses_unsigned_width_hex_literal() {
-    assert_int_literal("8'hFF", Some(8), false, IntBase::Hex, "255");
+    assert_int_literal(
+        "8'hFF",
+        ExpectedIntLiteral {
+            width: Some(8),
+            signed: false,
+            base: IntBase::Hex,
+            value: "255",
+        },
+    );
 }
 
 #[test]
 fn parses_signed_width_decimal_literal() {
-    assert_int_literal("16'sd-1", Some(16), true, IntBase::Decimal, "-1");
+    assert_int_literal(
+        "16'sd-1",
+        ExpectedIntLiteral {
+            width: Some(16),
+            signed: true,
+            base: IntBase::Decimal,
+            value: "-1",
+        },
+    );
 }
 
 #[test]
@@ -98,7 +121,15 @@ fn rejects_unsupported_float_width() {
 
 #[test]
 fn parses_plain_hex_without_float_confusion() {
-    assert_int_literal("0x1e", None, false, IntBase::Hex, "30");
+    assert_int_literal(
+        "0x1e",
+        ExpectedIntLiteral {
+            width: None,
+            signed: false,
+            base: IntBase::Hex,
+            value: "30",
+        },
+    );
 }
 
 #[test]
