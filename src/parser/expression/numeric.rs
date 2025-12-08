@@ -242,7 +242,15 @@ fn parse_width_int(
         .strip_prefix(['s', 'S'])
         .map_or((false, rest_str), |digits| (true, digits));
     let (base, digits) = split_base_digits(base_and_digits)?;
-    let literal = build_int_literal(raw, Some(width), signed, base, &digits)?;
+    let literal = build_int_literal(
+        raw,
+        IntLiteralComponents {
+            width: Some(width),
+            signed,
+            base,
+            digits: &digits,
+        },
+    )?;
     Ok(NumberLiteral::Int(literal))
 }
 
@@ -256,10 +264,12 @@ fn parse_unqualified_literal(src: &str) -> Result<NumberLiteral, NumericLiteralE
     }
     let literal = build_int_literal(
         &RawLiteral::from(src),
-        None,
-        false,
-        base,
-        &DigitString::from(digits),
+        IntLiteralComponents {
+            width: None,
+            signed: false,
+            base,
+            digits: &DigitString::from(digits),
+        },
     )?;
     Ok(NumberLiteral::Int(literal))
 }
@@ -305,26 +315,32 @@ fn classify_int_base(src: &str) -> (IntBase, &str) {
     (IntBase::Decimal, src)
 }
 
-fn build_int_literal(
-    raw: &RawLiteral,
+/// Components for constructing an integer literal.
+#[derive(Clone, Copy)]
+struct IntLiteralComponents<'a> {
     width: Option<u32>,
     signed: bool,
     base: IntBase,
-    digits: &DigitString,
+    digits: &'a DigitString,
+}
+
+fn build_int_literal(
+    raw: &RawLiteral,
+    components: IntLiteralComponents,
 ) -> Result<IntLiteral, NumericLiteralError> {
-    let cleaned = digits.remove_underscores();
+    let cleaned = components.digits.remove_underscores();
     if cleaned.as_str().is_empty() {
         return Err(NumericLiteralError::MissingDigits);
     }
-    let value = parse_int_value(&cleaned, base)?;
-    if let Some(width_bits) = width {
-        validate_int_range(width_bits, signed, &value)?;
+    let value = parse_int_value(&cleaned, components.base)?;
+    if let Some(width_bits) = components.width {
+        validate_int_range(width_bits, components.signed, &value)?;
     }
     Ok(IntLiteral {
         raw: raw.as_str().to_string(),
-        width,
-        base,
-        signed,
+        width: components.width,
+        base: components.base,
+        signed: components.signed,
         value,
     })
 }
