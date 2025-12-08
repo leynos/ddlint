@@ -52,29 +52,40 @@ fn assert_int_literal(input: &str, expected: ExpectedIntLiteral) {
 }
 
 #[test]
-fn parses_unsigned_width_hex_literal() {
-    assert_int_literal(
-        "8'hFF",
-        ExpectedIntLiteral {
-            width: Some(8),
-            signed: false,
-            base: IntBase::Hex,
-            value: "255",
-        },
-    );
-}
+fn parses_integer_literals() {
+    let test_cases = [
+        (
+            "8'hFF",
+            ExpectedIntLiteral {
+                width: Some(8),
+                signed: false,
+                base: IntBase::Hex,
+                value: "255",
+            },
+        ),
+        (
+            "16'sd-1",
+            ExpectedIntLiteral {
+                width: Some(16),
+                signed: true,
+                base: IntBase::Decimal,
+                value: "-1",
+            },
+        ),
+        (
+            "0x1e",
+            ExpectedIntLiteral {
+                width: None,
+                signed: false,
+                base: IntBase::Hex,
+                value: "30",
+            },
+        ),
+    ];
 
-#[test]
-fn parses_signed_width_decimal_literal() {
-    assert_int_literal(
-        "16'sd-1",
-        ExpectedIntLiteral {
-            width: Some(16),
-            signed: true,
-            base: IntBase::Decimal,
-            value: "-1",
-        },
-    );
+    for (input, expected) in test_cases {
+        assert_int_literal(input, expected);
+    }
 }
 
 #[test]
@@ -117,19 +128,6 @@ fn rejects_unsupported_float_width() {
         Err(errors) => errors,
     };
     assert_parse_error(&errors, "unsupported float width", 0, 7);
-}
-
-#[test]
-fn parses_plain_hex_without_float_confusion() {
-    assert_int_literal(
-        "0x1e",
-        ExpectedIntLiteral {
-            width: None,
-            signed: false,
-            base: IntBase::Hex,
-            value: "30",
-        },
-    );
 }
 
 #[test]
