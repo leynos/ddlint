@@ -64,7 +64,7 @@ impl NumericLiteralError {
                 format!("unsigned width {width} cannot encode negative value {value}")
             }
             Self::UnsupportedFloatWidth(suffix) => {
-                format!("unsupported float width '{suffix}': only 'f32 and 'f64 are allowed")
+                format!("unsupported float width '{suffix}': only 'f32' and 'f64' are allowed")
             }
         }
     }
