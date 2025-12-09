@@ -52,6 +52,7 @@ impl FloatSuffix {
 pub struct DigitString(String);
 
 impl DigitString {
+    #[inline]
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }

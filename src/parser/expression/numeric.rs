@@ -288,9 +288,5 @@ fn validate_int_range(width: u32, signed: bool, value: &BigInt) -> Result<(), Nu
 }
 
 fn looks_like_decimal_float(src: &str) -> bool {
-    src.contains('.')
-        || src.contains('e')
-        || src.contains('E')
-        || src.contains("inf")
-        || src.contains("NaN")
+    src.contains('.') || src.contains('e') || src.contains('E') || src == "inf" || src == "NaN"
 }
