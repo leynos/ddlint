@@ -52,104 +52,19 @@ fn assert_int_literal(input: &str, expected: ExpectedIntLiteral) {
     );
 }
 
-#[test]
-fn parses_integer_literals() {
-    let test_cases = [
-        (
-            "8'hFF",
-            ExpectedIntLiteral {
-                width: Some(8),
-                signed: false,
-                base: IntBase::Hex,
-                value: "255",
-            },
-        ),
-        (
-            "16'sd-1",
-            ExpectedIntLiteral {
-                width: Some(16),
-                signed: true,
-                base: IntBase::Decimal,
-                value: "-1",
-            },
-        ),
-        (
-            "0x1e",
-            ExpectedIntLiteral {
-                width: None,
-                signed: false,
-                base: IntBase::Hex,
-                value: "30",
-            },
-        ),
-        (
-            "4'b1010",
-            ExpectedIntLiteral {
-                width: Some(4),
-                signed: false,
-                base: IntBase::Binary,
-                value: "10",
-            },
-        ),
-        (
-            "8'o377",
-            ExpectedIntLiteral {
-                width: Some(8),
-                signed: false,
-                base: IntBase::Octal,
-                value: "255",
-            },
-        ),
-        (
-            "8'h+FF",
-            ExpectedIntLiteral {
-                width: Some(8),
-                signed: false,
-                base: IntBase::Hex,
-                value: "255",
-            },
-        ),
-        (
-            "16'sd+1",
-            ExpectedIntLiteral {
-                width: Some(16),
-                signed: true,
-                base: IntBase::Decimal,
-                value: "1",
-            },
-        ),
-        (
-            "16'hFF_FF",
-            ExpectedIntLiteral {
-                width: Some(16),
-                signed: false,
-                base: IntBase::Hex,
-                value: "65535",
-            },
-        ),
-        (
-            "0b1010",
-            ExpectedIntLiteral {
-                width: None,
-                signed: false,
-                base: IntBase::Binary,
-                value: "10",
-            },
-        ),
-        (
-            "0o17",
-            ExpectedIntLiteral {
-                width: None,
-                signed: false,
-                base: IntBase::Octal,
-                value: "15",
-            },
-        ),
-    ];
-
-    for (input, expected) in test_cases {
-        assert_int_literal(input, expected);
-    }
+#[rstest]
+#[case::width_qualified_hex("8'hFF", ExpectedIntLiteral { width: Some(8), signed: false, base: IntBase::Hex, value: "255" })]
+#[case::signed_decimal_negative("16'sd-1", ExpectedIntLiteral { width: Some(16), signed: true, base: IntBase::Decimal, value: "-1" })]
+#[case::unqualified_hex("0x1e", ExpectedIntLiteral { width: None, signed: false, base: IntBase::Hex, value: "30" })]
+#[case::width_qualified_binary("4'b1010", ExpectedIntLiteral { width: Some(4), signed: false, base: IntBase::Binary, value: "10" })]
+#[case::width_qualified_octal("8'o377", ExpectedIntLiteral { width: Some(8), signed: false, base: IntBase::Octal, value: "255" })]
+#[case::explicit_plus_hex("8'h+FF", ExpectedIntLiteral { width: Some(8), signed: false, base: IntBase::Hex, value: "255" })]
+#[case::signed_decimal_positive("16'sd+1", ExpectedIntLiteral { width: Some(16), signed: true, base: IntBase::Decimal, value: "1" })]
+#[case::underscores_in_digits("16'hFF_FF", ExpectedIntLiteral { width: Some(16), signed: false, base: IntBase::Hex, value: "65535" })]
+#[case::unqualified_binary("0b1010", ExpectedIntLiteral { width: None, signed: false, base: IntBase::Binary, value: "10" })]
+#[case::unqualified_octal("0o17", ExpectedIntLiteral { width: None, signed: false, base: IntBase::Octal, value: "15" })]
+fn parses_integer_literals(#[case] input: &str, #[case] expected: ExpectedIntLiteral) {
+    assert_int_literal(input, expected);
 }
 
 #[test]
