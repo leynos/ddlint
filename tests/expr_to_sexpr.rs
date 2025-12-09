@@ -42,6 +42,9 @@ fn var(name: &str) -> Expr {
 #[rstest]
 #[case(num("1"), "1")]
 #[case(num("8'hFF"), "8'hFF")]
+#[case(num("3.14"), "3.14")]
+#[case(num("3.14'f32"), "3.14'f32")]
+#[case(num("1e10"), "1e10")]
 #[case(bool_lit(true), "true")]
 fn literals_render(#[case] expr: Expr, #[case] expected: &str) {
     assert_eq!(expr.to_sexpr(), expected);

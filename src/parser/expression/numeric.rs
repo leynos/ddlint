@@ -1,6 +1,6 @@
 //! Numeric literal parsing and validation.
 //!
-//! This module recognises integer and floating-point literals, including
+//! This module recognizes integer and floating-point literals, including
 //! width-qualified forms such as `8'hFF` and `3.14'f32`. It performs basic
 //! validation (positive widths, integer fit checks, and supported float
 //! widths) and returns structured literal representations for the AST.
@@ -132,11 +132,13 @@ impl From<&str> for QualifierRest {
 pub enum NumericLiteralError {
     /// Width segment could not be parsed as an integer.
     InvalidWidth(String),
-    /// Width was parsed but evaluates to zero or a negative value.
-    NonPositiveWidth(u32),
+    /// Width was parsed but evaluates to zero.
+    ZeroWidth(u32),
+    /// Width exceeds maximum supported value.
+    WidthTooLarge(u32),
     /// A width-qualified literal omitted its base (e.g. `8'`).
     MissingBase,
-    /// Base marker was not recognised.
+    /// Base marker was not recognized.
     InvalidBase(char),
     /// Literal did not include any digits.
     MissingDigits,
@@ -159,7 +161,8 @@ impl NumericLiteralError {
     pub fn message(&self) -> String {
         match self {
             Self::InvalidWidth(w) => format!("invalid numeric width '{w}'"),
-            Self::NonPositiveWidth(w) => format!("numeric width must be positive (found {w})"),
+            Self::ZeroWidth(w) => format!("numeric width must be non-zero (found {w})"),
+            Self::WidthTooLarge(w) => format!("numeric width {w} exceeds maximum supported value"),
             Self::MissingBase => "width-qualified literal is missing a base".to_string(),
             Self::InvalidBase(b) => format!("invalid numeric base '{b}'"),
             Self::MissingDigits => "numeric literal is missing digits".to_string(),
@@ -280,7 +283,7 @@ fn parse_width(width_part: &WidthText) -> Result<u32, NumericLiteralError> {
         .parse::<u32>()
         .map_err(|_| NumericLiteralError::InvalidWidth(width_part.as_str().to_string()))?;
     if width == 0 {
-        return Err(NumericLiteralError::NonPositiveWidth(width));
+        return Err(NumericLiteralError::ZeroWidth(width));
     }
     Ok(width)
 }
@@ -369,7 +372,7 @@ fn parse_int_value(cleaned: &DigitString, base: IntBase) -> Result<BigInt, Numer
 fn validate_int_range(width: u32, signed: bool, value: &BigInt) -> Result<(), NumericLiteralError> {
     if signed {
         let shift = usize::try_from(width.saturating_sub(1))
-            .map_err(|_| NumericLiteralError::NonPositiveWidth(width))?;
+            .map_err(|_| NumericLiteralError::WidthTooLarge(width))?;
         let bound = BigInt::one() << shift;
         let min = -bound.clone();
         let max = bound - BigInt::one();
@@ -389,7 +392,7 @@ fn validate_int_range(width: u32, signed: bool, value: &BigInt) -> Result<(), Nu
             value: value.clone(),
         });
     }
-    let shift = usize::try_from(width).map_err(|_| NumericLiteralError::NonPositiveWidth(width))?;
+    let shift = usize::try_from(width).map_err(|_| NumericLiteralError::WidthTooLarge(width))?;
     let max = (BigInt::one() << shift) - BigInt::one();
     if value > &max {
         return Err(NumericLiteralError::IntOutOfRange {
