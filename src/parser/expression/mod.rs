@@ -15,6 +15,7 @@ mod delimiter_utils;
 mod infix;
 mod literals;
 pub(crate) mod numeric;
+mod numeric_newtypes;
 mod pattern_collection;
 mod pratt;
 mod prefix;
