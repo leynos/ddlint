@@ -5,8 +5,10 @@
 //! across focused submodules for clarity: [`pratt`] hosts the core parser,
 //! [`prefix`] dispatches prefix forms, [`literals`] handles literal tokens,
 //! [`data_structures`] covers identifiers, structs, closures, and groupings,
-//! [`control_flow`] parses `if`/`match`/`for`, and [`infix`] folds infix
-//! operators. The public API is re-exported here.
+//! [`control_flow`] parses `if`/`match`/`for`, [`infix`] folds infix
+//! operators, and [`numeric`] parses width-qualified numeric literals (e.g.,
+//! `8'hFF`, `16'sd-1`, `3.14'f32`). The public API is re-exported here,
+//! including [`parse_numeric_literal`] for standalone numeric literal parsing.
 
 mod control_flow;
 mod data_structures;
