@@ -40,6 +40,7 @@ pub enum NumericLiteralError {
 }
 
 impl NumericLiteralError {
+    /// Returns a human-readable error message describing this validation failure.
     #[must_use]
     pub fn message(&self) -> String {
         match self {
