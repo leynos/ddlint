@@ -133,8 +133,11 @@ fn assert_numeric_parse_error(input: &str, expected_substring: &str) {
 
 #[rstest]
 #[case::missing_digits("8'h", "missing digits")]
+#[case::missing_digits_after_signed("8'sd", "missing digits")]
+#[case::missing_base("8'", "missing a base")]
 #[case::invalid_base("8'x0", "invalid numeric base")]
 #[case::invalid_digits("8'hGG", "invalid digits")]
+#[case::signed_out_of_range("2'sd2", "does not fit")]
 fn rejects_malformed_literals(#[case] input: &str, #[case] expected_substring: &str) {
     assert_numeric_parse_error(input, expected_substring);
 }
