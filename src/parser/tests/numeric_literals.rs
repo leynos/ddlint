@@ -63,6 +63,12 @@ fn assert_int_literal(input: &str, expected: ExpectedIntLiteral) {
 #[case::underscores_in_digits("16'hFF_FF", ExpectedIntLiteral { width: Some(16), signed: false, base: IntBase::Hex, value: "65535" })]
 #[case::unqualified_binary("0b1010", ExpectedIntLiteral { width: None, signed: false, base: IntBase::Binary, value: "10" })]
 #[case::unqualified_octal("0o17", ExpectedIntLiteral { width: None, signed: false, base: IntBase::Octal, value: "15" })]
+#[case::signed_1bit_min("1'sd-1", ExpectedIntLiteral { width: Some(1), signed: true, base: IntBase::Decimal, value: "-1" })]
+#[case::signed_1bit_zero("1'sd0", ExpectedIntLiteral { width: Some(1), signed: true, base: IntBase::Decimal, value: "0" })]
+#[case::signed_2bit_min("2'sd-2", ExpectedIntLiteral { width: Some(2), signed: true, base: IntBase::Decimal, value: "-2" })]
+#[case::signed_2bit_max("2'sd1", ExpectedIntLiteral { width: Some(2), signed: true, base: IntBase::Decimal, value: "1" })]
+#[case::signed_3bit_min("3'sd-4", ExpectedIntLiteral { width: Some(3), signed: true, base: IntBase::Decimal, value: "-4" })]
+#[case::signed_3bit_max("3'sd3", ExpectedIntLiteral { width: Some(3), signed: true, base: IntBase::Decimal, value: "3" })]
 fn parses_integer_literals(#[case] input: &str, #[case] expected: ExpectedIntLiteral) {
     assert_int_literal(input, expected);
 }

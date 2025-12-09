@@ -13,6 +13,7 @@ use derive_more::{AsRef, From};
 pub struct RawLiteral(String);
 
 impl RawLiteral {
+    #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -25,6 +26,7 @@ impl RawLiteral {
 pub struct WidthText(String);
 
 impl WidthText {
+    #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -37,6 +39,7 @@ impl WidthText {
 pub struct FloatSuffix(String);
 
 impl FloatSuffix {
+    #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -53,6 +56,7 @@ impl DigitString {
         Self(s.into())
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -70,6 +74,7 @@ impl DigitString {
 pub struct QualifierRest(String);
 
 impl QualifierRest {
+    #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
     }
