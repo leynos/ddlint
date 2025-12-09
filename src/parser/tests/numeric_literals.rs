@@ -117,6 +117,33 @@ fn parses_integer_literals() {
                 value: "1",
             },
         ),
+        (
+            "16'hFF_FF",
+            ExpectedIntLiteral {
+                width: Some(16),
+                signed: false,
+                base: IntBase::Hex,
+                value: "65535",
+            },
+        ),
+        (
+            "0b1010",
+            ExpectedIntLiteral {
+                width: None,
+                signed: false,
+                base: IntBase::Binary,
+                value: "10",
+            },
+        ),
+        (
+            "0o17",
+            ExpectedIntLiteral {
+                width: None,
+                signed: false,
+                base: IntBase::Octal,
+                value: "15",
+            },
+        ),
     ];
 
     for (input, expected) in test_cases {
