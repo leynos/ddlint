@@ -3,6 +3,7 @@
 use crate::parser::ast::{Expr, IntBase, Literal, NumberLiteral};
 use crate::parser::expression::{parse_expression, parse_numeric_literal};
 use crate::test_util::{assert_parse_error, lit_num};
+use rstest::rstest;
 
 fn unwrap_int(expr: Expr) -> (Option<u32>, bool, IntBase, String) {
     match expr {
@@ -203,43 +204,24 @@ fn lit_num_helper_uses_structured_literal() {
     assert_eq!(value, "42");
 }
 
-#[test]
-fn rejects_missing_digits() {
-    let err = match parse_numeric_literal("8'h") {
-        Ok(lit) => panic!("expected failure, got {lit:?}"),
+fn assert_numeric_parse_error(input: &str, expected_substring: &str) {
+    let err = match parse_numeric_literal(input) {
+        Ok(lit) => panic!("expected failure for {input:?}, got {lit:?}"),
         Err(err) => err,
     };
     assert!(
-        err.message().contains("missing digits"),
-        "expected 'missing digits' error, got: {}",
+        err.message().contains(expected_substring),
+        "expected '{expected_substring}' error for {input:?}, got: {}",
         err.message()
     );
 }
 
-#[test]
-fn rejects_invalid_base() {
-    let err = match parse_numeric_literal("8'x0") {
-        Ok(lit) => panic!("expected failure, got {lit:?}"),
-        Err(err) => err,
-    };
-    assert!(
-        err.message().contains("invalid numeric base"),
-        "expected 'invalid numeric base' error, got: {}",
-        err.message()
-    );
-}
-
-#[test]
-fn rejects_invalid_digits() {
-    let err = match parse_numeric_literal("8'hGG") {
-        Ok(lit) => panic!("expected failure, got {lit:?}"),
-        Err(err) => err,
-    };
-    assert!(
-        err.message().contains("invalid digits"),
-        "expected 'invalid digits' error, got: {}",
-        err.message()
-    );
+#[rstest]
+#[case::missing_digits("8'h", "missing digits")]
+#[case::invalid_base("8'x0", "invalid numeric base")]
+#[case::invalid_digits("8'hGG", "invalid digits")]
+fn rejects_malformed_literals(#[case] input: &str, #[case] expected_substring: &str) {
+    assert_numeric_parse_error(input, expected_substring);
 }
 
 #[test]
