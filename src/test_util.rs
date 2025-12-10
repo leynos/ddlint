@@ -7,6 +7,7 @@
 use crate::{
     Span, SyntaxKind,
     parser::ast::{Expr, Literal, MatchArm, StringKind, StringLiteral},
+    parser::expression::parse_numeric_literal,
     tokenize_with_trivia,
 };
 use chumsky::error::{Simple, SimpleReason};
@@ -100,7 +101,9 @@ impl From<&str> for ErrorPattern {
 /// Construct a numeric [`Expr::Literal`].
 #[must_use]
 pub fn lit_num(n: &str) -> Expr {
-    Expr::Literal(Literal::Number(n.into()))
+    let literal = parse_numeric_literal(n)
+        .unwrap_or_else(|err| panic!("failed to parse numeric literal '{n}': {}", err.message()));
+    Expr::Literal(Literal::Number(literal))
 }
 
 /// Construct a string [`Expr::Literal`].

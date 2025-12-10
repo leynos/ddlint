@@ -8,6 +8,7 @@ mod functions;
 mod helpers;
 mod imports;
 mod indexes;
+mod numeric_literals;
 mod relations;
 mod round_trip;
 mod rules;

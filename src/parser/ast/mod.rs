@@ -132,10 +132,12 @@ pub(crate) mod expr;
 mod function;
 mod import;
 mod index;
+mod number;
 mod precedence;
 mod relation;
 mod root;
 pub(crate) mod rule;
+mod string_literal;
 mod transformer;
 mod type_def;
 
@@ -143,16 +145,18 @@ mod type_def;
 ///
 /// Re-exports [`MatchArm`], allowing callers to assemble match expressions
 /// without reaching into private modules.
-pub use expr::{BinaryOp, Expr, Literal, MatchArm, StringKind, StringLiteral, UnaryOp};
+pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;
 pub use index::Index;
+pub use number::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
 pub use relation::Relation;
 pub use root::Root;
 pub use rule::{
     AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
 };
+pub use string_literal::{StringKind, StringLiteral};
 pub use transformer::Transformer;
 pub use type_def::TypeDef;
 

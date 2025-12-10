@@ -13,6 +13,10 @@ where
         let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {
             return Some(lit);
+        } else if matches!(kind, SyntaxKind::T_NUMBER | SyntaxKind::T_STRING) {
+            // Literal parsing already emitted a precise diagnostic; avoid a
+            // follow-up "unexpected token" error for the same span.
+            return None;
         }
         match kind {
             SyntaxKind::T_IDENT => self.parse_identifier_or_struct(&span),
