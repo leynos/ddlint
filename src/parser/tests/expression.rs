@@ -99,6 +99,45 @@ use rstest::rstest;
 #[case("a + (x as T)", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Cast, lhs: Box::new(var("x")), rhs: Box::new(var("T")) }))) })]
 #[case("(a => b); c", Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }))), rhs: Box::new(var("c")) })]
 #[case("a => (b; c)", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(var("a")), rhs: Box::new(Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Seq, lhs: Box::new(var("b")), rhs: Box::new(var("c")) }))) })]
+// Concatenation operator (++) tests
+#[case("a ++ b", Expr::Binary { op: BinaryOp::Concat, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a + b ++ c", Expr::Binary { op: BinaryOp::Concat, lhs: Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("a ++ b + c", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Binary { op: BinaryOp::Concat, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("a ++ b ++ c", Expr::Binary { op: BinaryOp::Concat, lhs: Box::new(Expr::Binary { op: BinaryOp::Concat, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Shift operator tests
+#[case("a << b", Expr::Binary { op: BinaryOp::Shl, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a >> b", Expr::Binary { op: BinaryOp::Shr, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a << b >> c", Expr::Binary { op: BinaryOp::Shr, lhs: Box::new(Expr::Binary { op: BinaryOp::Shl, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("a + b << c", Expr::Binary { op: BinaryOp::Shl, lhs: Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Bitwise AND operator tests
+#[case("a & b", Expr::Binary { op: BinaryOp::BitAnd, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a << b & c", Expr::Binary { op: BinaryOp::BitAnd, lhs: Box::new(Expr::Binary { op: BinaryOp::Shl, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Bitwise XOR operator tests
+#[case("a ^ b", Expr::Binary { op: BinaryOp::BitXor, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a & b ^ c", Expr::Binary { op: BinaryOp::BitXor, lhs: Box::new(Expr::Binary { op: BinaryOp::BitAnd, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Bitwise OR operator tests
+#[case("a | b", Expr::Binary { op: BinaryOp::BitOr, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a ^ b | c", Expr::Binary { op: BinaryOp::BitOr, lhs: Box::new(Expr::Binary { op: BinaryOp::BitXor, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Bitwise hierarchy: & binds tighter than ^ which binds tighter than |
+#[case("a & b ^ c | d", Expr::Binary { op: BinaryOp::BitOr, lhs: Box::new(Expr::Binary { op: BinaryOp::BitXor, lhs: Box::new(Expr::Binary { op: BinaryOp::BitAnd, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) }), rhs: Box::new(var("d")) })]
+// Comparison operators
+#[case("a < b", Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a <= b", Expr::Binary { op: BinaryOp::Lte, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a > b", Expr::Binary { op: BinaryOp::Gt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+#[case("a >= b", Expr::Binary { op: BinaryOp::Gte, lhs: Box::new(var("a")), rhs: Box::new(var("b")) })]
+// Comparisons bind looser than bitwise OR
+#[case("a | b < c", Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(Expr::Binary { op: BinaryOp::BitOr, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Comparisons bind tighter than logical AND
+#[case("a < b and c", Expr::Binary { op: BinaryOp::And, lhs: Box::new(Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+// Prefix bitwise NOT operator
+#[case("~a", Expr::Unary { op: UnaryOp::BitNot, expr: Box::new(var("a")) })]
+#[case("~a & b", Expr::Binary { op: BinaryOp::BitAnd, lhs: Box::new(Expr::Unary { op: UnaryOp::BitNot, expr: Box::new(var("a")) }), rhs: Box::new(var("b")) })]
+// Prefix reference operator
+#[case("&a", Expr::Unary { op: UnaryOp::Ref, expr: Box::new(var("a")) })]
+#[case("&a + b", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(Expr::Unary { op: UnaryOp::Ref, expr: Box::new(var("a")) }), rhs: Box::new(var("b")) })]
+// => with new operators
+#[case("a | b => c", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(Expr::Binary { op: BinaryOp::BitOr, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(var("c")) })]
+#[case("a ^ b => c ^ d", Expr::Binary { op: BinaryOp::Imply, lhs: Box::new(Expr::Binary { op: BinaryOp::BitXor, lhs: Box::new(var("a")), rhs: Box::new(var("b")) }), rhs: Box::new(Expr::Binary { op: BinaryOp::BitXor, lhs: Box::new(var("c")), rhs: Box::new(var("d")) }) })]
 #[case(
     "if x { y } else { z }",
     if_expr(

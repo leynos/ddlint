@@ -59,6 +59,8 @@ enum Token {
     Pipe,
     #[token("&")]
     Amp,
+    #[token("^")]
+    Caret,
     #[token("==")]
     EqEq,
     #[token("=")]
@@ -235,6 +237,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
             Token::Colon => SyntaxKind::T_COLON,
             Token::Pipe => SyntaxKind::T_PIPE,
             Token::Amp => SyntaxKind::T_AMP,
+            Token::Caret => SyntaxKind::T_CARET,
             Token::EqEq => SyntaxKind::T_EQEQ,
             Token::Eq => SyntaxKind::T_EQ,
             Token::Implies => SyntaxKind::T_IMPLIES,

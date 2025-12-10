@@ -25,6 +25,10 @@ pub enum UnaryOp {
     Not,
     /// Arithmetic negation.
     Neg,
+    /// Bitwise NOT.
+    BitNot,
+    /// Reference (address-of).
+    Ref,
 }
 
 impl UnaryOp {
@@ -32,6 +36,8 @@ impl UnaryOp {
         match self {
             Self::Not => "not",
             Self::Neg => "-",
+            Self::BitNot => "~",
+            Self::Ref => "&",
         }
     }
 }
@@ -55,10 +61,30 @@ pub enum BinaryOp {
     Div,
     /// Modulo operator.
     Mod,
+    /// Concatenation operator.
+    Concat,
+    /// Left shift operator.
+    Shl,
+    /// Right shift operator.
+    Shr,
+    /// Bitwise AND operator.
+    BitAnd,
+    /// Bitwise XOR operator.
+    BitXor,
+    /// Bitwise OR operator.
+    BitOr,
     /// Equality operator.
     Eq,
     /// Inequality operator.
     Neq,
+    /// Less than operator.
+    Lt,
+    /// Less than or equal operator.
+    Lte,
+    /// Greater than operator.
+    Gt,
+    /// Greater than or equal operator.
+    Gte,
     /// Logical AND operator.
     And,
     /// Logical OR operator.
@@ -83,8 +109,18 @@ impl BinaryOp {
             Self::Mul => "*",
             Self::Div => "/",
             Self::Mod => "%",
+            Self::Concat => "++",
+            Self::Shl => "<<",
+            Self::Shr => ">>",
+            Self::BitAnd => "&",
+            Self::BitXor => "^",
+            Self::BitOr => "|",
             Self::Eq => "==",
             Self::Neq => "!=",
+            Self::Lt => "<",
+            Self::Lte => "<=",
+            Self::Gt => ">",
+            Self::Gte => ">=",
             Self::And => "and",
             Self::Or => "or",
             Self::Ascribe => ":",

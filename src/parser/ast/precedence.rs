@@ -24,7 +24,11 @@ pub(super) struct InfixEntry {
 const BP_PREFIX: u8 = 80;
 const BP_MUL_DIV_MOD: u8 = 70;
 const BP_ADD_SUB: u8 = 60;
+const BP_SHIFT: u8 = 55;
 const BP_TYPE: u8 = 50;
+const BP_BIT_AND: u8 = 45;
+const BP_BIT_XOR: u8 = 40;
+const BP_BIT_OR: u8 = 35;
 const BP_CMP: u8 = 30;
 const BP_AND: u8 = 20;
 const BP_OR: u8 = 10;
@@ -45,6 +49,20 @@ const PREFIX_TABLE: &[(SyntaxKind, PrefixEntry)] = &[
         PrefixEntry {
             bp: BP_PREFIX,
             op: UnaryOp::Not,
+        },
+    ),
+    (
+        SyntaxKind::T_TILDE,
+        PrefixEntry {
+            bp: BP_PREFIX,
+            op: UnaryOp::BitNot,
+        },
+    ),
+    (
+        SyntaxKind::T_AMP,
+        PrefixEntry {
+            bp: BP_PREFIX,
+            op: UnaryOp::Ref,
         },
     ),
 ];
@@ -113,6 +131,54 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
         },
     ),
     (
+        SyntaxKind::T_PLUSPLUS,
+        InfixEntry {
+            l_bp: BP_ADD_SUB,
+            r_bp: BP_ADD_SUB + 1,
+            op: BinaryOp::Concat,
+        },
+    ),
+    (
+        SyntaxKind::T_SHL,
+        InfixEntry {
+            l_bp: BP_SHIFT,
+            r_bp: BP_SHIFT + 1,
+            op: BinaryOp::Shl,
+        },
+    ),
+    (
+        SyntaxKind::T_SHR,
+        InfixEntry {
+            l_bp: BP_SHIFT,
+            r_bp: BP_SHIFT + 1,
+            op: BinaryOp::Shr,
+        },
+    ),
+    (
+        SyntaxKind::T_AMP,
+        InfixEntry {
+            l_bp: BP_BIT_AND,
+            r_bp: BP_BIT_AND + 1,
+            op: BinaryOp::BitAnd,
+        },
+    ),
+    (
+        SyntaxKind::T_CARET,
+        InfixEntry {
+            l_bp: BP_BIT_XOR,
+            r_bp: BP_BIT_XOR + 1,
+            op: BinaryOp::BitXor,
+        },
+    ),
+    (
+        SyntaxKind::T_PIPE,
+        InfixEntry {
+            l_bp: BP_BIT_OR,
+            r_bp: BP_BIT_OR + 1,
+            op: BinaryOp::BitOr,
+        },
+    ),
+    (
         SyntaxKind::T_EQEQ,
         InfixEntry {
             l_bp: BP_CMP,
@@ -126,6 +192,38 @@ const INFIX_TABLE: &[(SyntaxKind, InfixEntry)] = &[
             l_bp: BP_CMP,
             r_bp: BP_CMP + 1,
             op: BinaryOp::Neq,
+        },
+    ),
+    (
+        SyntaxKind::T_LT,
+        InfixEntry {
+            l_bp: BP_CMP,
+            r_bp: BP_CMP + 1,
+            op: BinaryOp::Lt,
+        },
+    ),
+    (
+        SyntaxKind::T_LTE,
+        InfixEntry {
+            l_bp: BP_CMP,
+            r_bp: BP_CMP + 1,
+            op: BinaryOp::Lte,
+        },
+    ),
+    (
+        SyntaxKind::T_GT,
+        InfixEntry {
+            l_bp: BP_CMP,
+            r_bp: BP_CMP + 1,
+            op: BinaryOp::Gt,
+        },
+    ),
+    (
+        SyntaxKind::T_GTE,
+        InfixEntry {
+            l_bp: BP_CMP,
+            r_bp: BP_CMP + 1,
+            op: BinaryOp::Gte,
         },
     ),
     (
