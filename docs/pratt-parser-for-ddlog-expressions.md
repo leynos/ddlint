@@ -541,7 +541,7 @@ section 4). The following operators were added:
 | `~`      | `BitNot`          | 80            |
 | `&`      | `Ref`             | 80            |
 
-The `T_CARET` token was added to the tokenizer to recognize the `^` operator.
+The `T_CARET` token was added to the tokenizer to recognise the `^` operator.
 The `&` token serves dual purposes: as a prefix operator it represents
 reference/address-of (`UnaryOp::Ref`), and as an infix operator it represents
 bitwise AND (`BinaryOp::BitAnd`). The Pratt parser's separate prefix and infix
