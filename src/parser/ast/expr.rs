@@ -102,71 +102,42 @@ pub enum BinaryOp {
 }
 
 impl BinaryOp {
+    const SYMBOLS: [(Self, &'static str); 24] = [
+        (Self::Add, "+"),
+        (Self::Sub, "-"),
+        (Self::Mul, "*"),
+        (Self::Div, "/"),
+        (Self::Mod, "%"),
+        (Self::Concat, "++"),
+        (Self::Shl, "<<"),
+        (Self::Shr, ">>"),
+        (Self::BitAnd, "&"),
+        (Self::BitXor, "^"),
+        (Self::BitOr, "|"),
+        (Self::Eq, "=="),
+        (Self::Neq, "!="),
+        (Self::Lt, "<"),
+        (Self::Lte, "<="),
+        (Self::Gt, ">"),
+        (Self::Gte, ">="),
+        (Self::And, "and"),
+        (Self::Or, "or"),
+        (Self::Ascribe, ":"),
+        (Self::Cast, "as"),
+        (Self::Assign, "="),
+        (Self::Seq, ";"),
+        (Self::Imply, "=>"),
+    ];
+
+    #[expect(
+        clippy::expect_used,
+        reason = "BinaryOp::symbol must be total over the enum variants"
+    )]
     fn symbol(self) -> &'static str {
-        match self {
-            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Mod => self.arithmetic_symbol(),
-            Self::Concat | Self::Shl | Self::Shr | Self::BitAnd | Self::BitXor | Self::BitOr => {
-                self.bitwise_symbol()
-            }
-            Self::Eq | Self::Neq | Self::Lt | Self::Lte | Self::Gt | Self::Gte => {
-                self.comparison_symbol()
-            }
-            Self::And
-            | Self::Or
-            | Self::Ascribe
-            | Self::Cast
-            | Self::Assign
-            | Self::Seq
-            | Self::Imply => self.misc_symbol(),
-        }
-    }
-
-    fn arithmetic_symbol(self) -> &'static str {
-        match self {
-            Self::Add => "+",
-            Self::Sub => "-",
-            Self::Mul => "*",
-            Self::Div => "/",
-            Self::Mod => "%",
-            _ => unreachable!("non-arithmetic operator"),
-        }
-    }
-
-    fn bitwise_symbol(self) -> &'static str {
-        match self {
-            Self::Concat => "++",
-            Self::Shl => "<<",
-            Self::Shr => ">>",
-            Self::BitAnd => "&",
-            Self::BitXor => "^",
-            Self::BitOr => "|",
-            _ => unreachable!("non-bitwise or concatenation operator"),
-        }
-    }
-
-    fn comparison_symbol(self) -> &'static str {
-        match self {
-            Self::Eq => "==",
-            Self::Neq => "!=",
-            Self::Lt => "<",
-            Self::Lte => "<=",
-            Self::Gt => ">",
-            Self::Gte => ">=",
-            _ => unreachable!("non-comparison operator"),
-        }
-    }
-
-    fn misc_symbol(self) -> &'static str {
-        match self {
-            Self::And => "and",
-            Self::Or => "or",
-            Self::Ascribe => ":",
-            Self::Cast => "as",
-            Self::Assign => "=",
-            Self::Seq => ";",
-            Self::Imply => "=>",
-            _ => unreachable!("non-misc operator"),
-        }
+        Self::SYMBOLS
+            .iter()
+            .find_map(|(op, symbol)| (*op == self).then_some(*symbol))
+            .expect("all BinaryOp variants must have symbols")
     }
 }
 

@@ -326,6 +326,36 @@ mod tests {
     }
 
     #[test]
+    fn tokenize_recognises_ampersand_adjacency() {
+        let tokens = tokenize_without_trivia("&a&b");
+        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                SyntaxKind::T_AMP,
+                SyntaxKind::T_IDENT,
+                SyntaxKind::T_AMP,
+                SyntaxKind::T_IDENT,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenize_recognises_dual_use_ampersand_sequence() {
+        let tokens = tokenize_without_trivia("a& &b");
+        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                SyntaxKind::T_IDENT,
+                SyntaxKind::T_AMP,
+                SyntaxKind::T_AMP,
+                SyntaxKind::T_IDENT,
+            ]
+        );
+    }
+
+    #[test]
     fn tokenize_recognises_caret_tokens() {
         let tokens = tokenize_without_trivia("a ^ b");
         let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();

@@ -341,7 +341,7 @@ arms without triggering the guard.
 
 ### Handling `for` loop expressions
 
-Rules may contain `for` loops with optional guards. The Pratt parser recognizes
+Rules may contain `for` loops with optional guards. The Pratt parser recognises
 the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
 node. The header is handled in three parts:
 
@@ -479,7 +479,7 @@ variants. This design allows chaining like `foo.bar(x).0` without extra
 precedence rules.
 
 Struct literals, tuple literals, and closures extend the prefix grammar. Struct
-construction recognizes `Ident { field: expr, … }` and records field order in
+construction recognises `Ident { field: expr, … }` and records field order in
 the AST. Tuple literals are distinguished from grouped expressions by the
 presence of a comma or an empty pair of parentheses. Both structs and tuples
 accept trailing commas. Closure literals parse a pipe-delimited parameter list
@@ -517,7 +517,7 @@ retokenising the source.
 
 The precedence table now includes all operators from the updated syntax
 specification (`docs/differential-datalog-parser-syntax-spec-updated.md`
-section 4). The following operators were added:
+section 4). The following operators are now included:
 
 **Binary operators:**
 
