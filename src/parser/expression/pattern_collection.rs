@@ -6,6 +6,8 @@
 
 use crate::{Span, SyntaxKind};
 
+use crate::parser::ast::Pattern;
+
 use super::pratt::Pratt;
 
 /// Tracks delimiter depth and pattern span during pattern collection.
@@ -166,22 +168,30 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
-    pub(super) fn collect_match_pattern(&mut self) -> Option<(String, Span)> {
-        self.collect_pattern_until(PatternCollectionConfig::new(
+    pub(super) fn collect_match_pattern(&mut self) -> Option<(Pattern, Span)> {
+        let (tokens, span) = self.collect_pattern_until(PatternCollectionConfig::new(
             PatternCollectionStrategy::new(
                 Self::should_terminate_at_arrow,
                 Self::check_for_invalid_pattern_terminator,
                 false,
                 |this: &mut Self, state: DelimiterState, arrow_span: Span| {
-                    this.validate_pattern_text(state.start, state.end, arrow_span)
+                    this.validate_match_pattern_span(state.start, state.end, arrow_span)
                 },
             ),
             PatternContext::for_match_pattern(),
-        ))
+        ))?;
+
+        match crate::parser::pattern::parse_pattern_tokens(&tokens, self.ts.src()) {
+            Ok(pattern) => Some((pattern, span)),
+            Err(errs) => {
+                self.ts.extend_errors(errs);
+                None
+            }
+        }
     }
 
-    pub(super) fn collect_for_pattern(&mut self) -> Option<(String, Span)> {
-        self.collect_pattern_until(PatternCollectionConfig::new(
+    pub(super) fn collect_for_pattern(&mut self) -> Option<(Pattern, Span)> {
+        let (tokens, span) = self.collect_pattern_until(PatternCollectionConfig::new(
             PatternCollectionStrategy::new(
                 |_this: &Self, kind, state: &DelimiterState| {
                     kind == SyntaxKind::K_IN && state.is_at_top_level()
@@ -189,19 +199,27 @@ where
                 |_this: &mut Self, _kind: SyntaxKind, _state: &DelimiterState| Some(()),
                 true,
                 |this: &mut Self, state: DelimiterState, in_span: Span| {
-                    this.extract_pattern_text(state.start, state.end, in_span)
+                    this.validate_for_pattern_span(state.start, state.end, in_span)
                 },
             ),
             PatternContext::for_for_loop_pattern(),
-        ))
+        ))?;
+
+        match crate::parser::pattern::parse_pattern_tokens(&tokens, self.ts.src()) {
+            Ok(pattern) => Some((pattern, span)),
+            Err(errs) => {
+                self.ts.extend_errors(errs);
+                None
+            }
+        }
     }
 
-    pub(super) fn validate_pattern_text(
+    pub(super) fn validate_match_pattern_span(
         &mut self,
         start: Option<usize>,
         end: Option<usize>,
         arrow_span: Span,
-    ) -> Option<(String, Span)> {
+    ) -> Option<Span> {
         let Some(s) = start else {
             self.ts.push_error(
                 arrow_span.clone(),
@@ -217,24 +235,15 @@ where
             return None;
         };
 
-        let span = s..e;
-        let text = self.ts.slice(&span);
-        let trimmed = text.trim();
-        if trimmed.is_empty() {
-            self.ts
-                .push_error(span.clone(), "expected pattern before '->' in match arm");
-            return None;
-        }
-
-        Some((trimmed.to_string(), span))
+        Some(s..e)
     }
 
-    pub(super) fn extract_pattern_text(
+    pub(super) fn validate_for_pattern_span(
         &mut self,
         start: Option<usize>,
         end: Option<usize>,
         in_span: Span,
-    ) -> Option<(String, Span)> {
+    ) -> Option<Span> {
         let (Some(s), Some(e)) = (start, end) else {
             self.ts.push_error(
                 in_span.clone(),
@@ -243,28 +252,17 @@ where
             return None;
         };
 
-        let span = s..e;
-        let text = self.ts.slice(&span);
-        let trimmed = text.trim();
-        if trimmed.is_empty() {
-            self.ts.push_error(
-                span.clone(),
-                "expected binding before 'in' in for-loop header",
-            );
-            return None;
-        }
-
-        Some((trimmed.to_string(), span))
+        Some(s..e)
     }
 
     fn collect_pattern_until<Terminator, PreCheck, Finalise>(
         &mut self,
         config: PatternCollectionConfig<Terminator, PreCheck, Finalise>,
-    ) -> Option<(String, Span)>
+    ) -> Option<(Vec<(SyntaxKind, Span)>, Span)>
     where
         Terminator: FnMut(&Self, SyntaxKind, &DelimiterState) -> bool,
         PreCheck: FnMut(&mut Self, SyntaxKind, &DelimiterState) -> Option<()>,
-        Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
+        Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<Span>,
     {
         let PatternCollectionConfig { strategy, context } = config;
         let PatternCollectionStrategy {
@@ -277,10 +275,12 @@ where
 
         let mut state = DelimiterState::new();
         let mut last_span: Option<Span> = None;
+        let mut collected: Vec<(SyntaxKind, Span)> = Vec::new();
 
         loop {
             let Some(kind) = self.ts.peek_kind() else {
-                return self.handle_eof_in_pattern_collection(&state, last_span.as_ref(), &context);
+                let _ = self.handle_eof_in_pattern_collection(&state, last_span.as_ref(), &context);
+                return None;
             };
 
             if should_terminate(&*self, kind, &state) {
@@ -291,11 +291,12 @@ where
                 let Some(finalise) = finalise_fn.take() else {
                     unreachable!("pattern finaliser already consumed");
                 };
-                return self.handle_pattern_termination(
+                let span = self.handle_pattern_termination(
                     TerminationHandler::new(kind, consume_terminator, finalise),
                     state,
                     last_span.as_ref(),
-                );
+                )?;
+                return Some((collected, span));
             }
 
             pre_check(self, kind, &state)?;
@@ -306,6 +307,7 @@ where
                 return None;
             };
             last_span = Some(span.clone());
+            collected.push((kind, span.clone()));
 
             let token = DelimiterToken::new(kind, span);
             self.process_delimiter_token(&token, &mut state, &context)?;

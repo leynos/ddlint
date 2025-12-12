@@ -6,6 +6,7 @@
 use std::fmt;
 
 use super::number::NumberLiteral;
+use super::pattern::Pattern;
 use super::string_literal::StringLiteral;
 
 /// Literal values that can appear in expressions.
@@ -154,7 +155,7 @@ mod tests;
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchArm {
     /// Pattern text matched against the scrutinee.
-    pub pattern: String,
+    pub pattern: Pattern,
     /// Expression evaluated when the pattern matches.
     pub body: Expr,
 }
@@ -243,7 +244,7 @@ pub enum Expr {
     /// For-loop expression with optional guard.
     ForLoop {
         /// Pattern introduced by the loop header.
-        pattern: String,
+        pattern: Pattern,
         /// Iterable expression supplying loop items.
         iterable: Box<Expr>,
         /// Optional guard expression restricting iterations.
@@ -369,8 +370,13 @@ fn format_if_else(condition: &Expr, then_branch: &Expr, else_branch: &Expr) -> S
     )
 }
 
-fn format_for_loop(pattern: &str, iterable: &Expr, guard: Option<&Expr>, body: &Expr) -> String {
-    let mut parts = vec![pattern.to_string(), iterable.to_sexpr()];
+fn format_for_loop(
+    pattern: &Pattern,
+    iterable: &Expr,
+    guard: Option<&Expr>,
+    body: &Expr,
+) -> String {
+    let mut parts = vec![pattern.to_source(), iterable.to_sexpr()];
     if let Some(cond) = guard {
         parts.push(cond.to_sexpr());
     }
@@ -381,7 +387,7 @@ fn format_for_loop(pattern: &str, iterable: &Expr, guard: Option<&Expr>, body: &
 fn format_match(scrutinee: &Expr, arms: &[MatchArm]) -> String {
     let arm_parts = arms
         .iter()
-        .map(|arm| format_nary("arm", [arm.pattern.clone(), arm.body.to_sexpr()]));
+        .map(|arm| format_nary("arm", [arm.pattern.to_source(), arm.body.to_sexpr()]));
     format_nary(
         "match",
         std::iter::once(scrutinee.to_sexpr()).chain(arm_parts),

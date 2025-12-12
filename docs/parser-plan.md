@@ -101,8 +101,9 @@ literal into one of three variants:
 - `Expression` – atoms, conditions, and control-flow statements parsed via the
   Pratt expression parser.
 - `Assignment` – pattern binds such as `var ip = FlatMap(extract_ips(ips))`.
-  The pattern text is preserved verbatim (after trimming) so it can be
-  re-parsed once the dedicated pattern parser lands.
+  The left-hand side is parsed into a dedicated `Pattern` AST node so later
+  passes can inspect binding structure without re-parsing text. The same
+  pattern parser is reused for `match` arms and `for` bindings.
 - `Aggregation` – canonical `group_by(project, key)` calls and legacy
   `Aggregate((key), accumulator)` invocations. Legacy calls flip their
   arguments during classification, so downstream code always receives a

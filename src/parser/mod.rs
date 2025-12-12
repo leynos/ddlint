@@ -24,6 +24,7 @@ use cst_builder::build_green_tree;
 mod delimiter;
 pub mod expression;
 mod expression_span;
+pub mod pattern;
 pub use cst_builder::{Parsed, ParsedSpans};
 
 /// Parse the provided source string.

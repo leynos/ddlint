@@ -29,9 +29,10 @@
 
 use chumsky::error::Simple;
 
-use super::{AstNode, Expr};
+use super::{AstNode, Expr, Pattern};
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
+use crate::parser::pattern::parse_pattern;
 use crate::{DdlogLanguage, Span, SyntaxKind};
 
 /// Typed wrapper for a rule declaration.
@@ -171,7 +172,7 @@ impl RuleBodyExpression {
         let literal_span = self.span();
 
         if let Some(parts) = split_assignment(&raw) {
-            return parse_assignment(parts, &literal_span);
+            return parse_assignment(&parts, &literal_span);
         }
 
         match parse_expression(trimmed) {
@@ -195,13 +196,10 @@ pub enum RuleBodyTerm {
 }
 
 /// Pattern assignment extracted from a rule literal.
-///
-/// The `pattern` field stores the left-hand side exactly as written (after
-/// trimming), so later stages can re-parse it once a full pattern parser lands.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuleAssignment {
     /// Left-hand pattern (e.g., `var ip` or `(key, value)`).
-    pub pattern: String,
+    pub pattern: Pattern,
     /// Expression on the right-hand side.
     pub value: Expr,
 }
@@ -236,10 +234,10 @@ pub struct RuleAggregation {
 }
 
 fn parse_assignment(
-    parts: AssignmentParts,
+    parts: &AssignmentParts,
     literal_span: &Span,
 ) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
-    if parts.pattern.is_empty() {
+    if parts.pattern.trim().is_empty() {
         return Err(vec![Simple::custom(
             literal_span.clone(),
             "expected pattern before '=' in rule literal",
@@ -253,9 +251,11 @@ fn parse_assignment(
         )]);
     }
 
+    let pattern = parse_pattern(parts.pattern.trim())?;
+
     match parse_expression(&parts.value) {
         Ok(expr) => Ok(Some(RuleBodyTerm::Assignment(RuleAssignment {
-            pattern: parts.pattern,
+            pattern,
             value: expr,
         }))),
         Err(errs) => Err(errs),

@@ -4,7 +4,7 @@
 
 use super::helpers::{parse_err, parse_ok, pretty_print};
 use crate::parser::ast::rule::split_assignment;
-use crate::parser::ast::{AggregationSource, AstNode, Expr, RuleBodyTerm};
+use crate::parser::ast::{AggregationSource, AstNode, Expr, Pattern, RuleBodyTerm};
 use crate::test_util::{ErrorPattern, assert_parse_error, call, var};
 use rstest::{fixture, rstest};
 
@@ -163,10 +163,51 @@ fn body_terms_capture_flatmap_assignments() {
         Some(RuleBodyTerm::Assignment(assign)) => assign,
         other => panic!("expected assignment term, got {other:?}"),
     };
-    assert_eq!(assignment.pattern, "var ip");
+    assert_eq!(
+        assignment.pattern,
+        Pattern::Var {
+            declared: true,
+            name: "ip".to_string()
+        }
+    );
     assert_eq!(
         assignment.value,
         call("FlatMap", vec![call("extract_ips", vec![var("addrs")])])
+    );
+}
+
+#[test]
+fn body_terms_capture_tuple_bind_assignments() {
+    let src = "Joined(key, value) :- Source(pairs), (key, value) = FlatMap(extract_pairs(pairs)).";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let terms = match rule.body_terms() {
+        Ok(terms) => terms,
+        Err(errs) => panic!("body terms should parse: {errs:?}"),
+    };
+    assert_eq!(terms.len(), 2);
+    let assignment = match terms.get(1) {
+        Some(RuleBodyTerm::Assignment(assign)) => assign,
+        other => panic!("expected assignment term, got {other:?}"),
+    };
+    assert_eq!(
+        assignment.pattern,
+        Pattern::Tuple(vec![
+            Pattern::Var {
+                declared: false,
+                name: "key".to_string(),
+            },
+            Pattern::Var {
+                declared: false,
+                name: "value".to_string(),
+            },
+        ])
     );
 }
 
