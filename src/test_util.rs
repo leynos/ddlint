@@ -6,8 +6,9 @@
 
 use crate::{
     Span, SyntaxKind,
-    parser::ast::{Expr, Literal, MatchArm, StringKind, StringLiteral},
+    parser::ast::{Expr, Literal, MatchArm, Pattern, StringKind, StringLiteral},
     parser::expression::parse_numeric_literal,
+    parser::pattern::parse_pattern,
     tokenize_with_trivia,
 };
 use chumsky::error::{Simple, SimpleReason};
@@ -300,8 +301,11 @@ pub fn for_loop(
     guard: Option<Expr>,
     body: Expr,
 ) -> Expr {
+    let pattern_src = pattern.into();
+    let pattern = parse_pattern(&pattern_src)
+        .unwrap_or_else(|errs| panic!("failed to parse pattern {pattern_src:?}: {errs:?}"));
     Expr::ForLoop {
-        pattern: pattern.into(),
+        pattern,
         iterable: Box::new(iterable),
         guard: guard.map(Box::new),
         body: Box::new(body),
@@ -321,15 +325,21 @@ pub fn tuple(items: Vec<Expr>) -> Expr {
 /// ```
 /// use ddlint::test_util::{lit_num, match_arm};
 ///
-/// let arm = match_arm("Some(x)", lit_num("1"));
-/// assert_eq!(arm.pattern, "Some(x)");
+/// let arm = match_arm("_", lit_num("1"));
+/// assert_eq!(arm.pattern, pat("_"));
 /// ```
 #[must_use]
 pub fn match_arm(pattern: impl Into<String>, body: Expr) -> MatchArm {
-    MatchArm {
-        pattern: pattern.into(),
-        body,
-    }
+    let pattern_src = pattern.into();
+    let pattern = parse_pattern(&pattern_src)
+        .unwrap_or_else(|errs| panic!("failed to parse pattern {pattern_src:?}: {errs:?}"));
+    MatchArm { pattern, body }
+}
+
+/// Parse and construct a [`Pattern`] node for tests.
+#[must_use]
+pub fn pat(src: &str) -> Pattern {
+    parse_pattern(src).unwrap_or_else(|errs| panic!("failed to parse pattern {src:?}: {errs:?}"))
 }
 
 /// Construct a `match` expression from a scrutinee and a list of arms.

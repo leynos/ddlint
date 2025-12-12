@@ -3,8 +3,9 @@
 //! These unit tests construct AST nodes directly and assert that
 //! `Expr::to_sexpr` yields the expected S-expression strings.
 
-use ddlint::parser::ast::{BinaryOp, Expr, Literal, StringKind, StringLiteral, UnaryOp};
+use ddlint::parser::ast::{BinaryOp, Expr, Literal, Pattern, StringKind, StringLiteral, UnaryOp};
 use ddlint::parser::expression::parse_numeric_literal;
+use ddlint::parser::pattern::parse_pattern;
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
@@ -37,6 +38,10 @@ fn bool_lit(b: bool) -> Expr {
 
 fn var(name: &str) -> Expr {
     Expr::Variable(name.into())
+}
+
+fn pat(src: &str) -> Pattern {
+    parse_pattern(src).unwrap_or_else(|errs| panic!("failed to parse pattern {src:?}: {errs:?}"))
 }
 
 #[rstest]
@@ -241,7 +246,7 @@ fn non_interpolated_interned_standard_literal_renders() {
 #[test]
 fn for_loop_renders() {
     let expr = Expr::ForLoop {
-        pattern: "item".into(),
+        pattern: pat("item"),
         iterable: Box::new(var("items")),
         guard: Some(Box::new(var("ready"))),
         body: Box::new(Expr::Call {

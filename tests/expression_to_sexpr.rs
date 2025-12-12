@@ -51,12 +51,12 @@ fn struct_field_order_is_stable(#[case] src: &str, #[case] expected: &str) {
 #[case("x and y", "(and x y)")]
 #[case("x or y", "(or x y)")]
 #[case(
-    "match (value) { Some(x) -> x, _ -> 0 }",
-    "(match value (arm Some(x) x) (arm _ 0))"
+    "match (value) { Point { x: x } -> x, _ -> 0 }",
+    "(match value (arm Point { x: x } x) (arm _ 0))"
 )]
 #[case(
-    "match (value) { Some(x) -> x, _ -> 0, }",
-    "(match value (arm Some(x) x) (arm _ 0))"
+    "match (value) { Point { x: x } -> x, _ -> 0, }",
+    "(match value (arm Point { x: x } x) (arm _ 0))"
 )]
 #[case("for (item in items) item", "(for item items item)")]
 #[case(

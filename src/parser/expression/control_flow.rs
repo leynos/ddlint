@@ -220,7 +220,7 @@ where
         state: &DelimiterState,
         last_span: Option<&Span>,
         context: &PatternContext,
-    ) -> Option<(String, Span)> {
+    ) -> Option<Span> {
         if context.validate_on_eof
             && !self.validate_delimiter_balance(
                 (state.paren_depth, state.brace_depth, state.bracket_depth),
@@ -242,9 +242,9 @@ where
         handler: TerminationHandler<Finalise>,
         state: DelimiterState,
         last_span: Option<&Span>,
-    ) -> Option<(String, Span)>
+    ) -> Option<Span>
     where
-        Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<(String, Span)>,
+        Finalise: FnOnce(&mut Self, DelimiterState, Span) -> Option<Span>,
     {
         let TerminationHandler {
             kind,
@@ -277,14 +277,7 @@ where
             return None;
         }
 
-        let (pattern, pattern_span) = self.collect_for_pattern()?;
-        if pattern.is_empty() {
-            self.ts.push_error(
-                pattern_span,
-                "expected binding before 'in' in for-loop header",
-            );
-            return None;
-        }
+        let (pattern, _pattern_span) = self.collect_for_pattern()?;
 
         let iterable = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
 

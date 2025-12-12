@@ -150,7 +150,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     `++`, `^`, and `=>`, and add precedence tests that cover their interaction
     with existing operators.
 
-  - [ ] Introduce a dedicated pattern parser that produces AST nodes for use in
+  - [x] Introduce a dedicated pattern parser that produces AST nodes for use in
     `match` arms, `for` bindings, and flatmap constructs instead of storing
     pattern text.
 

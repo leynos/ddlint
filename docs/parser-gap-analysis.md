@@ -79,23 +79,20 @@ head.
   Spec defines **pattern grammar** (tuples, structs, typed patterns, wildcards,
   literals, etc.) and says patterns appear in three contexts
   (match/flatmap/for) with the **same surface syntax, different abstract syntax
-  tree shapes**. Code: `match` is implemented (great!) but **stores arm
-  patterns as raw strings** (`MatchArm { pattern: String, body: Expr }` in
-  `src/parser/ast/expr.rs`) and collects them via delimiter-balanced slicing
-  (`expression/pattern_collection.rs`). **Deviation:** the current code does
-  not build the **pattern tree** the spec expects. **Action:** add a **pattern
-  parser** that produces nodes like `PVar`, `PTuple`, `PStruct`, `PLit`,
-  `PTyped`, … and use it for **match arms**, **for-loop bindings**, and
-  **right-hand-side flatmap binds**.
+  tree shapes**. Code: `match` is implemented and patterns are now parsed into
+  dedicated `Pattern` AST nodes (rather than stored as raw strings) via the
+  pattern parser. Match arms, `for` bindings, and FlatMap-style rule
+  assignments all reuse the same pattern grammar, so downstream stages can
+  inspect binding structure directly.
 
 - **`for` loops**
   Spec: `for (Pattern in Expr) if Guard? Statement` acts as an imperative form
   in rule bodies; top-level `for` is **desugared to rules**. Code: Pratt
-  supports `for` as an **expression** (`Expr::ForLoop`) with pattern text
-  slicing and an optional `if` guard (`src/parser/expression/control_flow.rs`).
-  Top-level desugaring is not present. **Action:** (a) add **top-level**
-  desugaring pass (“convertStatement”) to emit rules; (b) once the plan
-  introduces a **pattern tree**, stop storing the binding as string.
+  supports `for` as an **expression** (`Expr::ForLoop`) with a dedicated
+  `Pattern` AST binding and an optional `if` guard
+  (`src/parser/expression/control_flow.rs`). Top-level desugaring is not
+  present. **Action:** add a **top-level** desugaring pass (“convertStatement”)
+  to emit rules, matching the specification’s semantics.
 
 - **`{ expr }` as grouping**
   Spec doesn’t define braces as an **expression grouping** (braces are for map

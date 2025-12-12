@@ -6,7 +6,6 @@
 
 use crate::{Span, SyntaxKind};
 
-use super::literals::parse_string_literal_text;
 use super::pattern_collection::{DelimiterState, DelimiterToken, PatternContext};
 use super::pratt::Pratt;
 
@@ -118,7 +117,7 @@ where
     }
 
     fn reject_interpolated_string_in_pattern(&mut self, span: &Span) -> bool {
-        let literal = match parse_string_literal_text(&self.ts.slice(span)) {
+        let literal = match crate::parser::ast::StringLiteral::parse(&self.ts.slice(span)) {
             Ok(lit) => lit,
             Err(msg) => {
                 self.ts.push_error(span.clone(), msg.to_string());

@@ -5,11 +5,12 @@
 //! text within those ranges using the Pratt expression parser without
 //! introducing additional coupling.
 
-use chumsky::error::Simple;
+use chumsky::error::{Simple, SimpleReason};
 use thiserror::Error;
 
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
+use crate::parser::pattern::parse_pattern;
 use crate::{Span, SyntaxKind};
 
 /// Split a rule body into the spans of its comma-separated literals.
@@ -168,33 +169,80 @@ pub(crate) enum ExpressionError {
 }
 
 pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), ExpressionError> {
+    let base_offset = span.start;
     let text = src
         .get(span.clone())
-        .ok_or(ExpressionError::OutOfBounds { span })?;
+        .ok_or(ExpressionError::OutOfBounds { span: span.clone() })?;
     // Rule bodies allow pattern assignments that the expression parser on its
     // own would reject. Validate their shape here so syntax errors still
     // surface during span scanning.
     if let Some(eq_span) = find_top_level_eq_span(text) {
-        let pattern = text.get(..eq_span.start).unwrap_or("").trim();
-        if pattern.is_empty() {
+        let lhs_full = text.get(..eq_span.start).unwrap_or("");
+        let (lhs_start, lhs_end) = trim_byte_range(lhs_full);
+        let lhs_trimmed = lhs_full.get(lhs_start..lhs_end).unwrap_or("");
+        if lhs_trimmed.is_empty() {
             return Err(ExpressionError::Parse(vec![Simple::custom(
-                0..text.len(),
+                span.clone(),
                 "expected pattern before '=' in rule literal",
             )]));
         }
+        if let Err(errs) = parse_pattern(lhs_trimmed) {
+            return Err(ExpressionError::Parse(shift_errors(
+                errs,
+                base_offset.saturating_add(lhs_start),
+            )));
+        }
         let rhs_full = text.get(eq_span.end..).unwrap_or("");
-        let rhs_trimmed = rhs_full.trim();
+        let (rhs_start, rhs_end) = trim_byte_range(rhs_full);
+        let rhs_trimmed = rhs_full.get(rhs_start..rhs_end).unwrap_or("");
         if rhs_trimmed.is_empty() {
             return Err(ExpressionError::Parse(vec![Simple::custom(
-                0..text.len(),
+                span.clone(),
                 "expected expression after '=' in rule literal",
             )]));
         }
-        return parse_expression(rhs_trimmed)
-            .map(|_| ())
-            .map_err(ExpressionError::Parse);
+        return parse_expression(rhs_trimmed).map(|_| ()).map_err(|errs| {
+            ExpressionError::Parse(shift_errors(
+                errs,
+                base_offset
+                    .saturating_add(eq_span.end)
+                    .saturating_add(rhs_start),
+            ))
+        });
     }
     parse_expression(text)
         .map(|_| ())
-        .map_err(ExpressionError::Parse)
+        .map_err(|errs| ExpressionError::Parse(shift_errors(errs, base_offset)))
+}
+
+fn shift_errors(errors: Vec<Simple<SyntaxKind>>, offset: usize) -> Vec<Simple<SyntaxKind>> {
+    errors
+        .into_iter()
+        .map(|err| {
+            let span = shift_span(err.span(), offset);
+            let message = match err.reason() {
+                SimpleReason::Custom(msg) => msg.clone(),
+                SimpleReason::Unexpected => "unexpected token".to_string(),
+                SimpleReason::Unclosed { .. } => "unclosed delimiter".to_string(),
+            };
+            Simple::custom(span, message)
+        })
+        .collect()
+}
+
+fn shift_span(span: Span, offset: usize) -> Span {
+    span.start.saturating_add(offset)..span.end.saturating_add(offset)
+}
+
+fn trim_byte_range(text: &str) -> (usize, usize) {
+    let start = text
+        .char_indices()
+        .find(|(_, ch)| !ch.is_whitespace())
+        .map_or(text.len(), |(idx, _)| idx);
+    let end = text
+        .char_indices()
+        .rev()
+        .find(|(_, ch)| !ch.is_whitespace())
+        .map_or(start, |(idx, ch)| idx + ch.len_utf8());
+    (start, end)
 }
