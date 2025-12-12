@@ -521,28 +521,34 @@ section 4). The following operators were added:
 
 **Binary operators:**
 
-| Operator | `BinaryOp` variant | Binding power | Associativity |
-|----------|-------------------|---------------|---------------|
-| `++`     | `Concat`          | 60 (same as `+`/`-`) | left |
-| `<<`     | `Shl`             | 55            | left          |
-| `>>`     | `Shr`             | 55            | left          |
-| `&`      | `BitAnd`          | 45            | left          |
-| `^`      | `BitXor`          | 40            | left          |
-| `\|`     | `BitOr`           | 35            | left          |
-| `<`      | `Lt`              | 30 (same as `==`/`!=`) | left |
-| `<=`     | `Lte`             | 30            | left          |
-| `>`      | `Gt`              | 30            | left          |
-| `>=`     | `Gte`             | 30            | left          |
+| Operator | `BinaryOp` variant | Binding power        | Associativity |
+| -------- | ------------------ | -------------------- | ------------- |
+| `++`     | `Concat`           | 60 (same as `+`/`-`) | left          |
+| `<<`     | `Shl`              | 55                   | left          |
+| `>>`     | `Shr`              | 55                   | left          |
+| `&`      | `BitAnd`           | 45                   | left          |
+| `^`      | `BitXor`           | 40                   | left          |
+| &#124;   | `BitOr`            | 35                   | left          |
+| `==`     | `Eq`               | 30                   | left          |
+| `!=`     | `Neq`              | 30                   | left          |
+| `<`      | `Lt`               | 30                   | left          |
+| `<=`     | `Lte`              | 30                   | left          |
+| `>`      | `Gt`               | 30                   | left          |
+| `>=`     | `Gte`              | 30                   | left          |
 
 **Unary (prefix) operators:**
 
 | Operator | `UnaryOp` variant | Binding power |
-|----------|-------------------|---------------|
+| -------- | ----------------- | ------------- |
 | `~`      | `BitNot`          | 80            |
 | `&`      | `Ref`             | 80            |
 
+These binding powers mirror the constants in `src/parser/ast/precedence.rs`.
+When adjusting operator precedence in code, update this table in the same
+change so the documentation and implementation stay aligned.
+
 The `T_CARET` token was added to the tokenizer to recognise the `^` operator.
-The `&` token serves dual purposes: as a prefix operator it represents
+The `&` token serves dual purposes: as a prefix operator, it represents
 reference/address-of (`UnaryOp::Ref`), and as an infix operator it represents
 bitwise AND (`BinaryOp::BitAnd`). The Pratt parser's separate prefix and infix
 tables naturally handle this overloading.

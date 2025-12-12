@@ -305,3 +305,37 @@ pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
     tokenize_impl(src)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tokenize_recognises_ampersand_tokens() {
+        let tokens = tokenize_without_trivia("&a & b");
+        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                SyntaxKind::T_AMP,
+                SyntaxKind::T_IDENT,
+                SyntaxKind::T_AMP,
+                SyntaxKind::T_IDENT,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenize_recognises_caret_tokens() {
+        let tokens = tokenize_without_trivia("a ^ b");
+        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                SyntaxKind::T_IDENT,
+                SyntaxKind::T_CARET,
+                SyntaxKind::T_IDENT,
+            ]
+        );
+    }
+}
