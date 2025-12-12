@@ -549,7 +549,7 @@ change so the documentation and implementation stay aligned.
 
 The `T_CARET` token was added to the tokenizer to recognize the `^` operator.
 The `&` token serves dual purposes: as a prefix operator, it represents
-reference/address-of (`UnaryOp::Ref`), and as an infix operator it represents
+reference/address-of (`UnaryOp::Ref`), and as an infix operator, it represents
 bitwise AND (`BinaryOp::BitAnd`). The Pratt parser's separate prefix and infix
 tables naturally handle this overloading.
 
