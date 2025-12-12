@@ -341,7 +341,7 @@ arms without triggering the guard.
 
 ### Handling `for` loop expressions
 
-Rules may contain `for` loops with optional guards. The Pratt parser recognises
+Rules may contain `for` loops with optional guards. The Pratt parser recognizes
 the `for` keyword as another prefix construct that yields an `Expr::ForLoop`
 node. The header is handled in three parts:
 
@@ -479,7 +479,7 @@ variants. This design allows chaining like `foo.bar(x).0` without extra
 precedence rules.
 
 Struct literals, tuple literals, and closures extend the prefix grammar. Struct
-construction recognises `Ident { field: expr, … }` and records field order in
+construction recognizes `Ident { field: expr, … }` and records field order in
 the AST. Tuple literals are distinguished from grouped expressions by the
 presence of a comma or an empty pair of parentheses. Both structs and tuples
 accept trailing commas. Closure literals parse a pipe-delimited parameter list
@@ -547,7 +547,7 @@ These binding powers mirror the constants in `src/parser/ast/precedence.rs`.
 When adjusting operator precedence in code, update this table in the same
 change so the documentation and implementation stay aligned.
 
-The `T_CARET` token was added to the tokenizer to recognise the `^` operator.
+The `T_CARET` token was added to the tokenizer to recognize the `^` operator.
 The `&` token serves dual purposes: as a prefix operator, it represents
 reference/address-of (`UnaryOp::Ref`), and as an infix operator it represents
 bitwise AND (`BinaryOp::BitAnd`). The Pratt parser's separate prefix and infix

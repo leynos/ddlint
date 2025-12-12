@@ -102,44 +102,44 @@ pub enum BinaryOp {
 }
 
 impl BinaryOp {
-    const SYMBOLS: [(Self, &'static str); 24] = [
-        (Self::Add, "+"),
-        (Self::Sub, "-"),
-        (Self::Mul, "*"),
-        (Self::Div, "/"),
-        (Self::Mod, "%"),
-        (Self::Concat, "++"),
-        (Self::Shl, "<<"),
-        (Self::Shr, ">>"),
-        (Self::BitAnd, "&"),
-        (Self::BitXor, "^"),
-        (Self::BitOr, "|"),
-        (Self::Eq, "=="),
-        (Self::Neq, "!="),
-        (Self::Lt, "<"),
-        (Self::Lte, "<="),
-        (Self::Gt, ">"),
-        (Self::Gte, ">="),
-        (Self::And, "and"),
-        (Self::Or, "or"),
-        (Self::Ascribe, ":"),
-        (Self::Cast, "as"),
-        (Self::Assign, "="),
-        (Self::Seq, ";"),
-        (Self::Imply, "=>"),
+    // Keep this list in the same order as the enum declaration.
+    const SYMBOLS: [&'static str; 24] = [
+        "+",   // Add
+        "-",   // Sub
+        "*",   // Mul
+        "/",   // Div
+        "%",   // Mod
+        "++",  // Concat
+        "<<",  // Shl
+        ">>",  // Shr
+        "&",   // BitAnd
+        "^",   // BitXor
+        "|",   // BitOr
+        "==",  // Eq
+        "!=",  // Neq
+        "<",   // Lt
+        "<=",  // Lte
+        ">",   // Gt
+        ">=",  // Gte
+        "and", // And
+        "or",  // Or
+        ":",   // Ascribe
+        "as",  // Cast
+        "=",   // Assign
+        ";",   // Seq
+        "=>",  // Imply
     ];
 
     #[expect(
-        clippy::expect_used,
-        reason = "BinaryOp::symbol must be total over the enum variants"
+        clippy::indexing_slicing,
+        reason = "SYMBOLS is indexed by BinaryOp discriminants and is kept in sync via a compile-time length check"
     )]
     fn symbol(self) -> &'static str {
-        Self::SYMBOLS
-            .iter()
-            .find_map(|(op, symbol)| (*op == self).then_some(*symbol))
-            .expect("all BinaryOp variants must have symbols")
+        Self::SYMBOLS[self as usize]
     }
 }
+
+const _: [(); BinaryOp::SYMBOLS.len()] = [(); (BinaryOp::Imply as usize) + 1];
 
 impl fmt::Display for BinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
