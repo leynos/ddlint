@@ -146,7 +146,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     floats) with range validation and a shaped literal AST, so later passes can
     reason about widths.
 
-  - [ ] Complete the operator table to match the specification, including
+  - [x] Complete the operator table to match the specification, including
     `++`, `^`, and `=>`, and add precedence tests that cover their interaction
     with existing operators.
 

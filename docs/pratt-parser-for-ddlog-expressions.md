@@ -512,3 +512,46 @@ expression diagnostics. The `Rule` AST wrapper exposes the resulting nodes via
 re-parses the stored text into structured `Expr` values. Downstream analyses
 can therefore reason about rule bodies without rebuilding bespoke parsers or
 retokenising the source.
+
+### 5.5 Operator table completion
+
+The precedence table now includes all operators from the updated syntax
+specification (`docs/differential-datalog-parser-syntax-spec-updated.md`
+section 4). The following operators are now included:
+
+**Binary operators:**
+
+| Operator | `BinaryOp` variant | Binding power        | Associativity |
+| -------- | ------------------ | -------------------- | ------------- |
+| `++`     | `Concat`           | 60 (same as `+`/`-`) | left          |
+| `<<`     | `Shl`              | 55                   | left          |
+| `>>`     | `Shr`              | 55                   | left          |
+| `&`      | `BitAnd`           | 45                   | left          |
+| `^`      | `BitXor`           | 40                   | left          |
+| &#124;   | `BitOr`            | 35                   | left          |
+| `==`     | `Eq`               | 30                   | left          |
+| `!=`     | `Neq`              | 30                   | left          |
+| `<`      | `Lt`               | 30                   | left          |
+| `<=`     | `Lte`              | 30                   | left          |
+| `>`      | `Gt`               | 30                   | left          |
+| `>=`     | `Gte`              | 30                   | left          |
+
+**Unary (prefix) operators:**
+
+| Operator | `UnaryOp` variant | Binding power |
+| -------- | ----------------- | ------------- |
+| `~`      | `BitNot`          | 80            |
+| `&`      | `Ref`             | 80            |
+
+These binding powers mirror the constants in `src/parser/ast/precedence.rs`.
+When adjusting operator precedence in code, update this table in the same
+change so the documentation and implementation stay aligned.
+
+The `T_CARET` token was added to the tokenizer to recognize the `^` operator.
+The `&` token serves dual purposes: as a prefix operator, it represents
+reference/address-of (`UnaryOp::Ref`), and as an infix operator, it represents
+bitwise AND (`BinaryOp::BitAnd`). The Pratt parser's separate prefix and infix
+tables naturally handle this overloading.
+
+The `=>` operator was already present in the table with right-associativity at
+binding power 5, correctly positioned between logical operators and assignment.

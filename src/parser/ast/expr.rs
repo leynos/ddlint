@@ -25,6 +25,10 @@ pub enum UnaryOp {
     Not,
     /// Arithmetic negation.
     Neg,
+    /// Bitwise NOT.
+    BitNot,
+    /// Reference (address-of).
+    Ref,
 }
 
 impl UnaryOp {
@@ -32,6 +36,8 @@ impl UnaryOp {
         match self {
             Self::Not => "not",
             Self::Neg => "-",
+            Self::BitNot => "~",
+            Self::Ref => "&",
         }
     }
 }
@@ -55,10 +61,30 @@ pub enum BinaryOp {
     Div,
     /// Modulo operator.
     Mod,
+    /// Concatenation operator.
+    Concat,
+    /// Left shift operator.
+    Shl,
+    /// Right shift operator.
+    Shr,
+    /// Bitwise AND operator.
+    BitAnd,
+    /// Bitwise XOR operator.
+    BitXor,
+    /// Bitwise OR operator.
+    BitOr,
     /// Equality operator.
     Eq,
     /// Inequality operator.
     Neq,
+    /// Less than operator.
+    Lt,
+    /// Less than or equal operator.
+    Lte,
+    /// Greater than operator.
+    Gt,
+    /// Greater than or equal operator.
+    Gte,
     /// Logical AND operator.
     And,
     /// Logical OR operator.
@@ -76,31 +102,53 @@ pub enum BinaryOp {
 }
 
 impl BinaryOp {
+    // Keep this list in the same order as the enum declaration.
+    const SYMBOLS: [&'static str; 24] = [
+        "+",   // Add
+        "-",   // Sub
+        "*",   // Mul
+        "/",   // Div
+        "%",   // Mod
+        "++",  // Concat
+        "<<",  // Shl
+        ">>",  // Shr
+        "&",   // BitAnd
+        "^",   // BitXor
+        "|",   // BitOr
+        "==",  // Eq
+        "!=",  // Neq
+        "<",   // Lt
+        "<=",  // Lte
+        ">",   // Gt
+        ">=",  // Gte
+        "and", // And
+        "or",  // Or
+        ":",   // Ascribe
+        "as",  // Cast
+        "=",   // Assign
+        ";",   // Seq
+        "=>",  // Imply
+    ];
+
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "SYMBOLS is indexed by BinaryOp discriminants and is kept in sync via a compile-time length check"
+    )]
     fn symbol(self) -> &'static str {
-        match self {
-            Self::Add => "+",
-            Self::Sub => "-",
-            Self::Mul => "*",
-            Self::Div => "/",
-            Self::Mod => "%",
-            Self::Eq => "==",
-            Self::Neq => "!=",
-            Self::And => "and",
-            Self::Or => "or",
-            Self::Ascribe => ":",
-            Self::Cast => "as",
-            Self::Assign => "=",
-            Self::Seq => ";",
-            Self::Imply => "=>",
-        }
+        Self::SYMBOLS[self as usize]
     }
 }
+
+const _: [(); BinaryOp::SYMBOLS.len()] = [(); (BinaryOp::Imply as usize) + 1];
 
 impl fmt::Display for BinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.symbol())
     }
 }
+
+#[cfg(test)]
+mod tests;
 
 /// Pattern arm inside a [`Expr::Match`] expression.
 #[derive(Debug, Clone, PartialEq)]

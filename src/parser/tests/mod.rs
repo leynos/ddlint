@@ -9,6 +9,7 @@ mod helpers;
 mod imports;
 mod indexes;
 mod numeric_literals;
+mod operator_precedence;
 mod relations;
 mod round_trip;
 mod rules;

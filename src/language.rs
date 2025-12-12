@@ -37,6 +37,7 @@ pub enum SyntaxKind {
     T_COLON_COLON,
     T_PIPE,
     T_AMP,
+    T_CARET,
     T_EQEQ,
     T_EQ,
     T_IMPLIES,
