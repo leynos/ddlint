@@ -1,6 +1,6 @@
 //! Tests for `BinaryOp` symbol formatting.
 
-use super::BinaryOp;
+use super::{BinaryOp, UnaryOp};
 
 #[test]
 fn binary_op_symbols_match_expected() {
@@ -33,5 +33,19 @@ fn binary_op_symbols_match_expected() {
 
     for (op, expected) in cases {
         assert_eq!(op.symbol(), expected, "BinaryOp::{op:?} symbol mismatch");
+    }
+}
+
+#[test]
+fn unary_op_symbols_match_expected() {
+    let cases = [
+        (UnaryOp::Not, "not"),
+        (UnaryOp::Neg, "-"),
+        (UnaryOp::BitNot, "~"),
+        (UnaryOp::Ref, "&"),
+    ];
+
+    for (op, expected) in cases {
+        assert_eq!(op.symbol(), expected, "UnaryOp::{op:?} symbol mismatch");
     }
 }
