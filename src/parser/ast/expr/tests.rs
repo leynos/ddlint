@@ -1,6 +1,6 @@
 //! Tests for `BinaryOp` symbol formatting.
 
-use crate::parser::ast::BinaryOp;
+use super::BinaryOp;
 
 #[test]
 fn binary_op_symbols_match_expected() {
@@ -32,6 +32,6 @@ fn binary_op_symbols_match_expected() {
     ];
 
     for (op, expected) in cases {
-        assert_eq!(op.to_string(), expected);
+        assert_eq!(op.symbol(), expected, "BinaryOp::{op:?} symbol mismatch");
     }
 }

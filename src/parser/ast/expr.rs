@@ -147,6 +147,9 @@ impl fmt::Display for BinaryOp {
     }
 }
 
+#[cfg(test)]
+mod tests;
+
 /// Pattern arm inside a [`Expr::Match`] expression.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchArm {

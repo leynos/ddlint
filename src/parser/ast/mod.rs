@@ -163,7 +163,6 @@ pub use type_def::TypeDef;
 #[cfg(test)]
 mod tests {
 
-    mod binary_op_symbols;
     mod precedence;
 
     use crate::parse;
