@@ -19,7 +19,7 @@ derive_more = { version = "1.0", default-features = false, features = ["from", "
 test-support = []
 
 [dev-dependencies]
-rstest = "0.25"
+rstest = "0.26"
 ddlint = { path = ".", features = ["test-support"] }
 
 [lints.clippy]
