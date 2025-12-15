@@ -43,51 +43,50 @@ impl Pattern {
     pub fn to_source(&self) -> String {
         match self {
             Self::Wildcard => "_".to_string(),
-            Self::Var { declared, name } => {
-                if *declared {
-                    format!("var {name}")
-                } else {
-                    name.clone()
-                }
-            }
-            Self::Tuple(items) => {
-                let mut out = String::from("(");
-                for (idx, item) in items.iter().enumerate() {
-                    if idx > 0 {
-                        out.push_str(", ");
-                    }
-                    out.push_str(&item.to_source());
-                }
-                out.push(')');
-                out
-            }
-            Self::Struct { name, fields } => {
-                let mut out = String::new();
-                out.push_str(name);
-                out.push_str(" {");
-                if !fields.is_empty() {
-                    out.push(' ');
-                }
-                for (idx, (field, pat)) in fields.iter().enumerate() {
-                    if idx > 0 {
-                        out.push_str(", ");
-                    }
-                    out.push_str(field);
-                    out.push_str(": ");
-                    out.push_str(&pat.to_source());
-                }
-                if !fields.is_empty() {
-                    out.push(' ');
-                }
-                out.push('}');
-                out
-            }
+            Self::Var { declared, name } => Self::format_var(*declared, name),
+            Self::Tuple(items) => Self::format_tuple(items),
+            Self::Struct { name, fields } => Self::format_struct(name, fields),
             Self::Typed { pattern, ty } => format!("{}: {ty}", pattern.to_source()),
-            Self::Literal(lit) => match lit {
-                PatternLiteral::Int(i) => i.raw.clone(),
-                PatternLiteral::String(s) => s.to_sexpr(),
-                PatternLiteral::Bool(b) => b.to_string(),
-            },
+            Self::Literal(lit) => Self::format_literal(lit),
+        }
+    }
+
+    fn format_var(declared: bool, name: &str) -> String {
+        if declared {
+            format!("var {name}")
+        } else {
+            name.to_string()
+        }
+    }
+
+    fn format_tuple(items: &[Pattern]) -> String {
+        let inner = items
+            .iter()
+            .map(Self::to_source)
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("({inner})")
+    }
+
+    fn format_struct(name: &str, fields: &[(String, Pattern)]) -> String {
+        let inner = fields
+            .iter()
+            .map(|(field, pat)| format!("{field}: {}", pat.to_source()))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        if inner.is_empty() {
+            format!("{name} {{}}")
+        } else {
+            format!("{name} {{ {inner} }}")
+        }
+    }
+
+    fn format_literal(lit: &PatternLiteral) -> String {
+        match lit {
+            PatternLiteral::Int(i) => i.raw.clone(),
+            PatternLiteral::String(s) => s.to_sexpr(),
+            PatternLiteral::Bool(b) => b.to_string(),
         }
     }
 }
