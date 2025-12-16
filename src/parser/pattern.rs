@@ -284,60 +284,11 @@ fn parse_struct_pattern(ts: &mut PatternTokenStream<'_>, name: String) -> Option
         return Some(Pattern::Struct { name, fields });
     }
 
-    loop {
-        let (kind, span) = ts.next_tok()?;
-        if !matches!(
-            kind,
-            SyntaxKind::T_IDENT
-                | SyntaxKind::K_FLATMAP
-                | SyntaxKind::K_AGGREGATE
-                | SyntaxKind::K_INSPECT
-        ) {
-            ts.errors.push(Simple::custom(
-                span,
-                "expected field name in struct pattern",
-            ));
-            return None;
-        }
-        let field_name = ts.slice(&span);
-        if !is_lowercase_ident(&field_name) {
-            ts.errors.push(Simple::custom(
-                span,
-                "expected lower-case field name in struct pattern",
-            ));
-            return None;
-        }
-
-        if !ts.expect(SyntaxKind::T_COLON, "expected ':' after field name") {
-            return None;
-        }
-
-        let value = parse_pattern_inner(ts)?;
-        fields.push((field_name, value));
-
-        match ts.peek_kind() {
-            Some(SyntaxKind::T_COMMA) => {
-                ts.next_tok();
-                if ts.peek_kind() == Some(SyntaxKind::T_RBRACE) {
-                    break;
-                }
-            }
-            Some(SyntaxKind::T_RBRACE) => break,
-            Some(_) => {
-                let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
-                ts.errors.push(Simple::custom(
-                    span,
-                    "expected ',' or '}' in struct pattern",
-                ));
-                return None;
-            }
-            None => {
-                ts.errors.push(Simple::custom(
-                    ts.eof_span(),
-                    "expected '}' to close struct pattern",
-                ));
-                return None;
-            }
+    while let Some((field, pattern)) = parse_struct_field(ts) {
+        fields.push((field, pattern));
+        match parse_field_delimiter(ts)? {
+            true => continue,
+            false => break,
         }
     }
 
@@ -346,6 +297,55 @@ fn parse_struct_pattern(ts: &mut PatternTokenStream<'_>, name: String) -> Option
     }
 
     Some(Pattern::Struct { name, fields })
+}
+
+fn parse_struct_field(ts: &mut PatternTokenStream<'_>) -> Option<(String, Pattern)> {
+    let (kind, span) = ts.next_tok()?;
+    if !matches!(
+        kind,
+        SyntaxKind::T_IDENT | SyntaxKind::K_FLATMAP | SyntaxKind::K_AGGREGATE | SyntaxKind::K_INSPECT
+    ) {
+        ts.errors
+            .push(Simple::custom(span, "expected field name in struct pattern"));
+        return None;
+    }
+
+    let field_name = ts.slice(&span);
+    if !is_lowercase_ident(&field_name) {
+        ts.errors.push(Simple::custom(
+            span,
+            "expected lower-case field name in struct pattern",
+        ));
+        return None;
+    }
+
+    if !ts.expect(SyntaxKind::T_COLON, "expected ':' after field name") {
+        return None;
+    }
+
+    let value = parse_pattern_inner(ts)?;
+    Some((field_name, value))
+}
+
+fn parse_field_delimiter(ts: &mut PatternTokenStream<'_>) -> Option<bool> {
+    match ts.peek_kind() {
+        Some(SyntaxKind::T_COMMA) => {
+            ts.next_tok();
+            Some(ts.peek_kind() != Some(SyntaxKind::T_RBRACE))
+        }
+        Some(SyntaxKind::T_RBRACE) => Some(false),
+        Some(_) => {
+            let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
+            ts.errors
+                .push(Simple::custom(span, "expected ',' or '}' in struct pattern"));
+            None
+        }
+        None => {
+            ts.errors
+                .push(Simple::custom(ts.eof_span(), "expected '}' to close struct pattern"));
+            None
+        }
+    }
 }
 
 fn parse_type_expr(ts: &mut PatternTokenStream<'_>) -> Option<String> {
