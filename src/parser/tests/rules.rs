@@ -143,11 +143,16 @@ fn split_assignment_trims_pattern_and_value_whitespace() {
     assert_eq!(parts.value, "bar");
 }
 
-#[test]
-fn body_terms_capture_flatmap_assignments() {
-    let src = "Flat(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)).";
+#[expect(
+    clippy::expect_used,
+    reason = "tests require a single parsed rule for assignment assertions"
+)]
+fn assert_body_assignment(
+    src: &str,
+    expected_terms_count: usize,
+    assignment_index: usize,
+) -> (Pattern, Expr) {
     let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -158,20 +163,27 @@ fn body_terms_capture_flatmap_assignments() {
         Ok(terms) => terms,
         Err(errs) => panic!("body terms should parse: {errs:?}"),
     };
-    assert_eq!(terms.len(), 2);
-    let assignment = match terms.get(1) {
+    assert_eq!(terms.len(), expected_terms_count);
+    let assignment = match terms.get(assignment_index) {
         Some(RuleBodyTerm::Assignment(assign)) => assign,
         other => panic!("expected assignment term, got {other:?}"),
     };
+    (assignment.pattern.clone(), assignment.value.clone())
+}
+
+#[test]
+fn body_terms_capture_flatmap_assignments() {
+    let src = "Flat(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)).";
+    let (pattern, value) = assert_body_assignment(src, 2, 1);
     assert_eq!(
-        assignment.pattern,
+        pattern,
         Pattern::Var {
             declared: true,
             name: "ip".to_string()
         }
     );
     assert_eq!(
-        assignment.value,
+        value,
         call("FlatMap", vec![call("extract_ips", vec![var("addrs")])])
     );
 }
@@ -179,25 +191,9 @@ fn body_terms_capture_flatmap_assignments() {
 #[test]
 fn body_terms_capture_tuple_bind_assignments() {
     let src = "Joined(key, value) :- Source(pairs), (key, value) = FlatMap(extract_pairs(pairs)).";
-    let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let terms = match rule.body_terms() {
-        Ok(terms) => terms,
-        Err(errs) => panic!("body terms should parse: {errs:?}"),
-    };
-    assert_eq!(terms.len(), 2);
-    let assignment = match terms.get(1) {
-        Some(RuleBodyTerm::Assignment(assign)) => assign,
-        other => panic!("expected assignment term, got {other:?}"),
-    };
+    let (pattern, _value) = assert_body_assignment(src, 2, 1);
     assert_eq!(
-        assignment.pattern,
+        pattern,
         Pattern::Tuple(vec![
             Pattern::Var {
                 declared: false,

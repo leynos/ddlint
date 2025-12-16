@@ -140,63 +140,10 @@ fn parse_primary_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
         SyntaxKind::T_IDENT
         | SyntaxKind::K_FLATMAP
         | SyntaxKind::K_AGGREGATE
-        | SyntaxKind::K_INSPECT => {
-            let (_, span) = ts.next_tok()?;
-            let name = ts.slice(&span);
-            if is_uppercase_ident(&name) {
-                if ts.peek_kind() == Some(SyntaxKind::T_LBRACE) {
-                    return parse_struct_pattern(ts, name);
-                }
-                ts.errors.push(Simple::custom(
-                    span,
-                    "expected '{' to start a struct pattern",
-                ));
-                None
-            } else {
-                Some(Pattern::Var {
-                    declared: false,
-                    name,
-                })
-            }
-        }
+        | SyntaxKind::K_INSPECT => parse_identifier_pattern(ts),
         SyntaxKind::T_LPAREN => parse_tuple_pattern(ts),
-        SyntaxKind::T_STRING => {
-            let (_, span) = ts.next_tok()?;
-            let text = ts.slice(&span);
-            let literal = match StringLiteral::parse(&text) {
-                Ok(lit) => lit,
-                Err(msg) => {
-                    ts.errors.push(Simple::custom(span, msg));
-                    return None;
-                }
-            };
-            if literal.is_interpolated() {
-                ts.errors.push(Simple::custom(
-                    span,
-                    "interpolated strings are not allowed in patterns",
-                ));
-                return None;
-            }
-            Some(Pattern::Literal(PatternLiteral::String(literal)))
-        }
-        SyntaxKind::T_NUMBER => {
-            let (_, span) = ts.next_tok()?;
-            let text = ts.slice(&span);
-            match parse_numeric_literal(&text) {
-                Ok(crate::parser::ast::NumberLiteral::Int(int)) => {
-                    Some(Pattern::Literal(PatternLiteral::Int(int)))
-                }
-                Ok(crate::parser::ast::NumberLiteral::Float(_)) => {
-                    ts.errors
-                        .push(Simple::custom(span, "expected integer literal in pattern"));
-                    None
-                }
-                Err(err) => {
-                    ts.errors.push(Simple::custom(span, err.message()));
-                    None
-                }
-            }
-        }
+        SyntaxKind::T_STRING => parse_string_literal_pattern(ts),
+        SyntaxKind::T_NUMBER => parse_number_literal_pattern(ts),
         SyntaxKind::K_TRUE => {
             ts.next_tok();
             Some(Pattern::Literal(PatternLiteral::Bool(true)))
@@ -208,6 +155,65 @@ fn parse_primary_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
         _ => {
             let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
             ts.errors.push(Simple::custom(span, "expected pattern"));
+            None
+        }
+    }
+}
+
+fn parse_identifier_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
+    let (_, span) = ts.next_tok()?;
+    let name = ts.slice(&span);
+    if is_uppercase_ident(&name) {
+        if ts.peek_kind() == Some(SyntaxKind::T_LBRACE) {
+            return parse_struct_pattern(ts, name);
+        }
+        ts.errors.push(Simple::custom(
+            span,
+            "expected '{' to start a struct pattern",
+        ));
+        return None;
+    }
+
+    Some(Pattern::Var {
+        declared: false,
+        name,
+    })
+}
+
+fn parse_string_literal_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
+    let (_, span) = ts.next_tok()?;
+    let text = ts.slice(&span);
+    let literal = match StringLiteral::parse(&text) {
+        Ok(lit) => lit,
+        Err(msg) => {
+            ts.errors.push(Simple::custom(span, msg));
+            return None;
+        }
+    };
+    if literal.is_interpolated() {
+        ts.errors.push(Simple::custom(
+            span,
+            "interpolated strings are not allowed in patterns",
+        ));
+        return None;
+    }
+    Some(Pattern::Literal(PatternLiteral::String(literal)))
+}
+
+fn parse_number_literal_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
+    let (_, span) = ts.next_tok()?;
+    let text = ts.slice(&span);
+    match parse_numeric_literal(&text) {
+        Ok(crate::parser::ast::NumberLiteral::Int(int)) => {
+            Some(Pattern::Literal(PatternLiteral::Int(int)))
+        }
+        Ok(crate::parser::ast::NumberLiteral::Float(_)) => {
+            ts.errors
+                .push(Simple::custom(span, "expected integer literal in pattern"));
+            None
+        }
+        Err(err) => {
+            ts.errors.push(Simple::custom(span, err.message()));
             None
         }
     }
@@ -286,9 +292,8 @@ fn parse_struct_pattern(ts: &mut PatternTokenStream<'_>, name: String) -> Option
 
     while let Some((field, pattern)) = parse_struct_field(ts) {
         fields.push((field, pattern));
-        match parse_field_delimiter(ts)? {
-            true => continue,
-            false => break,
+        if !parse_field_delimiter(ts)? {
+            break;
         }
     }
 
@@ -303,10 +308,15 @@ fn parse_struct_field(ts: &mut PatternTokenStream<'_>) -> Option<(String, Patter
     let (kind, span) = ts.next_tok()?;
     if !matches!(
         kind,
-        SyntaxKind::T_IDENT | SyntaxKind::K_FLATMAP | SyntaxKind::K_AGGREGATE | SyntaxKind::K_INSPECT
+        SyntaxKind::T_IDENT
+            | SyntaxKind::K_FLATMAP
+            | SyntaxKind::K_AGGREGATE
+            | SyntaxKind::K_INSPECT
     ) {
-        ts.errors
-            .push(Simple::custom(span, "expected field name in struct pattern"));
+        ts.errors.push(Simple::custom(
+            span,
+            "expected field name in struct pattern",
+        ));
         return None;
     }
 
@@ -336,13 +346,17 @@ fn parse_field_delimiter(ts: &mut PatternTokenStream<'_>) -> Option<bool> {
         Some(SyntaxKind::T_RBRACE) => Some(false),
         Some(_) => {
             let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
-            ts.errors
-                .push(Simple::custom(span, "expected ',' or '}' in struct pattern"));
+            ts.errors.push(Simple::custom(
+                span,
+                "expected ',' or '}' in struct pattern",
+            ));
             None
         }
         None => {
-            ts.errors
-                .push(Simple::custom(ts.eof_span(), "expected '}' to close struct pattern"));
+            ts.errors.push(Simple::custom(
+                ts.eof_span(),
+                "expected '}' to close struct pattern",
+            ));
             None
         }
     }
@@ -350,48 +364,66 @@ fn parse_field_delimiter(ts: &mut PatternTokenStream<'_>) -> Option<bool> {
 
 fn parse_type_expr(ts: &mut PatternTokenStream<'_>) -> Option<String> {
     let mut buf = String::new();
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
-    let mut angle_depth = 0usize;
+    let mut depths = DelimiterDepths::default();
 
     while let Some(kind) = ts.peek_kind() {
-        let at_top_level =
-            paren_depth == 0 && brace_depth == 0 && bracket_depth == 0 && angle_depth == 0;
-
-        if at_top_level
-            && matches!(
-                kind,
-                SyntaxKind::T_COMMA
-                    | SyntaxKind::T_RPAREN
-                    | SyntaxKind::T_RBRACE
-                    | SyntaxKind::T_RBRACKET
-                    | SyntaxKind::T_ARROW
-                    | SyntaxKind::T_EQ
-                    | SyntaxKind::K_IN
-                    | SyntaxKind::T_COLON
-            )
-        {
+        if depths.at_top_level() && is_type_delimiter(kind) {
             break;
         }
 
         let (kind, span) = ts.next_tok()?;
-        match kind {
-            SyntaxKind::T_LPAREN => paren_depth += 1,
-            SyntaxKind::T_RPAREN => paren_depth = paren_depth.saturating_sub(1),
-            SyntaxKind::T_LBRACE => brace_depth += 1,
-            SyntaxKind::T_RBRACE => brace_depth = brace_depth.saturating_sub(1),
-            SyntaxKind::T_LBRACKET => bracket_depth += 1,
-            SyntaxKind::T_RBRACKET => bracket_depth = bracket_depth.saturating_sub(1),
-            SyntaxKind::T_LT => angle_depth += 1,
-            SyntaxKind::T_GT => angle_depth = angle_depth.saturating_sub(1),
-            SyntaxKind::T_SHL => angle_depth += 2,
-            SyntaxKind::T_SHR => angle_depth = angle_depth.saturating_sub(2),
-            _ => {}
-        }
+        depths.adjust_for_token(kind);
         buf.push_str(&ts.slice(&span));
     }
 
+    validate_type_result(ts, &buf)
+}
+
+#[derive(Debug, Default)]
+struct DelimiterDepths {
+    paren: usize,
+    brace: usize,
+    bracket: usize,
+    angle: usize,
+}
+
+impl DelimiterDepths {
+    fn at_top_level(&self) -> bool {
+        self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0
+    }
+
+    fn adjust_for_token(&mut self, kind: SyntaxKind) {
+        match kind {
+            SyntaxKind::T_LPAREN => self.paren += 1,
+            SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
+            SyntaxKind::T_LBRACE => self.brace += 1,
+            SyntaxKind::T_RBRACE => self.brace = self.brace.saturating_sub(1),
+            SyntaxKind::T_LBRACKET => self.bracket += 1,
+            SyntaxKind::T_RBRACKET => self.bracket = self.bracket.saturating_sub(1),
+            SyntaxKind::T_LT => self.angle += 1,
+            SyntaxKind::T_GT => self.angle = self.angle.saturating_sub(1),
+            SyntaxKind::T_SHL => self.angle += 2,
+            SyntaxKind::T_SHR => self.angle = self.angle.saturating_sub(2),
+            _ => {}
+        }
+    }
+}
+
+fn is_type_delimiter(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::T_COMMA
+            | SyntaxKind::T_RPAREN
+            | SyntaxKind::T_RBRACE
+            | SyntaxKind::T_RBRACKET
+            | SyntaxKind::T_ARROW
+            | SyntaxKind::T_EQ
+            | SyntaxKind::K_IN
+            | SyntaxKind::T_COLON
+    )
+}
+
+fn validate_type_result(ts: &mut PatternTokenStream<'_>, buf: &str) -> Option<String> {
     let text = buf.trim();
     if text.is_empty() {
         let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());

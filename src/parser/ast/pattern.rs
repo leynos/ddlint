@@ -59,7 +59,7 @@ impl Pattern {
         }
     }
 
-    fn format_tuple(items: &[Pattern]) -> String {
+    fn format_tuple(items: &[Self]) -> String {
         let inner = items
             .iter()
             .map(Self::to_source)
@@ -68,7 +68,7 @@ impl Pattern {
         format!("({inner})")
     }
 
-    fn format_struct(name: &str, fields: &[(String, Pattern)]) -> String {
+    fn format_struct(name: &str, fields: &[(String, Self)]) -> String {
         let inner = fields
             .iter()
             .map(|(field, pat)| format!("{field}: {}", pat.to_source()))

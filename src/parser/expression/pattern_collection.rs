@@ -181,13 +181,7 @@ where
             PatternContext::for_match_pattern(),
         ))?;
 
-        match crate::parser::pattern::parse_pattern_tokens(&tokens, self.ts.src()) {
-            Ok(pattern) => Some((pattern, span)),
-            Err(errs) => {
-                self.ts.extend_errors(errs);
-                None
-            }
-        }
+        self.parse_collected_pattern_tokens(tokens, span)
     }
 
     pub(super) fn collect_for_pattern(&mut self) -> Option<(Pattern, Span)> {
@@ -205,6 +199,15 @@ where
             PatternContext::for_for_loop_pattern(),
         ))?;
 
+        self.parse_collected_pattern_tokens(tokens, span)
+    }
+
+    fn parse_collected_pattern_tokens(
+        &mut self,
+        tokens: Vec<(SyntaxKind, Span)>,
+        span: Span,
+    ) -> Option<(Pattern, Span)> {
+        let tokens = tokens.into_boxed_slice();
         match crate::parser::pattern::parse_pattern_tokens(&tokens, self.ts.src()) {
             Ok(pattern) => Some((pattern, span)),
             Err(errs) => {
