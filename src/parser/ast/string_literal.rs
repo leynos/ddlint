@@ -128,9 +128,9 @@ impl StringLiteral {
         )
     }
 
-    /// Render the literal for `Expr::to_sexpr` output.
+    /// Render the literal using `DDlog` surface syntax.
     #[must_use]
-    pub fn to_sexpr(&self) -> String {
+    pub fn to_source(&self) -> String {
         match self.kind {
             StringKind::Standard { .. } => {
                 let rendered = format!("{:?}", self.body);
@@ -151,5 +151,11 @@ impl StringLiteral {
                 format!("{prefix}[|{}|]", self.body)
             }
         }
+    }
+
+    /// Render the literal for `Expr::to_sexpr` output.
+    #[must_use]
+    pub fn to_sexpr(&self) -> String {
+        self.to_source()
     }
 }

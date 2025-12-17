@@ -207,8 +207,10 @@ where
         tokens: Vec<(SyntaxKind, Span)>,
         span: Span,
     ) -> Option<(Pattern, Span)> {
-        let tokens = tokens.into_boxed_slice();
-        match crate::parser::pattern::parse_pattern_tokens(&tokens, self.ts.src()) {
+        let parsed = crate::parser::pattern::parse_pattern_tokens(&tokens, self.ts.src());
+        drop(tokens);
+
+        match parsed {
             Ok(pattern) => Some((pattern, span)),
             Err(errs) => {
                 self.ts.extend_errors(errs);

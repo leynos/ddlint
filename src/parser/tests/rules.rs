@@ -208,6 +208,43 @@ fn body_terms_capture_tuple_bind_assignments() {
 }
 
 #[test]
+fn body_terms_shift_assignment_pattern_error_spans() {
+    let pattern_src = r#""${x}""#;
+    let Err(pattern_errors) = crate::parser::pattern::parse_pattern(pattern_src) else {
+        panic!("expected pattern parser to reject interpolated string patterns");
+    };
+    let base_span = pattern_errors
+        .iter()
+        .find(|err| format!("{err:?}").contains("interpolated strings are not allowed"))
+        .unwrap_or_else(|| panic!("expected interpolation diagnostic, got {pattern_errors:?}"))
+        .span();
+
+    let src = format!("Bad() :- Source(), {pattern_src} = FlatMap(foo()).");
+    let parsed = parse_err(&src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+
+    let pattern_start = src
+        .find(pattern_src)
+        .unwrap_or_else(|| panic!("expected pattern source {pattern_src:?} in rule"));
+    let expected_span = (pattern_start + base_span.start)..(pattern_start + base_span.end);
+    let shifted = errors
+        .iter()
+        .find(|err| format!("{err:?}").contains("interpolated strings are not allowed"))
+        .unwrap_or_else(|| panic!("expected interpolation diagnostic, got {errors:?}"));
+    assert_eq!(shifted.span(), expected_span);
+}
+
+#[test]
 fn body_terms_detect_group_by_aggregation() {
     let src =
         "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";

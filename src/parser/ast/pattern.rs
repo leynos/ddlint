@@ -85,7 +85,7 @@ impl Pattern {
     fn format_literal(lit: &PatternLiteral) -> String {
         match lit {
             PatternLiteral::Int(i) => i.raw.clone(),
-            PatternLiteral::String(s) => s.to_sexpr(),
+            PatternLiteral::String(s) => s.to_source(),
             PatternLiteral::Bool(b) => b.to_string(),
         }
     }

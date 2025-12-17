@@ -8,38 +8,35 @@ use chumsky::error::Simple;
 
 use crate::parser::ast::{Pattern, PatternLiteral, StringLiteral};
 use crate::parser::expression::parse_numeric_literal;
+use crate::parser::token_stream::TokenStream;
 use crate::{Span, SyntaxKind};
 
 #[derive(Debug)]
 struct PatternTokenStream<'a> {
-    tokens: &'a [(SyntaxKind, Span)],
-    src: &'a str,
-    cursor: usize,
+    stream: TokenStream<'a>,
     errors: Vec<Simple<SyntaxKind>>,
 }
 
 impl<'a> PatternTokenStream<'a> {
     fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
         Self {
-            tokens,
-            src,
-            cursor: 0,
+            stream: TokenStream::new(tokens, src),
             errors: Vec::new(),
         }
     }
 
     fn peek_kind(&self) -> Option<SyntaxKind> {
-        self.tokens.get(self.cursor).map(|(k, _)| *k)
+        self.stream.peek().map(|(k, _)| *k)
     }
 
     fn peek_span(&self) -> Option<Span> {
-        self.tokens.get(self.cursor).map(|(_, sp)| sp.clone())
+        self.stream.peek().map(|(_, sp)| sp.clone())
     }
 
     fn next_tok(&mut self) -> Option<(SyntaxKind, Span)> {
-        let tok = self.tokens.get(self.cursor).cloned();
+        let tok = self.stream.peek().cloned();
         if tok.is_some() {
-            self.cursor += 1;
+            self.stream.advance();
         }
         tok
     }
@@ -56,15 +53,19 @@ impl<'a> PatternTokenStream<'a> {
     }
 
     fn eof_span(&self) -> Span {
-        self.src.len()..self.src.len()
+        self.stream.src().len()..self.stream.src().len()
     }
 
     fn slice(&self, span: &Span) -> String {
         debug_assert!(
-            span.end <= self.src.len(),
+            span.end <= self.stream.src().len(),
             "invalid span for pattern source slice"
         );
-        self.src.get(span.clone()).unwrap_or("").to_string()
+        self.stream
+            .src()
+            .get(span.clone())
+            .unwrap_or("")
+            .to_string()
     }
 
     fn take_errors(self) -> Vec<Simple<SyntaxKind>> {

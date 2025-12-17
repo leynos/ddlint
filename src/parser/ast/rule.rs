@@ -27,7 +27,8 @@
 //! assert_eq!(rule.body_literals(), vec!["S(x)".into(), "T(x)".into()]);
 //! ```
 
-use chumsky::error::Simple;
+use chumsky::Error as ChumskyError;
+use chumsky::error::{Simple, SimpleReason};
 
 use super::{AstNode, Expr, Pattern};
 use crate::parser::delimiter::find_top_level_eq_span;
@@ -251,7 +252,11 @@ fn parse_assignment(
         )]);
     }
 
-    let pattern = parse_pattern(parts.pattern.trim())?;
+    let pattern_base_offset = literal_span.start.saturating_add(parts.pattern_offset);
+    let pattern = match parse_pattern(&parts.pattern) {
+        Ok(pattern) => pattern,
+        Err(errs) => return Err(shift_errors(errs, pattern_base_offset)),
+    };
 
     match parse_expression(&parts.value) {
         Ok(expr) => Ok(Some(RuleBodyTerm::Assignment(RuleAssignment {
@@ -329,6 +334,7 @@ fn aggregation_arity_error(
 pub(crate) struct AssignmentParts {
     pub(crate) pattern: String,
     pub(crate) value: String,
+    pub(crate) pattern_offset: usize,
 }
 
 /// Split a literal on a single top-level `=` into pattern/value parts.
@@ -337,15 +343,83 @@ pub(crate) struct AssignmentParts {
 /// tests must use `==` (`T_EQEQ`) or occur inside delimiters.
 pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
     let eq_span = find_top_level_eq_span(raw)?;
-    let pattern = raw.get(..eq_span.start).unwrap_or("").trim().to_string();
-    let value = raw.get(eq_span.end..).unwrap_or("").trim().to_string();
-    Some(AssignmentParts { pattern, value })
+    let lhs_full = raw.get(..eq_span.start).unwrap_or("");
+    let (lhs_start, lhs_end) = trim_byte_range(lhs_full);
+    let pattern = lhs_full.get(lhs_start..lhs_end).unwrap_or("").to_string();
+
+    let rhs_full = raw.get(eq_span.end..).unwrap_or("");
+    let (rhs_start, rhs_end) = trim_byte_range(rhs_full);
+    let value = rhs_full.get(rhs_start..rhs_end).unwrap_or("").to_string();
+
+    Some(AssignmentParts {
+        pattern,
+        value,
+        pattern_offset: lhs_start,
+    })
 }
 
 fn text_range_to_span(range: rowan::TextRange) -> Span {
     let start: usize = range.start().into();
     let end: usize = range.end().into();
     start..end
+}
+
+fn shift_span(span: Span, offset: usize) -> Span {
+    span.start.saturating_add(offset)..span.end.saturating_add(offset)
+}
+
+fn shift_errors(errors: Vec<Simple<SyntaxKind>>, offset: usize) -> Vec<Simple<SyntaxKind>> {
+    errors
+        .into_iter()
+        .map(|error| shift_error(&error, offset))
+        .collect()
+}
+
+fn shift_error(error: &Simple<SyntaxKind>, offset: usize) -> Simple<SyntaxKind> {
+    let expected: Vec<Option<SyntaxKind>> = error.expected().copied().collect();
+    let found = error.found().copied();
+    let label = error.label();
+    let reason = error.reason().clone();
+    let span = shift_span(error.span(), offset);
+
+    let shifted = match reason {
+        SimpleReason::Unexpected => Simple::expected_input_found(span, expected, found),
+        SimpleReason::Unclosed {
+            span: unclosed_span,
+            delimiter,
+        } => {
+            let expected_closer = expected
+                .iter()
+                .find_map(|token| *token)
+                .unwrap_or(delimiter);
+            Simple::unclosed_delimiter(
+                shift_span(unclosed_span, offset),
+                delimiter,
+                span,
+                expected_closer,
+                found,
+            )
+        }
+        SimpleReason::Custom(msg) => Simple::custom(span, msg),
+    };
+
+    match label {
+        Some(label) => shifted.with_label(label),
+        None => shifted,
+    }
+}
+
+fn trim_byte_range(text: &str) -> (usize, usize) {
+    let start = text
+        .char_indices()
+        .find(|(_, ch)| !ch.is_whitespace())
+        .map_or(text.len(), |(idx, _)| idx);
+    let end = text
+        .char_indices()
+        .rev()
+        .find(|(_, ch)| !ch.is_whitespace())
+        .map_or(start, |(idx, ch)| idx + ch.len_utf8());
+    (start, end)
 }
 
 #[cfg(test)]
