@@ -11,6 +11,8 @@ use crate::parser::expression::parse_numeric_literal;
 use crate::parser::token_stream::TokenStream;
 use crate::{Span, SyntaxKind};
 
+mod type_expr;
+
 #[derive(Debug)]
 struct PatternTokenStream<'a> {
     stream: TokenStream<'a>,
@@ -34,11 +36,10 @@ impl<'a> PatternTokenStream<'a> {
     }
 
     fn next_tok(&mut self) -> Option<(SyntaxKind, Span)> {
-        let tok = self.stream.peek().cloned();
-        if tok.is_some() {
-            self.stream.advance();
-        }
-        tok
+        self.stream
+            .peek()
+            .cloned()
+            .inspect(|_| self.stream.advance())
     }
 
     fn expect(&mut self, kind: SyntaxKind, msg: &'static str) -> bool {
@@ -121,7 +122,7 @@ fn parse_pattern_inner(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
 
     if ts.peek_kind() == Some(SyntaxKind::T_COLON) {
         ts.next_tok();
-        let ty = parse_type_expr(ts)?;
+        let ty = type_expr::parse_type_expr(ts)?;
         pattern = Pattern::Typed {
             pattern: Box::new(pattern),
             ty,
@@ -239,13 +240,6 @@ fn parse_var_pattern(ts: &mut PatternTokenStream<'_>, declared: bool) -> Option<
     }
 
     let name = ts.slice(&span);
-    if name == "_" {
-        ts.errors.push(Simple::custom(
-            span,
-            "wildcard '_' is not a valid variable binding name",
-        ));
-        return None;
-    }
     if !is_lowercase_ident(&name) {
         ts.errors.push(Simple::custom(
             span,
@@ -363,79 +357,6 @@ fn parse_field_delimiter(ts: &mut PatternTokenStream<'_>) -> Option<bool> {
     }
 }
 
-fn parse_type_expr(ts: &mut PatternTokenStream<'_>) -> Option<String> {
-    let mut buf = String::new();
-    let mut depths = DelimiterDepths::default();
-
-    while let Some(kind) = ts.peek_kind() {
-        if depths.at_top_level() && is_type_delimiter(kind) {
-            break;
-        }
-
-        let (kind, span) = ts.next_tok()?;
-        depths.adjust_for_token(kind);
-        buf.push_str(&ts.slice(&span));
-    }
-
-    validate_type_result(ts, &buf)
-}
-
-#[derive(Debug, Default)]
-struct DelimiterDepths {
-    paren: usize,
-    brace: usize,
-    bracket: usize,
-    angle: usize,
-}
-
-impl DelimiterDepths {
-    fn at_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0
-    }
-
-    fn adjust_for_token(&mut self, kind: SyntaxKind) {
-        match kind {
-            SyntaxKind::T_LPAREN => self.paren += 1,
-            SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
-            SyntaxKind::T_LBRACE => self.brace += 1,
-            SyntaxKind::T_RBRACE => self.brace = self.brace.saturating_sub(1),
-            SyntaxKind::T_LBRACKET => self.bracket += 1,
-            SyntaxKind::T_RBRACKET => self.bracket = self.bracket.saturating_sub(1),
-            SyntaxKind::T_LT => self.angle += 1,
-            SyntaxKind::T_GT => self.angle = self.angle.saturating_sub(1),
-            SyntaxKind::T_SHL => self.angle += 2,
-            SyntaxKind::T_SHR => self.angle = self.angle.saturating_sub(2),
-            _ => {}
-        }
-    }
-}
-
-fn is_type_delimiter(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::T_COMMA
-            | SyntaxKind::T_RPAREN
-            | SyntaxKind::T_RBRACE
-            | SyntaxKind::T_RBRACKET
-            | SyntaxKind::T_ARROW
-            | SyntaxKind::T_EQ
-            | SyntaxKind::K_IN
-            | SyntaxKind::T_COLON
-    )
-}
-
-fn validate_type_result(ts: &mut PatternTokenStream<'_>, buf: &str) -> Option<String> {
-    let text = buf.trim();
-    if text.is_empty() {
-        let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
-        ts.errors
-            .push(Simple::custom(span, "expected type after ':' in pattern"));
-        None
-    } else {
-        Some(text.to_string())
-    }
-}
-
 fn is_uppercase_ident(ident: &str) -> bool {
     ident
         .chars()
@@ -451,67 +372,4 @@ fn is_lowercase_ident(ident: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::ast::Pattern;
-
-    #[expect(clippy::expect_used, reason = "tests assert patterns parse")]
-    #[test]
-    fn parses_var_and_wildcard_patterns() {
-        assert_eq!(
-            parse_pattern("var x").expect("pattern should parse"),
-            Pattern::Var {
-                declared: true,
-                name: "x".to_string()
-            }
-        );
-        assert_eq!(
-            parse_pattern("_").expect("pattern should parse"),
-            Pattern::Wildcard
-        );
-    }
-
-    #[expect(clippy::expect_used, reason = "tests assert patterns parse")]
-    #[test]
-    fn parses_tuple_patterns() {
-        assert_eq!(
-            parse_pattern("(x, y)").expect("pattern should parse"),
-            Pattern::Tuple(vec![
-                Pattern::Var {
-                    declared: false,
-                    name: "x".to_string()
-                },
-                Pattern::Var {
-                    declared: false,
-                    name: "y".to_string()
-                }
-            ])
-        );
-    }
-
-    #[expect(clippy::expect_used, reason = "tests assert patterns parse")]
-    #[test]
-    fn parses_struct_patterns() {
-        let pat = parse_pattern("Point { x: var a, y: _ }").expect("pattern should parse");
-        assert_eq!(pat.to_source(), "Point { x: var a, y: _ }".to_string());
-    }
-
-    #[expect(clippy::expect_used, reason = "tests assert patterns parse")]
-    #[test]
-    fn parses_typed_patterns() {
-        let pat = parse_pattern("var x: Vec<u32>").expect("pattern should parse");
-        assert_eq!(pat.to_source(), "var x: Vec<u32>".to_string());
-    }
-
-    #[test]
-    fn rejects_interpolated_string_literals() {
-        let Err(errs) = parse_pattern(r#""${x}""#) else {
-            panic!("expected error");
-        };
-        assert!(
-            errs.iter()
-                .any(|e| format!("{e:?}").contains("interpolated strings are not allowed")),
-            "expected interpolation diagnostic, got {errs:?}"
-        );
-    }
-}
+mod tests;

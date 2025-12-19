@@ -27,13 +27,13 @@
 //! assert_eq!(rule.body_literals(), vec!["S(x)".into(), "T(x)".into()]);
 //! ```
 
-use chumsky::Error as ChumskyError;
-use chumsky::error::{Simple, SimpleReason};
+use chumsky::error::Simple;
 
 use super::{AstNode, Expr, Pattern};
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
 use crate::parser::pattern::parse_pattern;
+use crate::parser::span_utils::{shift_errors, trim_byte_range};
 use crate::{DdlogLanguage, Span, SyntaxKind};
 
 /// Typed wrapper for a rule declaration.
@@ -258,12 +258,13 @@ fn parse_assignment(
         Err(errs) => return Err(shift_errors(errs, pattern_base_offset)),
     };
 
+    let value_base_offset = literal_span.start.saturating_add(parts.value_offset);
     match parse_expression(&parts.value) {
         Ok(expr) => Ok(Some(RuleBodyTerm::Assignment(RuleAssignment {
             pattern,
             value: expr,
         }))),
-        Err(errs) => Err(errs),
+        Err(errs) => Err(shift_errors(errs, value_base_offset)),
     }
 }
 
@@ -335,6 +336,7 @@ pub(crate) struct AssignmentParts {
     pub(crate) pattern: String,
     pub(crate) value: String,
     pub(crate) pattern_offset: usize,
+    pub(crate) value_offset: usize,
 }
 
 /// Split a literal on a single top-level `=` into pattern/value parts.
@@ -355,6 +357,7 @@ pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
         pattern,
         value,
         pattern_offset: lhs_start,
+        value_offset: eq_span.end.saturating_add(rhs_start),
     })
 }
 
@@ -364,99 +367,5 @@ fn text_range_to_span(range: rowan::TextRange) -> Span {
     start..end
 }
 
-fn shift_span(span: Span, offset: usize) -> Span {
-    span.start.saturating_add(offset)..span.end.saturating_add(offset)
-}
-
-fn shift_errors(errors: Vec<Simple<SyntaxKind>>, offset: usize) -> Vec<Simple<SyntaxKind>> {
-    errors
-        .into_iter()
-        .map(|error| shift_error(&error, offset))
-        .collect()
-}
-
-fn shift_error(error: &Simple<SyntaxKind>, offset: usize) -> Simple<SyntaxKind> {
-    let expected: Vec<Option<SyntaxKind>> = error.expected().copied().collect();
-    let found = error.found().copied();
-    let label = error.label();
-    let reason = error.reason().clone();
-    let span = shift_span(error.span(), offset);
-
-    let shifted = match reason {
-        SimpleReason::Unexpected => Simple::expected_input_found(span, expected, found),
-        SimpleReason::Unclosed {
-            span: unclosed_span,
-            delimiter,
-        } => {
-            let expected_closer = expected
-                .iter()
-                .find_map(|token| *token)
-                .unwrap_or(delimiter);
-            Simple::unclosed_delimiter(
-                shift_span(unclosed_span, offset),
-                delimiter,
-                span,
-                expected_closer,
-                found,
-            )
-        }
-        SimpleReason::Custom(msg) => Simple::custom(span, msg),
-    };
-
-    match label {
-        Some(label) => shifted.with_label(label),
-        None => shifted,
-    }
-}
-
-fn trim_byte_range(text: &str) -> (usize, usize) {
-    let start = text
-        .char_indices()
-        .find(|(_, ch)| !ch.is_whitespace())
-        .map_or(text.len(), |(idx, _)| idx);
-    let end = text
-        .char_indices()
-        .rev()
-        .find(|(_, ch)| !ch.is_whitespace())
-        .map_or(start, |(idx, ch)| idx + ch.len_utf8());
-    (start, end)
-}
-
 #[cfg(test)]
-mod tests {
-
-    use super::Expr;
-    use crate::parse;
-
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    #[test]
-    fn rule_head_and_body() {
-        let parsed = parse("A(x) :- B(x).");
-        let rule = parsed
-            .root()
-            .rules()
-            .first()
-            .cloned()
-            .expect("rule missing");
-        assert_eq!(rule.head().as_deref(), Some("A(x)"));
-        assert_eq!(rule.body_literals(), vec!["B(x)".to_string()]);
-    }
-
-    #[expect(clippy::expect_used, reason = "test requires parsed expressions")]
-    #[test]
-    fn body_expressions_parse_control_flow() {
-        let src = "R(x) :- for (item in Items(item)) Process(item), if (ready(x)) { Accept(x) } else { Skip() }.";
-        let parsed = parse(src);
-        crate::test_util::assert_no_parse_errors(parsed.errors());
-        let rule = parsed
-            .root()
-            .rules()
-            .first()
-            .cloned()
-            .expect("rule missing");
-        let exprs = rule.body_expressions().expect("expressions should parse");
-        assert_eq!(exprs.len(), 2);
-        assert!(matches!(exprs.first(), Some(Expr::ForLoop { .. })));
-        assert!(matches!(exprs.get(1), Some(Expr::IfElse { .. })));
-    }
-}
+mod tests;

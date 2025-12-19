@@ -245,6 +245,41 @@ fn body_terms_shift_assignment_pattern_error_spans() {
 }
 
 #[test]
+fn body_terms_shift_assignment_value_error_spans() {
+    let value_src = "1 2";
+    let Err(value_errors) = crate::parser::expression::parse_expression(value_src) else {
+        panic!("expected expression parser to reject invalid value source");
+    };
+    let base_span = value_errors
+        .first()
+        .unwrap_or_else(|| panic!("expected expression parse error, got {value_errors:?}"))
+        .span();
+
+    let src = format!("Bad() :- Source(), x = {value_src}.");
+    let parsed = parse_err(&src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+
+    let value_start = src
+        .find(value_src)
+        .unwrap_or_else(|| panic!("expected value source {value_src:?} in rule"));
+    let expected_span = (value_start + base_span.start)..(value_start + base_span.end);
+    assert!(
+        errors.iter().any(|err| err.span() == expected_span),
+        "expected shifted value error span {expected_span:?}, got {errors:?}",
+    );
+}
+
+#[test]
 fn body_terms_detect_group_by_aggregation() {
     let src =
         "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";

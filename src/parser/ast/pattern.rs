@@ -63,8 +63,12 @@ impl Pattern {
         let inner = items
             .iter()
             .map(Self::to_source)
-            .collect::<Vec<_>>()
-            .join(", ");
+            .reduce(|mut acc, item| {
+                acc.push_str(", ");
+                acc.push_str(&item);
+                acc
+            })
+            .unwrap_or_default();
         format!("({inner})")
     }
 
@@ -72,8 +76,12 @@ impl Pattern {
         let inner = fields
             .iter()
             .map(|(field, pat)| format!("{field}: {}", pat.to_source()))
-            .collect::<Vec<_>>()
-            .join(", ");
+            .reduce(|mut acc, item| {
+                acc.push_str(", ");
+                acc.push_str(&item);
+                acc
+            })
+            .unwrap_or_default();
 
         if inner.is_empty() {
             format!("{name} {{}}")

@@ -13,6 +13,8 @@ mod lexer_helpers;
 
 mod token_stream;
 
+pub(crate) mod span_utils;
+
 mod span_collector;
 
 mod span_scanners;

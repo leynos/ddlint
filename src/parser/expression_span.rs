@@ -5,13 +5,13 @@
 //! text within those ranges using the Pratt expression parser without
 //! introducing additional coupling.
 
-use chumsky::Error as ChumskyError;
-use chumsky::error::{Simple, SimpleReason};
+use chumsky::error::Simple;
 use thiserror::Error;
 
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
 use crate::parser::pattern::parse_pattern;
+use crate::parser::span_utils::trim_byte_range;
 use crate::{Span, SyntaxKind};
 
 /// Split a rule body into the spans of its comma-separated literals.
@@ -217,59 +217,5 @@ pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Expressio
 }
 
 fn shift_errors(errors: Vec<Simple<SyntaxKind>>, offset: usize) -> Vec<Simple<SyntaxKind>> {
-    errors
-        .into_iter()
-        .map(|error| shift_error(&error, offset))
-        .collect()
-}
-
-fn shift_error(error: &Simple<SyntaxKind>, offset: usize) -> Simple<SyntaxKind> {
-    let expected: Vec<Option<SyntaxKind>> = error.expected().copied().collect();
-    let found = error.found().copied();
-    let label = error.label();
-    let reason = error.reason().clone();
-    let span = shift_span(error.span(), offset);
-
-    let shifted = match reason {
-        SimpleReason::Unexpected => Simple::expected_input_found(span, expected, found),
-        SimpleReason::Unclosed {
-            span: unclosed_span,
-            delimiter,
-        } => {
-            let expected_closer = expected
-                .iter()
-                .find_map(|token| *token)
-                .unwrap_or(delimiter);
-            Simple::unclosed_delimiter(
-                shift_span(unclosed_span, offset),
-                delimiter,
-                span,
-                expected_closer,
-                found,
-            )
-        }
-        SimpleReason::Custom(msg) => Simple::custom(span, msg),
-    };
-
-    match label {
-        Some(label) => shifted.with_label(label),
-        None => shifted,
-    }
-}
-
-fn shift_span(span: Span, offset: usize) -> Span {
-    span.start.saturating_add(offset)..span.end.saturating_add(offset)
-}
-
-fn trim_byte_range(text: &str) -> (usize, usize) {
-    let start = text
-        .char_indices()
-        .find(|(_, ch)| !ch.is_whitespace())
-        .map_or(text.len(), |(idx, _)| idx);
-    let end = text
-        .char_indices()
-        .rev()
-        .find(|(_, ch)| !ch.is_whitespace())
-        .map_or(start, |(idx, ch)| idx + ch.len_utf8());
-    (start, end)
+    crate::parser::span_utils::shift_errors(errors, offset)
 }
