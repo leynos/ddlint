@@ -5,6 +5,7 @@
 
 use ddlint::parser::ast::{BinaryOp, Expr, Literal, StringKind, StringLiteral, UnaryOp};
 use ddlint::parser::expression::parse_numeric_literal;
+use ddlint::test_util::pat;
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
@@ -241,7 +242,7 @@ fn non_interpolated_interned_standard_literal_renders() {
 #[test]
 fn for_loop_renders() {
     let expr = Expr::ForLoop {
-        pattern: "item".into(),
+        pattern: pat("item"),
         iterable: Box::new(var("items")),
         guard: Some(Box::new(var("ready"))),
         body: Box::new(Expr::Call {

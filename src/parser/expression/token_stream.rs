@@ -86,6 +86,10 @@ where
         std::mem::take(&mut self.errors)
     }
 
+    pub(super) fn extend_errors(&mut self, errors: Vec<Simple<SyntaxKind>>) {
+        self.errors.extend(errors);
+    }
+
     pub(super) fn push_error(&mut self, span: Span, msg: impl Into<String>) {
         self.errors.push(Simple::custom(span, msg.into()));
     }
@@ -97,5 +101,9 @@ where
 
     pub(super) fn eof_span(&self) -> Span {
         self.src.len()..self.src.len()
+    }
+
+    pub(super) fn src(&self) -> &'a str {
+        self.src
     }
 }

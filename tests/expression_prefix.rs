@@ -59,11 +59,11 @@ use rstest::rstest;
     ),
 )]
 #[case(
-    "match (item) { Some(x) -> x, _ -> 0 }",
+    "match (item) { Point { x: x } -> x, _ -> 0 }",
     match_expr(
         var("item"),
         vec![
-            match_arm("Some(x)", var("x")),
+            match_arm("Point { x: x }", var("x")),
             match_arm("_", lit_num("0")),
         ],
     ),
@@ -164,6 +164,42 @@ fn for_pattern_rejects_interpolated_raw_string() {
     assert_parse_error(
         &errors,
         "interpolated strings are not allowed in patterns",
+        start,
+        end,
+    );
+}
+
+#[test]
+fn match_pattern_rejects_uppercase_ident_without_braces() {
+    let src = "match (x) { Point -> 1 }";
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    let Some(start) = src.find("Point") else {
+        panic!("identifier span should exist in {src}");
+    };
+    let end = start + "Point".len();
+    assert_parse_error(
+        &errors,
+        "expected '{' to start a struct pattern",
+        start,
+        end,
+    );
+}
+
+#[test]
+fn for_pattern_rejects_uppercase_ident_without_braces() {
+    let src = "for (Point in items) item";
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected error");
+    };
+    let Some(start) = src.find("Point") else {
+        panic!("identifier span should exist in {src}");
+    };
+    let end = start + "Point".len();
+    assert_parse_error(
+        &errors,
+        "expected '{' to start a struct pattern",
         start,
         end,
     );

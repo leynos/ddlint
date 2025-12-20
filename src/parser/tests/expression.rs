@@ -186,11 +186,11 @@ use rstest::rstest;
     )
 )]
 #[case(
-    "match (value) { Point { field: Some((x, [y])) } -> x, _ -> 0, }",
+    "match (value) { Point { field: (x, y) } -> x, _ -> 0, }",
     match_expr(
         var("value"),
         vec![
-            match_arm("Point { field: Some((x, [y])) }", var("x")),
+            match_arm("Point { field: (x, y) }", var("x")),
             match_arm("_", lit_num("0")),
         ],
     )

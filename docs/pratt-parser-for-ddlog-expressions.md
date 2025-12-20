@@ -507,9 +507,15 @@ single blob.
 
 Every literal span is validated by `parse_expression`, which surfaces syntax
 errors from control-flow constructs (e.g., `if` or `for`) alongside standard
-expression diagnostics. The `Rule` AST wrapper exposes the resulting nodes via
+expression diagnostics. When a literal uses an assignment form
+(`Pattern = Expr`), the span validator also parses and validates the left-hand
+pattern, ensuring FlatMap-style binds fail early with precise spans.
+
+The `Rule` AST wrapper exposes the resulting nodes via
 `body_expression_nodes()` and a convenience `body_expressions()` helper that
-re-parses the stored text into structured `Expr` values. Downstream analyses
+re-parses the stored text into structured `Expr` values. Assignment literals
+are surfaced via `body_terms()` as `RuleBodyTerm::Assignment`, which stores a
+dedicated `Pattern` AST node rather than raw pattern text. Downstream analyses
 can therefore reason about rule bodies without rebuilding bespoke parsers or
 retokenising the source.
 

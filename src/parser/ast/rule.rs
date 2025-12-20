@@ -29,9 +29,11 @@
 
 use chumsky::error::Simple;
 
-use super::{AstNode, Expr};
+use super::{AstNode, Expr, Pattern};
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
+use crate::parser::pattern::parse_pattern;
+use crate::parser::span_utils::{shift_errors, trim_byte_range};
 use crate::{DdlogLanguage, Span, SyntaxKind};
 
 /// Typed wrapper for a rule declaration.
@@ -171,7 +173,7 @@ impl RuleBodyExpression {
         let literal_span = self.span();
 
         if let Some(parts) = split_assignment(&raw) {
-            return parse_assignment(parts, &literal_span);
+            return parse_assignment(&parts, &literal_span);
         }
 
         match parse_expression(trimmed) {
@@ -195,13 +197,10 @@ pub enum RuleBodyTerm {
 }
 
 /// Pattern assignment extracted from a rule literal.
-///
-/// The `pattern` field stores the left-hand side exactly as written (after
-/// trimming), so later stages can re-parse it once a full pattern parser lands.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuleAssignment {
     /// Left-hand pattern (e.g., `var ip` or `(key, value)`).
-    pub pattern: String,
+    pub pattern: Pattern,
     /// Expression on the right-hand side.
     pub value: Expr,
 }
@@ -236,10 +235,10 @@ pub struct RuleAggregation {
 }
 
 fn parse_assignment(
-    parts: AssignmentParts,
+    parts: &AssignmentParts,
     literal_span: &Span,
 ) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
-    if parts.pattern.is_empty() {
+    if parts.pattern.trim().is_empty() {
         return Err(vec![Simple::custom(
             literal_span.clone(),
             "expected pattern before '=' in rule literal",
@@ -253,12 +252,19 @@ fn parse_assignment(
         )]);
     }
 
+    let pattern_base_offset = literal_span.start.saturating_add(parts.pattern_offset);
+    let pattern = match parse_pattern(&parts.pattern) {
+        Ok(pattern) => pattern,
+        Err(errs) => return Err(shift_errors(errs, pattern_base_offset)),
+    };
+
+    let value_base_offset = literal_span.start.saturating_add(parts.value_offset);
     match parse_expression(&parts.value) {
         Ok(expr) => Ok(Some(RuleBodyTerm::Assignment(RuleAssignment {
-            pattern: parts.pattern,
+            pattern,
             value: expr,
         }))),
-        Err(errs) => Err(errs),
+        Err(errs) => Err(shift_errors(errs, value_base_offset)),
     }
 }
 
@@ -329,6 +335,8 @@ fn aggregation_arity_error(
 pub(crate) struct AssignmentParts {
     pub(crate) pattern: String,
     pub(crate) value: String,
+    pub(crate) pattern_offset: usize,
+    pub(crate) value_offset: usize,
 }
 
 /// Split a literal on a single top-level `=` into pattern/value parts.
@@ -337,9 +345,20 @@ pub(crate) struct AssignmentParts {
 /// tests must use `==` (`T_EQEQ`) or occur inside delimiters.
 pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
     let eq_span = find_top_level_eq_span(raw)?;
-    let pattern = raw.get(..eq_span.start).unwrap_or("").trim().to_string();
-    let value = raw.get(eq_span.end..).unwrap_or("").trim().to_string();
-    Some(AssignmentParts { pattern, value })
+    let lhs_full = raw.get(..eq_span.start).unwrap_or("");
+    let (lhs_start, lhs_end) = trim_byte_range(lhs_full);
+    let pattern = lhs_full.get(lhs_start..lhs_end).unwrap_or("").to_string();
+
+    let rhs_full = raw.get(eq_span.end..).unwrap_or("");
+    let (rhs_start, rhs_end) = trim_byte_range(rhs_full);
+    let value = rhs_full.get(rhs_start..rhs_end).unwrap_or("").to_string();
+
+    Some(AssignmentParts {
+        pattern,
+        value,
+        pattern_offset: lhs_start,
+        value_offset: eq_span.end.saturating_add(rhs_start),
+    })
 }
 
 fn text_range_to_span(range: rowan::TextRange) -> Span {
@@ -349,40 +368,4 @@ fn text_range_to_span(range: rowan::TextRange) -> Span {
 }
 
 #[cfg(test)]
-mod tests {
-
-    use super::Expr;
-    use crate::parse;
-
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    #[test]
-    fn rule_head_and_body() {
-        let parsed = parse("A(x) :- B(x).");
-        let rule = parsed
-            .root()
-            .rules()
-            .first()
-            .cloned()
-            .expect("rule missing");
-        assert_eq!(rule.head().as_deref(), Some("A(x)"));
-        assert_eq!(rule.body_literals(), vec!["B(x)".to_string()]);
-    }
-
-    #[expect(clippy::expect_used, reason = "test requires parsed expressions")]
-    #[test]
-    fn body_expressions_parse_control_flow() {
-        let src = "R(x) :- for (item in Items(item)) Process(item), if (ready(x)) { Accept(x) } else { Skip() }.";
-        let parsed = parse(src);
-        crate::test_util::assert_no_parse_errors(parsed.errors());
-        let rule = parsed
-            .root()
-            .rules()
-            .first()
-            .cloned()
-            .expect("rule missing");
-        let exprs = rule.body_expressions().expect("expressions should parse");
-        assert_eq!(exprs.len(), 2);
-        assert!(matches!(exprs.first(), Some(Expr::ForLoop { .. })));
-        assert!(matches!(exprs.get(1), Some(Expr::IfElse { .. })));
-    }
-}
+mod tests;
