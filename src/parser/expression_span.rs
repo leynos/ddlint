@@ -11,7 +11,7 @@ use thiserror::Error;
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
 use crate::parser::pattern::parse_pattern;
-use crate::parser::span_utils::trim_byte_range;
+use crate::parser::span_utils::{shift_errors, trim_byte_range};
 use crate::{Span, SyntaxKind};
 
 /// Split a rule body into the spans of its comma-separated literals.
@@ -214,8 +214,4 @@ pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Expressio
     parse_expression(text)
         .map(|_| ())
         .map_err(|errs| ExpressionError::Parse(shift_errors(errs, base_offset)))
-}
-
-fn shift_errors(errors: Vec<Simple<SyntaxKind>>, offset: usize) -> Vec<Simple<SyntaxKind>> {
-    crate::parser::span_utils::shift_errors(errors, offset)
 }

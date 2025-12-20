@@ -3,8 +3,6 @@
 //! Kept in a dedicated module to keep the primary pattern parser readable and
 //! to ensure the parent module remains below the file-size threshold.
 
-use chumsky::error::Simple;
-
 use crate::SyntaxKind;
 
 use super::PatternTokenStream;
@@ -74,8 +72,7 @@ fn validate_type_result(ts: &mut PatternTokenStream<'_>, buf: &str) -> Option<St
     let text = buf.trim();
     if text.is_empty() {
         let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
-        ts.errors
-            .push(Simple::custom(span, "expected type after ':' in pattern"));
+        ts.push_error(span, "expected type after ':' in pattern");
         None
     } else {
         Some(text.to_string())

@@ -48,9 +48,13 @@ impl<'a> PatternTokenStream<'a> {
             true
         } else {
             let span = self.peek_span().unwrap_or_else(|| self.eof_span());
-            self.errors.push(Simple::custom(span, msg));
+            self.push_error(span, msg);
             false
         }
+    }
+
+    fn push_error(&mut self, span: Span, msg: impl Into<String>) {
+        self.errors.push(Simple::custom(span, msg.into()));
     }
 
     fn eof_span(&self) -> Span {
@@ -98,15 +102,13 @@ pub fn parse_pattern_tokens(
     let mut ts = PatternTokenStream::new(tokens, src);
     let Some(pattern) = parse_pattern_inner(&mut ts) else {
         if ts.errors.is_empty() {
-            ts.errors
-                .push(Simple::custom(ts.eof_span(), "expected pattern"));
+            ts.push_error(ts.eof_span(), "expected pattern");
         }
         return Err(ts.take_errors());
     };
 
     if let Some(span) = ts.peek_span() {
-        ts.errors
-            .push(Simple::custom(span, "unexpected token in pattern"));
+        ts.push_error(span, "unexpected token in pattern");
     }
 
     let errs = ts.take_errors();
@@ -156,7 +158,7 @@ fn parse_primary_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> {
         }
         _ => {
             let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
-            ts.errors.push(Simple::custom(span, "expected pattern"));
+            ts.push_error(span, "expected pattern");
             None
         }
     }
@@ -169,10 +171,7 @@ fn parse_identifier_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Pattern> 
         if ts.peek_kind() == Some(SyntaxKind::T_LBRACE) {
             return parse_struct_pattern(ts, name);
         }
-        ts.errors.push(Simple::custom(
-            span,
-            "expected '{' to start a struct pattern",
-        ));
+        ts.push_error(span, "expected '{' to start a struct pattern");
         return None;
     }
 
@@ -188,15 +187,12 @@ fn parse_string_literal_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Patte
     let literal = match StringLiteral::parse(&text) {
         Ok(lit) => lit,
         Err(msg) => {
-            ts.errors.push(Simple::custom(span, msg));
+            ts.push_error(span, msg);
             return None;
         }
     };
     if literal.is_interpolated() {
-        ts.errors.push(Simple::custom(
-            span,
-            "interpolated strings are not allowed in patterns",
-        ));
+        ts.push_error(span, "interpolated strings are not allowed in patterns");
         return None;
     }
     Some(Pattern::Literal(PatternLiteral::String(literal)))
@@ -210,12 +206,11 @@ fn parse_number_literal_pattern(ts: &mut PatternTokenStream<'_>) -> Option<Patte
             Some(Pattern::Literal(PatternLiteral::Int(int)))
         }
         Ok(crate::parser::ast::NumberLiteral::Float(_)) => {
-            ts.errors
-                .push(Simple::custom(span, "expected integer literal in pattern"));
+            ts.push_error(span, "expected integer literal in pattern");
             None
         }
         Err(err) => {
-            ts.errors.push(Simple::custom(span, err.message()));
+            ts.push_error(span, err.message());
             None
         }
     }
@@ -234,17 +229,13 @@ fn parse_var_pattern(ts: &mut PatternTokenStream<'_>, declared: bool) -> Option<
             | SyntaxKind::K_AGGREGATE
             | SyntaxKind::K_INSPECT
     ) {
-        ts.errors
-            .push(Simple::custom(span, "expected identifier in pattern"));
+        ts.push_error(span, "expected identifier in pattern");
         return None;
     }
 
     let name = ts.slice(&span);
     if !is_lowercase_ident(&name) {
-        ts.errors.push(Simple::custom(
-            span,
-            "expected a lower-case identifier in variable pattern",
-        ));
+        ts.push_error(span, "expected a lower-case identifier in variable pattern");
         return None;
     }
 
@@ -308,19 +299,13 @@ fn parse_struct_field(ts: &mut PatternTokenStream<'_>) -> Option<(String, Patter
             | SyntaxKind::K_AGGREGATE
             | SyntaxKind::K_INSPECT
     ) {
-        ts.errors.push(Simple::custom(
-            span,
-            "expected field name in struct pattern",
-        ));
+        ts.push_error(span, "expected field name in struct pattern");
         return None;
     }
 
     let field_name = ts.slice(&span);
     if !is_lowercase_ident(&field_name) {
-        ts.errors.push(Simple::custom(
-            span,
-            "expected lower-case field name in struct pattern",
-        ));
+        ts.push_error(span, "expected lower-case field name in struct pattern");
         return None;
     }
 
@@ -341,17 +326,11 @@ fn parse_field_delimiter(ts: &mut PatternTokenStream<'_>) -> Option<bool> {
         Some(SyntaxKind::T_RBRACE) => Some(false),
         Some(_) => {
             let span = ts.peek_span().unwrap_or_else(|| ts.eof_span());
-            ts.errors.push(Simple::custom(
-                span,
-                "expected ',' or '}' in struct pattern",
-            ));
+            ts.push_error(span, "expected ',' or '}' in struct pattern");
             None
         }
         None => {
-            ts.errors.push(Simple::custom(
-                ts.eof_span(),
-                "expected '}' to close struct pattern",
-            ));
+            ts.push_error(ts.eof_span(), "expected '}' to close struct pattern");
             None
         }
     }
