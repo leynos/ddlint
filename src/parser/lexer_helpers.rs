@@ -123,22 +123,41 @@ pub(super) fn ident() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>>
 /// let parser = atom();
 /// ```
 pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    ident()
+    let ws = inline_ws().repeated();
+
+    let scoped_ident = ident()
         .clone()
         .then(
-            just(SyntaxKind::T_LPAREN)
-                .padded_by(inline_ws().repeated())
-                .ignore_then(
-                    filter(|kind: &SyntaxKind| *kind != SyntaxKind::T_RPAREN)
-                        .ignored()
-                        .padded_by(inline_ws().repeated())
-                        .repeated(),
-                )
-                .then_ignore(just(SyntaxKind::T_RPAREN))
-                .or_not(),
+            choice((just(SyntaxKind::T_COLON_COLON), just(SyntaxKind::T_DOT)))
+                .padded_by(ws.clone())
+                .ignore_then(ident())
+                .repeated(),
         )
         .ignored()
-        .padded_by(inline_ws().repeated())
+        .padded_by(ws.clone());
+
+    let ref_mark = just(SyntaxKind::T_AMP)
+        .ignored()
+        .padded_by(ws.clone())
+        .or_not();
+    let diff_mark = just(SyntaxKind::T_APOSTROPHE)
+        .ignored()
+        .padded_by(ws.clone())
+        .or_not();
+
+    let args = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+    ))
+    .or_not();
+
+    ref_mark
+        .then(scoped_ident)
+        .then(diff_mark)
+        .then(args)
+        .ignored()
+        .padded_by(ws)
 }
 
 /// Parser for a balanced token block such as parentheses or braces.

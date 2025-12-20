@@ -233,6 +233,20 @@ pub enum Expr {
     },
     /// Unary operation expression.
     Unary { op: UnaryOp, expr: Box<Expr> },
+    /// Atom diff marker (`Rel'(...)`), represented as a wrapper around the
+    /// underlying atom expression.
+    AtomDiff {
+        /// Atom expression being marked as a diff atom.
+        expr: Box<Expr>,
+    },
+    /// Atom delay marker (`Atom -<N>`), represented as a wrapper around the
+    /// underlying atom expression.
+    AtomDelay {
+        /// Delay in ticks applied to the atom.
+        delay: u32,
+        /// Atom expression receiving the delay.
+        expr: Box<Expr>,
+    },
     /// Binary operation expression.
     Binary {
         op: BinaryOp,
@@ -313,6 +327,10 @@ impl Expr {
                 else_branch,
             } => format_if_else(condition, then_branch, else_branch),
             Self::Unary { op, expr } => format_nary(op.symbol(), std::iter::once(expr.to_sexpr())),
+            Self::AtomDiff { expr } => format_nary("diff", [expr.to_sexpr()]),
+            Self::AtomDelay { delay, expr } => {
+                format_nary("delay", [delay.to_string(), expr.to_sexpr()])
+            }
             Self::Binary { op, lhs, rhs } => {
                 format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
             }

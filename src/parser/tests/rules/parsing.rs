@@ -39,6 +39,16 @@ fn nested_for_loop_rule() -> &'static str {
     "PairProcessed(a, b) :- for (a in A(a)) for (b in B(b)) ProcessPair(a, b)."
 }
 
+#[fixture]
+fn multi_head_rule_with_adornments() -> &'static str {
+    "&A(x), B'(y)@loc(y) -<1> :- C(x, y)."
+}
+
+#[fixture]
+fn rule_head_delay_out_of_range() -> &'static str {
+    "A()@loc() -<4294967296> :- B()."
+}
+
 #[rstest]
 #[case::simple_rule(simple_rule(), false)]
 #[case::multi_literal_rule(multi_literal_rule(), false)]
@@ -47,6 +57,8 @@ fn nested_for_loop_rule() -> &'static str {
 #[case::for_loop_if_iterable(for_loop_with_if_iterable(), false)]
 #[case::for_loop_with_guard(for_loop_with_guard_rule(), false)]
 #[case::nested_for_loop(nested_for_loop_rule(), false)]
+#[case::multi_head_with_adornments(multi_head_rule_with_adornments(), false)]
+#[case::delay_out_of_range(rule_head_delay_out_of_range(), true)]
 fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool) {
     let parsed = if should_have_errors {
         parse_err(rule_input)

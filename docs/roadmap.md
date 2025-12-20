@@ -154,7 +154,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     `match` arms, `for` bindings, and flatmap constructs instead of storing
     pattern text.
 
-  - [ ] Teach the rule parser to accept multi-head rules, head `@` locations,
+  - [x] Teach the rule parser to accept multi-head rules, head `@` locations,
     delay `-<N>` markers, and diff `'` adornments, and to lower by-ref heads to
     `ref_new`.
 

@@ -169,15 +169,88 @@ where
 
     // Parse highest-precedence postfix operators, delegating each operation to a dedicated helper.
     pub(super) fn parse_postfix(&mut self, mut lhs: Expr) -> Option<Expr> {
+        let mut pending_diff_span: Option<Span> = None;
         loop {
             lhs = match self.ts.peek_kind() {
+                Some(SyntaxKind::T_APOSTROPHE) => {
+                    let (_, sp) = self.ts.next_tok()?;
+                    if pending_diff_span.is_some() {
+                        self.ts.push_error(sp, "duplicate diff marker");
+                    } else {
+                        pending_diff_span = Some(sp);
+                    }
+                    if !matches!(
+                        self.ts.peek_kind(),
+                        Some(SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET)
+                    ) {
+                        let diff_span = pending_diff_span
+                            .take()
+                            .unwrap_or_else(|| self.ts.eof_span());
+                        self.ts
+                            .push_error(diff_span, "diff marker must precede atom arguments");
+                        return None;
+                    }
+                    continue;
+                }
                 Some(SyntaxKind::T_LPAREN) => self.parse_function_call_postfix(lhs)?,
                 Some(SyntaxKind::T_LBRACKET) => self.parse_bit_slice_postfix(lhs)?,
                 Some(SyntaxKind::T_DOT) => self.parse_dot_access_postfix(lhs)?,
+                Some(SyntaxKind::T_MINUS) if self.ts.peek_nth_kind(1) == Some(SyntaxKind::T_LT) => {
+                    if let Some(diff_span) = pending_diff_span.take() {
+                        self.ts
+                            .push_error(diff_span, "diff marker must apply to an atom");
+                    }
+                    self.parse_delay_postfix(lhs)?
+                }
                 _ => break,
             };
+
+            if pending_diff_span.is_some() {
+                lhs = Expr::AtomDiff {
+                    expr: Box::new(lhs),
+                };
+                pending_diff_span = None;
+            }
         }
+
+        if let Some(span) = pending_diff_span.take() {
+            self.ts
+                .push_error(span, "diff marker must be followed by atom arguments");
+            return None;
+        }
+
         Some(lhs)
+    }
+
+    fn parse_delay_postfix(&mut self, lhs: Expr) -> Option<Expr> {
+        self.ts.next_tok()?; // '-'
+        if !self.ts.expect(SyntaxKind::T_LT) {
+            return None;
+        }
+        let (kind, number_span) = self.ts.next_tok().unwrap_or_else(|| {
+            let sp = self.ts.eof_span();
+            (SyntaxKind::N_ERROR, sp)
+        });
+        if kind != SyntaxKind::T_NUMBER {
+            self.ts
+                .push_error(number_span.clone(), "expected delay value");
+            return None;
+        }
+        let raw = self.ts.slice(&number_span);
+        let parsed = parse_u32_decimal(&raw).map_err(|msg| {
+            self.ts.push_error(number_span.clone(), msg);
+        });
+        if parsed.is_err() {
+            return None;
+        }
+        let delay = parsed.ok()?;
+        if !self.ts.expect(SyntaxKind::T_GT) {
+            return None;
+        }
+        Some(Expr::AtomDelay {
+            delay,
+            expr: Box::new(lhs),
+        })
     }
 
     fn parse_function_call_postfix(&mut self, lhs: Expr) -> Option<Expr> {
@@ -300,4 +373,15 @@ where
         }
         Some(ty)
     }
+}
+
+fn parse_u32_decimal(text: &str) -> Result<u32, &'static str> {
+    let cleaned = text.replace('_', "");
+    if cleaned.is_empty() {
+        return Err("expected delay value");
+    }
+    let value: u64 = cleaned
+        .parse()
+        .map_err(|_| "delay must be an unsigned 32-bit integer")?;
+    u32::try_from(value).map_err(|_| "delay must fit u32")
 }
