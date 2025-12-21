@@ -171,55 +171,80 @@ where
     pub(super) fn parse_postfix(&mut self, mut lhs: Expr) -> Option<Expr> {
         let mut pending_diff_span: Option<Span> = None;
         loop {
-            lhs = match self.ts.peek_kind() {
+            match self.ts.peek_kind() {
                 Some(SyntaxKind::T_APOSTROPHE) => {
-                    let (_, sp) = self.ts.next_tok()?;
-                    if pending_diff_span.is_some() {
-                        self.ts.push_error(sp, "duplicate diff marker");
-                    } else {
-                        pending_diff_span = Some(sp);
-                    }
-                    if !matches!(
-                        self.ts.peek_kind(),
-                        Some(SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET)
-                    ) {
-                        let diff_span = pending_diff_span
-                            .take()
-                            .unwrap_or_else(|| self.ts.eof_span());
-                        self.ts
-                            .push_error(diff_span, "diff marker must precede atom arguments");
-                        return None;
-                    }
+                    pending_diff_span = self.handle_diff_marker(pending_diff_span)?;
                     continue;
                 }
-                Some(SyntaxKind::T_LPAREN) => self.parse_function_call_postfix(lhs)?,
-                Some(SyntaxKind::T_LBRACKET) => self.parse_bit_slice_postfix(lhs)?,
-                Some(SyntaxKind::T_DOT) => self.parse_dot_access_postfix(lhs)?,
+                Some(SyntaxKind::T_LPAREN) => {
+                    lhs = self.parse_function_call_postfix(lhs)?;
+                }
+                Some(SyntaxKind::T_LBRACKET) => {
+                    lhs = self.parse_bit_slice_postfix(lhs)?;
+                }
+                Some(SyntaxKind::T_DOT) => {
+                    lhs = self.parse_dot_access_postfix(lhs)?;
+                }
                 Some(SyntaxKind::T_MINUS) if self.ts.peek_nth_kind(1) == Some(SyntaxKind::T_LT) => {
-                    if let Some(diff_span) = pending_diff_span.take() {
-                        self.ts
-                            .push_error(diff_span, "diff marker must apply to an atom");
-                    }
-                    self.parse_delay_postfix(lhs)?
+                    self.validate_diff_not_pending(&mut pending_diff_span);
+                    lhs = self.parse_delay_postfix(lhs)?;
                 }
                 _ => break,
-            };
-
-            if pending_diff_span.is_some() {
-                lhs = Expr::AtomDiff {
-                    expr: Box::new(lhs),
-                };
-                pending_diff_span = None;
             }
+
+            lhs = self.apply_pending_diff(lhs, &mut pending_diff_span);
         }
 
-        if let Some(span) = pending_diff_span.take() {
+        self.validate_no_pending_diff(&mut pending_diff_span)?;
+
+        Some(lhs)
+    }
+
+    fn handle_diff_marker(&mut self, mut pending: Option<Span>) -> Option<Option<Span>> {
+        let (_, sp) = self.ts.next_tok()?;
+        if pending.is_some() {
+            self.ts.push_error(sp, "duplicate diff marker");
+        } else {
+            pending = Some(sp);
+        }
+
+        if !matches!(
+            self.ts.peek_kind(),
+            Some(SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET)
+        ) {
+            let diff_span = pending.take().unwrap_or_else(|| self.ts.eof_span());
+            self.ts
+                .push_error(diff_span, "diff marker must precede atom arguments");
+            return None;
+        }
+
+        Some(pending)
+    }
+
+    fn apply_pending_diff(&mut self, expr: Expr, pending: &mut Option<Span>) -> Expr {
+        if pending.is_some() {
+            let _ = pending.take();
+            return Expr::AtomDiff {
+                expr: Box::new(expr),
+            };
+        }
+        expr
+    }
+
+    fn validate_diff_not_pending(&mut self, pending: &mut Option<Span>) {
+        if let Some(diff_span) = pending.take() {
+            self.ts
+                .push_error(diff_span, "diff marker must apply to an atom");
+        }
+    }
+
+    fn validate_no_pending_diff(&mut self, pending: &mut Option<Span>) -> Option<()> {
+        if let Some(span) = pending.take() {
             self.ts
                 .push_error(span, "diff marker must be followed by atom arguments");
             return None;
         }
-
-        Some(lhs)
+        Some(())
     }
 
     fn parse_delay_postfix(&mut self, lhs: Expr) -> Option<Expr> {

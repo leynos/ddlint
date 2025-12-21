@@ -21,6 +21,7 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
     let mut bracket_depth = 0usize;
 
     for e in syntax.children_with_tokens() {
+        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
         match e {
             NodeOrToken::Token(t) => match t.kind() {
                 SyntaxKind::T_LPAREN => {
@@ -47,9 +48,7 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
                     bracket_depth = bracket_depth.saturating_sub(1);
                     buf.push_str(t.text());
                 }
-                SyntaxKind::T_COMMA
-                    if paren_depth == 0 && brace_depth == 0 && bracket_depth == 0 =>
-                {
+                SyntaxKind::T_COMMA if at_top_level => {
                     break;
                 }
                 SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => break,
