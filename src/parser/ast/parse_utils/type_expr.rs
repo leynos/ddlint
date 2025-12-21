@@ -10,25 +10,8 @@ use crate::{DdlogLanguage, SyntaxKind};
 use super::super::skip_whitespace_and_comments;
 use super::{
     errors::{Delim, DelimStack, ParseError},
-    token_utils::{TokenParseContext, close_delimiter, is_trivia, open_delimiter, push},
+    token_utils::{TokenParseContext, close_delimiter, open_delimiter, push, skip_next_trivia},
 };
-
-/// Skips the next element if it's trivia and advances the iterator.
-///
-/// Returns `true` if trivia was skipped, `false` otherwise.
-fn skip_next_trivia_element<I>(iter: &mut std::iter::Peekable<I>) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    if let Some(peeked) = iter.peek()
-        && is_trivia(peeked)
-    {
-        iter.next();
-        true
-    } else {
-        false
-    }
-}
 
 /// Processes the next token within a type expression.
 ///
@@ -40,7 +23,7 @@ fn process_next_token_in_type_expr<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    if skip_next_trivia_element(iter) {
+    if skip_next_trivia(iter) {
         return false;
     }
     process_type_element(iter, ctx)
@@ -143,51 +126,29 @@ where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     match op {
-        DelimiterOperation::Open => handle_open_delimiter(delim, count, token, iter, ctx),
-        DelimiterOperation::Close => handle_close_delimiter(delim, count, token, iter, ctx),
-    }
-}
-
-fn handle_open_delimiter<I>(
-    delim: Delim,
-    count: usize,
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    iter: &mut std::iter::Peekable<I>,
-    ctx: &mut TokenParseContext<'_>,
-) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
-    push(token, ctx);
-    iter.next();
-    false
-}
-
-fn handle_close_delimiter<I>(
-    delim: Delim,
-    count: usize,
-    token: &rowan::SyntaxToken<DdlogLanguage>,
-    iter: &mut std::iter::Peekable<I>,
-    ctx: &mut TokenParseContext<'_>,
-) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    if close_delimiter(&mut *ctx.stack, delim, count) < count {
-        if delim == Delim::Paren {
-            // A stray closing parenthesis terminates the type expression
-            // without recording an error. Higher layers use `)` as a hard
-            // boundary for parameter lists; continuing here risks consuming
-            // tokens beyond parameters and would produce duplicate
-            // diagnostics.
-            return true;
+        DelimiterOperation::Open => {
+            open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
+            push(token, ctx);
+            iter.next();
+            false
         }
-        ctx.push_error(delim, token);
+        DelimiterOperation::Close => {
+            if close_delimiter(&mut *ctx.stack, delim, count) < count {
+                if delim == Delim::Paren {
+                    // A stray closing parenthesis terminates the type expression
+                    // without recording an error. Higher layers use `)` as a hard
+                    // boundary for parameter lists; continuing here risks consuming
+                    // tokens beyond parameters and would produce duplicate
+                    // diagnostics.
+                    return true;
+                }
+                ctx.push_error(delim, token);
+            }
+            push(token, ctx);
+            iter.next();
+            false
+        }
     }
-    push(token, ctx);
-    iter.next();
-    false
 }
 
 fn process_type_token<I>(

@@ -10,11 +10,14 @@ use rowan::{SyntaxElement, TextRange, TextSize};
 use crate::{DdlogLanguage, SyntaxKind};
 
 use super::super::skip_whitespace_and_comments;
-use super::type_expr::parse_type_expr;
 use super::{
     errors::{Delim, ParseError},
-    token_utils::{is_trivia, record_delimiter_error},
+    token_utils::{record_delimiter_error, skip_next_trivia},
 };
+
+mod builder;
+
+use builder::{ParameterBuilder, ProcessingContext};
 
 struct ParameterParsingState {
     name_buf: String,
@@ -148,8 +151,11 @@ where
         return (Vec::new(), Vec::new());
     }
     let mut errors = Vec::new();
-    let (mut pairs, terminated) = parse_parameter_list(&mut iter, &mut errors);
-    report_unclosed_parameter_list(terminated, open_span, &mut pairs, &mut errors);
+    let (pairs, terminated) = parse_parameter_list(&mut iter, &mut errors);
+    let (pairs, maybe_error) = report_unclosed_parameter_list(terminated, open_span, pairs);
+    if let Some(error) = maybe_error {
+        errors.push(error);
+    }
     collect_trailing_delimiter_errors(iter, &mut errors);
     (pairs, errors)
 }
@@ -157,19 +163,19 @@ where
 fn report_unclosed_parameter_list(
     terminated: bool,
     open_span: Option<TextRange>,
-    pairs: &mut Vec<(String, String)>,
-    errors: &mut Vec<ParseError>,
-) {
-    if terminated {
-        return;
-    }
-    if let Some(span) = open_span {
+    mut pairs: Vec<(String, String)>,
+) -> (Vec<(String, String)>, Option<ParseError>) {
+    if !terminated && let Some(span) = open_span {
         pairs.clear();
-        errors.push(ParseError::UnclosedDelimiter {
-            delimiter: ')',
-            span,
-        });
+        return (
+            pairs,
+            Some(ParseError::UnclosedDelimiter {
+                delimiter: ')',
+                span,
+            }),
+        );
     }
+    (pairs, None)
 }
 
 fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> ParameterParsingState
@@ -179,39 +185,15 @@ where
     let mut state = ParameterParsingState::new();
 
     while iter.peek().is_some() {
-        if skip_trivia_element(iter) {
+        if skip_next_trivia(iter) {
             continue;
         }
-        if should_stop_collecting(iter, &mut state) {
+        if process_parameter_token(iter, &mut state) {
             break;
         }
     }
 
     state
-}
-
-fn skip_trivia_element<I>(iter: &mut std::iter::Peekable<I>) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    if let Some(peeked) = iter.peek()
-        && is_trivia(peeked)
-    {
-        iter.next();
-        true
-    } else {
-        false
-    }
-}
-
-fn should_stop_collecting<I>(
-    iter: &mut std::iter::Peekable<I>,
-    state: &mut ParameterParsingState,
-) -> bool
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    process_parameter_token(iter, state)
 }
 
 fn process_parameter_token<I>(
@@ -247,7 +229,7 @@ where
             state.found_colon = true;
             true
         }
-        kind if is_parameter_terminator(kind) => true,
+        SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN => true,
         _ => {
             state.name_buf.push_str(token.text());
             iter.next();
@@ -267,174 +249,6 @@ where
     state.name_buf.push_str(&node.text().to_string());
     iter.next();
     false
-}
-
-fn is_parameter_terminator(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN)
-}
-
-fn create_text_span(start_pos: Option<TextSize>, end_pos: Option<TextSize>) -> Option<TextRange> {
-    match (start_pos, end_pos) {
-        (Some(start), Some(end)) => Some(TextRange::new(start, end)),
-        _ => None,
-    }
-}
-
-/// Shared parsing context for parameter processing.
-struct ProcessingContext<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    iter: &'a mut std::iter::Peekable<I>,
-    errors: &'a mut Vec<ParseError>,
-}
-
-impl<'a, I> ProcessingContext<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    fn new(iter: &'a mut std::iter::Peekable<I>, errors: &'a mut Vec<ParseError>) -> Self {
-        Self { iter, errors }
-    }
-}
-
-struct ParameterBuilder<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    name: String,
-    found_colon: bool,
-    span: Option<TextRange>,
-    iter: &'a mut std::iter::Peekable<I>,
-    errors: &'a mut Vec<ParseError>,
-}
-
-impl<'a, I> ParameterBuilder<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    fn new(state: ParameterParsingState, ctx: ProcessingContext<'a, I>) -> Self {
-        let ParameterParsingState {
-            name_buf,
-            found_colon,
-            start_pos,
-            end_pos,
-        } = state;
-        let span = create_text_span(start_pos, end_pos);
-        let name = name_buf.trim().to_string();
-        let ProcessingContext { iter, errors } = ctx;
-        Self {
-            name,
-            found_colon,
-            span,
-            iter,
-            errors,
-        }
-    }
-
-    fn build(mut self) -> Option<(String, String)> {
-        if self.handle_missing_colon() {
-            return None;
-        }
-        let ty = self.parse_type(0);
-        self.validate_parameter(&ty);
-        if self.name.is_empty() || ty.is_empty() {
-            None
-        } else {
-            Some((self.name, ty))
-        }
-    }
-
-    fn handle_missing_colon(&mut self) -> bool {
-        if self.found_colon {
-            return false;
-        }
-        self.report_missing_colon();
-        consume_until_delimiter(self.iter);
-        true
-    }
-
-    fn report_missing_colon(&mut self) {
-        if let Some(span) = self.span {
-            self.errors.push(ParseError::MissingColon {
-                message: "Expected ':' after name, but found ',' or ')' instead".to_string(),
-                span,
-            });
-        }
-    }
-
-    fn parse_type(&mut self, _min_bp: u8) -> String {
-        skip_whitespace_and_comments(self.iter);
-        if matches!(
-            self.iter.peek().map(SyntaxElement::kind),
-            Some(SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN | SyntaxKind::T_LBRACE)
-        ) {
-            String::new()
-        } else {
-            let (ty, mut errs) = parse_type_expr(self.iter);
-            self.errors.append(&mut errs);
-            ty
-        }
-    }
-
-    fn validate_parameter(&mut self, ty: &str) {
-        self.report_missing_name_if_needed(ty);
-        self.report_missing_type_if_needed(ty);
-    }
-
-    fn report_missing_name_if_needed(&mut self, ty: &str) {
-        if !self.should_report_missing_name(ty) {
-            return;
-        }
-        if let Some(span) = self.span {
-            self.errors.push(ParseError::MissingName { span });
-        }
-    }
-
-    fn report_missing_type_if_needed(&mut self, ty: &str) {
-        if !self.should_report_missing_type(ty) {
-            return;
-        }
-        if let Some(span) = self.span {
-            self.errors.push(ParseError::MissingType { span });
-        }
-    }
-
-    fn should_report_missing_name(&self, ty: &str) -> bool {
-        self.name.is_empty() && !ty.is_empty()
-    }
-
-    fn should_report_missing_type(&self, ty: &str) -> bool {
-        !self.name.is_empty() && ty.is_empty()
-    }
-}
-
-fn consume_until_delimiter<I>(iter: &mut std::iter::Peekable<I>)
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    while let Some(element) = iter.peek() {
-        let kind = element.kind();
-        if is_parameter_separator(kind) {
-            // Consume ',' so the caller proceeds to the next parameter.
-            iter.next();
-            break;
-        }
-        if is_parameter_list_terminator(kind) {
-            // Do NOT consume '{' or ')'; leave it for the outer loop to terminate cleanly.
-            break;
-        }
-        // Consume junk until reaching a delimiter.
-        iter.next();
-    }
-}
-
-fn is_parameter_list_terminator(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::T_LBRACE | SyntaxKind::T_RPAREN)
-}
-
-fn is_parameter_separator(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::T_COMMA)
 }
 
 fn track_span_for_element(
