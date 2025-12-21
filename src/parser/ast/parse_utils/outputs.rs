@@ -62,15 +62,20 @@ where
 {
     let mut iter = iter.peekable();
     skip_to_top_level_colon(&mut iter);
+    collect_comma_separated_identifiers(&mut iter)
+}
 
+fn collect_comma_separated_identifiers<I>(iter: &mut std::iter::Peekable<I>) -> Vec<String>
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
     let mut names = Vec::new();
-    while let Some(name) = try_parse_identifier(&mut iter) {
+    while let Some(name) = try_parse_identifier(iter) {
         names.push(name);
-        if !has_comma_separator(&mut iter) {
+        if !has_comma_separator(iter) {
             break;
         }
     }
-
     names
 }
 
