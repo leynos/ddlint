@@ -173,7 +173,7 @@ where
         loop {
             match self.ts.peek_kind() {
                 Some(SyntaxKind::T_APOSTROPHE) => {
-                    pending_diff_span = self.handle_diff_marker(pending_diff_span)?;
+                    pending_diff_span = self.handle_diff_marker(pending_diff_span).ok()?;
                     continue;
                 }
                 Some(SyntaxKind::T_LPAREN) => {
@@ -192,7 +192,7 @@ where
                 _ => break,
             }
 
-            lhs = self.apply_pending_diff(lhs, &mut pending_diff_span);
+            lhs = Self::apply_pending_diff(lhs, &mut pending_diff_span);
         }
 
         self.validate_no_pending_diff(&mut pending_diff_span)?;
@@ -200,8 +200,8 @@ where
         Some(lhs)
     }
 
-    fn handle_diff_marker(&mut self, mut pending: Option<Span>) -> Option<Option<Span>> {
-        let (_, sp) = self.ts.next_tok()?;
+    fn handle_diff_marker(&mut self, mut pending: Option<Span>) -> Result<Option<Span>, ()> {
+        let (_, sp) = self.ts.next_tok().ok_or(())?;
         if pending.is_some() {
             self.ts.push_error(sp, "duplicate diff marker");
         } else {
@@ -215,13 +215,13 @@ where
             let diff_span = pending.take().unwrap_or_else(|| self.ts.eof_span());
             self.ts
                 .push_error(diff_span, "diff marker must precede atom arguments");
-            return None;
+            return Err(());
         }
 
-        Some(pending)
+        Ok(pending)
     }
 
-    fn apply_pending_diff(&mut self, expr: Expr, pending: &mut Option<Span>) -> Expr {
+    fn apply_pending_diff(expr: Expr, pending: &mut Option<Span>) -> Expr {
         if pending.is_some() {
             let _ = pending.take();
             return Expr::AtomDiff {
