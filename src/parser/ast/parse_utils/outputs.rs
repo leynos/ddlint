@@ -99,4 +99,35 @@ mod tests {
         let names = parse_output_list(tr.syntax().children_with_tokens());
         assert_eq!(names, vec!["Out1".to_string(), "Out2".to_string()]);
     }
+
+    #[test]
+    fn collects_single_output_name() {
+        let src = "extern transformer t(a: X): Out1";
+        let parsed = parse(src);
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let tr = parsed
+            .root()
+            .transformers()
+            .first()
+            .cloned()
+            .expect("transformer missing");
+        let names = parse_output_list(tr.syntax().children_with_tokens());
+        assert_eq!(names, vec!["Out1".to_string()]);
+    }
+
+    #[test]
+    fn collects_no_output_names() {
+        let src = "extern transformer t(a: X):";
+        let parsed = parse(src);
+        let names = parse_output_list(parsed.root().syntax().children_with_tokens());
+        assert!(names.is_empty());
+    }
+
+    #[test]
+    fn collects_output_name_with_trailing_comma() {
+        let src = "extern transformer t(a: X): Out1,";
+        let parsed = parse(src);
+        let names = parse_output_list(parsed.root().syntax().children_with_tokens());
+        assert!(names.is_empty());
+    }
 }
