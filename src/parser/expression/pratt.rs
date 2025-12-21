@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use chumsky::error::Simple;
 
 use crate::parser::ast::{Expr, StringLiteral};
+use crate::parser::span_utils::parse_u32_decimal;
 use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
@@ -257,18 +258,17 @@ where
             (SyntaxKind::N_ERROR, sp)
         });
         if kind != SyntaxKind::T_NUMBER {
-            self.ts
-                .push_error(number_span.clone(), "expected delay value");
+            self.ts.push_error(number_span, "expected delay value");
             return None;
         }
         let raw = self.ts.slice(&number_span);
-        let parsed = parse_u32_decimal(&raw).map_err(|msg| {
-            self.ts.push_error(number_span.clone(), msg);
-        });
-        if parsed.is_err() {
-            return None;
-        }
-        let delay = parsed.ok()?;
+        let delay = match parse_u32_decimal(&raw) {
+            Ok(delay) => delay,
+            Err(msg) => {
+                self.ts.push_error(number_span, msg);
+                return None;
+            }
+        };
         if !self.ts.expect(SyntaxKind::T_GT) {
             return None;
         }
@@ -398,15 +398,4 @@ where
         }
         Some(ty)
     }
-}
-
-fn parse_u32_decimal(text: &str) -> Result<u32, &'static str> {
-    let cleaned = text.replace('_', "");
-    if cleaned.is_empty() {
-        return Err("expected delay value");
-    }
-    let value: u64 = cleaned
-        .parse()
-        .map_err(|_| "delay must be an unsigned 32-bit integer")?;
-    u32::try_from(value).map_err(|_| "delay must fit u32")
 }

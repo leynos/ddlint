@@ -1,4 +1,3 @@
-//!
 //! Rule head parsing helpers.
 //!
 //! Rule heads have adornments that do not appear in general expression
@@ -9,8 +8,25 @@ use chumsky::error::Simple;
 
 use crate::parser::ast::{Expr, UnaryOp};
 use crate::parser::expression::parse_expression;
-use crate::parser::span_utils::{shift_errors, trim_byte_range};
+use crate::parser::span_utils::{parse_u32_decimal, shift_errors, trim_byte_range};
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize_with_trivia, tokenize_without_trivia};
+
+fn adjust_delimiter_depth(
+    kind: SyntaxKind,
+    paren_depth: &mut usize,
+    brace_depth: &mut usize,
+    bracket_depth: &mut usize,
+) {
+    match kind {
+        SyntaxKind::T_LPAREN => *paren_depth += 1,
+        SyntaxKind::T_RPAREN => *paren_depth = (*paren_depth).saturating_sub(1),
+        SyntaxKind::T_LBRACE => *brace_depth += 1,
+        SyntaxKind::T_RBRACE => *brace_depth = (*brace_depth).saturating_sub(1),
+        SyntaxKind::T_LBRACKET => *bracket_depth += 1,
+        SyntaxKind::T_RBRACKET => *bracket_depth = (*bracket_depth).saturating_sub(1),
+        _ => {}
+    }
+}
 
 pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Option<String> {
     use rowan::NodeOrToken;
@@ -24,35 +40,19 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
         let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
         match e {
             NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_LPAREN => {
-                    paren_depth += 1;
-                    buf.push_str(t.text());
-                }
-                SyntaxKind::T_RPAREN => {
-                    paren_depth = paren_depth.saturating_sub(1);
-                    buf.push_str(t.text());
-                }
-                SyntaxKind::T_LBRACE => {
-                    brace_depth += 1;
-                    buf.push_str(t.text());
-                }
-                SyntaxKind::T_RBRACE => {
-                    brace_depth = brace_depth.saturating_sub(1);
-                    buf.push_str(t.text());
-                }
-                SyntaxKind::T_LBRACKET => {
-                    bracket_depth += 1;
-                    buf.push_str(t.text());
-                }
-                SyntaxKind::T_RBRACKET => {
-                    bracket_depth = bracket_depth.saturating_sub(1);
-                    buf.push_str(t.text());
-                }
                 SyntaxKind::T_COMMA if at_top_level => {
                     break;
                 }
                 SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => break,
-                _ => buf.push_str(t.text()),
+                kind => {
+                    buf.push_str(t.text());
+                    adjust_delimiter_depth(
+                        kind,
+                        &mut paren_depth,
+                        &mut brace_depth,
+                        &mut bracket_depth,
+                    );
+                }
             },
             NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
         }
@@ -207,15 +207,12 @@ fn split_top_level_commas(tokens: &[(SyntaxKind, Span)]) -> Vec<Span> {
     let mut bracket_depth = 0usize;
 
     for (idx, (kind, _)) in tokens.iter().enumerate() {
-        match kind {
-            SyntaxKind::T_LPAREN => paren_depth += 1,
-            SyntaxKind::T_RPAREN => paren_depth = paren_depth.saturating_sub(1),
-            SyntaxKind::T_LBRACE => brace_depth += 1,
-            SyntaxKind::T_RBRACE => brace_depth = brace_depth.saturating_sub(1),
-            SyntaxKind::T_LBRACKET => bracket_depth += 1,
-            SyntaxKind::T_RBRACKET => bracket_depth = bracket_depth.saturating_sub(1),
-            _ => {}
-        }
+        adjust_delimiter_depth(
+            *kind,
+            &mut paren_depth,
+            &mut brace_depth,
+            &mut bracket_depth,
+        );
 
         let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
         if at_top_level && *kind == SyntaxKind::T_COMMA {
@@ -246,15 +243,12 @@ fn find_top_level_at(tokens: &[(SyntaxKind, Span)]) -> Option<usize> {
     let mut at_idx = None;
 
     for (idx, (kind, _)) in tokens.iter().enumerate() {
-        match kind {
-            SyntaxKind::T_LPAREN => paren_depth += 1,
-            SyntaxKind::T_RPAREN => paren_depth = paren_depth.saturating_sub(1),
-            SyntaxKind::T_LBRACE => brace_depth += 1,
-            SyntaxKind::T_RBRACE => brace_depth = brace_depth.saturating_sub(1),
-            SyntaxKind::T_LBRACKET => bracket_depth += 1,
-            SyntaxKind::T_RBRACKET => bracket_depth = bracket_depth.saturating_sub(1),
-            _ => {}
-        }
+        adjust_delimiter_depth(
+            *kind,
+            &mut paren_depth,
+            &mut brace_depth,
+            &mut bracket_depth,
+        );
 
         let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
         if at_top_level && *kind == SyntaxKind::T_AT {
@@ -307,15 +301,4 @@ fn parse_delay_suffix(
 
     let full = minus_span.start..tokens.last().map_or(minus_span.end, |(_, sp)| sp.end);
     Ok(Some(DelaySuffix { full, value }))
-}
-
-fn parse_u32_decimal(text: &str) -> Result<u32, &'static str> {
-    let cleaned = text.replace('_', "");
-    if cleaned.is_empty() {
-        return Err("expected delay value");
-    }
-    let value: u64 = cleaned
-        .parse()
-        .map_err(|_| "delay must be an unsigned 32-bit integer")?;
-    u32::try_from(value).map_err(|_| "delay must fit u32")
 }

@@ -532,7 +532,7 @@ are not ordinary infix operators:
   error when `N` does not fit in `u32`.
 
 Head locations (`@ expr`) are parsed by the rule head layer (`Rule::heads()`)
-rather than by the Pratt expression parser, because `@` is only valid in rule
+rather than by the Pratt expression parser because `@` is only valid in rule
 heads.
 
 ### 5.5 Operator table completion

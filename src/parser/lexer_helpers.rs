@@ -126,7 +126,6 @@ pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> 
     let ws = inline_ws().repeated();
 
     let scoped_ident = ident()
-        .clone()
         .then(
             choice((just(SyntaxKind::T_COLON_COLON), just(SyntaxKind::T_DOT)))
                 .padded_by(ws.clone())
