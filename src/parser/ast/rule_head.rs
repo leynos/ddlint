@@ -28,6 +28,25 @@ fn adjust_delimiter_depth(
     }
 }
 
+fn process_token_for_head_text(
+    t: rowan::SyntaxToken<DdlogLanguage>,
+    at_top_level: bool,
+    buf: &mut String,
+    paren_depth: &mut usize,
+    brace_depth: &mut usize,
+    bracket_depth: &mut usize,
+) -> bool {
+    match t.kind() {
+        SyntaxKind::T_COMMA if at_top_level => false,
+        SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => false,
+        kind => {
+            buf.push_str(t.text());
+            adjust_delimiter_depth(kind, paren_depth, brace_depth, bracket_depth);
+            true
+        }
+    }
+}
+
 pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Option<String> {
     use rowan::NodeOrToken;
 
@@ -39,21 +58,18 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
     for e in syntax.children_with_tokens() {
         let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
         match e {
-            NodeOrToken::Token(t) => match t.kind() {
-                SyntaxKind::T_COMMA if at_top_level => {
+            NodeOrToken::Token(t) => {
+                if !process_token_for_head_text(
+                    t,
+                    at_top_level,
+                    &mut buf,
+                    &mut paren_depth,
+                    &mut brace_depth,
+                    &mut bracket_depth,
+                ) {
                     break;
                 }
-                SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => break,
-                kind => {
-                    buf.push_str(t.text());
-                    adjust_delimiter_depth(
-                        kind,
-                        &mut paren_depth,
-                        &mut brace_depth,
-                        &mut bracket_depth,
-                    );
-                }
-            },
+            }
             NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
         }
     }
