@@ -387,8 +387,8 @@ stages.
 ### 7.3 Delay and diff marks
 
 - **Delay:** `-<N>` applies a non‑negative 32‑bit unsigned delay to the atom
-  (and in heads may appear after an optional location). Values outside
-  `0..=2^32-1` are rejected.
+  (and in heads may appear after an optional location). Values outside the
+  inclusive range `0..=2^32-1` are rejected.
 - **Diff mark:** a single quote after the atom name (e.g., `Rel'(…)`) marks a
   **difference** atom.
 

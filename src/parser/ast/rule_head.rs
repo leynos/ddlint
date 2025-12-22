@@ -11,37 +11,37 @@ use crate::parser::expression::parse_expression;
 use crate::parser::span_utils::{parse_u32_decimal, shift_errors, trim_byte_range};
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize_with_trivia, tokenize_without_trivia};
 
-fn adjust_delimiter_depth(
-    kind: SyntaxKind,
-    paren_depth: &mut usize,
-    brace_depth: &mut usize,
-    bracket_depth: &mut usize,
-) {
+#[derive(Debug, Default)]
+struct DelimiterDepths {
+    paren: usize,
+    brace: usize,
+    bracket: usize,
+}
+
+fn adjust_delimiter_depth(kind: SyntaxKind, depths: &mut DelimiterDepths) {
     match kind {
-        SyntaxKind::T_LPAREN => *paren_depth += 1,
-        SyntaxKind::T_RPAREN => *paren_depth = (*paren_depth).saturating_sub(1),
-        SyntaxKind::T_LBRACE => *brace_depth += 1,
-        SyntaxKind::T_RBRACE => *brace_depth = (*brace_depth).saturating_sub(1),
-        SyntaxKind::T_LBRACKET => *bracket_depth += 1,
-        SyntaxKind::T_RBRACKET => *bracket_depth = (*bracket_depth).saturating_sub(1),
+        SyntaxKind::T_LPAREN => depths.paren += 1,
+        SyntaxKind::T_RPAREN => depths.paren = depths.paren.saturating_sub(1),
+        SyntaxKind::T_LBRACE => depths.brace += 1,
+        SyntaxKind::T_RBRACE => depths.brace = depths.brace.saturating_sub(1),
+        SyntaxKind::T_LBRACKET => depths.bracket += 1,
+        SyntaxKind::T_RBRACKET => depths.bracket = depths.bracket.saturating_sub(1),
         _ => {}
     }
 }
 
 fn process_token_for_head_text(
-    t: rowan::SyntaxToken<DdlogLanguage>,
+    t: &rowan::SyntaxToken<DdlogLanguage>,
     at_top_level: bool,
     buf: &mut String,
-    paren_depth: &mut usize,
-    brace_depth: &mut usize,
-    bracket_depth: &mut usize,
+    depths: &mut DelimiterDepths,
 ) -> bool {
     match t.kind() {
         SyntaxKind::T_COMMA if at_top_level => false,
         SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => false,
         kind => {
             buf.push_str(t.text());
-            adjust_delimiter_depth(kind, paren_depth, brace_depth, bracket_depth);
+            adjust_delimiter_depth(kind, depths);
             true
         }
     }
@@ -51,22 +51,13 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
     use rowan::NodeOrToken;
 
     let mut buf = String::new();
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
+    let mut depths = DelimiterDepths::default();
 
     for e in syntax.children_with_tokens() {
-        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
+        let at_top_level = depths.paren == 0 && depths.brace == 0 && depths.bracket == 0;
         match e {
             NodeOrToken::Token(t) => {
-                if !process_token_for_head_text(
-                    t,
-                    at_top_level,
-                    &mut buf,
-                    &mut paren_depth,
-                    &mut brace_depth,
-                    &mut bracket_depth,
-                ) {
+                if !process_token_for_head_text(&t, at_top_level, &mut buf, &mut depths) {
                     break;
                 }
             }
@@ -218,19 +209,12 @@ fn split_top_level_commas(tokens: &[(SyntaxKind, Span)]) -> Vec<Span> {
     }
 
     let mut start_idx = 0usize;
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
+    let mut depths = DelimiterDepths::default();
 
     for (idx, (kind, _)) in tokens.iter().enumerate() {
-        adjust_delimiter_depth(
-            *kind,
-            &mut paren_depth,
-            &mut brace_depth,
-            &mut bracket_depth,
-        );
+        adjust_delimiter_depth(*kind, &mut depths);
 
-        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
+        let at_top_level = depths.paren == 0 && depths.brace == 0 && depths.bracket == 0;
         if at_top_level && *kind == SyntaxKind::T_COMMA {
             spans.extend(span_for_token_range(tokens, start_idx, idx));
             start_idx = idx + 1;
@@ -253,20 +237,13 @@ fn span_for_token_range(tokens: &[(SyntaxKind, Span)], start: usize, end: usize)
 }
 
 fn find_top_level_at(tokens: &[(SyntaxKind, Span)]) -> Option<usize> {
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
+    let mut depths = DelimiterDepths::default();
     let mut at_idx = None;
 
     for (idx, (kind, _)) in tokens.iter().enumerate() {
-        adjust_delimiter_depth(
-            *kind,
-            &mut paren_depth,
-            &mut brace_depth,
-            &mut bracket_depth,
-        );
+        adjust_delimiter_depth(*kind, &mut depths);
 
-        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
+        let at_top_level = depths.paren == 0 && depths.brace == 0 && depths.bracket == 0;
         if at_top_level && *kind == SyntaxKind::T_AT {
             at_idx = Some(idx);
             break;

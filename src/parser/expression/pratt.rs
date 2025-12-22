@@ -249,7 +249,12 @@ where
     }
 
     fn parse_delay_postfix(&mut self, lhs: Expr) -> Option<Expr> {
-        self.ts.next_tok()?; // '-'
+        let (minus_kind, _) = self.ts.next_tok()?; // '-'
+        debug_assert_eq!(
+            minus_kind,
+            SyntaxKind::T_MINUS,
+            "parse_delay_postfix must be called with a leading '-' token"
+        );
         if !self.ts.expect(SyntaxKind::T_LT) {
             return None;
         }
