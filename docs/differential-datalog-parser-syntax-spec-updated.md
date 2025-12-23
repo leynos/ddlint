@@ -239,11 +239,11 @@ forms.
 
 ```ebnf
 Rule    ::= RuleLHS (',' RuleLHS)* ':-' RuleRHS '.'
-RuleLHS ::= Atom Location?
+RuleLHS ::= Atom Location? Delay?
 Location::= '@' Expr
 
 RuleRHS ::= RhsTerm (',' RhsTerm)*
-RhsTerm ::= Atom | Condition | Assignment | StatementExpr
+RhsTerm ::= Atom Delay? | Condition | Assignment | StatementExpr
 ```
 
 - **Multiple heads:** `RuleLHS` is a comma‑separated, non‑empty list.
@@ -255,11 +255,11 @@ RhsTerm ::= Atom | Condition | Assignment | StatementExpr
 Two core shapes (constructor and bracket form), with optional adornments:
 
 ```ebnf
-Atom      ::= RefMark? Delay? DiffMark? UcOrLc '(' ArgList? ')'  
-            | RefMark? Delay? DiffMark? UcOrLc '[' ArgList? ']'
+Atom      ::= RefMark? UcOrLc DiffMark? '(' ArgList? ')'
+            | RefMark? UcOrLc DiffMark? '[' ArgList? ']'
 RefMark   ::= '&'
 Delay     ::= '-<' Unsigned32 '>'
-DiffMark  ::= "'"  // single quote
+DiffMark  ::= "'"  // single quote (after the name, before the arguments)
 ArgList   ::= Expr (',' Expr)*
 UcOrLc    ::= UcName | LcName | ScopedPath
 ```
@@ -386,9 +386,11 @@ stages.
 
 ### 7.3 Delay and diff marks
 
-- **Delay:** `-<N>` applies a non‑negative 32‑bit unsigned delay to the atom.
-  Values outside `0..=2^32-1` are rejected.
-- **Diff mark:** a trailing single quote (`'`) marks a **difference** atom.
+- **Delay:** `-<N>` applies a non‑negative 32‑bit unsigned delay to the atom
+  (and in heads may appear after an optional location). Values outside the
+  inclusive range `0..=2^32-1` are rejected.
+- **Diff mark:** a single quote after the atom name (e.g., `Rel'(…)`) marks a
+  **difference** atom.
 
 ______________________________________________________________________
 

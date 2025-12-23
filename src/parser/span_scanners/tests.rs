@@ -160,6 +160,16 @@ fn collects_expression_spans_for_each_literal() {
 }
 
 #[test]
+fn collects_rule_spans_for_by_ref_and_multi_head_rules() {
+    let src = "&A(x), B'(y)@loc(y) -<1> :- C(x, y).";
+    let tokens = tokenize(src);
+    let (rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src, &[]);
+    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+    assert_eq!(rule_spans.len(), 1);
+    assert_eq!(expr_spans.len(), 1);
+}
+
+#[test]
 fn merge_spans_merges_overlapping_and_adjacent() {
     let spans = vec![10..12, 0..5, 5..7, 11..15];
     let merged = merge_spans(spans);

@@ -6,6 +6,7 @@
 use chumsky::prelude::*;
 
 use crate::parser::{
+    ast::rule_head::parse_rule_heads,
     expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
     lexer_helpers::{atom, balanced_block, inline_ws},
 };
@@ -26,7 +27,45 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
         .at_least(1)
         .ignored();
 
-    atom_p
+    let head_tail_token = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        filter(|kind: &SyntaxKind| {
+            !matches!(
+                kind,
+                SyntaxKind::T_COMMA | SyntaxKind::T_DOT | SyntaxKind::T_IMPLIES
+            )
+        })
+        .ignored()
+        .padded_by(ws.clone()),
+    ))
+    .ignored();
+
+    let location = just(SyntaxKind::T_AT)
+        .padded_by(ws.clone())
+        .then(head_tail_token.repeated().at_least(1))
+        .ignored();
+
+    let delay_marker = just(SyntaxKind::T_MINUS)
+        .padded_by(ws.clone())
+        .then_ignore(just(SyntaxKind::T_LT).padded_by(ws.clone()))
+        .then_ignore(just(SyntaxKind::T_NUMBER).padded_by(ws.clone()))
+        .then_ignore(just(SyntaxKind::T_GT))
+        .ignored();
+
+    let head_lhs = atom_p
+        .clone()
+        .then(location.or_not())
+        .then(delay_marker.or_not())
+        .ignored();
+
+    let heads = head_lhs
+        .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
+        .at_least(1)
+        .ignored();
+
+    heads
         .then(
             just(SyntaxKind::T_IMPLIES)
                 .padded_by(ws.clone())
@@ -228,6 +267,12 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     let end = rule_span.end;
     st.spans.push(rule_span.clone());
 
+    if let Some(text) = st.stream.src().get(rule_span.clone())
+        && let Err(errs) = parse_rule_heads(text, rule_span.start)
+    {
+        st.extra.extend(errs);
+    }
+
     for span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
         if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
             match err {
@@ -281,7 +326,7 @@ pub(crate) fn collect_rule_spans(
         }
 
         match kind {
-            SyntaxKind::T_IDENT | SyntaxKind::T_IMPLIES => {
+            SyntaxKind::T_IDENT | SyntaxKind::T_IMPLIES | SyntaxKind::T_AMP => {
                 parse_rule_at_line_start(&mut st, span, &mut expr_spans);
             }
             _ => st.stream.advance(),

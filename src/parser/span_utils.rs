@@ -79,3 +79,14 @@ pub(crate) fn trim_byte_range(text: &str) -> (usize, usize) {
         .map_or(start, |(idx, ch)| idx + ch.len_utf8());
     (start, end)
 }
+
+pub(crate) fn parse_u32_decimal(text: &str) -> Result<u32, &'static str> {
+    let cleaned = text.replace('_', "");
+    if cleaned.is_empty() {
+        return Err("expected delay value");
+    }
+    let value: u64 = cleaned
+        .parse()
+        .map_err(|_| "delay must be an unsigned 32-bit integer")?;
+    u32::try_from(value).map_err(|_| "delay must fit u32")
+}

@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use chumsky::error::Simple;
 
 use crate::parser::ast::{Expr, StringLiteral};
+use crate::parser::span_utils::parse_u32_decimal;
 use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
@@ -169,15 +170,117 @@ where
 
     // Parse highest-precedence postfix operators, delegating each operation to a dedicated helper.
     pub(super) fn parse_postfix(&mut self, mut lhs: Expr) -> Option<Expr> {
+        let mut pending_diff_span: Option<Span> = None;
         loop {
-            lhs = match self.ts.peek_kind() {
-                Some(SyntaxKind::T_LPAREN) => self.parse_function_call_postfix(lhs)?,
-                Some(SyntaxKind::T_LBRACKET) => self.parse_bit_slice_postfix(lhs)?,
-                Some(SyntaxKind::T_DOT) => self.parse_dot_access_postfix(lhs)?,
+            match self.ts.peek_kind() {
+                Some(SyntaxKind::T_APOSTROPHE) => {
+                    self.handle_diff_marker(&mut pending_diff_span)?;
+                    continue;
+                }
+                Some(SyntaxKind::T_LPAREN) => {
+                    lhs = self.parse_function_call_postfix(lhs)?;
+                }
+                Some(SyntaxKind::T_LBRACKET) => {
+                    lhs = self.parse_bit_slice_postfix(lhs)?;
+                }
+                Some(SyntaxKind::T_DOT) => {
+                    lhs = self.parse_dot_access_postfix(lhs)?;
+                }
+                Some(SyntaxKind::T_MINUS) if self.ts.peek_nth_kind(1) == Some(SyntaxKind::T_LT) => {
+                    self.validate_diff_not_pending(&mut pending_diff_span);
+                    lhs = self.parse_delay_postfix(lhs)?;
+                }
                 _ => break,
-            };
+            }
+
+            lhs = Self::apply_pending_diff(lhs, &mut pending_diff_span);
         }
+
+        self.validate_no_pending_diff(&mut pending_diff_span)?;
+
         Some(lhs)
+    }
+
+    fn handle_diff_marker(&mut self, pending: &mut Option<Span>) -> Option<()> {
+        let (_, sp) = self.ts.next_tok()?;
+        if pending.is_some() {
+            self.ts.push_error(sp, "duplicate diff marker");
+        } else {
+            *pending = Some(sp);
+        }
+
+        if !matches!(
+            self.ts.peek_kind(),
+            Some(SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET)
+        ) {
+            let diff_span = pending.take().unwrap_or_else(|| self.ts.eof_span());
+            self.ts
+                .push_error(diff_span, "diff marker must precede atom arguments");
+            return None;
+        }
+
+        Some(())
+    }
+
+    fn apply_pending_diff(expr: Expr, pending: &mut Option<Span>) -> Expr {
+        if pending.take().is_some() {
+            Expr::AtomDiff {
+                expr: Box::new(expr),
+            }
+        } else {
+            expr
+        }
+    }
+
+    fn validate_diff_not_pending(&mut self, pending: &mut Option<Span>) {
+        if let Some(diff_span) = pending.take() {
+            self.ts
+                .push_error(diff_span, "diff marker must apply to an atom");
+        }
+    }
+
+    fn validate_no_pending_diff(&mut self, pending: &mut Option<Span>) -> Option<()> {
+        if let Some(span) = pending.take() {
+            self.ts
+                .push_error(span, "diff marker must be followed by atom arguments");
+            return None;
+        }
+        Some(())
+    }
+
+    fn parse_delay_postfix(&mut self, lhs: Expr) -> Option<Expr> {
+        let (minus_kind, _) = self.ts.next_tok()?; // '-'
+        debug_assert_eq!(
+            minus_kind,
+            SyntaxKind::T_MINUS,
+            "parse_delay_postfix must be called with a leading '-' token"
+        );
+        if !self.ts.expect(SyntaxKind::T_LT) {
+            return None;
+        }
+        let (kind, number_span) = self.ts.next_tok().unwrap_or_else(|| {
+            let sp = self.ts.eof_span();
+            (SyntaxKind::N_ERROR, sp)
+        });
+        if kind != SyntaxKind::T_NUMBER {
+            self.ts.push_error(number_span, "expected delay value");
+            return None;
+        }
+        let raw = self.ts.slice(&number_span);
+        let delay = match parse_u32_decimal(&raw) {
+            Ok(delay) => delay,
+            Err(msg) => {
+                self.ts.push_error(number_span, msg);
+                return None;
+            }
+        };
+        if !self.ts.expect(SyntaxKind::T_GT) {
+            return None;
+        }
+        Some(Expr::AtomDelay {
+            delay,
+            expr: Box::new(lhs),
+        })
     }
 
     fn parse_function_call_postfix(&mut self, lhs: Expr) -> Option<Expr> {

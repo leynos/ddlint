@@ -29,6 +29,7 @@
 
 use chumsky::error::Simple;
 
+use super::rule_head::{RuleHead, first_head_text, parse_rule_heads};
 use super::{AstNode, Expr, Pattern};
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
@@ -43,28 +44,19 @@ pub struct Rule {
 }
 
 impl Rule {
-    /// Text of the rule head atom.
+    /// Text of the first rule head atom.
     #[must_use]
     pub fn head(&self) -> Option<String> {
-        use rowan::NodeOrToken;
+        first_head_text(&self.syntax)
+    }
 
-        let mut buf = String::new();
-        for e in self.syntax.children_with_tokens() {
-            match e {
-                NodeOrToken::Token(t) => match t.kind() {
-                    SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT => break,
-                    _ => buf.push_str(t.text()),
-                },
-                NodeOrToken::Node(n) => buf.push_str(&n.text().to_string()),
-            }
-        }
-
-        let text = buf.trim();
-        if text.is_empty() {
-            None
-        } else {
-            Some(text.to_string())
-        }
+    /// Parse the rule heads into structured expressions.
+    ///
+    /// # Errors
+    /// Returns aggregated diagnostics when a head or location fails to parse.
+    pub fn heads(&self) -> Result<Vec<RuleHead>, Vec<Simple<SyntaxKind>>> {
+        let span = text_range_to_span(self.syntax.text_range());
+        parse_rule_heads(&self.syntax.text().to_string(), span.start)
     }
 
     /// Return the CST nodes representing the rule body expressions.

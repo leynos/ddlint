@@ -519,6 +519,22 @@ dedicated `Pattern` AST node rather than raw pattern text. Downstream analyses
 can therefore reason about rule bodies without rebuilding bespoke parsers or
 retokenising the source.
 
+### 5.4.1 Atom adornments (`'` and `-<N>`)
+
+The updated DDlog syntax allows rule atoms to carry two additional markers that
+are not ordinary infix operators:
+
+- **Diff:** `Rel'(args)` marks a difference atom. The Pratt parser represents
+  this as `Expr::AtomDiff { expr }` wrapped around the underlying atom
+  expression.
+- **Delay:** `Atom -<N>` applies an unsigned delay to an atom. The Pratt parser
+  represents this as `Expr::AtomDelay { delay: u32, expr }` and reports an
+  error when `N` does not fit in `u32`.
+
+Head locations (`@ expr`) are parsed by the rule head layer (`Rule::heads()`)
+rather than by the Pratt expression parser because `@` is only valid in rule
+heads.
+
 ### 5.5 Operator table completion
 
 The precedence table now includes all operators from the updated syntax

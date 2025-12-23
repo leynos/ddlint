@@ -138,6 +138,7 @@ mod precedence;
 mod relation;
 mod root;
 pub(crate) mod rule;
+pub(crate) mod rule_head;
 mod string_literal;
 mod transformer;
 mod type_def;
@@ -158,6 +159,7 @@ pub use root::Root;
 pub use rule::{
     AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
 };
+pub use rule_head::RuleHead;
 pub use string_literal::{StringKind, StringLiteral};
 pub use transformer::Transformer;
 pub use type_def::TypeDef;
