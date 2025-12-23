@@ -10,11 +10,14 @@ use rowan::{SyntaxElement, TextRange, TextSize};
 use crate::{DdlogLanguage, SyntaxKind};
 
 use super::super::skip_whitespace_and_comments;
-use super::type_expr::parse_type_expr;
 use super::{
     errors::{Delim, ParseError},
-    token_utils::{is_trivia, record_delimiter_error},
+    token_utils::{record_delimiter_error, skip_next_trivia},
 };
+
+mod builder;
+
+use builder::{ParameterBuilder, ProcessingContext};
 
 struct ParameterParsingState {
     name_buf: String,
@@ -54,7 +57,7 @@ where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     let state = collect_parameter_name(iter);
-    ParameterBuilder::new(state, ProcessingContext::new(iter, errors)).build()
+    ParameterBuilder::new(state, ProcessingContext { iter, errors }).build()
 }
 
 /// Consuming a trailing `,` returns `false` to continue; consuming `)` returns
@@ -148,16 +151,31 @@ where
         return (Vec::new(), Vec::new());
     }
     let mut errors = Vec::new();
-    let (mut pairs, terminated) = parse_parameter_list(&mut iter, &mut errors);
-    if !terminated && let Some(span) = open_span {
-        pairs.clear();
-        errors.push(ParseError::UnclosedDelimiter {
-            delimiter: ')',
-            span,
-        });
+    let (pairs, terminated) = parse_parameter_list(&mut iter, &mut errors);
+    let (pairs, maybe_error) = report_unclosed_parameter_list(terminated, open_span, pairs);
+    if let Some(error) = maybe_error {
+        errors.push(error);
     }
     collect_trailing_delimiter_errors(iter, &mut errors);
     (pairs, errors)
+}
+
+fn report_unclosed_parameter_list(
+    terminated: bool,
+    open_span: Option<TextRange>,
+    mut pairs: Vec<(String, String)>,
+) -> (Vec<(String, String)>, Option<ParseError>) {
+    if !terminated && let Some(span) = open_span {
+        pairs.clear();
+        return (
+            pairs,
+            Some(ParseError::UnclosedDelimiter {
+                delimiter: ')',
+                span,
+            }),
+        );
+    }
+    (pairs, None)
 }
 
 fn collect_parameter_name<I>(iter: &mut std::iter::Peekable<I>) -> ParameterParsingState
@@ -166,12 +184,10 @@ where
 {
     let mut state = ParameterParsingState::new();
 
-    while let Some(peeked) = iter.peek() {
-        if is_trivia(peeked) {
-            iter.next();
+    while iter.peek().is_some() {
+        if skip_next_trivia(iter) {
             continue;
         }
-
         if process_parameter_token(iter, &mut state) {
             break;
         }
@@ -233,144 +249,6 @@ where
     state.name_buf.push_str(&node.text().to_string());
     iter.next();
     false
-}
-
-fn create_text_span(start_pos: Option<TextSize>, end_pos: Option<TextSize>) -> Option<TextRange> {
-    match (start_pos, end_pos) {
-        (Some(start), Some(end)) => Some(TextRange::new(start, end)),
-        _ => None,
-    }
-}
-
-/// Shared parsing context for parameter processing.
-struct ProcessingContext<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    iter: &'a mut std::iter::Peekable<I>,
-    errors: &'a mut Vec<ParseError>,
-}
-
-impl<'a, I> ProcessingContext<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    fn new(iter: &'a mut std::iter::Peekable<I>, errors: &'a mut Vec<ParseError>) -> Self {
-        Self { iter, errors }
-    }
-}
-
-struct ParameterBuilder<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    name: String,
-    found_colon: bool,
-    span: Option<TextRange>,
-    iter: &'a mut std::iter::Peekable<I>,
-    errors: &'a mut Vec<ParseError>,
-}
-
-impl<'a, I> ParameterBuilder<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    fn new(state: ParameterParsingState, ctx: ProcessingContext<'a, I>) -> Self {
-        let ParameterParsingState {
-            name_buf,
-            found_colon,
-            start_pos,
-            end_pos,
-        } = state;
-        let span = create_text_span(start_pos, end_pos);
-        let name = name_buf.trim().to_string();
-        let ProcessingContext { iter, errors } = ctx;
-        Self {
-            name,
-            found_colon,
-            span,
-            iter,
-            errors,
-        }
-    }
-
-    fn build(mut self) -> Option<(String, String)> {
-        if self.handle_missing_colon() {
-            return None;
-        }
-        let ty = self.parse_type(0);
-        self.validate_parameter(&ty);
-        if self.name.is_empty() || ty.is_empty() {
-            None
-        } else {
-            Some((self.name, ty))
-        }
-    }
-
-    fn handle_missing_colon(&mut self) -> bool {
-        if self.found_colon {
-            return false;
-        }
-        if let Some(s) = self.span {
-            self.errors.push(ParseError::MissingColon {
-                message: "Expected ':' after name, but found ',' or ')' instead".to_string(),
-                span: s,
-            });
-        }
-        while let Some(e) = self.iter.peek() {
-            match e.kind() {
-                SyntaxKind::T_COMMA => {
-                    // Consume ',' so the caller proceeds to the next parameter.
-                    self.iter.next();
-                    break;
-                }
-                SyntaxKind::T_LBRACE | SyntaxKind::T_RPAREN => {
-                    // Do NOT consume '{' or ')'; leave it for the outer loop to terminate cleanly.
-                    return true;
-                }
-                _ => {
-                    // Consume junk until reaching a delimiter.
-                    self.iter.next();
-                }
-            }
-        }
-        true
-    }
-
-    fn parse_type(&mut self, _min_bp: u8) -> String {
-        skip_whitespace_and_comments(self.iter);
-        if matches!(
-            self.iter.peek().map(SyntaxElement::kind),
-            Some(SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN | SyntaxKind::T_LBRACE)
-        ) {
-            String::new()
-        } else {
-            let (ty, mut errs) = parse_type_expr(self.iter);
-            self.errors.append(&mut errs);
-            ty
-        }
-    }
-
-    fn validate_parameter(&mut self, ty: &str) {
-        if self.should_report_missing_name(ty)
-            && let Some(s) = self.span
-        {
-            self.errors.push(ParseError::MissingName { span: s });
-        }
-        if self.should_report_missing_type(ty)
-            && let Some(s) = self.span
-        {
-            self.errors.push(ParseError::MissingType { span: s });
-        }
-    }
-
-    fn should_report_missing_name(&self, ty: &str) -> bool {
-        self.name.is_empty() && !ty.is_empty()
-    }
-
-    fn should_report_missing_type(&self, ty: &str) -> bool {
-        !self.name.is_empty() && ty.is_empty()
-    }
 }
 
 fn track_span_for_element(

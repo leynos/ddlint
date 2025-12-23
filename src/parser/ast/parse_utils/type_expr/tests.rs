@@ -95,6 +95,24 @@ fn mismatched_closing_delimiter_records_error() {
     }
 }
 
+#[test]
+fn stray_closing_paren_terminates_without_error() {
+    let src = "function f(x: u32) {}";
+    let mut iter = tokens_for(src).into_iter().peekable();
+    for e in iter.by_ref() {
+        if e.kind() == SyntaxKind::T_COLON {
+            break;
+        }
+    }
+    let (ty, errors) = parse_type_expr(&mut iter);
+    assert_eq!(ty, "u32");
+    assert!(errors.is_empty());
+    assert_eq!(
+        iter.peek().map(SyntaxElement::kind),
+        Some(SyntaxKind::T_RPAREN)
+    );
+}
+
 #[rstest]
 #[case("function f(): u32 {}", Some("u32".to_string()))]
 #[case("extern function f(): bool;", Some("bool".to_string()))]

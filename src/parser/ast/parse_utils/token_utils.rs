@@ -116,6 +116,23 @@ pub(crate) fn is_trivia(e: &SyntaxElement<DdlogLanguage>) -> bool {
     }
 }
 
+/// Skips the next trivia element and advances the iterator.
+///
+/// Returns `true` when trivia was consumed, `false` otherwise.
+pub(crate) fn skip_next_trivia<I>(iter: &mut std::iter::Peekable<I>) -> bool
+where
+    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
+{
+    if let Some(peeked) = iter.peek()
+        && is_trivia(peeked)
+    {
+        iter.next();
+        true
+    } else {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
