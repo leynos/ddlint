@@ -11,11 +11,19 @@ use crate::parser::expression::parse_expression;
 use crate::parser::span_utils::{parse_u32_decimal, shift_errors, trim_byte_range};
 use crate::{DdlogLanguage, Span, SyntaxKind, tokenize_with_trivia, tokenize_without_trivia};
 
+const REF_NEW_FN: &str = "ref_new";
+
 #[derive(Debug, Default)]
 struct DelimiterDepths {
     paren: usize,
     brace: usize,
     bracket: usize,
+}
+
+impl DelimiterDepths {
+    fn at_top_level(&self) -> bool {
+        self.paren == 0 && self.brace == 0 && self.bracket == 0
+    }
 }
 
 fn adjust_delimiter_depth(kind: SyntaxKind, depths: &mut DelimiterDepths) {
@@ -54,7 +62,7 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
     let mut depths = DelimiterDepths::default();
 
     for e in syntax.children_with_tokens() {
-        let at_top_level = depths.paren == 0 && depths.brace == 0 && depths.bracket == 0;
+        let at_top_level = depths.at_top_level();
         match e {
             NodeOrToken::Token(t) => {
                 if !process_token_for_head_text(&t, at_top_level, &mut buf, &mut depths) {
@@ -179,7 +187,7 @@ fn lower_by_ref_head(expr: Expr) -> Expr {
             op: UnaryOp::Ref,
             expr,
         } => Expr::Call {
-            callee: Box::new(Expr::Variable("ref_new".to_string())),
+            callee: Box::new(Expr::Variable(REF_NEW_FN.to_string())),
             args: vec![*expr],
         },
         Expr::AtomDiff { expr } => Expr::AtomDiff {
@@ -214,7 +222,7 @@ fn split_top_level_commas(tokens: &[(SyntaxKind, Span)]) -> Vec<Span> {
     for (idx, (kind, _)) in tokens.iter().enumerate() {
         adjust_delimiter_depth(*kind, &mut depths);
 
-        let at_top_level = depths.paren == 0 && depths.brace == 0 && depths.bracket == 0;
+        let at_top_level = depths.at_top_level();
         if at_top_level && *kind == SyntaxKind::T_COMMA {
             spans.extend(span_for_token_range(tokens, start_idx, idx));
             start_idx = idx + 1;
@@ -243,7 +251,7 @@ fn find_top_level_at(tokens: &[(SyntaxKind, Span)]) -> Option<usize> {
     for (idx, (kind, _)) in tokens.iter().enumerate() {
         adjust_delimiter_depth(*kind, &mut depths);
 
-        let at_top_level = depths.paren == 0 && depths.brace == 0 && depths.bracket == 0;
+        let at_top_level = depths.at_top_level();
         if at_top_level && *kind == SyntaxKind::T_AT {
             at_idx = Some(idx);
             break;
