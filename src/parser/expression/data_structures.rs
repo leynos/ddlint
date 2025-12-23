@@ -74,22 +74,6 @@ where
         })
     }
 
-    pub(super) fn parse_brace_group(&mut self) -> Option<Expr> {
-        // `{ expr }` – alternative grouping (not a struct literal; those are parsed after an identifier).
-        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-            let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(sp, "expected expression");
-            return None;
-        }
-        self.with_struct_literals_suspended(|this| {
-            let inner = this.parse_expr(0)?;
-            if !this.ts.expect(SyntaxKind::T_RBRACE) {
-                return None;
-            }
-            Some(Expr::Group(Box::new(inner)))
-        })
-    }
-
     pub(super) fn parse_closure_literal(&mut self) -> Option<Expr> {
         let params = self.parse_closure_params()?;
         if !self.ts.expect(SyntaxKind::T_PIPE) {

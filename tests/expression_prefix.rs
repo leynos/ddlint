@@ -8,14 +8,16 @@ use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
     assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_interned_str,
-    lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str, match_arm, match_expr, return_expr,
-    struct_expr, tuple, var,
+    lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str, map_lit, match_arm, match_expr,
+    return_expr, struct_expr, tuple, var, vec_lit,
 };
 use rstest::rstest;
 
 #[rstest]
 #[case("{1}", Expr::Group(Box::new(lit_num("1"))))]
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
+#[case("[]", vec_lit(vec![]))]
+#[case("{}", map_lit(vec![]))]
 #[case("(1,)", tuple(vec![lit_num("1")]))]
 #[case("|x| x", closure(vec!["x"], var("x")))]
 #[case("|a,b| a", closure(vec!["a", "b"], var("a")))]
@@ -102,7 +104,7 @@ fn parses_return_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
 }
 
 #[rstest]
-#[case("{}", "expected expression", 1, 2, false)]
+// Note: `{}` is now a valid empty map literal, so it's not an error.
 #[case("|x x", "expected pipe", 3, 4, false)]
 #[case("match (x) {}", "expected at least one match arm", 11, 12, false)]
 #[case(

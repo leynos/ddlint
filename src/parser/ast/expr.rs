@@ -282,6 +282,16 @@ pub enum Expr {
         /// Value returned to the caller (defaults to `()` when omitted).
         value: Box<Expr>,
     },
+    /// Vector literal expression.
+    ///
+    /// Syntactically `[e1, e2, ...]`, desugars to a builder sequence:
+    /// `vec_with_capacity(n); push(e1); push(e2); ...`
+    VecLit(Vec<Expr>),
+    /// Map literal expression.
+    ///
+    /// Syntactically `{k1: v1, k2: v2, ...}`, desugars to a builder sequence:
+    /// `map_empty(); insert(k1, v1); insert(k2, v2); ...`
+    MapLit(Vec<(Expr, Expr)>),
 }
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
@@ -345,6 +355,10 @@ impl Expr {
             Self::Break => "(break)".to_string(),
             Self::Continue => "(continue)".to_string(),
             Self::Return { value } => format_nary("return", [value.to_sexpr()]),
+            Self::VecLit(items) => format_nary("vec", items.iter().map(Self::to_sexpr)),
+            Self::MapLit(entries) => {
+                format_nary("map", entries.iter().map(|(k, v)| format_kv(k, v)))
+            }
         }
     }
 }
@@ -356,6 +370,19 @@ fn format_field(name: &str, value: &str) -> String {
     s.push_str(name);
     s.push(' ');
     s.push_str(value);
+    s.push(')');
+    s
+}
+
+#[inline]
+fn format_kv(key: &Expr, value: &Expr) -> String {
+    let k = key.to_sexpr();
+    let v = value.to_sexpr();
+    let mut s = String::with_capacity(k.len() + v.len() + 3);
+    s.push('(');
+    s.push_str(&k);
+    s.push(' ');
+    s.push_str(&v);
     s.push(')');
     s
 }

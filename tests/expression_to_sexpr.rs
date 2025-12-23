@@ -78,3 +78,27 @@ fn closures_format(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
     assert_eq!(expr.to_sexpr(), expected);
 }
+
+#[rstest]
+#[case("[]", "(vec)")]
+#[case("[1]", "(vec 1)")]
+#[case("[1, 2, 3]", "(vec 1 2 3)")]
+#[case("[1,]", "(vec 1)")]
+#[case("[x, y + 1]", "(vec x (+ y 1))")]
+#[case("[[1, 2], [3, 4]]", "(vec (vec 1 2) (vec 3 4))")]
+fn vector_literals_format(#[case] src: &str, #[case] expected: &str) {
+    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    assert_eq!(expr.to_sexpr(), expected);
+}
+
+#[rstest]
+#[case("{}", "(map)")]
+#[case("{a: 1}", "(map (a 1))")]
+#[case("{a: 1, b: 2}", "(map (a 1) (b 2))")]
+#[case("{a: 1,}", "(map (a 1))")]
+#[case("{x: y, z: w}", "(map (x y) (z w))")]
+#[case("{1 + 2: 3 * 4}", "(map ((+ 1 2) (* 3 4)))")]
+fn map_literals_format(#[case] src: &str, #[case] expected: &str) {
+    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    assert_eq!(expr.to_sexpr(), expected);
+}

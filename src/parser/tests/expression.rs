@@ -4,8 +4,8 @@ use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
-    field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, match_arm, match_expr,
-    method_call, struct_expr, tuple, tuple_index, var,
+    field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, map_entry, map_lit,
+    match_arm, match_expr, method_call, struct_expr, tuple, tuple_index, var, vec_lit,
 };
 use rstest::rstest;
 
@@ -18,6 +18,18 @@ use rstest::rstest;
 #[case("(1,)", tuple(vec![lit_num("1")]))]
 #[case("()", tuple(vec![]))]
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
+#[case("[]", vec_lit(vec![]))]
+#[case("[1]", vec_lit(vec![lit_num("1")]))]
+#[case("[1, 2]", vec_lit(vec![lit_num("1"), lit_num("2")]))]
+#[case("[1, 2, 3]", vec_lit(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
+#[case("[1,]", vec_lit(vec![lit_num("1")]))]
+#[case("[1, 2,]", vec_lit(vec![lit_num("1"), lit_num("2")]))]
+#[case("[x, y + 1]", vec_lit(vec![var("x"), Expr::Binary { op: BinaryOp::Add, lhs: Box::new(var("y")), rhs: Box::new(lit_num("1")) }]))]
+#[case("{}", map_lit(vec![]))]
+#[case("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case("{a: 1, b: 2}", map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]))]
+#[case("{a: 1,}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case("{x: y, z: w}", map_lit(vec![map_entry(var("x"), var("y")), map_entry(var("z"), var("w"))]))]
 #[case("Point { x: 1, y: 2 }", struct_expr("Point", vec![field("x", lit_num("1")), field("y", lit_num("2"))]))]
 #[case("Point {}", struct_expr("Point", vec![]))]
 #[case(
