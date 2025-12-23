@@ -57,7 +57,7 @@ where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
     let state = collect_parameter_name(iter);
-    ParameterBuilder::new(state, ProcessingContext::new(iter, errors)).build()
+    ParameterBuilder::new(state, ProcessingContext { iter, errors }).build()
 }
 
 /// Consuming a trailing `,` returns `false` to continue; consuming `)` returns

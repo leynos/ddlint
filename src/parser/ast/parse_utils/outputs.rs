@@ -119,6 +119,8 @@ mod tests {
     fn collects_no_output_names() {
         let src = "extern transformer t(a: X):";
         let parsed = parse(src);
+        // Malformed output lists do not yield a transformer node, so we parse
+        // against the root token stream to ensure empty outputs are handled.
         let names = parse_output_list(parsed.root().syntax().children_with_tokens());
         assert!(names.is_empty());
     }
@@ -127,6 +129,8 @@ mod tests {
     fn collects_output_name_with_trailing_comma() {
         let src = "extern transformer t(a: X): Out1,";
         let parsed = parse(src);
+        // Trailing commas invalidate the declaration, so parse the root tokens
+        // to confirm we return no outputs from malformed input.
         let names = parse_output_list(parsed.root().syntax().children_with_tokens());
         assert!(names.is_empty());
     }

@@ -1,6 +1,10 @@
 //! Parameter builder helpers.
 //!
-//! Handles parsing and validation once a parameter name has been collected.
+//! Provides the builder used by parameter parsing once a name token has been
+//! collected. `ParameterBuilder` consumes the remaining token stream to parse
+//! the type annotation, validates missing-name/type cases, and records errors.
+//! `ProcessingContext` holds the shared iterator and error sink so the builder
+//! can report diagnostics while returning the final name/type pair.
 
 use rowan::{SyntaxElement, TextRange, TextSize};
 
@@ -18,18 +22,6 @@ where
 {
     pub(super) iter: &'a mut std::iter::Peekable<I>,
     pub(super) errors: &'a mut Vec<ParseError>,
-}
-
-impl<'a, I> ProcessingContext<'a, I>
-where
-    I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
-{
-    pub(super) fn new(
-        iter: &'a mut std::iter::Peekable<I>,
-        errors: &'a mut Vec<ParseError>,
-    ) -> Self {
-        Self { iter, errors }
-    }
 }
 
 pub(super) struct ParameterBuilder<'a, I>
@@ -70,7 +62,7 @@ where
         if self.handle_missing_colon() {
             return None;
         }
-        let ty = self.parse_type(0);
+        let ty = self.parse_type();
         self.validate_parameter(&ty);
         if self.name.is_empty() || ty.is_empty() {
             None
@@ -113,7 +105,7 @@ where
         }
     }
 
-    fn parse_type(&mut self, _min_bp: u8) -> String {
+    fn parse_type(&mut self) -> String {
         skip_whitespace_and_comments(self.iter);
         if matches!(
             self.iter.peek().map(SyntaxElement::kind),
@@ -128,29 +120,19 @@ where
     }
 
     fn validate_parameter(&mut self, ty: &str) {
-        if !self.should_report_missing_name(ty) {
-        } else if let Some(span) = self.span {
+        let missing_name = self.name.is_empty() && !ty.is_empty();
+        let missing_type = !self.name.is_empty() && ty.is_empty();
+        if missing_name && let Some(span) = self.span {
             self.errors.push(ParseError::MissingName { span });
         }
-        if self.should_report_missing_type(ty)
-            && let Some(span) = self.span
-        {
+        if missing_type && let Some(span) = self.span {
             self.errors.push(ParseError::MissingType { span });
         }
-    }
-
-    fn should_report_missing_name(&self, ty: &str) -> bool {
-        self.name.is_empty() && !ty.is_empty()
-    }
-
-    fn should_report_missing_type(&self, ty: &str) -> bool {
-        !self.name.is_empty() && ty.is_empty()
     }
 }
 
 fn create_text_span(start_pos: Option<TextSize>, end_pos: Option<TextSize>) -> Option<TextRange> {
-    match (start_pos, end_pos) {
-        (Some(start), Some(end)) => Some(TextRange::new(start, end)),
-        _ => None,
-    }
+    start_pos
+        .zip(end_pos)
+        .map(|(start, end)| TextRange::new(start, end))
 }
