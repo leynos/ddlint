@@ -158,8 +158,9 @@ as control flow constructs. This phase aims to build a complete grammar.
     delay `-<N>` markers, and diff `'` adornments, and to lower by-ref heads to
     `ref_new`.
 
-  - [x] Implement vector and map literal parsing with the builder desugarings
-    defined in the specification.
+  - [x] Implement vector and map literal parsing. Raw AST representation
+    (`Expr::VecLit`, `Expr::MapLit`) is stored for linting; builder desugarings
+    are deferred to a later lowering pass.
 
   - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
     downstream analyses see the normalized representation.

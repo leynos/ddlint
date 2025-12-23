@@ -14,10 +14,10 @@ use ddlint::test_util::{
 use rstest::rstest;
 
 #[rstest]
+#[case("{}", map_lit(vec![]))]
 #[case("{1}", Expr::Group(Box::new(lit_num("1"))))]
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
 #[case("[]", vec_lit(vec![]))]
-#[case("{}", map_lit(vec![]))]
 #[case("(1,)", tuple(vec![lit_num("1")]))]
 #[case("|x| x", closure(vec!["x"], var("x")))]
 #[case("|a,b| a", closure(vec!["a", "b"], var("a")))]

@@ -318,6 +318,51 @@ pub fn tuple(items: Vec<Expr>) -> Expr {
     Expr::Tuple(items)
 }
 
+/// Construct a vector literal [`Expr::VecLit`].
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{lit_num, vec_lit, var};
+///
+/// let v = vec_lit(vec![lit_num("1"), var("x")]);
+/// assert_eq!(v.to_sexpr(), "(vec 1 x)");
+/// ```
+#[must_use]
+pub fn vec_lit(items: Vec<Expr>) -> Expr {
+    Expr::VecLit(items)
+}
+
+/// Construct a map literal [`Expr::MapLit`].
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{lit_num, map_entry, map_lit, var};
+///
+/// let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
+/// assert_eq!(m.to_sexpr(), "(map (a 1))");
+/// ```
+#[must_use]
+pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr {
+    Expr::MapLit(entries)
+}
+
+/// Convenience function to build a map entry tuple.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{lit_num, lit_str, map_entry};
+///
+/// let entry = map_entry(lit_str("key"), lit_num("42"));
+/// assert_eq!(entry.0.to_sexpr(), "\"key\"");
+/// ```
+#[must_use]
+pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) {
+    (key, value)
+}
+
 /// Construct a `match` arm with the provided pattern and body expression.
 ///
 /// # Examples
@@ -377,24 +422,6 @@ pub fn if_expr(condition: Expr, then_branch: Expr, else_branch: Option<Expr>) ->
         // Default to unit `()` when no else is provided.
         else_branch: Box::new(else_branch.unwrap_or_else(|| tuple(Vec::new()))),
     }
-}
-
-/// Construct a vector literal [`Expr::VecLit`].
-#[must_use]
-pub fn vec_lit(items: Vec<Expr>) -> Expr {
-    Expr::VecLit(items)
-}
-
-/// Construct a map literal [`Expr::MapLit`].
-#[must_use]
-pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr {
-    Expr::MapLit(entries)
-}
-
-/// Convenience to build a map entry tuple.
-#[must_use]
-pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) {
-    (key, value)
 }
 
 /// Assert that a parser produced no errors.

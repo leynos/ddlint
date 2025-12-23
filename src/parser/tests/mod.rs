@@ -1,5 +1,6 @@
 //! Tests for parser components and integration scenarios.
 
+mod collections;
 mod control_flow;
 mod expression;
 mod expression_integration;
