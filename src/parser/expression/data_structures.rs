@@ -122,33 +122,7 @@ where
 
             match this.ts.peek_kind() {
                 // Colon after first expression → map literal
-                Some(SyntaxKind::T_COLON) => {
-                    this.ts.next_tok();
-                    let first_value = this.parse_expr(0)?;
-                    let mut entries = vec![(first_key, first_value)];
-
-                    while matches!(this.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-                        this.ts.next_tok();
-
-                        // Handle trailing comma
-                        if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-                            break;
-                        }
-
-                        // Parse key with high BP to stop before `:`
-                        let key = this.parse_expr(MAP_KEY_BP)?;
-                        if !this.ts.expect(SyntaxKind::T_COLON) {
-                            return None;
-                        }
-                        let value = this.parse_expr(0)?;
-                        entries.push((key, value));
-                    }
-
-                    if !this.ts.expect(SyntaxKind::T_RBRACE) {
-                        return None;
-                    }
-                    Some(Expr::MapLit(entries))
-                }
+                Some(SyntaxKind::T_COLON) => this.parse_map_entries(first_key, MAP_KEY_BP),
 
                 // Single expression followed by `}` → brace group
                 Some(SyntaxKind::T_RBRACE) => {
@@ -165,17 +139,53 @@ where
                 }
 
                 // Some operator after the first expression → continue as brace group
-                // We parsed with high BP, so there may be more to the expression
-                _ => {
-                    // Continue parsing any remaining infix operators
-                    let full_expr = this.parse_infix(first_key, 0)?;
-                    if !this.ts.expect(SyntaxKind::T_RBRACE) {
-                        return None;
-                    }
-                    Some(Expr::Group(Box::new(full_expr)))
-                }
+                _ => this.parse_brace_group_continuation(first_key),
             }
         })
+    }
+
+    /// Parse remaining map entries after detecting a colon following the first key.
+    ///
+    /// The first key has already been parsed. The caller has peeked a colon but
+    /// not yet consumed it.
+    fn parse_map_entries(&mut self, first_key: Expr, key_bp: u8) -> Option<Expr> {
+        self.ts.next_tok(); // consume ':'
+        let first_value = self.parse_expr(0)?;
+        let mut entries = vec![(first_key, first_value)];
+
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            self.ts.next_tok();
+
+            // Handle trailing comma
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+                break;
+            }
+
+            // Parse key with high BP to stop before `:`
+            let key = self.parse_expr(key_bp)?;
+            if !self.ts.expect(SyntaxKind::T_COLON) {
+                return None;
+            }
+            let value = self.parse_expr(0)?;
+            entries.push((key, value));
+        }
+
+        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+            return None;
+        }
+        Some(Expr::MapLit(entries))
+    }
+
+    /// Continue parsing a brace group when there are infix operators remaining.
+    ///
+    /// We parsed the first expression with high binding power (to stop before
+    /// `:`), so there may be more operators to process before the closing brace.
+    fn parse_brace_group_continuation(&mut self, first_expr: Expr) -> Option<Expr> {
+        let full_expr = self.parse_infix(first_expr, 0)?;
+        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+            return None;
+        }
+        Some(Expr::Group(Box::new(full_expr)))
     }
 
     /// Parse a comma-separated list of expressions up to (but not consuming)
