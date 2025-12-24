@@ -103,13 +103,10 @@ where
     ///
     /// The opening brace has already been consumed by the prefix dispatcher.
     ///
-    /// For map literal keys, we parse with a binding power that prevents the `:`
-    /// operator from being consumed as type ascription. The `:` operator has
-    /// binding power 50, so we use 51 for keys.
+    /// Map keys are parsed in "colon-terminates" mode where `:` stops parsing
+    /// rather than being consumed as type ascription. This allows keys like
+    /// `a and b` in `{a and b: 1}` to be correctly parsed.
     pub(super) fn parse_brace_or_map_literal(&mut self) -> Option<Expr> {
-        // Binding power just above `:` (50) to prevent type ascription
-        const MAP_KEY_BP: u8 = 51;
-
         // Handle empty map `{}`
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
             self.ts.next_tok();
@@ -117,12 +114,12 @@ where
         }
 
         self.with_struct_literals_suspended(|this| {
-            // Parse first key/expression with high BP to stop before `:`
-            let first_key = this.parse_expr(MAP_KEY_BP)?;
+            // Parse first key/expression in map-key mode (`:` terminates)
+            let first_key = this.parse_map_key_expr(0)?;
 
             match this.ts.peek_kind() {
-                // Colon after first expression → map literal
-                Some(SyntaxKind::T_COLON) => this.parse_map_entries(first_key, MAP_KEY_BP),
+                // Colon after expression → map literal
+                Some(SyntaxKind::T_COLON) => this.parse_map_entries(first_key),
 
                 // Single expression followed by `}` → brace group
                 Some(SyntaxKind::T_RBRACE) => {
@@ -138,7 +135,7 @@ where
                     None
                 }
 
-                // Some operator after the first expression → continue as brace group
+                // Something else (unexpected token) → brace group with remaining expr
                 _ => this.parse_brace_group_continuation(first_key),
             }
         })
@@ -148,7 +145,7 @@ where
     ///
     /// The first key has already been parsed. The caller has peeked a colon but
     /// not yet consumed it.
-    fn parse_map_entries(&mut self, first_key: Expr, key_bp: u8) -> Option<Expr> {
+    fn parse_map_entries(&mut self, first_key: Expr) -> Option<Expr> {
         self.ts.next_tok(); // consume ':'
         let first_value = self.parse_expr(0)?;
         let mut entries = vec![(first_key, first_value)];
@@ -161,8 +158,8 @@ where
                 break;
             }
 
-            // Parse key with high BP to stop before `:`
-            let key = self.parse_expr(key_bp)?;
+            // Parse key in map-key mode (`:` terminates parsing)
+            let key = self.parse_map_key_expr(0)?;
             if !self.ts.expect(SyntaxKind::T_COLON) {
                 return None;
             }
@@ -176,11 +173,13 @@ where
         Some(Expr::MapLit(entries))
     }
 
-    /// Continue parsing a brace group when there are infix operators remaining.
+    /// Continue parsing a brace group after an unexpected token.
     ///
-    /// We parsed the first expression with high binding power (to stop before
-    /// `:`), so there may be more operators to process before the closing brace.
+    /// Since we parsed the first expression in map-key mode (which stops at `:`),
+    /// if we reach here with an unexpected token, we try to continue parsing as
+    /// a brace group by consuming remaining infix operators.
     fn parse_brace_group_continuation(&mut self, first_expr: Expr) -> Option<Expr> {
+        // Continue parsing any remaining infix operators (with `:` as ascription now)
         let full_expr = self.parse_infix(first_expr, 0)?;
         if !self.ts.expect(SyntaxKind::T_RBRACE) {
             return None;

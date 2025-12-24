@@ -88,6 +88,27 @@ fn parses_nested_vectors(#[case] src: &str, #[case] expected: Expr) {
         map_entry(var("b"), lit_bool(false)),
     ])
 )]
+#[case::complex_key_and(
+    "{a and b: 1}",
+    lit_map(vec![map_entry(
+        Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
+        lit_num("1"),
+    )])
+)]
+#[case::complex_key_or(
+    "{x or y: 2}",
+    lit_map(vec![map_entry(
+        Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("x")), rhs: Box::new(var("y")) },
+        lit_num("2"),
+    )])
+)]
+#[case::complex_key_comparison(
+    "{a < b: true}",
+    lit_map(vec![map_entry(
+        Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
+        lit_bool(true),
+    )])
+)]
 fn parses_map_literals(#[case] src: &str, #[case] expected: Expr) {
     let expr =
         parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));

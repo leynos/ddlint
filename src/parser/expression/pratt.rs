@@ -168,6 +168,24 @@ where
         self.parse_infix(lhs, min_bp)
     }
 
+    /// Parse an expression in map-key mode where `:` terminates parsing.
+    ///
+    /// This is used for map literal keys where `:` separates key from value
+    /// rather than being consumed as type ascription.
+    pub(super) fn parse_map_key_expr(&mut self, min_bp: u8) -> Option<Expr> {
+        if self.expr_depth >= MAX_EXPR_DEPTH {
+            let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(sp, "expression nesting too deep");
+            return None;
+        }
+        self.expr_depth += 1;
+        let lhs = self.parse_prefix()?;
+        let lhs = self.parse_postfix(lhs)?;
+        let result = self.parse_infix_with_colon_mode(lhs, min_bp, true);
+        self.expr_depth -= 1;
+        result
+    }
+
     // Parse highest-precedence postfix operators, delegating each operation to a dedicated helper.
     pub(super) fn parse_postfix(&mut self, mut lhs: Expr) -> Option<Expr> {
         let mut pending_diff_span: Option<Span> = None;
