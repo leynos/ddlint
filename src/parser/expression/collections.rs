@@ -90,8 +90,12 @@ where
     }
 
     /// Parse a map value expression, stopping at comma or closing brace.
+    ///
+    /// Unlike keys, values need full expression parsing (binding power 0) so that
+    /// low-precedence operators like `==`, `&&`, `||` can appear in values:
+    /// `{k: a == b}` or `{k: x && y}`.
     fn parse_map_value(&mut self) -> Option<Expr> {
-        self.parse_expr(BP_ABOVE_COLON)
+        self.parse_expr(0)
     }
 
     /// Continue parsing an expression that was started with a higher binding power.
