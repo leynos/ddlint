@@ -244,6 +244,20 @@ fn map_to_sexpr_multiple() {
     assert_eq!(m.to_sexpr(), "(map (a 1) (b 2))");
 }
 
+#[rstest]
+#[case::vector_empty(lit_vec(vec![]), "(vec)")]
+#[case::vector_single(lit_vec(vec![lit_num("1")]), "(vec 1)")]
+#[case::vector_multiple(lit_vec(vec![lit_num("1"), var("x")]), "(vec 1 x)")]
+#[case::map_empty(lit_map(vec![]), "(map)")]
+#[case::map_single(lit_map(vec![map_entry(var("a"), lit_num("1"))]), "(map (entry a 1))")]
+#[case::map_multiple(
+    lit_map(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]),
+    "(map (entry a 1) (entry b 2))"
+)]
+fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
+    assert_eq!(expr.to_sexpr(), expected);
+}
+
 // ============================================================================
 // Error cases
 // ============================================================================

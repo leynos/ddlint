@@ -151,15 +151,7 @@ where
     }
 
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        if self.expr_depth >= MAX_EXPR_DEPTH {
-            let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(sp, "expression nesting too deep");
-            return None;
-        }
-        self.expr_depth += 1;
-        let result = self.parse_expr_inner(min_bp);
-        self.expr_depth -= 1;
-        result
+        self.with_depth_guard(|this| this.parse_expr_inner(min_bp))
     }
 
     fn parse_expr_inner(&mut self, min_bp: u8) -> Option<Expr> {
@@ -173,15 +165,25 @@ where
     /// This is used for map literal keys where `:` separates key from value
     /// rather than being consumed as type ascription.
     pub(super) fn parse_map_key_expr(&mut self, min_bp: u8) -> Option<Expr> {
+        self.with_depth_guard(|this| {
+            let lhs = this.parse_prefix()?;
+            let lhs = this.parse_postfix(lhs)?;
+            this.parse_infix_with_colon_mode(lhs, min_bp, true)
+        })
+    }
+
+    /// Execute a parsing function with depth guard protection.
+    ///
+    /// Checks for maximum recursion depth before executing and manages the
+    /// depth counter around the provided closure.
+    fn with_depth_guard<R>(&mut self, f: impl FnOnce(&mut Self) -> Option<R>) -> Option<R> {
         if self.expr_depth >= MAX_EXPR_DEPTH {
             let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
             self.ts.push_error(sp, "expression nesting too deep");
             return None;
         }
         self.expr_depth += 1;
-        let lhs = self.parse_prefix()?;
-        let lhs = self.parse_postfix(lhs)?;
-        let result = self.parse_infix_with_colon_mode(lhs, min_bp, true);
+        let result = f(self);
         self.expr_depth -= 1;
         result
     }
