@@ -119,3 +119,48 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
         "Aggregate expects exactly two arguments",
     );
 }
+
+/// Helper to assert that `body_terms()` reports the expected multiple
+/// aggregation error for a rule containing more than one aggregation.
+fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected multiple aggregation error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    let Some(start) = src.find(second_literal) else {
+        panic!("{second_literal} literal missing");
+    };
+    let end = start + second_literal.len();
+    assert_parse_error(
+        &errors,
+        "at most one aggregation (group_by or Aggregate) is permitted per rule",
+        start,
+        end,
+    );
+}
+
+#[test]
+fn body_terms_error_on_multiple_group_by() {
+    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
+    assert_multiple_aggregation_error(src, "group_by(count(x), k)");
+}
+
+#[test]
+fn body_terms_error_on_multiple_legacy_aggregate() {
+    let src = "X(x) :- Aggregate((k), sum(x)), Aggregate((k), count(x)).";
+    assert_multiple_aggregation_error(src, "Aggregate((k), count(x))");
+}
+
+#[test]
+fn body_terms_error_on_mixed_group_by_and_aggregate() {
+    let src = "X(x) :- group_by(sum(x), k), Aggregate((k), count(x)).";
+    assert_multiple_aggregation_error(src, "Aggregate((k), count(x))");
+}

@@ -100,6 +100,9 @@ impl Rule {
     /// pattern-matching assignments (FlatMap-style binds), returning
     /// [`RuleBodyTerm`] variants describing each literal.
     ///
+    /// At most one aggregation is permitted per rule body; multiple
+    /// aggregations produce a diagnostic.
+    ///
     /// # Examples
     /// ```rust
     /// # use ddlint::parse;
@@ -115,14 +118,26 @@ impl Rule {
     ///
     /// # Errors
     /// Returns aggregated literal diagnostics when assignments or aggregations
-    /// fail to parse.
+    /// fail to parse, or when multiple aggregations appear in the same rule
+    /// body.
     pub fn body_terms(&self) -> Result<Vec<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
         let mut terms = Vec::new();
         let mut errors = Vec::new();
+        let mut first_aggregation_span: Option<Span> = None;
 
         for literal in self.body_expression_nodes() {
+            let literal_span = literal.span();
             match literal.parse_term() {
-                Ok(Some(term)) => terms.push(term),
+                Ok(Some(term)) => {
+                    if let RuleBodyTerm::Aggregation(_) = &term {
+                        if let Some(ref first_span) = first_aggregation_span {
+                            errors.push(multiple_aggregations_error(first_span, &literal_span));
+                        } else {
+                            first_aggregation_span = Some(literal_span);
+                        }
+                    }
+                    terms.push(term);
+                }
                 Ok(None) => {}
                 Err(mut errs) => errors.append(&mut errs),
             }
@@ -321,6 +336,17 @@ fn aggregation_arity_error(
         literal_span.clone(),
         format!("{} expects exactly two arguments", source.label()),
     )]
+}
+
+fn multiple_aggregations_error(first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {
+    Simple::custom(
+        second_span.clone(),
+        format!(
+            "at most one aggregation (group_by or Aggregate) is permitted per rule; \
+             first aggregation at {}..{}",
+            first_span.start, first_span.end
+        ),
+    )
 }
 
 #[derive(Debug)]

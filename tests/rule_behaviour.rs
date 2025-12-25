@@ -110,3 +110,72 @@ fn parses_multi_head_rules_with_adornments_and_ref_new_lowering() {
         "(call ref_new (struct RefOrder (id id) (amt amt)))"
     );
 }
+
+#[test]
+fn rejects_multiple_group_by_in_rule_body() {
+    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
+    let parsed = parse(src);
+    assert!(
+        parsed.errors().is_empty(),
+        "CST parse should succeed: {:?}",
+        parsed.errors()
+    );
+    #[expect(clippy::expect_used, reason = "test expects a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let result = rule.body_terms();
+    assert!(result.is_err(), "expected multiple aggregation error");
+    #[expect(clippy::expect_used, reason = "test asserts error presence")]
+    let errors = result.expect_err("expected errors");
+    let has_error = errors.iter().any(|e| {
+        format!("{e:?}")
+            .contains("at most one aggregation (group_by or Aggregate) is permitted per rule")
+    });
+    assert!(
+        has_error,
+        "expected 'at most one aggregation' error, got: {errors:?}"
+    );
+}
+
+#[test]
+fn parses_legacy_aggregate_and_normalizes_arguments() {
+    let src =
+        "Totals(user, total) :- Orders(user, amt), Aggregate((user), sum(amt)), total = __group.";
+    let parsed = parse(src);
+    assert!(
+        parsed.errors().is_empty(),
+        "unexpected parse errors: {:?}",
+        parsed.errors()
+    );
+    #[expect(clippy::expect_used, reason = "test expects a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let terms = match rule.body_terms() {
+        Ok(terms) => terms,
+        Err(errs) => panic!("body terms should parse: {errs:?}"),
+    };
+    // Find the aggregation term.
+    let aggregation = terms.iter().find_map(|term| {
+        if let RuleBodyTerm::Aggregation(agg) = term {
+            Some(agg)
+        } else {
+            None
+        }
+    });
+    #[expect(clippy::expect_used, reason = "test asserts aggregation presence")]
+    let agg = aggregation.expect("expected aggregation term");
+    // Verify legacy Aggregate is recognized.
+    assert_eq!(agg.source, AggregationSource::LegacyAggregate);
+    // Verify argument normalization: project is sum(amt), key is (user).
+    // Note: (user) parses as a grouped expression.
+    assert_eq!(agg.project.to_sexpr(), "(call sum amt)");
+    assert_eq!(agg.key.to_sexpr(), "(group user)");
+}

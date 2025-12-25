@@ -162,7 +162,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     (`Expr::VecLit`, `Expr::MapLit`) is stored for linting; builder desugarings
     are deferred to a later lowering pass.
 
-  - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
+  - [x] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
     downstream analyses see the normalized representation.
 
   - [ ] Desugar top-level `for` statements in rule contexts into equivalent

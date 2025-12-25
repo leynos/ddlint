@@ -154,3 +154,45 @@ Whitespace tokens, together with comment tokens, are emitted as `T_WHITESPACE`
 and `T_COMMENT` variants, so the CST preserves them. AST wrappers skip over
 these trivia nodes, ensuring that semantic analyses operate on significant
 tokens only.
+
+## 11. Aggregation extraction and validation
+
+The parser extracts `group_by` and legacy `Aggregate` constructs during rule
+body analysis, normalizing them into a unified `RuleAggregation`
+representation. This allows downstream analyses to work with a consistent model
+regardless of the surface syntax.
+
+### 11.1 Aggregation detection
+
+When `Rule::body_terms()` encounters a top-level function call with the name
+`group_by` or `Aggregate`, the call is classified as an aggregation rather than
+a regular expression:
+
+- **`group_by(project, key)`** – the canonical form; arguments are preserved
+  in order.
+- **`Aggregate((key), project)`** – the legacy form; arguments are swapped so
+  the resulting `RuleAggregation` always has `(project, key)` ordering.
+
+### 11.2 Arity validation
+
+Both aggregation forms require exactly two arguments. Calls with fewer or more
+arguments produce a diagnostic pointing to the literal span.
+
+### 11.3 At-most-one validation
+
+Per the DDlog specification (§6.1), at most one aggregation is permitted per
+rule body. If `body_terms()` encounters a second aggregation, it reports an
+error referencing the span of the first aggregation so the user can locate both
+occurrences.
+
+### 11.4 Design rationale
+
+Performing aggregation extraction during AST construction (rather than a
+separate pass) ensures:
+
+1. Downstream code sees a consistent `RuleAggregation` structure without
+   needing to detect and normalize aggregations itself.
+2. Diagnostic spans point precisely at the offending literals rather than
+   referencing synthetic or rewritten nodes.
+3. The validation mirrors the specification's requirement that aggregation
+   misuse is a parse-time error.
