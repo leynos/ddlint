@@ -4,9 +4,8 @@ use super::super::helpers::parse_ok;
 use crate::parser::ast::{AggregationSource, Expr, RuleBodyTerm};
 use crate::test_util::{assert_parse_error, call, var};
 
-/// Assert that `body_terms()` reports the expected arity error for an
-/// aggregation literal found in `src`.
-fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str) {
+/// Assert that `body_terms()` reports an expected error for a literal found in `src`.
+fn assert_body_terms_error(src: &str, literal: &str, expected_error: &str) {
     let parsed = parse_ok(src);
     #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
@@ -16,7 +15,7 @@ fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str
         .cloned()
         .expect("rule missing");
     let errors = match rule.body_terms() {
-        Ok(terms) => panic!("expected aggregation arity error, got {terms:?}"),
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
         Err(errs) => errs,
     };
     let Some(start) = src.find(literal) else {
@@ -24,6 +23,12 @@ fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str
     };
     let end = start + literal.len();
     assert_parse_error(&errors, expected_error, start, end);
+}
+
+/// Assert that `body_terms()` reports the expected arity error for an
+/// aggregation literal found in `src`.
+fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str) {
+    assert_body_terms_error(src, literal, expected_error);
 }
 
 #[test]
@@ -123,27 +128,10 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
 /// Helper to assert that `body_terms()` reports the expected multiple
 /// aggregation error for a rule containing more than one aggregation.
 fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
-    let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let errors = match rule.body_terms() {
-        Ok(terms) => panic!("expected multiple aggregation error, got {terms:?}"),
-        Err(errs) => errs,
-    };
-    let Some(start) = src.find(second_literal) else {
-        panic!("{second_literal} literal missing");
-    };
-    let end = start + second_literal.len();
-    assert_parse_error(
-        &errors,
+    assert_body_terms_error(
+        src,
+        second_literal,
         "at most one aggregation (group_by or Aggregate) is permitted per rule",
-        start,
-        end,
     );
 }
 
