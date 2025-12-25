@@ -158,7 +158,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     delay `-<N>` markers, and diff `'` adornments, and to lower by-ref heads to
     `ref_new`.
 
-  - [ ] Implement vector and map literal parsing with the builder desugarings
+  - [x] Implement vector and map literal parsing with the builder desugarings
     defined in the specification.
 
   - [ ] Extract `group_by` and legacy `Aggregate` constructs during parsing, so

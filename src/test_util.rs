@@ -379,6 +379,24 @@ pub fn if_expr(condition: Expr, then_branch: Expr, else_branch: Option<Expr>) ->
     }
 }
 
+/// Construct a vector literal [`Expr::VecLit`].
+#[must_use]
+pub fn vec_lit(items: Vec<Expr>) -> Expr {
+    Expr::VecLit(items)
+}
+
+/// Construct a map literal [`Expr::MapLit`].
+#[must_use]
+pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr {
+    Expr::MapLit(entries)
+}
+
+/// Convenience to build a map entry tuple.
+#[must_use]
+pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) {
+    (key, value)
+}
+
 /// Assert that a parser produced no errors.
 ///
 /// # Examples
