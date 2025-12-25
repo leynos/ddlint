@@ -90,21 +90,21 @@ fn parses_nested_vectors(#[case] src: &str, #[case] expected: Expr) {
 )]
 #[case::complex_key_and(
     "{a and b: 1}",
-    lit_map(vec![map_entry(
+    map_lit(vec![map_entry(
         Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
         lit_num("1"),
     )])
 )]
 #[case::complex_key_or(
     "{x or y: 2}",
-    lit_map(vec![map_entry(
+    map_lit(vec![map_entry(
         Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("x")), rhs: Box::new(var("y")) },
         lit_num("2"),
     )])
 )]
 #[case::complex_key_comparison(
     "{a < b: true}",
-    lit_map(vec![map_entry(
+    map_lit(vec![map_entry(
         Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
         lit_bool(true),
     )])
@@ -245,14 +245,14 @@ fn map_to_sexpr_multiple() {
 }
 
 #[rstest]
-#[case::vector_empty(lit_vec(vec![]), "(vec)")]
-#[case::vector_single(lit_vec(vec![lit_num("1")]), "(vec 1)")]
-#[case::vector_multiple(lit_vec(vec![lit_num("1"), var("x")]), "(vec 1 x)")]
-#[case::map_empty(lit_map(vec![]), "(map)")]
-#[case::map_single(lit_map(vec![map_entry(var("a"), lit_num("1"))]), "(map (entry a 1))")]
+#[case::vector_empty(vec_lit(vec![]), "(vec)")]
+#[case::vector_single(vec_lit(vec![lit_num("1")]), "(vec 1)")]
+#[case::vector_multiple(vec_lit(vec![lit_num("1"), var("x")]), "(vec 1 x)")]
+#[case::map_empty(map_lit(vec![]), "(map)")]
+#[case::map_single(map_lit(vec![map_entry(var("a"), lit_num("1"))]), "(map (a 1))")]
 #[case::map_multiple(
-    lit_map(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]),
-    "(map (entry a 1) (entry b 2))"
+    map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]),
+    "(map (a 1) (b 2))"
 )]
 fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
     assert_eq!(expr.to_sexpr(), expected);
