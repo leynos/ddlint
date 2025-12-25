@@ -129,13 +129,12 @@ impl Rule {
             let literal_span = literal.span();
             match literal.parse_term() {
                 Ok(Some(term)) => {
-                    if let RuleBodyTerm::Aggregation(_) = &term {
-                        if let Some(ref first_span) = first_aggregation_span {
-                            errors.push(multiple_aggregations_error(first_span, &literal_span));
-                        } else {
-                            first_aggregation_span = Some(literal_span);
-                        }
-                    }
+                    validate_aggregation(
+                        &term,
+                        &literal_span,
+                        &mut first_aggregation_span,
+                        &mut errors,
+                    );
                     terms.push(term);
                 }
                 Ok(None) => {}
@@ -147,6 +146,28 @@ impl Rule {
             Ok(terms)
         } else {
             Err(errors)
+        }
+    }
+}
+
+/// Validate that at most one aggregation appears in the rule body.
+///
+/// If `term` is an aggregation, checks whether a previous aggregation was already
+/// seen. Records an error if so, otherwise stores the current span as the first.
+fn validate_aggregation(
+    term: &RuleBodyTerm,
+    literal_span: &Span,
+    first_aggregation_span: &mut Option<Span>,
+    errors: &mut Vec<Simple<SyntaxKind>>,
+) {
+    if let RuleBodyTerm::Aggregation(_) = term {
+        match first_aggregation_span {
+            Some(first_span) => {
+                errors.push(multiple_aggregations_error(first_span, literal_span));
+            }
+            None => {
+                *first_aggregation_span = Some(literal_span.clone());
+            }
         }
     }
 }
