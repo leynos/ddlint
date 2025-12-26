@@ -378,8 +378,8 @@ fn format_field(name: &str, value: &str) -> String {
 fn format_kv(key: &Expr, value: &Expr) -> String {
     let k = key.to_sexpr();
     let v = value.to_sexpr();
-    let mut s = String::with_capacity(k.len() + v.len() + 3);
-    s.push('(');
+    let mut s = String::with_capacity(k.len() + v.len() + 10);
+    s.push_str("(entry ");
     s.push_str(&k);
     s.push(' ');
     s.push_str(&v);

@@ -1,0 +1,247 @@
+//! Tests for vector and map literal parsing.
+//!
+//! Covers parsing of `[e1, e2, ...]` vector literals and `{k: v, ...}` map
+//! literals, including edge cases like empty collections, trailing commas,
+//! nested structures, and disambiguation from brace groups.
+
+use crate::parser::ast::{BinaryOp, Expr};
+use crate::parser::expression::parse_expression;
+use crate::test_util::{
+    call, field, lit_bool, lit_num, lit_str, map_entry, map_lit, struct_expr, tuple, var, vec_lit,
+};
+use rstest::rstest;
+
+// ============================================================================
+// Vector literal tests
+// ============================================================================
+
+#[rstest]
+#[case::empty("[]", vec_lit(vec![]))]
+#[case::single_num("[1]", vec_lit(vec![lit_num("1")]))]
+#[case::multiple_nums("[1, 2, 3]", vec_lit(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
+#[case::trailing_comma("[1,]", vec_lit(vec![lit_num("1")]))]
+#[case::trailing_comma_multi("[1, 2,]", vec_lit(vec![lit_num("1"), lit_num("2")]))]
+#[case::variables("[x, y]", vec_lit(vec![var("x"), var("y")]))]
+#[case::booleans("[true, false]", vec_lit(vec![lit_bool(true), lit_bool(false)]))]
+#[case::strings("[\"a\", \"b\"]", vec_lit(vec![lit_str("a"), lit_str("b")]))]
+#[case::function_calls("[f(), g(x)]", vec_lit(vec![call("f", vec![]), call("g", vec![var("x")])]))]
+fn parses_vector_literals(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case::nested_empty("[[]]", vec_lit(vec![vec_lit(vec![])]))]
+#[case::nested_single("[[1]]", vec_lit(vec![vec_lit(vec![lit_num("1")])]))]
+#[case::nested_multiple(
+    "[[1], [2, 3]]",
+    vec_lit(vec![
+        vec_lit(vec![lit_num("1")]),
+        vec_lit(vec![lit_num("2"), lit_num("3")]),
+    ])
+)]
+#[case::deeply_nested(
+    "[[[1]]]",
+    vec_lit(vec![vec_lit(vec![vec_lit(vec![lit_num("1")])])])
+)]
+fn parses_nested_vectors(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+// ============================================================================
+// Map literal tests
+// ============================================================================
+
+#[rstest]
+#[case::empty("{}", map_lit(vec![]))]
+#[case::single_entry("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case::multiple_entries(
+    "{a: 1, b: 2}",
+    map_lit(vec![
+        map_entry(var("a"), lit_num("1")),
+        map_entry(var("b"), lit_num("2")),
+    ])
+)]
+#[case::trailing_comma("{a: 1,}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case::trailing_comma_multi(
+    "{a: 1, b: 2,}",
+    map_lit(vec![
+        map_entry(var("a"), lit_num("1")),
+        map_entry(var("b"), lit_num("2")),
+    ])
+)]
+#[case::numeric_keys("{1: x, 2: y}", map_lit(vec![
+    map_entry(lit_num("1"), var("x")),
+    map_entry(lit_num("2"), var("y")),
+]))]
+#[case::string_keys(
+    "{\"key\": value}",
+    map_lit(vec![map_entry(lit_str("key"), var("value"))])
+)]
+#[case::boolean_values(
+    "{a: true, b: false}",
+    map_lit(vec![
+        map_entry(var("a"), lit_bool(true)),
+        map_entry(var("b"), lit_bool(false)),
+    ])
+)]
+#[case::complex_key_and(
+    "{a and b: 1}",
+    map_lit(vec![map_entry(
+        Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
+        lit_num("1"),
+    )])
+)]
+#[case::complex_key_or(
+    "{x or y: 2}",
+    map_lit(vec![map_entry(
+        Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("x")), rhs: Box::new(var("y")) },
+        lit_num("2"),
+    )])
+)]
+#[case::complex_key_comparison(
+    "{a < b: true}",
+    map_lit(vec![map_entry(
+        Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
+        lit_bool(true),
+    )])
+)]
+fn parses_map_literals(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+#[rstest]
+#[case::empty_key(
+    "{{}: 1}",
+    map_lit(vec![map_entry(map_lit(vec![]), lit_num("1"))])
+)]
+#[case::nested_value(
+    "{a: {b: 2}}",
+    map_lit(vec![map_entry(
+        var("a"),
+        map_lit(vec![map_entry(var("b"), lit_num("2"))]),
+    )])
+)]
+#[case::nested_key_and_value(
+    "{{x: 1}: {y: 2}}",
+    map_lit(vec![map_entry(
+        map_lit(vec![map_entry(var("x"), lit_num("1"))]),
+        map_lit(vec![map_entry(var("y"), lit_num("2"))]),
+    )])
+)]
+fn parses_nested_maps(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+// ============================================================================
+// Brace group backward compatibility
+// ============================================================================
+
+#[rstest]
+#[case::simple_var("{ x }", Expr::Group(Box::new(var("x"))))]
+#[case::simple_num("{ 1 }", Expr::Group(Box::new(lit_num("1"))))]
+#[case::function_call("{ f() }", Expr::Group(Box::new(call("f", vec![]))))]
+#[case::tuple("{ (x, y) }", Expr::Group(Box::new(tuple(vec![var("x"), var("y")]))))]
+#[case::binary_expr(
+    "{ 1 + 2 }",
+    Expr::Group(Box::new(Expr::Binary {
+        op: BinaryOp::Add,
+        lhs: Box::new(lit_num("1")),
+        rhs: Box::new(lit_num("2")),
+    }))
+)]
+#[case::low_precedence_op(
+    "{ a and b }",
+    Expr::Group(Box::new(Expr::Binary {
+        op: BinaryOp::And,
+        lhs: Box::new(var("a")),
+        rhs: Box::new(var("b")),
+    }))
+)]
+fn parses_brace_groups(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+// ============================================================================
+// Mixed collection contexts
+// ============================================================================
+
+#[rstest]
+#[case::vector_in_map(
+    "{items: [1, 2]}",
+    map_lit(vec![map_entry(
+        var("items"),
+        vec_lit(vec![lit_num("1"), lit_num("2")]),
+    )])
+)]
+#[case::map_in_vector(
+    "[{a: 1}]",
+    vec_lit(vec![map_lit(vec![map_entry(var("a"), lit_num("1"))])])
+)]
+#[case::struct_with_vector(
+    "Point { items: [1, 2] }",
+    struct_expr("Point", vec![field("items", vec_lit(vec![lit_num("1"), lit_num("2")]))])
+)]
+#[case::struct_with_map(
+    "Config { data: {a: 1} }",
+    struct_expr("Config", vec![field("data", map_lit(vec![map_entry(var("a"), lit_num("1"))]))])
+)]
+fn parses_mixed_collections(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+// ============================================================================
+// S-expression output tests
+// ============================================================================
+
+#[rstest]
+#[case::vector_empty(vec_lit(vec![]), "(vec)")]
+#[case::vector_single(vec_lit(vec![lit_num("1")]), "(vec 1)")]
+#[case::vector_multiple(vec_lit(vec![lit_num("1"), var("x")]), "(vec 1 x)")]
+#[case::map_empty(map_lit(vec![]), "(map)")]
+#[case::map_single(map_lit(vec![map_entry(var("a"), lit_num("1"))]), "(map (entry a 1))")]
+#[case::map_multiple(
+    map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]),
+    "(map (entry a 1) (entry b 2))"
+)]
+fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
+    assert_eq!(expr.to_sexpr(), expected);
+}
+
+// ============================================================================
+// Error cases
+// ============================================================================
+
+#[rstest]
+#[case::vector_unclosed("[1, 2", "expected t_rbracket")]
+#[case::map_unclosed("{a: 1", "expected t_rbrace")]
+#[case::map_comma_without_colon("{a, b}", "expected ':'")]
+#[case::map_missing_value("{a:}", "unexpected token")]
+fn reports_collection_errors(#[case] src: &str, #[case] expected_pattern: &str) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected parse failure for {src}");
+    };
+    assert!(
+        !errors.is_empty(),
+        "expected at least one error for {src}, got none"
+    );
+    let error_messages: Vec<String> = errors.iter().map(|e| format!("{e:?}")).collect();
+    let has_expected = error_messages
+        .iter()
+        .any(|msg| msg.to_lowercase().contains(expected_pattern));
+    assert!(
+        has_expected,
+        "expected error containing '{expected_pattern}' for {src}, got: {error_messages:?}"
+    );
+}

@@ -311,6 +311,9 @@ fn reports_struct_literal_disallowed_in_if_condition() {
 #[case::match_unmatched_paren("match (x) { ) -> x }", 1)]
 #[case::match_unmatched_brace("match (x) { } -> x }", 1)]
 #[case::match_unmatched_bracket("match (x) { ] -> x }", 1)]
+#[case::vector_unclosed("[1, 2", 1)]
+#[case::map_unclosed("{a: 1", 1)]
+#[case::map_comma_without_colon("{a, b}", 1)]
 fn reports_errors(#[case] src: &str, #[case] min_errs: usize) {
     match parse_expression(src) {
         Ok(_) => panic!("expected parse error"),
@@ -375,6 +378,9 @@ fn rejects_chained_type_ops_with_single_diag() {
 #[case::trailing_dot("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
 #[case::bit_slice_missing_comma("e[1]", "expected comma", 3, 4, false)]
 #[case::bit_slice_unclosed("e[1,0", "expected right bracket", 5, 5, true)]
+#[case::vector_unclosed("[1, 2", "expected right bracket", 5, 5, true)]
+#[case::map_unclosed("{a: 1", "expected right brace", 5, 5, true)]
+#[case::map_comma_without_colon("{a, b}", "expected ':'", 2, 3, false)]
 fn postfix_expression_errors(
     #[case] src: &str,
     #[case] msg: &str,
@@ -386,7 +392,7 @@ fn postfix_expression_errors(
         panic!("expected error");
     };
     if unclosed {
-        assert_unclosed_delimiter_error(&errors, "expected right bracket", start, end);
+        assert_unclosed_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);
     }

@@ -150,22 +150,38 @@ where
         result
     }
 
-    pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
+    fn with_depth_check<R>(&mut self, f: impl FnOnce(&mut Self) -> Option<R>) -> Option<R> {
         if self.expr_depth >= MAX_EXPR_DEPTH {
             let sp = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
             self.ts.push_error(sp, "expression nesting too deep");
             return None;
         }
         self.expr_depth += 1;
-        let result = self.parse_expr_inner(min_bp);
+        let result = f(self);
         self.expr_depth -= 1;
         result
+    }
+
+    pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
+        self.with_depth_check(|this| this.parse_expr_inner(min_bp))
     }
 
     fn parse_expr_inner(&mut self, min_bp: u8) -> Option<Expr> {
         let lhs = self.parse_prefix()?;
         let lhs = self.parse_postfix(lhs)?;
         self.parse_infix(lhs, min_bp)
+    }
+
+    /// Parse an expression in map-key mode where `:` terminates parsing.
+    ///
+    /// This is used for map literal keys where `:` separates key from value
+    /// rather than being consumed as type ascription.
+    pub(super) fn parse_map_key_expr(&mut self, min_bp: u8) -> Option<Expr> {
+        self.with_depth_check(|this| {
+            let lhs = this.parse_prefix()?;
+            let lhs = this.parse_postfix(lhs)?;
+            this.parse_infix_with_colon_mode(lhs, min_bp, true)
+        })
     }
 
     // Parse highest-precedence postfix operators, delegating each operation to a dedicated helper.
