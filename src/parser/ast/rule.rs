@@ -364,14 +364,10 @@ fn aggregation_arity_error(
     )]
 }
 
-fn multiple_aggregations_error(first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {
+fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {
     Simple::custom(
         second_span.clone(),
-        format!(
-            "at most one aggregation (group_by or Aggregate) is permitted per rule body; \
-             first aggregation at {}..{}",
-            first_span.start, first_span.end
-        ),
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_string(),
     )
 }
 

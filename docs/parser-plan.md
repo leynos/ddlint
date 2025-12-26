@@ -182,8 +182,7 @@ arguments produce a diagnostic pointing to the literal span.
 
 Per the DDlog specification (§6.1), at most one aggregation is permitted per
 rule body. If `body_terms()` encounters a second aggregation, it reports an
-error referencing the span of the first aggregation so the user can locate both
-occurrences.
+error whose span points to the duplicate aggregation.
 
 ### 11.4 Design rationale
 
@@ -192,7 +191,7 @@ separate pass) ensures:
 
 1. Downstream code sees a consistent `RuleAggregation` structure without
    needing to detect and normalize aggregations itself.
-2. Diagnostic spans point precisely at the offending literals rather than
+2. Diagnostic spans point precisely at the offending literals, rather than
    referencing synthetic or rewritten nodes.
 3. The validation mirrors the specification's requirement that aggregation
    misuse is a parse-time error.

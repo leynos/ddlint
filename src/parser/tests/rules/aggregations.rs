@@ -1,5 +1,7 @@
 //! Tests for aggregation term detection in rule bodies.
 
+use rstest::rstest;
+
 use super::super::helpers::parse_ok;
 use crate::parser::ast::{AggregationSource, Expr, RuleBodyTerm};
 use crate::test_util::{assert_parse_error, call, var};
@@ -135,93 +137,21 @@ fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
     );
 }
 
-#[test]
-fn body_terms_error_on_multiple_group_by() {
-    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
-    assert_multiple_aggregation_error(src, "group_by(count(x), k)");
-}
-
-#[test]
-fn body_terms_error_on_multiple_legacy_aggregate() {
-    let src = "X(x) :- Aggregate((k), sum(x)), Aggregate((k), count(x)).";
-    assert_multiple_aggregation_error(src, "Aggregate((k), count(x))");
-}
-
-#[test]
-fn body_terms_error_on_mixed_group_by_and_aggregate() {
-    let src = "X(x) :- group_by(sum(x), k), Aggregate((k), count(x)).";
-    assert_multiple_aggregation_error(src, "Aggregate((k), count(x))");
-}
-
-/// Assert that `body_terms()` reports a multiple aggregation error with the
-/// expected spans for both the first and second aggregation literals.
-#[expect(
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    reason = "test asserts specific literals and span structures"
+#[rstest]
+#[case::multiple_group_by(
+    "X(x) :- group_by(sum(x), k), group_by(count(x), k).",
+    "group_by(count(x), k)"
 )]
-fn assert_multiple_aggregation_error_with_spans(
-    src: &str,
-    first_literal: &str,
-    second_literal: &str,
-) {
-    let parsed = parse_ok(src);
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let errors = match rule.body_terms() {
-        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
-        Err(errs) => errs,
-    };
-    assert_eq!(
-        errors.len(),
-        1,
-        "expected exactly one error, got {errors:?}"
-    );
-
-    // Compute expected spans
-    let first_start = src.find(first_literal).expect("first literal missing");
-    let first_end = first_start + first_literal.len();
-    let second_start = src.find(second_literal).expect("second literal missing");
-    let second_end = second_start + second_literal.len();
-
-    let error = &errors[0];
-    // Error span should point to the second aggregation
-    assert_eq!(
-        error.span(),
-        second_start..second_end,
-        "error span should point to second aggregation"
-    );
-    // Error message should reference the first aggregation span
-    let msg = format!("{error:?}");
-    let expected_first_span = format!("{first_start}..{first_end}");
-    assert!(
-        msg.contains(&expected_first_span),
-        "error message should contain first aggregation span '{expected_first_span}', got '{msg}'"
-    );
-}
-
-#[test]
-fn multiple_aggregation_error_contains_first_span() {
-    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
-    assert_multiple_aggregation_error_with_spans(
-        src,
-        "group_by(sum(x), k)",
-        "group_by(count(x), k)",
-    );
-}
-
-#[test]
-fn multiple_aggregation_error_contains_first_span_mixed() {
-    let src = "X(x) :- Aggregate((k), sum(x)), group_by(count(x), k).";
-    assert_multiple_aggregation_error_with_spans(
-        src,
-        "Aggregate((k), sum(x))",
-        "group_by(count(x), k)",
-    );
+#[case::multiple_legacy_aggregate(
+    "X(x) :- Aggregate((k), sum(x)), Aggregate((k), count(x)).",
+    "Aggregate((k), count(x))"
+)]
+#[case::mixed_group_by_and_aggregate(
+    "X(x) :- group_by(sum(x), k), Aggregate((k), count(x)).",
+    "Aggregate((k), count(x))"
+)]
+fn body_terms_error_on_multiple_aggregations(#[case] src: &str, #[case] second_literal: &str) {
+    assert_multiple_aggregation_error(src, second_literal);
 }
 
 #[test]

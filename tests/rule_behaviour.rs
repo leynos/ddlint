@@ -135,27 +135,15 @@ fn rejects_multiple_group_by_in_rule_body() {
 )]
 #[test]
 fn multiple_aggregation_error_spans_point_to_correct_locations() {
-    // End-to-end test verifying the error span points to the second aggregation
-    // and the message includes the span of the first aggregation.
+    // End-to-end test verifying the error span points to the second aggregation.
     let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
-    let parsed = parse(src);
-    assert!(parsed.errors().is_empty(), "CST parse should succeed");
-
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
+    let rule = parse_and_extract_rule(src);
 
     let errors = rule.body_terms().expect_err("expected errors");
     assert_eq!(errors.len(), 1, "expected exactly one error");
 
-    // Compute expected spans
-    let first_agg = "group_by(sum(x), k)";
+    // Compute expected span for second aggregation
     let second_agg = "group_by(count(x), k)";
-    let first_start = src.find(first_agg).expect("first agg missing");
-    let first_end = first_start + first_agg.len();
     let second_start = src.find(second_agg).expect("second agg missing");
     let second_end = second_start + second_agg.len();
 
@@ -164,13 +152,6 @@ fn multiple_aggregation_error_spans_point_to_correct_locations() {
         error.span(),
         second_start..second_end,
         "error span should point to second aggregation"
-    );
-
-    // Verify the error message includes first aggregation location
-    let msg = format!("{error:?}");
-    assert!(
-        msg.contains(&format!("{first_start}..{first_end}")),
-        "error message should contain first aggregation span"
     );
 }
 
@@ -185,23 +166,12 @@ fn rejects_mixed_aggregation_types_in_rule_body() {
     );
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "test expects specific literals and error structures"
-)]
+#[expect(clippy::expect_used, reason = "test expects specific error structures")]
 #[test]
 fn three_aggregations_produce_two_errors() {
     // When three aggregations appear, we should get two errors (one for each duplicate).
     let src = "X(x) :- group_by(a, k), group_by(b, k), group_by(c, k).";
-    let parsed = parse(src);
-    assert!(parsed.errors().is_empty(), "CST parse should succeed");
-
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
+    let rule = parse_and_extract_rule(src);
 
     let errors = rule.body_terms().expect_err("expected errors");
     assert_eq!(
@@ -209,43 +179,15 @@ fn three_aggregations_produce_two_errors() {
         2,
         "expected two errors for three aggregations"
     );
-
-    // Both errors should reference the first aggregation's span
-    let first_agg = "group_by(a, k)";
-    let first_start = src.find(first_agg).expect("first agg missing");
-    let first_end = first_start + first_agg.len();
-    let first_span_str = format!("{first_start}..{first_end}");
-
-    for error in &errors {
-        let msg = format!("{error:?}");
-        assert!(
-            msg.contains(&first_span_str),
-            "error should reference first aggregation span"
-        );
-    }
 }
 
+#[expect(clippy::expect_used, reason = "test asserts aggregation presence")]
 #[test]
 fn parses_legacy_aggregate_and_normalizes_arguments() {
     let src =
         "Totals(user, total) :- Orders(user, amt), Aggregate((user), sum(amt)), total = __group.";
-    let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected parse errors: {:?}",
-        parsed.errors()
-    );
-    #[expect(clippy::expect_used, reason = "test expects a single rule")]
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let terms = match rule.body_terms() {
-        Ok(terms) => terms,
-        Err(errs) => panic!("body terms should parse: {errs:?}"),
-    };
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
     // Find the aggregation term.
     let aggregation = terms.iter().find_map(|term| {
         if let RuleBodyTerm::Aggregation(agg) = term {
@@ -254,7 +196,6 @@ fn parses_legacy_aggregate_and_normalizes_arguments() {
             None
         }
     });
-    #[expect(clippy::expect_used, reason = "test asserts aggregation presence")]
     let agg = aggregation.expect("expected aggregation term");
     // Verify legacy Aggregate is recognized.
     assert_eq!(agg.source, AggregationSource::LegacyAggregate);
