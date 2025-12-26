@@ -232,7 +232,7 @@ fn map_to_sexpr_empty() {
 #[test]
 fn map_to_sexpr_single() {
     let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
-    assert_eq!(m.to_sexpr(), "(map (a 1))");
+    assert_eq!(m.to_sexpr(), "(map (entry a 1))");
 }
 
 #[test]
@@ -241,7 +241,7 @@ fn map_to_sexpr_multiple() {
         map_entry(var("a"), lit_num("1")),
         map_entry(var("b"), lit_num("2")),
     ]);
-    assert_eq!(m.to_sexpr(), "(map (a 1) (b 2))");
+    assert_eq!(m.to_sexpr(), "(map (entry a 1) (entry b 2))");
 }
 
 #[rstest]
@@ -249,10 +249,10 @@ fn map_to_sexpr_multiple() {
 #[case::vector_single(vec_lit(vec![lit_num("1")]), "(vec 1)")]
 #[case::vector_multiple(vec_lit(vec![lit_num("1"), var("x")]), "(vec 1 x)")]
 #[case::map_empty(map_lit(vec![]), "(map)")]
-#[case::map_single(map_lit(vec![map_entry(var("a"), lit_num("1"))]), "(map (a 1))")]
+#[case::map_single(map_lit(vec![map_entry(var("a"), lit_num("1"))]), "(map (entry a 1))")]
 #[case::map_multiple(
     map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]),
-    "(map (a 1) (b 2))"
+    "(map (entry a 1) (entry b 2))"
 )]
 fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
     assert_eq!(expr.to_sexpr(), expected);
