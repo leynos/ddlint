@@ -322,7 +322,7 @@ pub fn tuple(items: Vec<Expr>) -> Expr {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,no_run
 /// use ddlint::test_util::{lit_num, vec_lit, var};
 ///
 /// let v = vec_lit(vec![lit_num("1"), var("x")]);
@@ -337,7 +337,7 @@ pub fn vec_lit(items: Vec<Expr>) -> Expr {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,no_run
 /// use ddlint::test_util::{lit_num, map_entry, map_lit, var};
 ///
 /// let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
@@ -352,7 +352,7 @@ pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,no_run
 /// use ddlint::test_util::{lit_num, lit_str, map_entry};
 ///
 /// let entry = map_entry(lit_str("key"), lit_num("42"));

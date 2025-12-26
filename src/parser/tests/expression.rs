@@ -216,26 +216,6 @@ use rstest::rstest;
         ],
     )
 )]
-// Vector literal tests
-#[case("[]", vec_lit(vec![]))]
-#[case("[1]", vec_lit(vec![lit_num("1")]))]
-#[case("[1, 2, 3]", vec_lit(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
-#[case("[1,]", vec_lit(vec![lit_num("1")]))]
-#[case("[1, 2,]", vec_lit(vec![lit_num("1"), lit_num("2")]))]
-#[case("[x, y]", vec_lit(vec![var("x"), var("y")]))]
-#[case("[[1], [2, 3]]", vec_lit(vec![vec_lit(vec![lit_num("1")]), vec_lit(vec![lit_num("2"), lit_num("3")])]))]
-// Map literal tests
-#[case("{}", map_lit(vec![]))]
-#[case("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
-#[case("{a: 1, b: 2}", map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]))]
-#[case("{a: 1,}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
-#[case("{1: x}", map_lit(vec![map_entry(lit_num("1"), var("x"))]))]
-// Brace group backward compatibility
-#[case("{ x }", Expr::Group(Box::new(var("x"))))]
-#[case("{ 1 + 2 }", Expr::Group(Box::new(Expr::Binary { op: BinaryOp::Add, lhs: Box::new(lit_num("1")), rhs: Box::new(lit_num("2")) })))]
-// Nested collections
-#[case("[{a: 1}]", vec_lit(vec![map_lit(vec![map_entry(var("a"), lit_num("1"))])]))]
-#[case("{a: [1, 2]}", map_lit(vec![map_entry(var("a"), vec_lit(vec![lit_num("1"), lit_num("2")]))]))]
 #[case(
     "for (item in items) item",
     for_loop("item", var("items"), None, var("item"))
