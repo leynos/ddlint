@@ -224,16 +224,24 @@ fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
 // ============================================================================
 
 #[rstest]
-#[case::vector_unclosed("[1, 2")]
-#[case::map_unclosed("{a: 1")]
-#[case::map_comma_without_colon("{a, b}")]
-#[case::map_missing_value("{a:}")]
-fn reports_collection_errors(#[case] src: &str) {
+#[case::vector_unclosed("[1, 2", "expected t_rbracket")]
+#[case::map_unclosed("{a: 1", "expected t_rbrace")]
+#[case::map_comma_without_colon("{a, b}", "expected ':'")]
+#[case::map_missing_value("{a:}", "unexpected token")]
+fn reports_collection_errors(#[case] src: &str, #[case] expected_pattern: &str) {
     let Err(errors) = parse_expression(src) else {
         panic!("expected parse failure for {src}");
     };
     assert!(
         !errors.is_empty(),
         "expected at least one error for {src}, got none"
+    );
+    let error_messages: Vec<String> = errors.iter().map(|e| format!("{e:?}")).collect();
+    let has_expected = error_messages
+        .iter()
+        .any(|msg| msg.to_lowercase().contains(expected_pattern));
+    assert!(
+        has_expected,
+        "expected error containing '{expected_pattern}' for {src}, got: {error_messages:?}"
     );
 }
