@@ -50,82 +50,79 @@ pub fn lit_num(n: impl Into<NumericText>) -> Expr {
     Expr::Literal(Literal::Number(literal))
 }
 
-/// Construct a string [`Expr::Literal`].
-#[must_use]
-pub fn lit_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(
-        body.as_ref(),
-        StringKind::Standard {
-            interpolated: false,
-        },
-        false,
-    )
+/// Generates a string literal helper function.
+macro_rules! string_literal_helper {
+    ($name:ident, $kind:ident, $interpolated:expr, $interned:expr, $doc:expr) => {
+        #[doc = $doc]
+        #[must_use]
+        pub fn $name(s: impl Into<StringBody>) -> Expr {
+            let body: StringBody = s.into();
+            string_literal(
+                body.as_ref(),
+                StringKind::$kind {
+                    interpolated: $interpolated,
+                },
+                $interned,
+            )
+        }
+    };
 }
 
-/// Construct an interpolated string [`Expr::Literal`].
-#[must_use]
-pub fn lit_interpolated_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(
-        body.as_ref(),
-        StringKind::Standard { interpolated: true },
-        false,
-    )
-}
+string_literal_helper!(
+    lit_str,
+    Standard,
+    false,
+    false,
+    "Construct a string [`Expr::Literal`]."
+);
 
-/// Construct a raw string [`Expr::Literal`].
-#[must_use]
-pub fn lit_raw_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(
-        body.as_ref(),
-        StringKind::Raw {
-            interpolated: false,
-        },
-        false,
-    )
-}
+string_literal_helper!(
+    lit_interpolated_str,
+    Standard,
+    true,
+    false,
+    "Construct an interpolated string [`Expr::Literal`]."
+);
 
-/// Construct a raw interpolated string [`Expr::Literal`].
-#[must_use]
-pub fn lit_raw_interpolated_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(body.as_ref(), StringKind::Raw { interpolated: true }, false)
-}
+string_literal_helper!(
+    lit_raw_str,
+    Raw,
+    false,
+    false,
+    "Construct a raw string [`Expr::Literal`]."
+);
 
-/// Construct an interned standard string [`Expr::Literal`].
-#[must_use]
-pub fn lit_interned_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(
-        body.as_ref(),
-        StringKind::Standard {
-            interpolated: false,
-        },
-        true,
-    )
-}
+string_literal_helper!(
+    lit_raw_interpolated_str,
+    Raw,
+    true,
+    false,
+    "Construct a raw interpolated string [`Expr::Literal`]."
+);
 
-/// Construct an interned raw string [`Expr::Literal`].
-#[must_use]
-pub fn lit_interned_raw_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(
-        body.as_ref(),
-        StringKind::Raw {
-            interpolated: false,
-        },
-        true,
-    )
-}
+string_literal_helper!(
+    lit_interned_str,
+    Standard,
+    false,
+    true,
+    "Construct an interned standard string [`Expr::Literal`]."
+);
 
-/// Construct an interned interpolated raw string [`Expr::Literal`].
-#[must_use]
-pub fn lit_interned_raw_interpolated_str(s: impl Into<StringBody>) -> Expr {
-    let body: StringBody = s.into();
-    string_literal(body.as_ref(), StringKind::Raw { interpolated: true }, true)
-}
+string_literal_helper!(
+    lit_interned_raw_str,
+    Raw,
+    false,
+    true,
+    "Construct an interned raw string [`Expr::Literal`]."
+);
+
+string_literal_helper!(
+    lit_interned_raw_interpolated_str,
+    Raw,
+    true,
+    true,
+    "Construct an interned interpolated raw string [`Expr::Literal`]."
+);
 
 fn string_literal(body: &str, kind: StringKind, interned: bool) -> Expr {
     Expr::Literal(Literal::String(StringLiteral {
