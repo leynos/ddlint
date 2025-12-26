@@ -18,8 +18,9 @@ pub use expressions::{
     tuple, tuple_index, var, vec_lit,
 };
 pub use literals::{
-    lit_bool, lit_interned_raw_interpolated_str, lit_interned_raw_str, lit_interned_str,
-    lit_interpolated_str, lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str,
+    NumericText, StringBody, lit_bool, lit_interned_raw_interpolated_str, lit_interned_raw_str,
+    lit_interned_str, lit_interpolated_str, lit_num, lit_raw_interpolated_str, lit_raw_str,
+    lit_str,
 };
 
 use crate::{Span, SyntaxKind, tokenize_with_trivia};
