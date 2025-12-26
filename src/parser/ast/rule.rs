@@ -129,13 +129,15 @@ impl Rule {
             let literal_span = literal.span();
             match literal.parse_term() {
                 Ok(Some(term)) => {
-                    validate_aggregation(
+                    let skip = validate_aggregation(
                         &term,
                         &literal_span,
                         &mut first_aggregation_span,
                         &mut errors,
                     );
-                    terms.push(term);
+                    if !skip {
+                        terms.push(term);
+                    }
                 }
                 Ok(None) => {}
                 Err(mut errs) => errors.append(&mut errs),
@@ -153,23 +155,26 @@ impl Rule {
 /// Validate that at most one aggregation appears in the rule body.
 ///
 /// If `term` is an aggregation, checks whether a previous aggregation was already
-/// seen. Records an error if so, otherwise stores the current span as the first.
+/// seen. Records an error and returns `true` (skip) if so, otherwise stores the
+/// current span as the first and returns `false` (include).
 fn validate_aggregation(
     term: &RuleBodyTerm,
     literal_span: &Span,
     first_aggregation_span: &mut Option<Span>,
     errors: &mut Vec<Simple<SyntaxKind>>,
-) {
+) -> bool {
     if let RuleBodyTerm::Aggregation(_) = term {
         match first_aggregation_span {
             Some(first_span) => {
                 errors.push(multiple_aggregations_error(first_span, literal_span));
+                return true; // skip duplicate aggregation
             }
             None => {
                 *first_aggregation_span = Some(literal_span.clone());
             }
         }
     }
+    false
 }
 
 impl_ast_node!(Rule);
@@ -363,7 +368,7 @@ fn multiple_aggregations_error(first_span: &Span, second_span: &Span) -> Simple<
     Simple::custom(
         second_span.clone(),
         format!(
-            "at most one aggregation (group_by or Aggregate) is permitted per rule; \
+            "at most one aggregation (group_by or Aggregate) is permitted per rule body; \
              first aggregation at {}..{}",
             first_span.start, first_span.end
         ),

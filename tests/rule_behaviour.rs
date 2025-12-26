@@ -133,12 +133,125 @@ fn rejects_multiple_group_by_in_rule_body() {
     let errors = result.expect_err("expected errors");
     let has_error = errors.iter().any(|e| {
         format!("{e:?}")
-            .contains("at most one aggregation (group_by or Aggregate) is permitted per rule")
+            .contains("at most one aggregation (group_by or Aggregate) is permitted per rule body")
     });
     assert!(
         has_error,
         "expected 'at most one aggregation' error, got: {errors:?}"
     );
+}
+
+#[expect(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "test expects specific literals and span structures"
+)]
+#[test]
+fn multiple_aggregation_error_spans_point_to_correct_locations() {
+    // End-to-end test verifying the error span points to the second aggregation
+    // and the message includes the span of the first aggregation.
+    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty(), "CST parse should succeed");
+
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+
+    let errors = rule.body_terms().expect_err("expected errors");
+    assert_eq!(errors.len(), 1, "expected exactly one error");
+
+    // Compute expected spans
+    let first_agg = "group_by(sum(x), k)";
+    let second_agg = "group_by(count(x), k)";
+    let first_start = src.find(first_agg).expect("first agg missing");
+    let first_end = first_start + first_agg.len();
+    let second_start = src.find(second_agg).expect("second agg missing");
+    let second_end = second_start + second_agg.len();
+
+    let error = &errors[0];
+    assert_eq!(
+        error.span(),
+        second_start..second_end,
+        "error span should point to second aggregation"
+    );
+
+    // Verify the error message includes first aggregation location
+    let msg = format!("{error:?}");
+    assert!(
+        msg.contains(&format!("{first_start}..{first_end}")),
+        "error message should contain first aggregation span"
+    );
+}
+
+#[test]
+fn rejects_mixed_aggregation_types_in_rule_body() {
+    // Test that mixing group_by and Aggregate also triggers the error.
+    let src = "X(x) :- Aggregate((k), sum(x)), group_by(count(x), k).";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty(), "CST parse should succeed");
+
+    #[expect(clippy::expect_used, reason = "test expects a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+
+    let result = rule.body_terms();
+    assert!(result.is_err(), "expected multiple aggregation error");
+
+    #[expect(clippy::expect_used, reason = "test asserts error presence")]
+    let errors = result.expect_err("expected errors");
+    let has_error = errors.iter().any(|e| {
+        format!("{e:?}")
+            .contains("at most one aggregation (group_by or Aggregate) is permitted per rule body")
+    });
+    assert!(has_error, "expected 'at most one aggregation' error");
+}
+
+#[expect(
+    clippy::expect_used,
+    reason = "test expects specific literals and error structures"
+)]
+#[test]
+fn three_aggregations_produce_two_errors() {
+    // When three aggregations appear, we should get two errors (one for each duplicate).
+    let src = "X(x) :- group_by(a, k), group_by(b, k), group_by(c, k).";
+    let parsed = parse(src);
+    assert!(parsed.errors().is_empty(), "CST parse should succeed");
+
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+
+    let errors = rule.body_terms().expect_err("expected errors");
+    assert_eq!(
+        errors.len(),
+        2,
+        "expected two errors for three aggregations"
+    );
+
+    // Both errors should reference the first aggregation's span
+    let first_agg = "group_by(a, k)";
+    let first_start = src.find(first_agg).expect("first agg missing");
+    let first_end = first_start + first_agg.len();
+    let first_span_str = format!("{first_start}..{first_end}");
+
+    for error in &errors {
+        let msg = format!("{error:?}");
+        assert!(
+            msg.contains(&first_span_str),
+            "error should reference first aggregation span"
+        );
+    }
 }
 
 #[test]

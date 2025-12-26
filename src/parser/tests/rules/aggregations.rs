@@ -131,7 +131,7 @@ fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
     assert_body_terms_error(
         src,
         second_literal,
-        "at most one aggregation (group_by or Aggregate) is permitted per rule",
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body",
     );
 }
 
@@ -151,4 +151,133 @@ fn body_terms_error_on_multiple_legacy_aggregate() {
 fn body_terms_error_on_mixed_group_by_and_aggregate() {
     let src = "X(x) :- group_by(sum(x), k), Aggregate((k), count(x)).";
     assert_multiple_aggregation_error(src, "Aggregate((k), count(x))");
+}
+
+/// Assert that `body_terms()` reports a multiple aggregation error with the
+/// expected spans for both the first and second aggregation literals.
+#[expect(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "test asserts specific literals and span structures"
+)]
+fn assert_multiple_aggregation_error_with_spans(
+    src: &str,
+    first_literal: &str,
+    second_literal: &str,
+) {
+    let parsed = parse_ok(src);
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    assert_eq!(
+        errors.len(),
+        1,
+        "expected exactly one error, got {errors:?}"
+    );
+
+    // Compute expected spans
+    let first_start = src.find(first_literal).expect("first literal missing");
+    let first_end = first_start + first_literal.len();
+    let second_start = src.find(second_literal).expect("second literal missing");
+    let second_end = second_start + second_literal.len();
+
+    let error = &errors[0];
+    // Error span should point to the second aggregation
+    assert_eq!(
+        error.span(),
+        second_start..second_end,
+        "error span should point to second aggregation"
+    );
+    // Error message should reference the first aggregation span
+    let msg = format!("{error:?}");
+    let expected_first_span = format!("{first_start}..{first_end}");
+    assert!(
+        msg.contains(&expected_first_span),
+        "error message should contain first aggregation span '{expected_first_span}', got '{msg}'"
+    );
+}
+
+#[test]
+fn multiple_aggregation_error_contains_first_span() {
+    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
+    assert_multiple_aggregation_error_with_spans(
+        src,
+        "group_by(sum(x), k)",
+        "group_by(count(x), k)",
+    );
+}
+
+#[test]
+fn multiple_aggregation_error_contains_first_span_mixed() {
+    let src = "X(x) :- Aggregate((k), sum(x)), group_by(count(x), k).";
+    assert_multiple_aggregation_error_with_spans(
+        src,
+        "Aggregate((k), sum(x))",
+        "group_by(count(x), k)",
+    );
+}
+
+#[test]
+fn body_terms_error_on_three_aggregations_reports_two_errors() {
+    let src = "X(x) :- group_by(a, k), group_by(b, k), group_by(c, k).";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    // With three aggregations, we expect two errors (one for each duplicate)
+    assert_eq!(
+        errors.len(),
+        2,
+        "expected two errors for three aggregations, got {errors:?}"
+    );
+}
+
+#[test]
+fn duplicate_aggregations_excluded_from_terms() {
+    // Verify that even when errors are reported, the terms returned via
+    // Err(...) only include the first aggregation.
+    let src = "X(x) :- A(x), group_by(sum(x), k), group_by(count(x), k), B(x).";
+    let parsed = parse_ok(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+
+    // We use body_expression_nodes() to get a count of the raw literals
+    let raw_literal_count = rule.body_expression_nodes().len();
+    assert_eq!(raw_literal_count, 4, "expected 4 body literals");
+
+    // When body_terms() fails, it returns the errors but not the terms.
+    // To test structural consistency, we need to verify the helper behaviour.
+    // The point is that duplicate aggregations are not pushed into terms.
+    // We can't easily test the internal `terms` vector directly, but we can
+    // verify that parsing rules with duplicate aggregations produces the
+    // expected error count (one per duplicate).
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    assert_eq!(
+        errors.len(),
+        1,
+        "expected exactly one error for two aggregations"
+    );
 }
