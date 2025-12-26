@@ -133,44 +133,32 @@ fn assert_delimiter_error_of_kind(
     );
 }
 
-/// Assert that a parser error indicates a delimiter mismatch.
-///
-/// # Panics
-/// Panics if `errors` is empty, or if the error does not match `expected_pattern`.
-#[track_caller]
-pub fn assert_delimiter_error(
-    errors: &[Simple<SyntaxKind>],
-    expected_pattern: impl Into<ErrorPattern>,
-    start: usize,
-    end: usize,
-) {
-    assert_delimiter_error_of_kind(
-        errors,
-        expected_pattern,
-        start..end,
-        DelimiterErrorKind::Mismatch,
-    );
+/// Generate a delimiter assertion wrapper function.
+macro_rules! delimiter_error_assertion {
+    ($name:ident, $kind:expr, $doc:expr) => {
+        #[doc = $doc]
+        #[track_caller]
+        pub fn $name(
+            errors: &[Simple<SyntaxKind>],
+            expected_pattern: impl Into<ErrorPattern>,
+            start: usize,
+            end: usize,
+        ) {
+            assert_delimiter_error_of_kind(errors, expected_pattern, start..end, $kind);
+        }
+    };
 }
 
-/// Assert that a parser error indicates an unclosed delimiter.
-///
-/// This verifies the error span points to the opening delimiter, and that no
-/// closing token was found while matching the expected pattern.
-///
-/// # Panics
-/// Panics if `errors` is empty, or if the error kind does not indicate an
-/// unclosed delimiter.
-#[track_caller]
-pub fn assert_unclosed_delimiter_error(
-    errors: &[Simple<SyntaxKind>],
-    expected_pattern: impl Into<ErrorPattern>,
-    start: usize,
-    end: usize,
-) {
-    assert_delimiter_error_of_kind(
-        errors,
-        expected_pattern,
-        start..end,
-        DelimiterErrorKind::Unclosed,
-    );
-}
+delimiter_error_assertion!(
+    assert_delimiter_error,
+    DelimiterErrorKind::Mismatch,
+    "Assert that a parser error indicates a delimiter mismatch."
+);
+
+delimiter_error_assertion!(
+    assert_unclosed_delimiter_error,
+    DelimiterErrorKind::Unclosed,
+    "Assert that a parser error indicates an unclosed delimiter.\n\n\
+     This verifies the error span points to the opening delimiter, and that no\n\
+     closing token was found whilst matching the expected pattern."
+);
