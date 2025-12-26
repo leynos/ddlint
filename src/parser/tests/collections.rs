@@ -205,45 +205,6 @@ fn parses_mixed_collections(#[case] src: &str, #[case] expected: Expr) {
 // S-expression output tests
 // ============================================================================
 
-#[test]
-fn vector_to_sexpr_empty() {
-    let v = vec_lit(vec![]);
-    assert_eq!(v.to_sexpr(), "(vec)");
-}
-
-#[test]
-fn vector_to_sexpr_single() {
-    let v = vec_lit(vec![lit_num("1")]);
-    assert_eq!(v.to_sexpr(), "(vec 1)");
-}
-
-#[test]
-fn vector_to_sexpr_multiple() {
-    let v = vec_lit(vec![lit_num("1"), var("x")]);
-    assert_eq!(v.to_sexpr(), "(vec 1 x)");
-}
-
-#[test]
-fn map_to_sexpr_empty() {
-    let m = map_lit(vec![]);
-    assert_eq!(m.to_sexpr(), "(map)");
-}
-
-#[test]
-fn map_to_sexpr_single() {
-    let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
-    assert_eq!(m.to_sexpr(), "(map (entry a 1))");
-}
-
-#[test]
-fn map_to_sexpr_multiple() {
-    let m = map_lit(vec![
-        map_entry(var("a"), lit_num("1")),
-        map_entry(var("b"), lit_num("2")),
-    ]);
-    assert_eq!(m.to_sexpr(), "(map (entry a 1) (entry b 2))");
-}
-
 #[rstest]
 #[case::vector_empty(vec_lit(vec![]), "(vec)")]
 #[case::vector_single(vec_lit(vec![lit_num("1")]), "(vec 1)")]

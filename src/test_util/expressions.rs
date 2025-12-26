@@ -35,6 +35,7 @@ pub fn call_expr(callee: Expr, args: Vec<Expr>) -> Expr {
 }
 
 /// Construct a method call [`Expr::MethodCall`].
+#[must_use]
 pub fn method_call(recv: Expr, name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     let name: Name = name.into();
     Expr::MethodCall {
