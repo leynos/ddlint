@@ -1,4 +1,5 @@
-//! Behavioural tests covering rule parsing with aggregations and `FlatMap` constructs.
+//! Behavioural tests covering rule parsing with aggregations, `FlatMap`, and for-loop
+//! constructs.
 
 use ddlint::parse;
 use ddlint::parser::ast::{AggregationSource, Rule, RuleBodyTerm};
@@ -203,4 +204,162 @@ fn parses_legacy_aggregate_and_normalizes_arguments() {
     // Note: (user) parses as a grouped expression.
     assert_eq!(agg.project.to_sexpr(), "(call sum amt)");
     assert_eq!(agg.key.to_sexpr(), "(group user)");
+}
+
+// -----------------------------------------------------------------------------
+// For-loop desugaring tests
+// -----------------------------------------------------------------------------
+
+#[test]
+fn for_loop_in_rule_body_is_classified_as_for_term() {
+    let src = "ItemsProcessed(count) :- for (entry in Items(entry)) Process(entry).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 1);
+    assert!(matches!(terms.first(), Some(RuleBodyTerm::ForLoop(_))));
+}
+
+#[test]
+fn for_loop_with_guard_has_guard_expression() {
+    let src = "FilteredItems(x) :- for (x in Items(x) if valid(x)) Accept(x).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
+        panic!("expected ForLoop term");
+    };
+    assert!(for_loop.guard.is_some());
+    assert_eq!(
+        for_loop
+            .guard
+            .as_ref()
+            .map(ddlint::parser::ast::Expr::to_sexpr)
+            .as_deref(),
+        Some("(call valid x)")
+    );
+}
+
+#[test]
+fn nested_for_loops_preserve_structure() {
+    let src = "Pairs(a, b) :- for (a in A(a)) for (b in B(b)) Match(a, b).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 1);
+
+    let Some(RuleBodyTerm::ForLoop(outer)) = terms.first() else {
+        panic!("expected outer ForLoop term");
+    };
+    assert_eq!(outer.iterable.to_sexpr(), "(call A a)");
+    assert_eq!(outer.body_terms.len(), 1);
+
+    let Some(RuleBodyTerm::ForLoop(inner)) = outer.body_terms.first() else {
+        panic!("expected inner ForLoop term");
+    };
+    assert_eq!(inner.iterable.to_sexpr(), "(call B b)");
+}
+
+#[expect(clippy::expect_used, reason = "test helper expects valid source")]
+#[test]
+fn flattened_terms_expand_for_loop_to_components() {
+    let src = "R(x) :- for (x in Source(x) if pred(x)) Target(x).";
+    let rule = parse_and_extract_rule(src);
+    let flattened = rule
+        .flattened_body_terms()
+        .expect("should flatten successfully");
+
+    // Should be: Source(x), pred(x), Target(x)
+    assert_eq!(flattened.len(), 3);
+
+    let Some(RuleBodyTerm::Expression(first)) = flattened.first() else {
+        panic!("expected expression term");
+    };
+    assert_eq!(first.to_sexpr(), "(call Source x)");
+
+    let Some(RuleBodyTerm::Expression(second)) = flattened.get(1) else {
+        panic!("expected expression term");
+    };
+    assert_eq!(second.to_sexpr(), "(call pred x)");
+
+    let Some(RuleBodyTerm::Expression(third)) = flattened.get(2) else {
+        panic!("expected expression term");
+    };
+    assert_eq!(third.to_sexpr(), "(call Target x)");
+}
+
+#[expect(clippy::expect_used, reason = "test helper expects valid source")]
+#[test]
+fn flattened_nested_for_loops_expand_correctly() {
+    let src = "R(a, b) :- for (a in A(a)) for (b in B(b)) Pair(a, b).";
+    let rule = parse_and_extract_rule(src);
+    let flattened = rule
+        .flattened_body_terms()
+        .expect("should flatten successfully");
+
+    // Should be: A(a), B(b), Pair(a, b)
+    assert_eq!(flattened.len(), 3);
+
+    let Some(RuleBodyTerm::Expression(first)) = flattened.first() else {
+        panic!("expected expression term");
+    };
+    assert_eq!(first.to_sexpr(), "(call A a)");
+
+    let Some(RuleBodyTerm::Expression(second)) = flattened.get(1) else {
+        panic!("expected expression term");
+    };
+    assert_eq!(second.to_sexpr(), "(call B b)");
+
+    let Some(RuleBodyTerm::Expression(third)) = flattened.get(2) else {
+        panic!("expected expression term");
+    };
+    assert_eq!(third.to_sexpr(), "(call Pair a b)");
+}
+
+#[test]
+fn mixed_for_loop_and_regular_terms() {
+    let src = "R(x, y) :- Pre(x), for (y in Items(y)) Process(y), Post(x, y).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 3);
+
+    // First term: Pre(x)
+    assert!(matches!(terms.first(), Some(RuleBodyTerm::Expression(_))));
+
+    // Second term: for loop
+    assert!(matches!(terms.get(1), Some(RuleBodyTerm::ForLoop(_))));
+
+    // Third term: Post(x, y)
+    assert!(matches!(terms.get(2), Some(RuleBodyTerm::Expression(_))));
+}
+
+#[test]
+fn for_loop_with_aggregation_in_body() {
+    let src =
+        "Totals(user, total) :- for (order in Orders(order)) group_by(sum(order.amt), order.user).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 1);
+
+    let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
+        panic!("expected ForLoop term");
+    };
+
+    // The for-loop body should contain the aggregation
+    assert_eq!(for_loop.body_terms.len(), 1);
+    assert!(matches!(
+        for_loop.body_terms.first(),
+        Some(RuleBodyTerm::Aggregation(agg)) if agg.source == AggregationSource::GroupBy
+    ));
+}
+
+#[test]
+fn for_loop_pattern_is_preserved() {
+    let src = "R(k, v) :- for ((k, v) in Pairs(k, v)) Accept(k, v).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+
+    let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
+        panic!("expected ForLoop term");
+    };
+
+    // Pattern should be a tuple
+    assert_eq!(for_loop.pattern.to_source(), "(k, v)");
 }
