@@ -30,7 +30,7 @@
 use chumsky::error::Simple;
 
 use super::rule_head::{RuleHead, first_head_text, parse_rule_heads};
-use super::{AstNode, Expr, Pattern};
+use super::{AstNode, BinaryOp, Expr, Pattern};
 use crate::parser::delimiter::find_top_level_eq_span;
 use crate::parser::expression::parse_expression;
 use crate::parser::pattern::parse_pattern;
@@ -150,6 +150,44 @@ impl Rule {
             Err(errors)
         }
     }
+
+    /// Return body terms with for-loops flattened inline.
+    ///
+    /// This method provides the desugared form of the rule body, expanding
+    /// each for-loop into its constituent terms (iterable, guard, body).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use ddlint::parse;
+    /// # use ddlint::parser::ast::RuleBodyTerm;
+    /// let parsed = parse("R(x) :- for (x in Source(x) if pred(x)) Target(x).");
+    /// let rule = parsed.root().rules().first().cloned().expect("rule missing");
+    /// let flattened = rule.flattened_body_terms().expect("should flatten");
+    /// // Contains: Source(x), pred(x), Target(x)
+    /// assert_eq!(flattened.len(), 3);
+    /// assert!(matches!(flattened.first(), Some(RuleBodyTerm::Expression(_))));
+    /// ```
+    ///
+    /// # Errors
+    /// Returns aggregated literal diagnostics when any body term fails to parse.
+    pub fn flattened_body_terms(&self) -> Result<Vec<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+        let terms = self.body_terms()?;
+        let mut result = Vec::new();
+
+        for term in terms {
+            match term {
+                RuleBodyTerm::ForLoop(for_loop) => {
+                    result.extend(for_loop.flatten());
+                }
+                other => {
+                    result.push(other);
+                }
+            }
+        }
+
+        Ok(result)
+    }
 }
 
 /// Validate that at most one aggregation appears in the rule body.
@@ -227,6 +265,80 @@ pub enum RuleBodyTerm {
     Assignment(RuleAssignment),
     /// Aggregation literal (`group_by` or legacy `Aggregate`).
     Aggregation(RuleAggregation),
+    /// For-loop construct that iterates over a relation or expression.
+    ForLoop(RuleForLoop),
+}
+
+/// For-loop term extracted from a rule body.
+///
+/// Represents a top-level `for` statement in a rule context, which desugars
+/// into equivalent rule terms. The pattern binding becomes available in
+/// subsequent terms, the guard (if present) acts as a filter condition, and
+/// the body terms are executed for each matching iteration.
+///
+/// # Desugaring Semantics
+///
+/// ```text
+/// Head(x) :- for (item in Source(item) if guard(item)) Body(item, x).
+/// ```
+///
+/// Flattens to:
+///
+/// ```text
+/// Head(x) :- Source(item), guard(item), Body(item, x).
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuleForLoop {
+    /// Pattern binding for each iteration (e.g., `item` or `(key, value)`).
+    pub pattern: Pattern,
+    /// Iterable expression (often a relation call like `Items(item)`).
+    pub iterable: Expr,
+    /// Optional guard condition filtering iterations.
+    pub guard: Option<Expr>,
+    /// Body terms executed for each matching element.
+    pub body_terms: Vec<RuleBodyTerm>,
+}
+
+impl RuleForLoop {
+    /// Flatten this for-loop into a sequence of body terms.
+    ///
+    /// The iterable becomes a relation call/expression term, the guard becomes
+    /// a condition term, and body terms are appended. Nested for-loops are
+    /// recursively flattened.
+    ///
+    /// # Example
+    ///
+    /// ```text
+    /// for (item in Source(item) if guard(item)) Body(item)
+    /// ```
+    ///
+    /// Flattens to: `[Source(item), guard(item), Body(item)]`
+    #[must_use]
+    pub fn flatten(&self) -> Vec<RuleBodyTerm> {
+        let mut result = Vec::new();
+
+        // The iterable becomes a relation call/expression term
+        result.push(RuleBodyTerm::Expression(self.iterable.clone()));
+
+        // The guard becomes a condition term
+        if let Some(guard) = &self.guard {
+            result.push(RuleBodyTerm::Expression(guard.clone()));
+        }
+
+        // Flatten nested for-loops and add body terms
+        for term in &self.body_terms {
+            match term {
+                RuleBodyTerm::ForLoop(inner) => {
+                    result.extend(inner.flatten());
+                }
+                other => {
+                    result.push(other.clone());
+                }
+            }
+        }
+
+        result
+    }
 }
 
 /// Pattern assignment extracted from a rule literal.
@@ -306,6 +418,12 @@ fn classify_expression(
     literal_span: &Span,
 ) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
     match expr {
+        Expr::ForLoop {
+            pattern,
+            iterable,
+            guard,
+            body,
+        } => classify_for_loop(pattern, *iterable, guard.map(|g| *g), *body, literal_span),
         Expr::Call { callee, args } => {
             if let Expr::Variable(name) = &*callee
                 && let Some(source) = aggregation_source_for(name.as_str())
@@ -362,6 +480,63 @@ fn aggregation_arity_error(
         literal_span.clone(),
         format!("{} expects exactly two arguments", source.label()),
     )]
+}
+
+/// Classify a for-loop expression into a structured `RuleForLoop` term.
+///
+/// Recursively classifies the body expression to produce nested body terms.
+fn classify_for_loop(
+    pattern: Pattern,
+    iterable: Expr,
+    guard: Option<Expr>,
+    body: Expr,
+    literal_span: &Span,
+) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+    let body_terms = classify_for_body(body, literal_span)?;
+
+    Ok(Some(RuleBodyTerm::ForLoop(RuleForLoop {
+        pattern,
+        iterable,
+        guard,
+        body_terms,
+    })))
+}
+
+/// Recursively classify a for-loop body into a sequence of body terms.
+///
+/// Handles sequence expressions (block bodies with multiple statements),
+/// nested for-loops, and single expressions.
+fn classify_for_body(
+    body: Expr,
+    literal_span: &Span,
+) -> Result<Vec<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
+    match body {
+        // Handle sequence expressions from block bodies
+        Expr::Binary {
+            op: BinaryOp::Seq,
+            lhs,
+            rhs,
+        } => {
+            let mut terms = classify_for_body(*lhs, literal_span)?;
+            terms.extend(classify_for_body(*rhs, literal_span)?);
+            Ok(terms)
+        }
+        // Handle nested for-loops
+        Expr::ForLoop {
+            pattern,
+            iterable,
+            guard,
+            body,
+        } => {
+            let inner =
+                classify_for_loop(pattern, *iterable, guard.map(|g| *g), *body, literal_span)?;
+            Ok(inner.into_iter().collect())
+        }
+        // Single expression - classify it
+        other => {
+            Ok(classify_expression(other, literal_span)?.map_or_else(Vec::new, |term| vec![term]))
+        }
+    }
 }
 
 fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {

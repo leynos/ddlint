@@ -158,6 +158,7 @@ pub use relation::Relation;
 pub use root::Root;
 pub use rule::{
     AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
+    RuleForLoop,
 };
 pub use rule_head::RuleHead;
 pub use string_literal::{StringKind, StringLiteral};
