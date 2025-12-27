@@ -100,6 +100,9 @@ impl Rule {
     /// pattern-matching assignments (FlatMap-style binds), returning
     /// [`RuleBodyTerm`] variants describing each literal.
     ///
+    /// At most one aggregation is permitted per rule body; multiple
+    /// aggregations produce a diagnostic.
+    ///
     /// # Examples
     /// ```rust
     /// # use ddlint::parse;
@@ -115,14 +118,27 @@ impl Rule {
     ///
     /// # Errors
     /// Returns aggregated literal diagnostics when assignments or aggregations
-    /// fail to parse.
+    /// fail to parse, or when multiple aggregations appear in the same rule
+    /// body.
     pub fn body_terms(&self) -> Result<Vec<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
         let mut terms = Vec::new();
         let mut errors = Vec::new();
+        let mut first_aggregation_span: Option<Span> = None;
 
         for literal in self.body_expression_nodes() {
+            let literal_span = literal.span();
             match literal.parse_term() {
-                Ok(Some(term)) => terms.push(term),
+                Ok(Some(term)) => {
+                    let skip = validate_aggregation(
+                        &term,
+                        &literal_span,
+                        &mut first_aggregation_span,
+                        &mut errors,
+                    );
+                    if !skip {
+                        terms.push(term);
+                    }
+                }
                 Ok(None) => {}
                 Err(mut errs) => errors.append(&mut errs),
             }
@@ -134,6 +150,31 @@ impl Rule {
             Err(errors)
         }
     }
+}
+
+/// Validate that at most one aggregation appears in the rule body.
+///
+/// If `term` is an aggregation, checks whether a previous aggregation was already
+/// seen. Records an error and returns `true` (skip) if so, otherwise stores the
+/// current span as the first and returns `false` (include).
+fn validate_aggregation(
+    term: &RuleBodyTerm,
+    literal_span: &Span,
+    first_aggregation_span: &mut Option<Span>,
+    errors: &mut Vec<Simple<SyntaxKind>>,
+) -> bool {
+    if let RuleBodyTerm::Aggregation(_) = term {
+        match first_aggregation_span {
+            Some(first_span) => {
+                errors.push(multiple_aggregations_error(first_span, literal_span));
+                return true; // skip duplicate aggregation
+            }
+            None => {
+                *first_aggregation_span = Some(literal_span.clone());
+            }
+        }
+    }
+    false
 }
 
 impl_ast_node!(Rule);
@@ -321,6 +362,13 @@ fn aggregation_arity_error(
         literal_span.clone(),
         format!("{} expects exactly two arguments", source.label()),
     )]
+}
+
+fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {
+    Simple::custom(
+        second_span.clone(),
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_string(),
+    )
 }
 
 #[derive(Debug)]
