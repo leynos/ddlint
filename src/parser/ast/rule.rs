@@ -423,7 +423,15 @@ fn classify_expression(
             iterable,
             guard,
             body,
-        } => classify_for_loop(pattern, *iterable, guard.map(|g| *g), *body, literal_span),
+        } => classify_for_loop(
+            ForLoopComponents {
+                pattern,
+                iterable: *iterable,
+                guard: guard.map(|g| *g),
+                body: *body,
+            },
+            literal_span,
+        ),
         Expr::Call { callee, args } => {
             if let Expr::Variable(name) = &*callee
                 && let Some(source) = aggregation_source_for(name.as_str())
@@ -482,22 +490,27 @@ fn aggregation_arity_error(
     )]
 }
 
-/// Classify a for-loop expression into a structured `RuleForLoop` term.
-///
-/// Recursively classifies the body expression to produce nested body terms.
-fn classify_for_loop(
+/// Components of a for-loop expression extracted for classification.
+struct ForLoopComponents {
     pattern: Pattern,
     iterable: Expr,
     guard: Option<Expr>,
     body: Expr,
+}
+
+/// Classify a for-loop expression into a structured `RuleForLoop` term.
+///
+/// Recursively classifies the body expression to produce nested body terms.
+fn classify_for_loop(
+    components: ForLoopComponents,
     literal_span: &Span,
 ) -> Result<Option<RuleBodyTerm>, Vec<Simple<SyntaxKind>>> {
-    let body_terms = classify_for_body(body, literal_span)?;
+    let body_terms = classify_for_body(components.body, literal_span)?;
 
     Ok(Some(RuleBodyTerm::ForLoop(RuleForLoop {
-        pattern,
-        iterable,
-        guard,
+        pattern: components.pattern,
+        iterable: components.iterable,
+        guard: components.guard,
         body_terms,
     })))
 }
@@ -528,8 +541,15 @@ fn classify_for_body(
             guard,
             body,
         } => {
-            let inner =
-                classify_for_loop(pattern, *iterable, guard.map(|g| *g), *body, literal_span)?;
+            let inner = classify_for_loop(
+                ForLoopComponents {
+                    pattern,
+                    iterable: *iterable,
+                    guard: guard.map(|g| *g),
+                    body: *body,
+                },
+                literal_span,
+            )?;
             Ok(inner.into_iter().collect())
         }
         // Single expression - classify it
