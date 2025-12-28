@@ -3,6 +3,34 @@
 use super::{Expr, RuleBodyTerm, RuleForLoop};
 use crate::parse;
 
+#[cfg(test)]
+mod helpers {
+    use super::*;
+
+    /// Parse source, extract the first rule's flattened body terms, and assert
+    /// that all terms are Expression variants with the expected count.
+    #[expect(clippy::expect_used, reason = "test helper for clearer failures")]
+    pub(super) fn assert_flattened_terms(src: &str, expected_len: usize) -> Vec<RuleBodyTerm> {
+        let parsed = parse(src);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
+        let rule = parsed
+            .root()
+            .rules()
+            .first()
+            .cloned()
+            .expect("rule missing");
+        let terms = rule.flattened_body_terms().expect("should parse");
+        assert_eq!(terms.len(), expected_len);
+        for (i, term) in terms.iter().enumerate() {
+            assert!(
+                matches!(term, RuleBodyTerm::Expression(_)),
+                "expected Expression at index {i}, got {term:?}"
+            );
+        }
+        terms
+    }
+}
+
 #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 #[test]
 fn rule_head_and_body() {
@@ -148,44 +176,18 @@ fn nested_for_loops_produce_nested_structure() {
     ));
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed terms")]
 #[test]
 fn flattened_body_terms_expands_for_loops() {
-    let src = "R(x) :- for (item in Items(item) if ready(item)) Process(item).";
-    let parsed = parse(src);
-    crate::test_util::assert_no_parse_errors(parsed.errors());
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let terms = rule.flattened_body_terms().expect("should parse");
     // Should have: Items(item), ready(item), Process(item)
-    assert_eq!(terms.len(), 3);
-    assert!(matches!(terms.first(), Some(RuleBodyTerm::Expression(_))));
-    assert!(matches!(terms.get(1), Some(RuleBodyTerm::Expression(_))));
-    assert!(matches!(terms.get(2), Some(RuleBodyTerm::Expression(_))));
+    let src = "R(x) :- for (item in Items(item) if ready(item)) Process(item).";
+    let _terms = helpers::assert_flattened_terms(src, 3);
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed terms")]
 #[test]
 fn flattened_nested_for_loops_produce_flat_sequence() {
-    let src = "R(a, b) :- for (a in A(a)) for (b in B(b)) Pair(a, b).";
-    let parsed = parse(src);
-    crate::test_util::assert_no_parse_errors(parsed.errors());
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
-    let terms = rule.flattened_body_terms().expect("should parse");
     // Should have: A(a), B(b), Pair(a, b)
-    assert_eq!(terms.len(), 3);
-    assert!(matches!(terms.first(), Some(RuleBodyTerm::Expression(_))));
-    assert!(matches!(terms.get(1), Some(RuleBodyTerm::Expression(_))));
-    assert!(matches!(terms.get(2), Some(RuleBodyTerm::Expression(_))));
+    let src = "R(a, b) :- for (a in A(a)) for (b in B(b)) Pair(a, b).";
+    let _terms = helpers::assert_flattened_terms(src, 3);
 }
 
 #[test]

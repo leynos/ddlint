@@ -44,6 +44,15 @@ fn assert_body_terms_error_contains(rule: &Rule, expected_msg: &str) {
     );
 }
 
+/// Assert that a flattened body term at a given index is an Expression
+/// with the expected S-expression representation.
+fn assert_expression_term_sexpr(terms: &[RuleBodyTerm], index: usize, expected_sexpr: &str) {
+    let Some(RuleBodyTerm::Expression(expr)) = terms.get(index) else {
+        panic!("expected expression term at index {index}");
+    };
+    assert_eq!(expr.to_sexpr(), expected_sexpr);
+}
+
 #[test]
 fn parses_rules_with_flatmap_and_group_by_terms() {
     let src = "Totals(user, total) :- Orders(user, amt), var rows = FlatMap(fetch_rows(amt)), group_by(sum(amt), user), total = __group.";
@@ -268,21 +277,9 @@ fn flattened_terms_expand_for_loop_to_components() {
 
     // Should be: Source(x), pred(x), Target(x)
     assert_eq!(flattened.len(), 3);
-
-    let Some(RuleBodyTerm::Expression(first)) = flattened.first() else {
-        panic!("expected expression term");
-    };
-    assert_eq!(first.to_sexpr(), "(call Source x)");
-
-    let Some(RuleBodyTerm::Expression(second)) = flattened.get(1) else {
-        panic!("expected expression term");
-    };
-    assert_eq!(second.to_sexpr(), "(call pred x)");
-
-    let Some(RuleBodyTerm::Expression(third)) = flattened.get(2) else {
-        panic!("expected expression term");
-    };
-    assert_eq!(third.to_sexpr(), "(call Target x)");
+    assert_expression_term_sexpr(&flattened, 0, "(call Source x)");
+    assert_expression_term_sexpr(&flattened, 1, "(call pred x)");
+    assert_expression_term_sexpr(&flattened, 2, "(call Target x)");
 }
 
 #[expect(clippy::expect_used, reason = "test helper expects valid source")]
@@ -296,21 +293,9 @@ fn flattened_nested_for_loops_expand_correctly() {
 
     // Should be: A(a), B(b), Pair(a, b)
     assert_eq!(flattened.len(), 3);
-
-    let Some(RuleBodyTerm::Expression(first)) = flattened.first() else {
-        panic!("expected expression term");
-    };
-    assert_eq!(first.to_sexpr(), "(call A a)");
-
-    let Some(RuleBodyTerm::Expression(second)) = flattened.get(1) else {
-        panic!("expected expression term");
-    };
-    assert_eq!(second.to_sexpr(), "(call B b)");
-
-    let Some(RuleBodyTerm::Expression(third)) = flattened.get(2) else {
-        panic!("expected expression term");
-    };
-    assert_eq!(third.to_sexpr(), "(call Pair a b)");
+    assert_expression_term_sexpr(&flattened, 0, "(call A a)");
+    assert_expression_term_sexpr(&flattened, 1, "(call B b)");
+    assert_expression_term_sexpr(&flattened, 2, "(call Pair a b)");
 }
 
 #[test]
