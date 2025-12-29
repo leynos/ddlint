@@ -348,3 +348,170 @@ fn for_loop_pattern_is_preserved() {
     // Pattern should be a tuple
     assert_eq!(for_loop.pattern.to_source(), "(k, v)");
 }
+
+#[test]
+fn rejects_multiple_aggregations_inside_for_loop() {
+    // Aggregation inside for-loop should count toward the one-aggregation limit.
+    let src = "R(x) :- for (x in X(x)) group_by(sum(x), x), group_by(count(x), x).";
+    let rule = parse_and_extract_rule(src);
+    assert_body_terms_error_contains(
+        &rule,
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body",
+    );
+}
+
+#[test]
+fn rejects_aggregation_inside_and_outside_for_loop() {
+    // Aggregation inside for-loop plus aggregation outside should trigger error.
+    let src = "R(x) :- for (x in X(x)) group_by(sum(x), x), group_by(count(x), k).";
+    let rule = parse_and_extract_rule(src);
+    assert_body_terms_error_contains(
+        &rule,
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body",
+    );
+}
+
+#[expect(clippy::expect_used, reason = "test helper expects valid source")]
+#[test]
+fn for_loop_with_sequence_body_flattens_correctly() {
+    // Test for-loop with semicolon-sequence body: (Pre(x); Inner(x))
+    // Note: DDlog uses `;` for sequences, not `,` in braces
+    let src = "R(x) :- for (x in Source(x)) (Pre(x); Inner(x)).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 1);
+
+    let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
+        panic!("expected ForLoop term");
+    };
+
+    // Sequence body should produce multiple body_terms
+    assert_eq!(
+        for_loop.body_terms.len(),
+        2,
+        "sequence body should produce 2 body_terms"
+    );
+
+    // Flattening should produce: Source(x), Pre(x), Inner(x)
+    let flattened = rule
+        .flattened_body_terms()
+        .expect("should flatten successfully");
+    assert_eq!(flattened.len(), 3);
+    assert_expression_term_sexpr(&flattened, 0, "(call Source x)");
+    assert_expression_term_sexpr(&flattened, 1, "(call Pre x)");
+    assert_expression_term_sexpr(&flattened, 2, "(call Inner x)");
+}
+
+#[test]
+fn mixed_body_nested_for_loop_preserves_structure() {
+    // Test mixed content inside a for-loop body: Pre; nested for (with body that chains to Post)
+    // Using semicolon sequences as DDlog requires
+    // Note: Due to right-associativity of `;`, the parse is:
+    //   Pre(a) ; (for (b in B(b)) (Match(a, b) ; Post(a)))
+    // But the for-loop body classifier unwraps sequences, so the outer for-loop body is:
+    //   [Pre(a), for (b in B(b)) Match(a, b), Post(a)]
+    let src = "Pairs(a, b) :- for (a in A(a)) (Pre(a); for (b in B(b)) Match(a, b); Post(a)).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+
+    // Still a single top-level for-loop term
+    assert_eq!(terms.len(), 1);
+    let Some(RuleBodyTerm::ForLoop(outer)) = terms.first() else {
+        panic!("expected outer ForLoop term for mixed-body nested for-loop rule");
+    };
+
+    // The outer for-loop body has 2 elements due to how Seq right-associates:
+    // Pre(a), then (for (b in B(b)) Match(a, b); Post(a))
+    // But the nested for's body is just Match(a,b) and Post(a) is a sibling
+    // Total after flattening the Seq: Pre(a), ForLoop, Post(a)
+    // Actually due to right-associativity: Pre(a) ; rest where rest = for ... ; Post
+    // The for-loop gets Match as body, then ; Post(a) is another Seq term
+    assert!(
+        outer.body_terms.len() >= 2,
+        "expected at least 2 body_terms in outer for-loop, got {}",
+        outer.body_terms.len()
+    );
+
+    // First: Pre(a) - an expression
+    assert!(
+        matches!(outer.body_terms.first(), Some(RuleBodyTerm::Expression(_))),
+        "expected Pre(a) as expression term"
+    );
+
+    // Check that there's a nested for-loop somewhere in the body
+    let has_nested_for = outer
+        .body_terms
+        .iter()
+        .any(|t| matches!(t, RuleBodyTerm::ForLoop(_)));
+    assert!(has_nested_for, "expected at least one nested ForLoop term");
+}
+
+#[expect(clippy::expect_used, reason = "test helper expects valid source")]
+#[test]
+fn mixed_for_loop_and_regular_terms_flattened() {
+    // Verify flattened_body_terms preserves order for mixed for-loop and regular terms.
+    let src = "R(x, y) :- Pre(x), for (y in Items(y)) Process(y), Post(x, y).";
+    let rule = parse_and_extract_rule(src);
+    let flattened = rule
+        .flattened_body_terms()
+        .expect("should flatten successfully");
+
+    // Should be: Pre(x), Items(y), Process(y), Post(x, y)
+    assert_eq!(flattened.len(), 4);
+    assert_expression_term_sexpr(&flattened, 0, "(call Pre x)");
+    assert_expression_term_sexpr(&flattened, 1, "(call Items y)");
+    assert_expression_term_sexpr(&flattened, 2, "(call Process y)");
+    assert_expression_term_sexpr(&flattened, 3, "(call Post x y)");
+}
+
+// -----------------------------------------------------------------------------
+// Regression tests for nested delimiter handling in body bounds detection
+// -----------------------------------------------------------------------------
+
+#[test]
+fn field_access_dot_inside_parentheses_not_treated_as_terminator() {
+    // Regression test: T_DOT inside parentheses should not be treated as the
+    // rule-terminating dot. This was the original bug that caused parse errors.
+    let src =
+        "Totals(user, total) :- for (order in Orders(order)) group_by(sum(order.amt), order.user).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 1);
+
+    let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
+        panic!("expected ForLoop term");
+    };
+    // The aggregation with field access should be correctly parsed
+    assert!(matches!(
+        for_loop.body_terms.first(),
+        Some(RuleBodyTerm::Aggregation(_))
+    ));
+}
+
+#[test]
+fn multiple_field_accesses_in_rule_body() {
+    // More complex case: multiple field accesses in a rule body
+    // Tests that dots in field access expressions don't terminate the rule body
+    let src = "R(a, b) :- Source(x, y), filter(x.valid and y.active).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 2);
+}
+
+#[test]
+fn implies_inside_parentheses_not_treated_as_body_start() {
+    // Test that `=>` (imply operator) inside parentheses doesn't cause issues.
+    let src = "R(x) :- filter((a => b)), Source(x).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 2);
+}
+
+#[test]
+fn nested_parens_with_field_access_preserve_body_bounds() {
+    // Test that dots inside nested parentheses are handled correctly
+    let src = "R(x) :- Source(x), filter(x.field), Result(x).";
+    let rule = parse_and_extract_rule(src);
+    let terms = assert_body_terms_ok(&rule);
+    assert_eq!(terms.len(), 3);
+}

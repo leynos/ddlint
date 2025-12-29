@@ -3,7 +3,6 @@
 use super::{Expr, RuleBodyTerm, RuleForLoop};
 use crate::parse;
 
-#[cfg(test)]
 mod helpers {
     use super::*;
 
