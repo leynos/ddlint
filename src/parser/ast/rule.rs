@@ -245,7 +245,14 @@ impl RuleBodyExpression {
         }
 
         match parse_expression(trimmed) {
-            Ok(expr) => classify_expression(expr, &literal_span, first_aggregation_span, errors),
+            Ok(expr) => {
+                let mut ctx = ClassificationContext {
+                    literal_span: &literal_span,
+                    first_aggregation_span,
+                    errors,
+                };
+                classify_expression(expr, &mut ctx)
+            }
             Err(mut errs) => {
                 errors.append(&mut errs);
                 None
@@ -413,12 +420,14 @@ fn parse_assignment(
     }
 }
 
-fn classify_expression(
-    expr: Expr,
-    literal_span: &Span,
-    first_aggregation_span: &mut Option<Span>,
-    errors: &mut Vec<Simple<SyntaxKind>>,
-) -> Option<RuleBodyTerm> {
+/// Context for classifying rule body expressions with aggregation tracking.
+struct ClassificationContext<'a> {
+    literal_span: &'a Span,
+    first_aggregation_span: &'a mut Option<Span>,
+    errors: &'a mut Vec<Simple<SyntaxKind>>,
+}
+
+fn classify_expression(expr: Expr, ctx: &mut ClassificationContext<'_>) -> Option<RuleBodyTerm> {
     match expr {
         Expr::ForLoop {
             pattern,
@@ -430,21 +439,13 @@ fn classify_expression(
             *iterable,
             guard.map(|g| *g),
             *body,
-            literal_span,
-            first_aggregation_span,
-            errors,
+            ctx,
         )),
         Expr::Call { callee, args } => {
             if let Expr::Variable(name) = &*callee
                 && let Some(source) = aggregation_source_for(name.as_str())
             {
-                return classify_aggregation_with_tracking(
-                    args,
-                    literal_span,
-                    source,
-                    first_aggregation_span,
-                    errors,
-                );
+                return classify_aggregation_with_tracking(args, source, ctx);
             }
             Some(RuleBodyTerm::Expression(Expr::Call { callee, args }))
         }
@@ -455,11 +456,9 @@ fn classify_expression(
 /// Classify an expression with aggregation tracking (used for for-loop bodies).
 fn classify_expression_with_aggregation_tracking(
     expr: Expr,
-    literal_span: &Span,
-    first_aggregation_span: &mut Option<Span>,
-    errors: &mut Vec<Simple<SyntaxKind>>,
+    ctx: &mut ClassificationContext<'_>,
 ) -> Option<RuleBodyTerm> {
-    classify_expression(expr, literal_span, first_aggregation_span, errors)
+    classify_expression(expr, ctx)
 }
 
 fn aggregation_source_for(name: &str) -> Option<AggregationSource> {
@@ -473,13 +472,12 @@ fn aggregation_source_for(name: &str) -> Option<AggregationSource> {
 /// Classify an aggregation with tracking to enforce at-most-one-per-rule-body.
 fn classify_aggregation_with_tracking(
     args: Vec<Expr>,
-    literal_span: &Span,
     source: AggregationSource,
-    first_aggregation_span: &mut Option<Span>,
-    errors: &mut Vec<Simple<SyntaxKind>>,
+    ctx: &mut ClassificationContext<'_>,
 ) -> Option<RuleBodyTerm> {
     if args.len() != 2 {
-        errors.extend(aggregation_arity_error(literal_span, source));
+        ctx.errors
+            .extend(aggregation_arity_error(ctx.literal_span, source));
         return None;
     }
 
@@ -502,7 +500,12 @@ fn classify_aggregation_with_tracking(
     });
 
     // Track and validate aggregation
-    if validate_aggregation(&term, literal_span, first_aggregation_span, errors) {
+    if validate_aggregation(
+        &term,
+        ctx.literal_span,
+        ctx.first_aggregation_span,
+        ctx.errors,
+    ) {
         None // skip duplicate aggregation
     } else {
         Some(term)
@@ -528,16 +531,9 @@ fn classify_for_loop(
     iterable: Expr,
     guard: Option<Expr>,
     body: Expr,
-    literal_span: &Span,
-    first_aggregation_span: &mut Option<Span>,
-    errors: &mut Vec<Simple<SyntaxKind>>,
+    ctx: &mut ClassificationContext<'_>,
 ) -> RuleBodyTerm {
-    let body_terms = classify_for_body_with_aggregation_tracking(
-        body,
-        literal_span,
-        first_aggregation_span,
-        errors,
-    );
+    let body_terms = classify_for_body_with_aggregation_tracking(body, ctx);
 
     RuleBodyTerm::ForLoop(RuleForLoop {
         pattern,
@@ -554,9 +550,7 @@ fn classify_for_loop(
 /// "at most one aggregation per rule body" rule.
 fn classify_for_body_with_aggregation_tracking(
     body: Expr,
-    literal_span: &Span,
-    first_aggregation_span: &mut Option<Span>,
-    errors: &mut Vec<Simple<SyntaxKind>>,
+    ctx: &mut ClassificationContext<'_>,
 ) -> Vec<RuleBodyTerm> {
     match body {
         // Handle sequence expressions from block bodies
@@ -565,18 +559,8 @@ fn classify_for_body_with_aggregation_tracking(
             lhs,
             rhs,
         } => {
-            let mut terms = classify_for_body_with_aggregation_tracking(
-                *lhs,
-                literal_span,
-                first_aggregation_span,
-                errors,
-            );
-            terms.extend(classify_for_body_with_aggregation_tracking(
-                *rhs,
-                literal_span,
-                first_aggregation_span,
-                errors,
-            ));
+            let mut terms = classify_for_body_with_aggregation_tracking(*lhs, ctx);
+            terms.extend(classify_for_body_with_aggregation_tracking(*rhs, ctx));
             terms
         }
         // Handle nested for-loops
@@ -591,27 +575,15 @@ fn classify_for_body_with_aggregation_tracking(
                 *iterable,
                 guard.map(|g| *g),
                 *body,
-                literal_span,
-                first_aggregation_span,
-                errors,
+                ctx,
             )]
         }
         // Unwrap groups (parentheses/braces) to handle `(a; b)` bodies
-        Expr::Group(inner) => classify_for_body_with_aggregation_tracking(
-            *inner,
-            literal_span,
-            first_aggregation_span,
-            errors,
-        ),
+        Expr::Group(inner) => classify_for_body_with_aggregation_tracking(*inner, ctx),
         // Single expression - classify it with aggregation tracking
-        other => classify_expression_with_aggregation_tracking(
-            other,
-            literal_span,
-            first_aggregation_span,
-            errors,
-        )
-        .into_iter()
-        .collect(),
+        other => classify_expression_with_aggregation_tracking(other, ctx)
+            .into_iter()
+            .collect(),
     }
 }
 
