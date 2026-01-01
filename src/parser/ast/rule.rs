@@ -453,14 +453,6 @@ fn classify_expression(expr: Expr, ctx: &mut ClassificationContext<'_>) -> Optio
     }
 }
 
-/// Classify an expression with aggregation tracking (used for for-loop bodies).
-fn classify_expression_with_aggregation_tracking(
-    expr: Expr,
-    ctx: &mut ClassificationContext<'_>,
-) -> Option<RuleBodyTerm> {
-    classify_expression(expr, ctx)
-}
-
 fn aggregation_source_for(name: &str) -> Option<AggregationSource> {
     match name {
         "group_by" => Some(AggregationSource::GroupBy),
@@ -580,10 +572,8 @@ fn classify_for_body_with_aggregation_tracking(
         }
         // Unwrap groups (parentheses/braces) to handle `(a; b)` bodies
         Expr::Group(inner) => classify_for_body_with_aggregation_tracking(*inner, ctx),
-        // Single expression - classify it with aggregation tracking
-        other => classify_expression_with_aggregation_tracking(other, ctx)
-            .into_iter()
-            .collect(),
+        // Single expression - classify it directly
+        other => classify_expression(other, ctx).into_iter().collect(),
     }
 }
 

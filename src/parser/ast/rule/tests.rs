@@ -223,3 +223,129 @@ fn rule_for_loop_flatten_produces_correct_sequence() {
         Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Body"
     ));
 }
+
+#[test]
+fn rule_for_loop_flatten_without_guard_produces_two_elements() {
+    // Unit test for RuleForLoop::flatten() with guard: None
+    use crate::parser::ast::Pattern;
+
+    let for_loop = RuleForLoop {
+        pattern: Pattern::Var {
+            declared: false,
+            name: "item".to_string(),
+        },
+        iterable: Expr::Variable("Source".to_string()),
+        guard: None,
+        body_terms: vec![RuleBodyTerm::Expression(Expr::Variable("Body".to_string()))],
+    };
+
+    let flattened = for_loop.flatten();
+    assert_eq!(flattened.len(), 2);
+
+    // First: iterable
+    assert!(matches!(
+        flattened.first(),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Source"
+    ));
+    // Second: body (no guard)
+    assert!(matches!(
+        flattened.get(1),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Body"
+    ));
+}
+
+#[test]
+fn rule_for_loop_flatten_with_empty_body_terms() {
+    // Unit test for RuleForLoop::flatten() with empty body_terms
+    use crate::parser::ast::Pattern;
+
+    // With guard: None and empty body_terms -> flattened.len() == 1 (iterable only)
+    let for_loop_no_guard = RuleForLoop {
+        pattern: Pattern::Var {
+            declared: false,
+            name: "item".to_string(),
+        },
+        iterable: Expr::Variable("Source".to_string()),
+        guard: None,
+        body_terms: vec![],
+    };
+
+    let flattened = for_loop_no_guard.flatten();
+    assert_eq!(flattened.len(), 1);
+    assert!(matches!(
+        flattened.first(),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Source"
+    ));
+
+    // With guard: Some and empty body_terms -> flattened.len() == 2 (iterable + guard)
+    let for_loop_with_guard = RuleForLoop {
+        pattern: Pattern::Var {
+            declared: false,
+            name: "item".to_string(),
+        },
+        iterable: Expr::Variable("Source".to_string()),
+        guard: Some(Expr::Variable("guard".to_string())),
+        body_terms: vec![],
+    };
+
+    let flattened = for_loop_with_guard.flatten();
+    assert_eq!(flattened.len(), 2);
+    assert!(matches!(
+        flattened.first(),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Source"
+    ));
+    assert!(matches!(
+        flattened.get(1),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "guard"
+    ));
+}
+
+#[test]
+fn rule_for_loop_flatten_nested_for_loop_recursively_flattens() {
+    // Unit test for RuleForLoop::flatten() with nested ForLoop in body_terms
+    use crate::parser::ast::Pattern;
+
+    // Create inner for-loop
+    let inner_for_loop = RuleForLoop {
+        pattern: Pattern::Var {
+            declared: false,
+            name: "inner".to_string(),
+        },
+        iterable: Expr::Variable("InnerSource".to_string()),
+        guard: None,
+        body_terms: vec![RuleBodyTerm::Expression(Expr::Variable(
+            "InnerBody".to_string(),
+        ))],
+    };
+
+    // Create outer for-loop with inner loop as body term
+    let outer_for_loop = RuleForLoop {
+        pattern: Pattern::Var {
+            declared: false,
+            name: "outer".to_string(),
+        },
+        iterable: Expr::Variable("OuterSource".to_string()),
+        guard: None,
+        body_terms: vec![RuleBodyTerm::ForLoop(inner_for_loop)],
+    };
+
+    let flattened = outer_for_loop.flatten();
+    // Expected: [OuterSource, InnerSource, InnerBody]
+    assert_eq!(flattened.len(), 3);
+
+    // First: outer iterable
+    assert!(matches!(
+        flattened.first(),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "OuterSource"
+    ));
+    // Second: inner iterable (recursively flattened)
+    assert!(matches!(
+        flattened.get(1),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "InnerSource"
+    ));
+    // Third: inner body (recursively flattened)
+    assert!(matches!(
+        flattened.get(2),
+        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "InnerBody"
+    ));
+}
