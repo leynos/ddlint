@@ -435,10 +435,12 @@ fn classify_expression(expr: Expr, ctx: &mut ClassificationContext<'_>) -> Optio
             guard,
             body,
         } => Some(classify_for_loop(
-            pattern,
-            *iterable,
-            guard.map(|g| *g),
-            *body,
+            ForLoopComponents {
+                pattern,
+                iterable: *iterable,
+                guard: guard.map(|g| *g),
+                body: *body,
+            },
             ctx,
         )),
         Expr::Call { callee, args } => {
@@ -514,23 +516,28 @@ fn aggregation_arity_error(
     )]
 }
 
+/// Components of a for-loop expression extracted for classification.
+struct ForLoopComponents {
+    pattern: Pattern,
+    iterable: Expr,
+    guard: Option<Expr>,
+    body: Expr,
+}
+
 /// Classify a for-loop expression into a structured `RuleForLoop` term.
 ///
 /// Recursively classifies the body expression to produce nested body terms.
 /// Aggregation validation is delegated to `classify_for_body_with_aggregation_tracking`.
 fn classify_for_loop(
-    pattern: Pattern,
-    iterable: Expr,
-    guard: Option<Expr>,
-    body: Expr,
+    components: ForLoopComponents,
     ctx: &mut ClassificationContext<'_>,
 ) -> RuleBodyTerm {
-    let body_terms = classify_for_body_with_aggregation_tracking(body, ctx);
+    let body_terms = classify_for_body_with_aggregation_tracking(components.body, ctx);
 
     RuleBodyTerm::ForLoop(RuleForLoop {
-        pattern,
-        iterable,
-        guard,
+        pattern: components.pattern,
+        iterable: components.iterable,
+        guard: components.guard,
         body_terms,
     })
 }
@@ -563,10 +570,12 @@ fn classify_for_body_with_aggregation_tracking(
             body,
         } => {
             vec![classify_for_loop(
-                pattern,
-                *iterable,
-                guard.map(|g| *g),
-                *body,
+                ForLoopComponents {
+                    pattern,
+                    iterable: *iterable,
+                    guard: guard.map(|g| *g),
+                    body: *body,
+                },
                 ctx,
             )]
         }
