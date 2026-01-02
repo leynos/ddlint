@@ -7,9 +7,6 @@ use crate::{DdlogLanguage, Span, SyntaxKind};
 
 use super::spans::ParsedSpans;
 
-/// Number of cursor categories managed during CST construction.
-const SPAN_CURSOR_COUNT: usize = 8;
-
 struct SpanCursor<'a> {
     iter: std::iter::Peekable<std::slice::Iter<'a, Span>>,
     kind: SyntaxKind,
@@ -43,38 +40,20 @@ impl<'a> SpanCursor<'a> {
     }
 }
 
-struct SpanCursors<'a> {
-    cursors: [SpanCursor<'a>; SPAN_CURSOR_COUNT],
-}
-
-impl<'a> SpanCursors<'a> {
-    fn new(spans: &'a ParsedSpans) -> Self {
-        Self {
-            cursors: [
-                SpanCursor::new(spans.imports(), SyntaxKind::N_IMPORT_STMT),
-                SpanCursor::new(spans.typedefs(), SyntaxKind::N_TYPE_DEF),
-                SpanCursor::new(spans.relations(), SyntaxKind::N_RELATION_DECL),
-                SpanCursor::new(spans.indexes(), SyntaxKind::N_INDEX),
-                SpanCursor::new(spans.functions(), SyntaxKind::N_FUNCTION),
-                SpanCursor::new(spans.transformers(), SyntaxKind::N_TRANSFORMER),
-                SpanCursor::new(spans.rules(), SyntaxKind::N_RULE),
-                SpanCursor::new(spans.expressions(), SyntaxKind::N_EXPR_NODE),
-            ],
-        }
-    }
-
-    fn advance_and_start(&mut self, builder: &mut GreenNodeBuilder, pos: usize) {
-        for cur in &mut self.cursors {
-            cur.advance_to(pos);
-            cur.start_if(builder, pos);
-        }
-    }
-
-    fn finish(&mut self, builder: &mut GreenNodeBuilder, pos: usize) {
-        for cur in &mut self.cursors {
-            cur.finish_if(builder, pos);
-        }
-    }
+fn build_span_cursors<'a>(spans: &'a ParsedSpans) -> Vec<SpanCursor<'a>> {
+    vec![
+        (spans.imports(), SyntaxKind::N_IMPORT_STMT),
+        (spans.typedefs(), SyntaxKind::N_TYPE_DEF),
+        (spans.relations(), SyntaxKind::N_RELATION_DECL),
+        (spans.indexes(), SyntaxKind::N_INDEX),
+        (spans.functions(), SyntaxKind::N_FUNCTION),
+        (spans.transformers(), SyntaxKind::N_TRANSFORMER),
+        (spans.rules(), SyntaxKind::N_RULE),
+        (spans.expressions(), SyntaxKind::N_EXPR_NODE),
+    ]
+    .into_iter()
+    .map(|(slice, kind)| SpanCursor::new(slice, kind))
+    .collect()
 }
 
 fn validate_token_span(span: &Span, src_len: usize) -> bool {
@@ -118,17 +97,24 @@ pub(crate) fn build_green_tree(
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
-    let mut cursors = SpanCursors::new(spans);
+    let mut cursors = build_span_cursors(spans);
 
     for &(kind, ref span) in tokens {
         if !validate_token_span(span, src.len()) {
             continue;
         }
-        cursors.advance_and_start(&mut builder, span.start);
+        let start = span.start;
+        for cursor in &mut cursors {
+            cursor.advance_to(start);
+            cursor.start_if(&mut builder, start);
+        }
 
         push_token(&mut builder, kind, span.clone(), src);
 
-        cursors.finish(&mut builder, span.end);
+        let end = span.end;
+        for cursor in &mut cursors {
+            cursor.finish_if(&mut builder, end);
+        }
     }
 
     builder.finish_node();
