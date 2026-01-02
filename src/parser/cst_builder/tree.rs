@@ -40,7 +40,7 @@ impl<'a> SpanCursor<'a> {
     }
 }
 
-fn build_span_cursors<'a>(spans: &'a ParsedSpans) -> Vec<SpanCursor<'a>> {
+fn build_span_cursors(spans: &ParsedSpans) -> Vec<SpanCursor<'_>> {
     vec![
         (spans.imports(), SyntaxKind::N_IMPORT_STMT),
         (spans.typedefs(), SyntaxKind::N_TYPE_DEF),
