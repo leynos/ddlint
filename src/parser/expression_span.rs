@@ -40,6 +40,9 @@ fn locate_body_bounds(
     let mut idx = start_idx;
     let mut body_start = None;
     let mut body_end = None;
+    let mut paren_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut bracket_depth = 0usize;
 
     while let Some((kind, span)) = tokens.get(idx) {
         if span.start >= end {
@@ -47,8 +50,35 @@ fn locate_body_bounds(
         }
 
         match kind {
-            SyntaxKind::T_IMPLIES => body_start = Some(idx + 1),
-            SyntaxKind::T_DOT => {
+            SyntaxKind::T_LPAREN => paren_depth += 1,
+            SyntaxKind::T_RPAREN => {
+                debug_assert!(
+                    paren_depth > 0,
+                    "unbalanced parentheses in locate_body_bounds"
+                );
+                paren_depth = paren_depth.saturating_sub(1);
+            }
+            SyntaxKind::T_LBRACE => brace_depth += 1,
+            SyntaxKind::T_RBRACE => {
+                debug_assert!(brace_depth > 0, "unbalanced braces in locate_body_bounds");
+                brace_depth = brace_depth.saturating_sub(1);
+            }
+            SyntaxKind::T_LBRACKET => bracket_depth += 1,
+            SyntaxKind::T_RBRACKET => {
+                debug_assert!(
+                    bracket_depth > 0,
+                    "unbalanced brackets in locate_body_bounds"
+                );
+                bracket_depth = bracket_depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+
+        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
+
+        match kind {
+            SyntaxKind::T_IMPLIES if at_top_level => body_start = Some(idx + 1),
+            SyntaxKind::T_DOT if at_top_level => {
                 body_end = Some(idx);
                 break;
             }
@@ -86,11 +116,20 @@ fn split_literals(tokens: &[(SyntaxKind, Span)], start: usize, end: usize) -> Ve
 
         match kind {
             SyntaxKind::T_LPAREN => paren_depth += 1,
-            SyntaxKind::T_RPAREN => paren_depth = paren_depth.saturating_sub(1),
+            SyntaxKind::T_RPAREN => {
+                debug_assert!(paren_depth > 0, "unbalanced parentheses in split_literals");
+                paren_depth = paren_depth.saturating_sub(1);
+            }
             SyntaxKind::T_LBRACE => brace_depth += 1,
-            SyntaxKind::T_RBRACE => brace_depth = brace_depth.saturating_sub(1),
+            SyntaxKind::T_RBRACE => {
+                debug_assert!(brace_depth > 0, "unbalanced braces in split_literals");
+                brace_depth = brace_depth.saturating_sub(1);
+            }
             SyntaxKind::T_LBRACKET => bracket_depth += 1,
-            SyntaxKind::T_RBRACKET => bracket_depth = bracket_depth.saturating_sub(1),
+            SyntaxKind::T_RBRACKET => {
+                debug_assert!(bracket_depth > 0, "unbalanced brackets in split_literals");
+                bracket_depth = bracket_depth.saturating_sub(1);
+            }
             _ => {}
         }
 

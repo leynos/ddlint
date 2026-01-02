@@ -165,7 +165,7 @@ as control flow constructs. This phase aims to build a complete grammar.
   - [x] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
     downstream analyses see the normalized representation.
 
-  - [ ] Desugar top-level `for` statements in rule contexts into equivalent
+  - [x] Desugar top-level `for` statements in rule contexts into equivalent
     rules, matching the specification's semantics.
 
   - [ ] Parse `apply` items and enforce that `transformer` declarations outside
