@@ -4,14 +4,14 @@
 //! scanning the token stream. During [`build_green_tree`](super::tree::build_green_tree)
 //! these spans determine where nodes start and end so the resulting tree
 //! mirrors the source layout. The builder enforces that every span list is
-//! sorted and free from overlaps in debug builds, catching mistakes early.
+//! sorted and free from overlaps, catching mistakes early.
 
 use crate::Span;
 
 /// Spans for each parsed statement category.
 ///
 /// Instances are constructed via [`ParsedSpans::builder`] to ensure span lists
-/// are sorted and non-overlapping in debug builds.
+/// are sorted and non-overlapping.
 #[non_exhaustive]
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ParsedSpans {
@@ -117,7 +117,7 @@ impl ParsedSpansBuilder {
             expressions,
         } = self;
 
-        let result = validate_span_lists_sorted(&[
+        if let Err(message) = validate_span_lists_sorted(&[
             ("imports", &imports),
             ("typedefs", &typedefs),
             ("relations", &relations),
@@ -126,8 +126,9 @@ impl ParsedSpansBuilder {
             ("transformers", &transformers),
             ("rules", &rules),
             ("expressions", &expressions),
-        ]);
-        debug_assert!(result.is_ok(), "{}", result.err().unwrap_or_default());
+        ]) {
+            panic!("{message}");
+        }
 
         ParsedSpans {
             imports,
