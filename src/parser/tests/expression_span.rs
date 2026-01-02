@@ -108,9 +108,7 @@ fn depth_tracking_ignores_delimiters_inside_nested_structures(
     );
 
     for (i, (span, &exp)) in spans.iter().zip(expected.iter()).enumerate() {
-        let actual = src
-            .get(span.clone())
-            .map_or("<out of bounds>", str::trim);
+        let actual = src.get(span.clone()).map_or("<out of bounds>", str::trim);
         assert_eq!(
             actual, exp,
             "literal {i} mismatch for: {src}\nexpected: {exp}\nactual: {actual}"

@@ -35,6 +35,18 @@ mod helpers {
     /// Build a `RuleForLoop` with standard pattern ("item"), iterable ("Source"),
     /// optional guard, and `body_terms` containing a single "Body" expression.
     pub(super) fn make_for_loop(guard: Option<&str>) -> RuleForLoop {
+        make_for_loop_with_body(
+            guard,
+            vec![RuleBodyTerm::Expression(Expr::Variable("Body".to_string()))],
+        )
+    }
+
+    /// Build a `RuleForLoop` with standard pattern ("item"), iterable ("Source"),
+    /// optional guard, and custom `body_terms`.
+    pub(super) fn make_for_loop_with_body(
+        guard: Option<&str>,
+        body_terms: Vec<RuleBodyTerm>,
+    ) -> RuleForLoop {
         RuleForLoop {
             pattern: Pattern::Var {
                 declared: false,
@@ -42,7 +54,7 @@ mod helpers {
             },
             iterable: Expr::Variable("Source".to_string()),
             guard: guard.map(|g| Expr::Variable(g.to_string())),
-            body_terms: vec![RuleBodyTerm::Expression(Expr::Variable("Body".to_string()))],
+            body_terms,
         }
     }
 }
@@ -251,50 +263,31 @@ fn rule_for_loop_flatten_produces_correct_sequence(
     }
 }
 
-#[test]
-fn rule_for_loop_flatten_with_empty_body_terms() {
-    // Unit test for RuleForLoop::flatten() with empty body_terms
-    use crate::parser::ast::Pattern;
+#[rstest]
+#[case::no_guard_empty_body(None, 1)]
+#[case::with_guard_empty_body(Some("guard"), 2)]
+fn rule_for_loop_flatten_with_empty_body_terms(
+    #[case] guard: Option<&str>,
+    #[case] expected_len: usize,
+) {
+    let for_loop = helpers::make_for_loop_with_body(guard, vec![]);
+    let flattened = for_loop.flatten();
 
-    // With guard: None and empty body_terms -> flattened.len() == 1 (iterable only)
-    let for_loop_no_guard = RuleForLoop {
-        pattern: Pattern::Var {
-            declared: false,
-            name: "item".to_string(),
-        },
-        iterable: Expr::Variable("Source".to_string()),
-        guard: None,
-        body_terms: vec![],
-    };
+    assert_eq!(flattened.len(), expected_len);
 
-    let flattened = for_loop_no_guard.flatten();
-    assert_eq!(flattened.len(), 1);
+    // First element is always the iterable
     assert!(matches!(
         flattened.first(),
         Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Source"
     ));
 
-    // With guard: Some and empty body_terms -> flattened.len() == 2 (iterable + guard)
-    let for_loop_with_guard = RuleForLoop {
-        pattern: Pattern::Var {
-            declared: false,
-            name: "item".to_string(),
-        },
-        iterable: Expr::Variable("Source".to_string()),
-        guard: Some(Expr::Variable("guard".to_string())),
-        body_terms: vec![],
-    };
-
-    let flattened = for_loop_with_guard.flatten();
-    assert_eq!(flattened.len(), 2);
-    assert!(matches!(
-        flattened.first(),
-        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "Source"
-    ));
-    assert!(matches!(
-        flattened.get(1),
-        Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == "guard"
-    ));
+    // When guard is present, it should be at index 1
+    if let Some(guard_name) = guard {
+        assert!(matches!(
+            flattened.get(1),
+            Some(RuleBodyTerm::Expression(Expr::Variable(name))) if name == guard_name
+        ));
+    }
 }
 
 #[test]
