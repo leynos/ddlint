@@ -206,6 +206,14 @@ fn flattened_nested_for_loops_produce_flat_sequence() {
     let _terms = helpers::assert_flattened_terms(src, 3);
 }
 
+#[test]
+fn for_loop_with_sequence_body_flattens_all_statements() {
+    // Body has two expressions (Pre(x); Post(x)).
+    // After flattening: X(x) iterable + Pre(x) + Post(x) = 3 terms.
+    let src = "R(x) :- for (x in X(x)) { Pre(x); Post(x) }.";
+    let _terms = helpers::assert_flattened_terms(src, 3);
+}
+
 #[rstest]
 #[case::with_guard(Some("guard"), 3)]
 #[case::without_guard(None, 2)]
