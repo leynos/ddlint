@@ -8,6 +8,77 @@
 
 use crate::Span;
 
+/// A single span ordering issue within a named span list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpanListIssue {
+    list: String,
+    prev: Span,
+    next: Span,
+}
+
+impl SpanListIssue {
+    fn new(list: impl Into<String>, prev: Span, next: Span) -> Self {
+        Self {
+            list: list.into(),
+            prev,
+            next,
+        }
+    }
+
+    /// The span list name that failed validation.
+    #[must_use]
+    pub fn list(&self) -> &str {
+        &self.list
+    }
+
+    /// The earlier span in the invalid ordering.
+    #[must_use]
+    pub fn prev(&self) -> &Span {
+        &self.prev
+    }
+
+    /// The later span in the invalid ordering.
+    #[must_use]
+    pub fn next(&self) -> &Span {
+        &self.next
+    }
+}
+
+impl std::fmt::Display for SpanListIssue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} not sorted: spans overlap or are unsorted: {:?} then {:?}",
+            self.list, self.prev, self.next
+        )
+    }
+}
+
+/// Errors returned when span list validation fails.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("{message}")]
+pub struct SpanListValidationError {
+    message: String,
+    issues: Vec<SpanListIssue>,
+}
+
+impl SpanListValidationError {
+    fn new(issues: Vec<SpanListIssue>) -> Self {
+        let message = issues
+            .iter()
+            .map(SpanListIssue::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        Self { message, issues }
+    }
+
+    /// Access the underlying validation issues.
+    #[must_use]
+    pub fn issues(&self) -> &[SpanListIssue] {
+        &self.issues
+    }
+}
+
 /// Spans for each parsed statement category.
 ///
 /// Instances are constructed via [`ParsedSpans::builder`] to ensure span lists
@@ -103,9 +174,35 @@ impl ParsedSpansBuilder {
         self
     }
 
+    /// Build the [`ParsedSpans`], returning an error for invalid span lists.
+    pub fn try_build(self) -> Result<ParsedSpans, SpanListValidationError> {
+        enforce_valid_span_lists(&self.span_lists())?;
+        Ok(self.into_parsed_spans())
+    }
+
     /// Build the [`ParsedSpans`].
     #[must_use]
     pub fn build(self) -> ParsedSpans {
+        enforce_valid_span_lists(&self.span_lists()).unwrap_or_else(|error| {
+            panic!("{error}");
+        });
+        self.into_parsed_spans()
+    }
+
+    fn span_lists(&self) -> [(&'static str, &[Span]); 8] {
+        [
+            ("imports", &self.imports),
+            ("typedefs", &self.typedefs),
+            ("relations", &self.relations),
+            ("indexes", &self.indexes),
+            ("functions", &self.functions),
+            ("transformers", &self.transformers),
+            ("rules", &self.rules),
+            ("expressions", &self.expressions),
+        ]
+    }
+
+    fn into_parsed_spans(self) -> ParsedSpans {
         let Self {
             imports,
             typedefs,
@@ -116,19 +213,6 @@ impl ParsedSpansBuilder {
             rules,
             expressions,
         } = self;
-
-        if let Err(message) = validate_span_lists_sorted(&[
-            ("imports", &imports),
-            ("typedefs", &typedefs),
-            ("relations", &relations),
-            ("indexes", &indexes),
-            ("functions", &functions),
-            ("transformers", &transformers),
-            ("rules", &rules),
-            ("expressions", &expressions),
-        ]) {
-            panic!("{message}");
-        }
 
         ParsedSpans {
             imports,
@@ -232,17 +316,22 @@ fn validate_spans_sorted(spans: &[Span]) -> Result<(), SpanOrderError> {
     Ok(())
 }
 
-fn validate_span_lists_sorted(lists: &[(&str, &[Span])]) -> Result<(), String> {
-    let mut errors = Vec::new();
-    for (name, spans) in lists {
+fn enforce_valid_span_lists(lists: &[(&str, &[Span])]) -> Result<(), SpanListValidationError> {
+    validate_span_lists_sorted(lists)
+}
+
+fn validate_span_lists_sorted(lists: &[(&str, &[Span])]) -> Result<(), SpanListValidationError> {
+    let mut issues = Vec::new();
+    for &(name, spans) in lists {
         if let Err(e) = validate_spans_sorted(spans) {
-            errors.push(format!("{name} not sorted: {e}"));
+            let SpanOrderError { prev, next } = e;
+            issues.push(SpanListIssue::new(name, prev, next));
         }
     }
-    if errors.is_empty() {
+    if issues.is_empty() {
         Ok(())
     } else {
-        Err(errors.join("\n"))
+        Err(SpanListValidationError::new(issues))
     }
 }
 
@@ -295,10 +384,38 @@ mod tests {
     }
 
     #[test]
+    fn validate_span_lists_sorted_reports_list_name() {
+        let imports = vec![2..4, 1..2];
+        let Err(err) = validate_span_lists_sorted(&[("imports", &imports)]) else {
+            panic!("expected validation error");
+        };
+        let Some(issue) = err.issues().first() else {
+            panic!("expected at least one issue");
+        };
+        assert_eq!(issue.list(), "imports");
+    }
+
+    #[test]
+    fn builder_succeeds_on_sorted_spans() {
+        let spans = vec![0..2, 2..4];
+        let parsed = ParsedSpans::builder().imports(spans.clone()).build();
+        assert_eq!(parsed.imports(), spans.as_slice());
+    }
+
+    #[test]
     fn builder_panics_on_unsorted() {
         let unsorted = vec![1..2, 0..1];
         let text = assert_panic_with_message(|| {
             let _ = ParsedSpans::builder().imports(unsorted).build();
+        });
+        assert!(text.contains("imports not sorted"));
+    }
+
+    #[test]
+    fn builder_panics_on_overlap() {
+        let overlapping = vec![0..3, 2..4];
+        let text = assert_panic_with_message(|| {
+            let _ = ParsedSpans::builder().imports(overlapping).build();
         });
         assert!(text.contains("imports not sorted"));
     }
@@ -315,5 +432,29 @@ mod tests {
         });
         assert!(text.contains("imports not sorted"));
         assert!(text.contains("typedefs not sorted"));
+    }
+
+    #[test]
+    fn try_build_errs_on_unsorted_spans() {
+        let unsorted = vec![1..2, 0..1];
+        let result = ParsedSpans::builder().imports(unsorted).try_build();
+        let Err(err) = result else {
+            panic!("expected validation error");
+        };
+        assert_eq!(err.issues().len(), 1);
+        let Some(issue) = err.issues().first() else {
+            panic!("expected at least one issue");
+        };
+        assert_eq!(issue.list(), "imports");
+    }
+
+    #[test]
+    fn try_build_ok_on_sorted_spans() {
+        let spans = vec![0..1, 2..3];
+        let parsed = match ParsedSpans::builder().imports(spans.clone()).try_build() {
+            Ok(parsed) => parsed,
+            Err(err) => panic!("expected valid spans, got: {err}"),
+        };
+        assert_eq!(parsed.imports(), spans.as_slice());
     }
 }
