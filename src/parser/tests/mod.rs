@@ -2,6 +2,7 @@
 
 mod collections;
 mod control_flow;
+mod cst_integration;
 mod expression;
 mod expression_integration;
 mod expression_span;

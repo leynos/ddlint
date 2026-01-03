@@ -7,6 +7,19 @@ use crate::{DdlogLanguage, Span, SyntaxKind};
 
 use super::spans::ParsedSpans;
 
+type SpanSliceGetter = fn(&ParsedSpans) -> &[Span];
+
+const SPAN_CURSOR_KINDS: &[(SpanSliceGetter, SyntaxKind)] = &[
+    (ParsedSpans::imports, SyntaxKind::N_IMPORT_STMT),
+    (ParsedSpans::typedefs, SyntaxKind::N_TYPE_DEF),
+    (ParsedSpans::relations, SyntaxKind::N_RELATION_DECL),
+    (ParsedSpans::indexes, SyntaxKind::N_INDEX),
+    (ParsedSpans::functions, SyntaxKind::N_FUNCTION),
+    (ParsedSpans::transformers, SyntaxKind::N_TRANSFORMER),
+    (ParsedSpans::rules, SyntaxKind::N_RULE),
+    (ParsedSpans::expressions, SyntaxKind::N_EXPR_NODE),
+];
+
 struct SpanCursor<'a> {
     iter: std::iter::Peekable<std::slice::Iter<'a, Span>>,
     kind: SyntaxKind,
@@ -40,20 +53,31 @@ impl<'a> SpanCursor<'a> {
     }
 }
 
-fn build_span_cursors(spans: &ParsedSpans) -> Vec<SpanCursor<'_>> {
-    vec![
-        (spans.imports(), SyntaxKind::N_IMPORT_STMT),
-        (spans.typedefs(), SyntaxKind::N_TYPE_DEF),
-        (spans.relations(), SyntaxKind::N_RELATION_DECL),
-        (spans.indexes(), SyntaxKind::N_INDEX),
-        (spans.functions(), SyntaxKind::N_FUNCTION),
-        (spans.transformers(), SyntaxKind::N_TRANSFORMER),
-        (spans.rules(), SyntaxKind::N_RULE),
-        (spans.expressions(), SyntaxKind::N_EXPR_NODE),
-    ]
-    .into_iter()
-    .map(|(slice, kind)| SpanCursor::new(slice, kind))
-    .collect()
+struct SpanCursors<'a> {
+    cursors: Vec<SpanCursor<'a>>,
+}
+
+impl<'a> SpanCursors<'a> {
+    fn new(spans: &'a ParsedSpans) -> Self {
+        let mut cursors = Vec::with_capacity(SPAN_CURSOR_KINDS.len());
+        for (getter, kind) in SPAN_CURSOR_KINDS {
+            cursors.push(SpanCursor::new((*getter)(spans), *kind));
+        }
+        Self { cursors }
+    }
+
+    fn advance_and_start(&mut self, builder: &mut GreenNodeBuilder, pos: usize) {
+        for cursor in &mut self.cursors {
+            cursor.advance_to(pos);
+            cursor.start_if(builder, pos);
+        }
+    }
+
+    fn finish(&mut self, builder: &mut GreenNodeBuilder, pos: usize) {
+        for cursor in &mut self.cursors {
+            cursor.finish_if(builder, pos);
+        }
+    }
 }
 
 fn validate_token_span(span: &Span, src_len: usize) -> bool {
@@ -97,24 +121,17 @@ pub(crate) fn build_green_tree(
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_DATALOG_PROGRAM));
 
-    let mut cursors = build_span_cursors(spans);
+    let mut cursors = SpanCursors::new(spans);
 
     for &(kind, ref span) in tokens {
         if !validate_token_span(span, src.len()) {
             continue;
         }
-        let start = span.start;
-        for cursor in &mut cursors {
-            cursor.advance_to(start);
-            cursor.start_if(&mut builder, start);
-        }
+        cursors.advance_and_start(&mut builder, span.start);
 
         push_token(&mut builder, kind, span.clone(), src);
 
-        let end = span.end;
-        for cursor in &mut cursors {
-            cursor.finish_if(&mut builder, end);
-        }
+        cursors.finish(&mut builder, span.end);
     }
 
     builder.finish_node();
@@ -151,8 +168,10 @@ fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, te
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::ast::Root;
     use crate::parser::span_scanner::parse_tokens;
     use crate::test_util::tokenize;
+    use rowan::SyntaxNode;
 
     #[test]
     fn build_green_tree_round_trip() {
@@ -165,6 +184,7 @@ mod tests {
         assert_eq!(root.text(), src);
     }
 
+<<<<<<< HEAD
     #[cfg(debug_assertions)]
     #[test]
     #[should_panic(expected = "token span")]
@@ -188,5 +208,53 @@ mod tests {
         let green = build_green_tree(&tokens, src, &spans);
         let root = crate::parser::ast::Root::from_green(green);
         assert_eq!(root.text(), src);
+||||||| parent of 8f97d81 (refactor(parser): refactor CST builder to use SpanCursors struct for clarity)
+=======
+    fn text_range_to_span(range: rowan::TextRange) -> Span {
+        let start: usize = range.start().into();
+        let end: usize = range.end().into();
+        start..end
+    }
+
+    fn collect_kind_spans(root: &SyntaxNode<DdlogLanguage>, kind: SyntaxKind) -> Vec<Span> {
+        root.descendants()
+            .filter(|node| node.kind() == kind)
+            .map(|node| text_range_to_span(node.text_range()))
+            .collect()
+    }
+
+    fn assert_span_nodes_match(root: &SyntaxNode<DdlogLanguage>, kind: SyntaxKind, spans: &[Span]) {
+        let nodes = collect_kind_spans(root, kind);
+        assert_eq!(nodes, spans.to_vec());
+    }
+
+    #[test]
+    fn build_green_tree_matches_span_positions() {
+        let src = concat!(
+            "import foo::bar\n",
+            "typedef UserId = u64\n",
+            "input relation User(id: UserId, name: string) primary key (id)\n",
+            "index Idx_User_name on User(name)\n",
+            "function greet(name: string): string {\n",
+            "}\n",
+            "extern transformer normalise(input: User): Normalized\n",
+            "User(id, name) :- name == \"a\", id > 0.\n"
+        );
+        let tokens = tokenize(src);
+        let (spans, errors) = parse_tokens(&tokens, src);
+        assert!(errors.is_empty());
+        let green = build_green_tree(&tokens, src, &spans);
+        let root = Root::from_green(green);
+        let syntax = root.syntax();
+
+        assert_span_nodes_match(syntax, SyntaxKind::N_IMPORT_STMT, spans.imports());
+        assert_span_nodes_match(syntax, SyntaxKind::N_TYPE_DEF, spans.typedefs());
+        assert_span_nodes_match(syntax, SyntaxKind::N_RELATION_DECL, spans.relations());
+        assert_span_nodes_match(syntax, SyntaxKind::N_INDEX, spans.indexes());
+        assert_span_nodes_match(syntax, SyntaxKind::N_FUNCTION, spans.functions());
+        assert_span_nodes_match(syntax, SyntaxKind::N_TRANSFORMER, spans.transformers());
+        assert_span_nodes_match(syntax, SyntaxKind::N_RULE, spans.rules());
+        assert_span_nodes_match(syntax, SyntaxKind::N_EXPR_NODE, spans.expressions());
+>>>>>>> 8f97d81 (refactor(parser): refactor CST builder to use SpanCursors struct for clarity)
     }
 }
