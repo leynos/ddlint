@@ -623,7 +623,7 @@ pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
     })
 }
 
-fn text_range_to_span(range: rowan::TextRange) -> Span {
+pub(crate) fn text_range_to_span(range: rowan::TextRange) -> Span {
     let start: usize = range.start().into();
     let end: usize = range.end().into();
     start..end

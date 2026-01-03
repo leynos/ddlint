@@ -171,6 +171,7 @@ fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, te
 mod tests {
     use super::*;
     use crate::parser::ast::Root;
+    use crate::parser::ast::rule::text_range_to_span;
     use crate::parser::span_scanner::parse_tokens;
     use crate::test_util::tokenize;
     use rowan::SyntaxNode;
@@ -186,7 +187,6 @@ mod tests {
         assert_eq!(root.text(), src);
     }
 
-<<<<<<< HEAD
     #[cfg(debug_assertions)]
     #[test]
     #[should_panic(expected = "token span")]
@@ -210,12 +210,6 @@ mod tests {
         let green = build_green_tree(&tokens, src, &spans);
         let root = crate::parser::ast::Root::from_green(green);
         assert_eq!(root.text(), src);
-||||||| parent of 8f97d81 (refactor(parser): refactor CST builder to use SpanCursors struct for clarity)
-=======
-    fn text_range_to_span(range: rowan::TextRange) -> Span {
-        let start: usize = range.start().into();
-        let end: usize = range.end().into();
-        start..end
     }
 
     fn collect_kind_spans(root: &SyntaxNode<DdlogLanguage>, kind: SyntaxKind) -> Vec<Span> {
@@ -257,6 +251,5 @@ mod tests {
         assert_span_nodes_match(syntax, SyntaxKind::N_TRANSFORMER, spans.transformers());
         assert_span_nodes_match(syntax, SyntaxKind::N_RULE, spans.rules());
         assert_span_nodes_match(syntax, SyntaxKind::N_EXPR_NODE, spans.expressions());
->>>>>>> 8f97d81 (refactor(parser): refactor CST builder to use SpanCursors struct for clarity)
     }
 }
