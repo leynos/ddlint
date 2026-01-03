@@ -83,9 +83,7 @@ fn validate_token_span(span: &Span, src_len: usize) -> bool {
     } else {
         #[cfg(debug_assertions)]
         {
-            panic!(
-                "token span {span:?} out of bounds for source of length {src_len}"
-            );
+            panic!("token span {span:?} out of bounds for source of length {src_len}");
         }
 
         #[cfg(not(debug_assertions))]
