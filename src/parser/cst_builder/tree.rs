@@ -79,18 +79,20 @@ impl<'a> SpanCursors<'a> {
 
 fn validate_token_span(span: &Span, src_len: usize) -> bool {
     if span.start <= span.end && span.end <= src_len {
-        return true;
-    }
+        true
+    } else {
+        #[cfg(debug_assertions)]
+        {
+            panic!(
+                "token span {span:?} out of bounds for source of length {src_len}"
+            );
+        }
 
-    #[cfg(debug_assertions)]
-    {
-        panic!("token span {span:?} out of bounds for source of length {src_len}");
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-        warn!("token span {span:?} out of bounds for source of length {src_len}");
-        false
+        #[cfg(not(debug_assertions))]
+        {
+            warn!("token span {span:?} out of bounds for source of length {src_len}");
+            false
+        }
     }
 }
 
