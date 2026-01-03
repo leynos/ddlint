@@ -87,6 +87,11 @@ offset and free from overlaps. The function checks all span lists and returns a
 single aggregated error describing any misordered or overlapping spans,
 preventing mismatched nodes in the resulting CST.
 
+Token spans are validated before the CST builder advances span cursors. In
+debug builds, an out-of-bounds token span triggers a panic so lexer bugs are
+caught early. In release builds, the builder logs a warning and skips the
+token, keeping error recovery predictable while avoiding panics for user inputs.
+
 ## 5. Map CST nodes to AST structures
 
 Implement lightweight AST types that reference the CST. Each AST node should

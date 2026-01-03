@@ -77,6 +77,23 @@ impl<'a> SpanCursors<'a> {
     }
 }
 
+fn validate_token_span(span: &Span, src_len: usize) -> bool {
+    if span.start <= span.end && span.end <= src_len {
+        true
+    } else {
+        #[cfg(debug_assertions)]
+        {
+            panic!("token span {span:?} out of bounds for source of length {src_len}");
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            warn!("token span {span:?} out of bounds for source of length {src_len}");
+            false
+        }
+    }
+}
+
 /// Construct the CST from the token stream and recorded statement spans.
 ///
 /// # Examples
@@ -104,6 +121,9 @@ pub(crate) fn build_green_tree(
     let mut cursors = SpanCursors::new(spans);
 
     for &(kind, ref span) in tokens {
+        if !validate_token_span(span, src.len()) {
+            continue;
+        }
         cursors.advance_and_start(&mut builder, span.start);
 
         push_token(&mut builder, kind, span.clone(), src);
@@ -154,6 +174,31 @@ mod tests {
         let tokens = tokenize(src);
         let (spans, errors) = parse_tokens(&tokens, src);
         assert!(errors.is_empty());
+        let green = build_green_tree(&tokens, src, &spans);
+        let root = crate::parser::ast::Root::from_green(green);
+        assert_eq!(root.text(), src);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(expected = "token span")]
+    fn build_green_tree_panics_on_oob_token_span() {
+        let src = "";
+        let spans = ParsedSpans::builder().build();
+        let tokens = vec![(SyntaxKind::T_IDENT, 0..1)];
+
+        let _ = build_green_tree(&tokens, src, &spans);
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn build_green_tree_skips_oob_token_span_in_release() {
+        let src = "import foo::bar;";
+        let mut tokens = tokenize(src);
+        let (spans, errors) = parse_tokens(&tokens, src);
+        assert!(errors.is_empty());
+
+        tokens.push((SyntaxKind::K_IMPORT, src.len() + 1..src.len() + 2));
         let green = build_green_tree(&tokens, src, &spans);
         let root = crate::parser::ast::Root::from_green(green);
         assert_eq!(root.text(), src);
