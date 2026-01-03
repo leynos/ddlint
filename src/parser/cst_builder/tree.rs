@@ -2,12 +2,14 @@
 
 use log::warn;
 use rowan::{GreenNode, GreenNodeBuilder, Language};
+use smallvec::SmallVec;
 
 use crate::{DdlogLanguage, Span, SyntaxKind};
 
 use super::spans::ParsedSpans;
 
 type SpanSliceGetter = fn(&ParsedSpans) -> &[Span];
+const SPAN_CURSOR_INLINE: usize = 8;
 
 const SPAN_CURSOR_KINDS: &[(SpanSliceGetter, SyntaxKind)] = &[
     (ParsedSpans::imports, SyntaxKind::N_IMPORT_STMT),
@@ -54,12 +56,12 @@ impl<'a> SpanCursor<'a> {
 }
 
 struct SpanCursors<'a> {
-    cursors: Vec<SpanCursor<'a>>,
+    cursors: SmallVec<[SpanCursor<'a>; SPAN_CURSOR_INLINE]>,
 }
 
 impl<'a> SpanCursors<'a> {
     fn new(spans: &'a ParsedSpans) -> Self {
-        let mut cursors = Vec::with_capacity(SPAN_CURSOR_KINDS.len());
+        let mut cursors = SmallVec::with_capacity(SPAN_CURSOR_KINDS.len());
         for (getter, kind) in SPAN_CURSOR_KINDS {
             cursors.push(SpanCursor::new((*getter)(spans), *kind));
         }
