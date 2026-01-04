@@ -623,6 +623,10 @@ pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
     })
 }
 
+/// Convert a Rowan text range to a byte-offset span.
+///
+/// This helper bridges the CST layer (which uses `rowan::TextRange`) and the
+/// parser/diagnostic layer (which uses byte-offset `Span`s).
 pub(crate) fn text_range_to_span(range: rowan::TextRange) -> Span {
     let start: usize = range.start().into();
     let end: usize = range.end().into();

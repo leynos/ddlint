@@ -9,7 +9,6 @@ use crate::{DdlogLanguage, Span, SyntaxKind};
 use super::spans::ParsedSpans;
 
 type SpanSliceGetter = fn(&ParsedSpans) -> &[Span];
-const SPAN_CURSOR_INLINE: usize = 8;
 
 const SPAN_CURSOR_KINDS: &[(SpanSliceGetter, SyntaxKind)] = &[
     (ParsedSpans::imports, SyntaxKind::N_IMPORT_STMT),
@@ -21,6 +20,7 @@ const SPAN_CURSOR_KINDS: &[(SpanSliceGetter, SyntaxKind)] = &[
     (ParsedSpans::rules, SyntaxKind::N_RULE),
     (ParsedSpans::expressions, SyntaxKind::N_EXPR_NODE),
 ];
+const SPAN_CURSOR_INLINE: usize = SPAN_CURSOR_KINDS.len();
 
 struct SpanCursor<'a> {
     iter: std::iter::Peekable<std::slice::Iter<'a, Span>>,
