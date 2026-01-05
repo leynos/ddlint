@@ -72,7 +72,7 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
 ///
 /// ```no_run
 /// # use ddlint::{SyntaxKind, parse};
-/// # use ddlint::parser::tests::helpers::count_nodes_by_kind;
+/// # use super::count_nodes_by_kind;
 /// let root = parse("import foo").root();
 /// let count = count_nodes_by_kind(root.syntax(), SyntaxKind::N_IMPORT_STMT);
 /// assert_eq!(count, 1);
