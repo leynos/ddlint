@@ -31,9 +31,7 @@ fn builder_panics_on_invalid_spans_in_public_api() {
 
 #[test]
 fn builder_try_build_exposes_validation_error() {
-    let err = ParsedSpans::builder()
-        .imports(vec![2..4, 1..2])
-        .try_build();
+    let err = ParsedSpans::builder().imports(vec![2..4, 1..2]).try_build();
     let Err(err) = err else {
         panic!("expected validation error");
     };
