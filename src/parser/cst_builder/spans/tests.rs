@@ -64,13 +64,22 @@ fn builder_succeeds_on_sorted_spans() {
     assert_eq!(parsed.imports(), spans.as_slice());
 }
 
+#[expect(
+    clippy::expect_used,
+    reason = "test assertions prefer expect for invalid spans"
+)]
+fn expect_build_err(spans: Vec<Span>) -> SpanListValidationError {
+    ParsedSpans::builder()
+        .imports(spans)
+        .build()
+        .expect_err("expected validation error")
+}
+
 #[rstest]
 #[case::unsorted(vec![1..2, 0..1])]
 #[case::overlap(vec![0..3, 2..4])]
 fn builder_errs_on_invalid_spans(#[case] spans: Vec<Span>) {
-    let Err(err) = ParsedSpans::builder().imports(spans).build() else {
-        panic!("expected validation error");
-    };
+    let err = expect_build_err(spans);
     assert!(err.to_string().contains("imports not sorted"));
 }
 
