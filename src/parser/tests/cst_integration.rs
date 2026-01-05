@@ -3,7 +3,7 @@
 use crate::test_util::assert_no_parse_errors;
 use crate::{SyntaxKind, parse};
 
-use super::helpers::pretty_print;
+use super::helpers::{count_nodes_by_kind, pretty_print};
 
 #[test]
 fn parse_builds_cst_for_all_top_level_categories() {
@@ -21,22 +21,16 @@ fn parse_builds_cst_for_all_top_level_categories() {
     assert_no_parse_errors(parsed.errors());
     let root = parsed.root();
     let syntax = root.syntax();
-    let count_nodes = |kind| {
-        syntax
-            .descendants()
-            .filter(|node| node.kind() == kind)
-            .count()
-    };
 
-    assert_eq!(count_nodes(SyntaxKind::N_IMPORT_STMT), 1);
-    assert_eq!(count_nodes(SyntaxKind::N_TYPE_DEF), 1);
-    assert_eq!(count_nodes(SyntaxKind::N_RELATION_DECL), 1);
-    assert_eq!(count_nodes(SyntaxKind::N_INDEX), 1);
-    assert_eq!(count_nodes(SyntaxKind::N_FUNCTION), 1);
-    assert_eq!(count_nodes(SyntaxKind::N_TRANSFORMER), 1);
-    assert_eq!(count_nodes(SyntaxKind::N_RULE), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_IMPORT_STMT), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_TYPE_DEF), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_RELATION_DECL), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_INDEX), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_FUNCTION), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_TRANSFORMER), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_RULE), 1);
 
-    let expr_nodes = count_nodes(SyntaxKind::N_EXPR_NODE);
+    let expr_nodes = count_nodes_by_kind(syntax, SyntaxKind::N_EXPR_NODE);
     assert_eq!(expr_nodes, 2);
     assert_eq!(pretty_print(syntax), src);
 }

@@ -35,6 +35,11 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
     out
 }
 
+/// Count descendant nodes with the provided kind.
+pub(super) fn count_nodes_by_kind(node: &SyntaxNode, kind: SyntaxKind) -> usize {
+    node.descendants().filter(|n| n.kind() == kind).count()
+}
+
 /// Collapse runs of whitespace into single spaces.
 ///
 /// ```
