@@ -10,6 +10,32 @@ use crate::{
 type SyntaxNode = rowan::SyntaxNode<crate::DdlogLanguage>;
 type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
 
+/// Test-only source text wrapper for flexible input conversion.
+///
+/// This standardizes test input types and lets helpers accept `&str`, `String`,
+/// and other string-like values without callers needing explicit `.to_string()`.
+/// Conversions remain ergonomic via the `From<&str>` and `From<String>` impls.
+#[derive(Debug, Clone)]
+pub(super) struct SourceText(String);
+
+impl From<&str> for SourceText {
+    fn from(src: &str) -> Self {
+        Self(src.to_string())
+    }
+}
+
+impl From<String> for SourceText {
+    fn from(src: String) -> Self {
+        Self(src)
+    }
+}
+
+impl AsRef<str> for SourceText {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Collect the text of a syntax subtree.
 ///
 /// This helper iteratively traverses the tree using an explicit stack,
@@ -35,6 +61,26 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
     out
 }
 
+/// Count descendant nodes of a given `SyntaxKind`.
+///
+/// Signature: `count_nodes_by_kind(node: &SyntaxNode, kind: SyntaxKind) -> usize`.
+/// The count includes `node` itself because `SyntaxNode::descendants()` yields
+/// the node followed by its descendants. Intended for tests, this lets modules
+/// quickly assert node counts without repeating traversal logic.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use ddlint::{SyntaxKind, parse};
+/// # use super::count_nodes_by_kind;
+/// let root = parse("import foo").root();
+/// let count = count_nodes_by_kind(root.syntax(), SyntaxKind::N_IMPORT_STMT);
+/// assert_eq!(count, 1);
+/// ```
+pub(super) fn count_nodes_by_kind(node: &SyntaxNode, kind: SyntaxKind) -> usize {
+    node.descendants().filter(|n| n.kind() == kind).count()
+}
+
 /// Collapse runs of whitespace into single spaces.
 ///
 /// ```
@@ -46,8 +92,9 @@ pub(super) fn normalize_whitespace(text: &str) -> String {
 
 /// Parse `src`, and assert that the program is well formed.
 #[track_caller]
-pub(super) fn parse_ok(src: &str) -> crate::Parsed {
-    let parsed = parse(src);
+pub(super) fn parse_ok(src: impl Into<SourceText>) -> crate::Parsed {
+    let src = src.into();
+    let parsed = parse(src.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     parsed
@@ -55,8 +102,9 @@ pub(super) fn parse_ok(src: &str) -> crate::Parsed {
 
 /// Parse `src` expecting at least one error.
 #[track_caller]
-pub(super) fn parse_err(src: &str) -> crate::Parsed {
-    let parsed = parse(src);
+pub(super) fn parse_err(src: impl Into<SourceText>) -> crate::Parsed {
+    let src = src.into();
+    let parsed = parse(src.as_ref());
     assert!(
         !parsed.errors().is_empty(),
         "expected parse to fail but it succeeded"
@@ -68,9 +116,10 @@ pub(super) fn parse_err(src: &str) -> crate::Parsed {
 
 /// Parse and ensure the source round-trips via `pretty_print`.
 #[track_caller]
-pub(super) fn round_trip(src: &str) {
-    let parsed = parse_ok(src);
-    assert_eq!(pretty_print(parsed.root().syntax()), src);
+pub(super) fn round_trip(src: impl Into<SourceText>) {
+    let src = src.into();
+    let parsed = parse_ok(src.as_ref());
+    assert_eq!(pretty_print(parsed.root().syntax()), src.as_ref());
 }
 
 /// Parse a program and extract the first item produced by `extractor`.
@@ -79,10 +128,11 @@ pub(super) fn round_trip(src: &str) {
 /// extractor yields at least one item.
 #[expect(clippy::expect_used, reason = "helpers used only in tests")]
 fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
-    src: &str,
+    src: impl Into<SourceText>,
     extractor: F,
 ) -> T {
-    let parsed = parse(src);
+    let src = src.into();
+    let parsed = parse(src.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     let items = extractor(parsed.root());
@@ -90,26 +140,26 @@ fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
 }
 
 /// Parse a program containing a single relation and return it.
-pub(super) fn parse_relation(src: &str) -> Relation {
+pub(super) fn parse_relation(src: impl Into<SourceText>) -> Relation {
     parse_single_item(src, crate::parser::ast::Root::relations)
 }
 
 /// Parse a program containing a single index and return it.
-pub(super) fn parse_index(src: &str) -> Index {
+pub(super) fn parse_index(src: impl Into<SourceText>) -> Index {
     parse_single_item(src, crate::parser::ast::Root::indexes)
 }
 
 /// Parse a program containing a single function and return it.
-pub(super) fn parse_function(src: &str) -> Function {
+pub(super) fn parse_function(src: impl Into<SourceText>) -> Function {
     parse_single_item(src, crate::parser::ast::Root::functions)
 }
 
 /// Parse a program containing a single transformer and return it.
-pub(super) fn parse_transformer(src: &str) -> Transformer {
+pub(super) fn parse_transformer(src: impl Into<SourceText>) -> Transformer {
     parse_single_item(src, crate::parser::ast::Root::transformers)
 }
 
 /// Parse a program containing a single import and return it.
-pub(super) fn parse_import(src: &str) -> Import {
+pub(super) fn parse_import(src: impl Into<SourceText>) -> Import {
     parse_single_item(src, crate::parser::ast::Root::imports)
 }

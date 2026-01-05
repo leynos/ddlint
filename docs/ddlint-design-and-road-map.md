@@ -213,7 +213,9 @@ sequenceDiagram
 After tokenization the parser wraps the vector of tokens in a lightweight
 `TokenStream`. This structure manages the current cursor and exposes helper
 methods such as `line_end` or `skip_ws_inline`. Navigating tokens through this
-abstraction avoids manual index arithmetic and reduces boundary errors.
+abstraction avoids manual index arithmetic and reduces boundary errors. During
+CST construction, the span cursor list uses a small, stack-backed buffer to
+avoid heap allocations in the common case.[^16]
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 
@@ -1003,3 +1005,6 @@ completing the vision of a truly interactive developer assistant.
 
 [^15]: `lsp-types` crate documentation. Rust types for the Language Server
        Protocol specification. <https://crates.io/crates/lsp-types>
+
+[^16]: `smallvec` crate documentation. Provides small, inline vectors that
+       spill to the heap when needed. <https://crates.io/crates/smallvec>
