@@ -1,18 +1,6 @@
-use ddlint::{parse, parser::ParsedSpans};
+//! Behavioural coverage for span validation in public APIs.
 
-fn assert_panic_with_message<F>(f: F) -> String
-where
-    F: FnOnce() + std::panic::UnwindSafe,
-{
-    let result = std::panic::catch_unwind(f);
-    let Err(err) = result else {
-        panic!("expected panic");
-    };
-    err.downcast_ref::<String>()
-        .cloned()
-        .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_string()))
-        .unwrap_or_default()
-}
+use ddlint::{parse, parser::ParsedSpans, test_util::assert_panic_with_message};
 
 #[test]
 fn parse_builds_with_valid_spans() {

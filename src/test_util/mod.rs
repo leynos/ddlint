@@ -9,7 +9,7 @@ mod expressions;
 mod literals;
 
 pub use assertions::{
-    assert_delimiter_error, assert_no_parse_errors, assert_parse_error,
+    assert_delimiter_error, assert_no_parse_errors, assert_panic_with_message, assert_parse_error,
     assert_unclosed_delimiter_error,
 };
 pub use expressions::{
