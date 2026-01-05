@@ -64,9 +64,9 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
 /// Count descendant nodes of a given `SyntaxKind`.
 ///
 /// Signature: `count_nodes_by_kind(node: &SyntaxNode, kind: SyntaxKind) -> usize`.
-/// The count includes descendants of `node` (not `node` itself). Intended for
-/// tests, this lets modules quickly assert node counts without repeating
-/// traversal logic.
+/// The count includes `node` itself because `SyntaxNode::descendants()` yields
+/// the node followed by its descendants. Intended for tests, this lets modules
+/// quickly assert node counts without repeating traversal logic.
 ///
 /// # Examples
 ///
