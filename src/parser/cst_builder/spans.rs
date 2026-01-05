@@ -63,7 +63,9 @@ pub struct SpanListValidationError {
 }
 
 impl SpanListValidationError {
-    fn new(issues: Vec<SpanListIssue>) -> Self {
+    /// Create a validation error from the collected span list issues.
+    #[must_use]
+    pub fn new(issues: Vec<SpanListIssue>) -> Self {
         let message = issues
             .iter()
             .map(SpanListIssue::to_string)
@@ -172,11 +174,6 @@ impl ParsedSpansBuilder {
     pub fn expressions(mut self, spans: Vec<Span>) -> Self {
         self.expressions = spans;
         self
-    }
-
-    /// Build the [`ParsedSpans`], returning an error for invalid span lists.
-    pub fn try_build(self) -> Result<ParsedSpans, SpanListValidationError> {
-        self.build()
     }
 
     /// Build the [`ParsedSpans`], returning an error for invalid span lists.

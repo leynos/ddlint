@@ -91,33 +91,3 @@ fn builder_reports_all_errors() {
     assert!(text.contains("imports not sorted"));
     assert!(text.contains("typedefs not sorted"));
 }
-
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect for invalid spans"
-)]
-#[test]
-fn try_build_errs_on_unsorted_spans() {
-    let unsorted = vec![1..2, 0..1];
-    let err = ParsedSpans::builder()
-        .imports(unsorted)
-        .try_build()
-        .expect_err("expected validation error");
-    assert_eq!(err.issues().len(), 1);
-    let issue = err.issues().first().expect("expected at least one issue");
-    assert_eq!(issue.list(), "imports");
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect for valid spans"
-)]
-#[test]
-fn try_build_ok_on_sorted_spans() {
-    let spans = vec![0..1, 2..3];
-    let parsed = ParsedSpans::builder()
-        .imports(spans.clone())
-        .try_build()
-        .expect("expected valid spans");
-    assert_eq!(parsed.imports(), spans.as_slice());
-}
