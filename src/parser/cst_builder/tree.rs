@@ -192,7 +192,10 @@ mod tests {
     #[should_panic(expected = "token span")]
     fn build_green_tree_panics_on_oob_token_span() {
         let src = "";
-        let spans = ParsedSpans::builder().build();
+        let spans = match ParsedSpans::builder().build() {
+            Ok(spans) => spans,
+            Err(err) => panic!("expected valid spans, got: {err}"),
+        };
         let tokens = vec![(SyntaxKind::T_IDENT, 0..1)];
 
         let _ = build_green_tree(&tokens, src, &spans);
