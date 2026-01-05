@@ -10,7 +10,11 @@ use crate::{
 type SyntaxNode = rowan::SyntaxNode<crate::DdlogLanguage>;
 type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
 
-/// Source text wrapper to reduce string-heavy helper signatures in tests.
+/// Test-only source text wrapper for flexible input conversion.
+///
+/// This standardizes test input types and lets helpers accept `&str`, `String`,
+/// and other string-like values without callers needing explicit `.to_string()`.
+/// Conversions remain ergonomic via the `From<&str>` and `From<String>` impls.
 #[derive(Debug, Clone)]
 pub(super) struct SourceText(String);
 
@@ -23,12 +27,6 @@ impl From<&str> for SourceText {
 impl From<String> for SourceText {
     fn from(src: String) -> Self {
         Self(src)
-    }
-}
-
-impl From<&String> for SourceText {
-    fn from(src: &String) -> Self {
-        Self(src.clone())
     }
 }
 
@@ -63,7 +61,22 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
     out
 }
 
-/// Count descendant nodes with the provided kind.
+/// Count descendant nodes of a given `SyntaxKind`.
+///
+/// Signature: `count_nodes_by_kind(node: &SyntaxNode, kind: SyntaxKind) -> usize`.
+/// The count includes descendants of `node` (not `node` itself). Intended for
+/// tests, this lets modules quickly assert node counts without repeating
+/// traversal logic.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use ddlint::{SyntaxKind, parse};
+/// # use ddlint::parser::tests::helpers::count_nodes_by_kind;
+/// let root = parse("import foo").root();
+/// let count = count_nodes_by_kind(root.syntax(), SyntaxKind::N_IMPORT_STMT);
+/// assert_eq!(count, 1);
+/// ```
 pub(super) fn count_nodes_by_kind(node: &SyntaxNode, kind: SyntaxKind) -> usize {
     node.descendants().filter(|n| n.kind() == kind).count()
 }
