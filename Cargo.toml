@@ -14,7 +14,7 @@ chumsky = { version = "0.9", default-features = false, features = ["std"] }
 log = { version = "0.4", default-features = false }
 thiserror = { version = "1.0", default-features = false }
 derive_more = { version = "1.0", default-features = false, features = ["from", "as_ref"] }
-smallvec = "1.13"
+smallvec = "1.15.1"
 
 [features]
 test-support = []
