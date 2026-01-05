@@ -316,6 +316,8 @@ fn validate_spans_sorted(spans: &[Span]) -> Result<(), SpanOrderError> {
     Ok(())
 }
 
+// Wrapper keeps the "enforce" intent explicit at call sites and leaves room for
+// additional validation steps without duplicating checks.
 fn enforce_valid_span_lists(lists: &[(&str, &[Span])]) -> Result<(), SpanListValidationError> {
     validate_span_lists_sorted(lists)
 }
@@ -336,112 +338,4 @@ fn validate_span_lists_sorted(lists: &[(&str, &[Span])]) -> Result<(), SpanListV
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::test_util::assert_panic_with_message;
-
-    #[test]
-    fn validate_spans_sorted_err_on_overlap() {
-        let spans = vec![0..5, 4..8];
-        assert!(validate_spans_sorted(&spans).is_err());
-    }
-
-    #[test]
-    fn validate_spans_sorted_err_on_unsorted() {
-        let spans = vec![5..10, 0..2];
-        assert!(validate_spans_sorted(&spans).is_err());
-    }
-
-    #[test]
-    fn validate_spans_sorted_ok_on_empty() {
-        let spans: Vec<Span> = Vec::new();
-        assert!(validate_spans_sorted(&spans).is_ok());
-    }
-
-    #[test]
-    fn validate_spans_sorted_ok_on_single() {
-        let spans: Vec<Span> = std::iter::once(0..3).collect();
-        assert!(validate_spans_sorted(&spans).is_ok());
-    }
-
-    #[test]
-    fn validate_spans_sorted_ok_on_sorted() {
-        let spans = vec![0..2, 3..5, 5..8];
-        assert!(validate_spans_sorted(&spans).is_ok());
-    }
-
-    #[test]
-    fn validate_span_lists_sorted_reports_list_name() {
-        let imports = vec![2..4, 1..2];
-        let Err(err) = validate_span_lists_sorted(&[("imports", &imports)]) else {
-            panic!("expected validation error");
-        };
-        let Some(issue) = err.issues().first() else {
-            panic!("expected at least one issue");
-        };
-        assert_eq!(issue.list(), "imports");
-    }
-
-    #[test]
-    fn builder_succeeds_on_sorted_spans() {
-        let spans = vec![0..2, 2..4];
-        let parsed = ParsedSpans::builder().imports(spans.clone()).build();
-        assert_eq!(parsed.imports(), spans.as_slice());
-    }
-
-    #[test]
-    fn builder_panics_on_unsorted() {
-        let unsorted = vec![1..2, 0..1];
-        let text = assert_panic_with_message(|| {
-            let _ = ParsedSpans::builder().imports(unsorted).build();
-        });
-        assert!(text.contains("imports not sorted"));
-    }
-
-    #[test]
-    fn builder_panics_on_overlap() {
-        let overlapping = vec![0..3, 2..4];
-        let text = assert_panic_with_message(|| {
-            let _ = ParsedSpans::builder().imports(overlapping).build();
-        });
-        assert!(text.contains("imports not sorted"));
-    }
-
-    #[test]
-    fn builder_reports_all_errors() {
-        let imports = vec![1..2, 0..1];
-        let typedefs = vec![4..5, 3..4];
-        let text = assert_panic_with_message(|| {
-            let _ = ParsedSpans::builder()
-                .imports(imports)
-                .typedefs(typedefs)
-                .build();
-        });
-        assert!(text.contains("imports not sorted"));
-        assert!(text.contains("typedefs not sorted"));
-    }
-
-    #[test]
-    fn try_build_errs_on_unsorted_spans() {
-        let unsorted = vec![1..2, 0..1];
-        let result = ParsedSpans::builder().imports(unsorted).try_build();
-        let Err(err) = result else {
-            panic!("expected validation error");
-        };
-        assert_eq!(err.issues().len(), 1);
-        let Some(issue) = err.issues().first() else {
-            panic!("expected at least one issue");
-        };
-        assert_eq!(issue.list(), "imports");
-    }
-
-    #[test]
-    fn try_build_ok_on_sorted_spans() {
-        let spans = vec![0..1, 2..3];
-        let parsed = match ParsedSpans::builder().imports(spans.clone()).try_build() {
-            Ok(parsed) => parsed,
-            Err(err) => panic!("expected valid spans, got: {err}"),
-        };
-        assert_eq!(parsed.imports(), spans.as_slice());
-    }
-}
+mod tests;

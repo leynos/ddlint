@@ -32,7 +32,9 @@ where
     err.downcast_ref::<String>()
         .cloned()
         .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_string()))
-        .unwrap_or_default()
+        .unwrap_or_else(|| {
+            panic!("expected panic payload to be String or &str, got unknown type");
+        })
 }
 
 /// Assert that a parser produced no errors.
