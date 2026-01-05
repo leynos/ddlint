@@ -176,17 +176,13 @@ impl ParsedSpansBuilder {
 
     /// Build the [`ParsedSpans`], returning an error for invalid span lists.
     pub fn try_build(self) -> Result<ParsedSpans, SpanListValidationError> {
-        enforce_valid_span_lists(&self.span_lists())?;
-        Ok(self.into_parsed_spans())
+        self.build()
     }
 
-    /// Build the [`ParsedSpans`].
-    #[must_use]
-    pub fn build(self) -> ParsedSpans {
-        enforce_valid_span_lists(&self.span_lists()).unwrap_or_else(|error| {
-            panic!("{error}");
-        });
-        self.into_parsed_spans()
+    /// Build the [`ParsedSpans`], returning an error for invalid span lists.
+    pub fn build(self) -> Result<ParsedSpans, SpanListValidationError> {
+        enforce_valid_span_lists(&self.span_lists())?;
+        Ok(self.into_parsed_spans())
     }
 
     fn span_lists(&self) -> [(&'static str, &[Span]); 8] {

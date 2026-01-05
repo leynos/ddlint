@@ -51,19 +51,26 @@ pub(super) fn parse_tokens(
     all_errors.extend(transformer_errors);
     all_errors.extend(rule_errors);
 
-    (
-        ParsedSpans::builder()
-            .imports(import_spans)
-            .typedefs(typedef_spans)
-            .relations(relation_spans)
-            .indexes(index_spans)
-            .functions(function_spans)
-            .transformers(transformer_spans)
-            .rules(rule_spans)
-            .expressions(expr_spans)
-            .build(),
-        all_errors,
-    )
+    let span_result = ParsedSpans::builder()
+        .imports(import_spans)
+        .typedefs(typedef_spans)
+        .relations(relation_spans)
+        .indexes(index_spans)
+        .functions(function_spans)
+        .transformers(transformer_spans)
+        .rules(rule_spans)
+        .expressions(expr_spans)
+        .build();
+
+    let spans = match span_result {
+        Ok(spans) => spans,
+        Err(err) => {
+            all_errors.push(chumsky::error::Simple::custom(0..0, err.to_string()));
+            ParsedSpans::default()
+        }
+    };
+
+    (spans, all_errors)
 }
 
 /// Return a sorted, merged copy of the provided spans.

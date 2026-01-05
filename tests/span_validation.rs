@@ -1,6 +1,6 @@
 //! Behavioural coverage for span validation in public APIs.
 
-use ddlint::{parse, parser::ParsedSpans, test_util::assert_panic_with_message};
+use ddlint::{parse, parser::ParsedSpans};
 
 #[test]
 fn parse_builds_with_valid_spans() {
@@ -9,12 +9,17 @@ fn parse_builds_with_valid_spans() {
     assert_eq!(parsed.root().imports().len(), 1);
 }
 
+#[expect(
+    clippy::expect_used,
+    reason = "test assertions prefer expect to confirm error paths"
+)]
 #[test]
-fn builder_panics_on_invalid_spans_in_public_api() {
-    let text = assert_panic_with_message(|| {
-        drop(ParsedSpans::builder().imports(vec![2..4, 1..2]).build());
-    });
-    assert!(text.contains("imports not sorted"));
+fn builder_errs_on_invalid_spans_in_public_api() {
+    let err = ParsedSpans::builder()
+        .imports(vec![2..4, 1..2])
+        .build()
+        .expect_err("expected validation error");
+    assert!(err.to_string().contains("imports not sorted"));
 }
 
 #[expect(
@@ -29,8 +34,6 @@ fn builder_try_build_exposes_validation_error() {
         .expect_err("expected validation error");
     assert!(err.to_string().contains("imports not sorted"));
     let issues = err.issues();
-    let Some(issue) = issues.first() else {
-        panic!("expected at least one issue");
-    };
+    let issue = issues.first().expect("expected at least one issue");
     assert_eq!(issue.list(), "imports");
 }
