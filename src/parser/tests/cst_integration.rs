@@ -15,6 +15,7 @@ fn parse_builds_cst_for_all_top_level_categories() {
         "function greet(name: string): string {\n",
         "}\n",
         "extern transformer normalise(input: User): Normalized\n",
+        "apply normalise(User) -> (Normalized)\n",
         "User(id, name) :- name == \"a\", id > 0.\n"
     );
     let parsed = parse(src);
@@ -28,6 +29,7 @@ fn parse_builds_cst_for_all_top_level_categories() {
     assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_INDEX), 1);
     assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_FUNCTION), 1);
     assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_TRANSFORMER), 1);
+    assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_APPLY), 1);
     assert_eq!(count_nodes_by_kind(syntax, SyntaxKind::N_RULE), 1);
 
     let expr_nodes = count_nodes_by_kind(syntax, SyntaxKind::N_EXPR_NODE);

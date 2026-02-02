@@ -17,7 +17,7 @@
 
 use rowan::GreenNode;
 
-use super::{Function, Import, Index, Relation, Rule, Transformer, TypeDef};
+use super::{Apply, Function, Import, Index, Relation, Rule, Transformer, TypeDef};
 use crate::{DdlogLanguage, SyntaxKind};
 
 /// The root of a parsed `DDlog` file.
@@ -107,6 +107,12 @@ impl Root {
         self.collect_children(SyntaxKind::N_TRANSFORMER, |syntax| Transformer { syntax })
     }
 
+    /// Collect all `apply` statements.
+    #[must_use]
+    pub fn applys(&self) -> Vec<Apply> {
+        self.collect_children(SyntaxKind::N_APPLY, |syntax| Apply { syntax })
+    }
+
     /// Collect all rule declarations.
     #[must_use]
     pub fn rules(&self) -> Vec<Rule> {
@@ -129,6 +135,7 @@ mod tests {
         assert!(root.indexes().is_empty());
         assert!(root.functions().is_empty());
         assert!(root.transformers().is_empty());
+        assert!(root.applys().is_empty());
         assert!(root.rules().is_empty());
     }
 }

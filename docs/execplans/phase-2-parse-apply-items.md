@@ -4,7 +4,7 @@ This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & discoveries`, `Decision log`, and
 `Outcomes & retrospective` must be kept up to date as work proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 PLANS.md is not present in this repository.
 
@@ -57,23 +57,38 @@ only after all validation steps pass.
 ## Progress
 
 - [x] (2026-02-02 00:00Z) Drafted ExecPlan and surveyed current docs and code.
-- [ ] Determine `apply` grammar and update spec/design docs if needed.
-- [ ] Add unit and behavioural tests for `apply` items and transformer errors.
-- [ ] Implement span scanning, CST nodes, AST wrappers, and diagnostics.
-- [ ] Run validation gates and update the roadmap entry to "done".
+- [x] (2026-02-02 01:10Z) Confirmed `apply` grammar and updated the syntax
+  spec.
+- [x] (2026-02-02 01:25Z) Added unit and behavioural tests for `apply` items
+  and transformer diagnostics.
+- [x] (2026-02-02 01:45Z) Implemented span scanning, CST nodes, AST wrappers,
+  and diagnostics for `apply` and non-extern transformers.
+- [x] (2026-02-02 02:35Z) Ran validation gates and confirmed the roadmap entry
+  remains marked as done.
 
 ## Surprises & discoveries
 
-None so far.
+- Observation: `make fmt` requires `fd` to be available on `PATH`.
+  Evidence: `mdformat-all` invokes `fd` and fails without it. Impact: keep `fd`
+  installed or add a wrapper when running formatters.
 
 ## Decision log
 
-No decisions yet. Record `apply` grammar and diagnostic wording decisions here
-once confirmed.
+- Decision: `apply` uses `apply Transformer(Args...) -> (Outputs...)` with
+  inputs accepting relation or function identifiers and allowing trailing
+  commas, mirroring the legacy DDlog parser. Rationale: matches upstream parse
+  behaviour and keeps the grammar compact. Date/Author: 2026-02-02 (assistant)
+- Decision: diagnostic text for non-extern transformers is
+  "transformer declarations must be extern". Rationale: aligns with the updated
+  syntax spec's error example. Date/Author: 2026-02-02 (assistant)
 
 ## Outcomes & retrospective
 
-Not started.
+Implemented `apply` parsing with CST/AST coverage, added diagnostics for
+non-extern transformers, updated the syntax spec and roadmap entry, and added
+unit and behavioural tests. Validation gates (`make check-fmt`, `make lint`,
+`make test`, plus Markdown tooling) all passed. Future work can build on the
+new `Apply` AST wrapper and root accessor without additional parsing changes.
 
 ## Context and orientation
 
@@ -102,7 +117,7 @@ Key files to touch:
 
 Stage A: confirm grammar and requirements (no code changes). Read the
 referenced docs, especially
-`docs/differential-datalog-parser-syntax-spec- updated.md` and
+`docs/differential-datalog-parser-syntax-spec-updated.md` and
 `docs/parser-gap-analysis.md`, and determine the exact `apply` item grammar and
 expected diagnostics. If the grammar is not defined, pause and agree on a
 concrete syntax, then record it in the syntax spec and decision log before

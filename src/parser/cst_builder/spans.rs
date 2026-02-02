@@ -100,6 +100,8 @@ pub struct ParsedSpans {
     functions: Vec<Span>,
     /// `transformer` declaration spans.
     transformers: Vec<Span>,
+    /// `apply` statement spans.
+    applys: Vec<Span>,
     /// Rule spans.
     rules: Vec<Span>,
     /// Expression spans.
@@ -115,6 +117,7 @@ pub struct ParsedSpansBuilder {
     indexes: Vec<Span>,
     functions: Vec<Span>,
     transformers: Vec<Span>,
+    applys: Vec<Span>,
     rules: Vec<Span>,
     expressions: Vec<Span>,
 }
@@ -162,6 +165,13 @@ impl ParsedSpansBuilder {
         self
     }
 
+    /// Set the `apply` statement spans.
+    #[must_use]
+    pub fn applys(mut self, spans: Vec<Span>) -> Self {
+        self.applys = spans;
+        self
+    }
+
     /// Set the rule spans.
     #[must_use]
     pub fn rules(mut self, spans: Vec<Span>) -> Self {
@@ -182,7 +192,7 @@ impl ParsedSpansBuilder {
         Ok(self.into_parsed_spans())
     }
 
-    fn span_lists(&self) -> [(&'static str, &[Span]); 8] {
+    fn span_lists(&self) -> [(&'static str, &[Span]); 9] {
         [
             ("imports", &self.imports),
             ("typedefs", &self.typedefs),
@@ -190,6 +200,7 @@ impl ParsedSpansBuilder {
             ("indexes", &self.indexes),
             ("functions", &self.functions),
             ("transformers", &self.transformers),
+            ("applys", &self.applys),
             ("rules", &self.rules),
             ("expressions", &self.expressions),
         ]
@@ -203,6 +214,7 @@ impl ParsedSpansBuilder {
             indexes,
             functions,
             transformers,
+            applys,
             rules,
             expressions,
         } = self;
@@ -214,6 +226,7 @@ impl ParsedSpansBuilder {
             indexes,
             functions,
             transformers,
+            applys,
             rules,
             expressions,
         }
@@ -263,6 +276,12 @@ impl ParsedSpans {
     #[must_use]
     pub fn transformers(&self) -> &[Span] {
         &self.transformers
+    }
+
+    /// Access `apply` statement spans.
+    #[must_use]
+    pub fn applys(&self) -> &[Span] {
+        &self.applys
     }
 
     /// Access rule spans.

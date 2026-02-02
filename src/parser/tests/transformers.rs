@@ -46,6 +46,11 @@ fn transformer_reserved_names() -> &'static str {
     "extern transformer reserved(transformer: Type, extern: Type): out"
 }
 
+#[fixture]
+fn transformer_non_extern() -> &'static str {
+    "transformer local(input: InputType): OutputType"
+}
+
 #[rstest]
 #[case(transformer_single_io(), "normalize", vec![("input", "UnnormalizedData")], vec!["NormalizedData".into()])]
 #[case(
@@ -120,4 +125,16 @@ fn transformer_reserved_keyword_names(transformer_reserved_names: &str) {
     let t = parse_transformer(transformer_reserved_names);
     let names: Vec<_> = t.inputs().into_iter().map(|(n, _)| n).collect();
     assert_eq!(names, vec!["transformer", "extern"]);
+}
+
+#[rstest]
+fn transformer_requires_extern(transformer_non_extern: &str) {
+    let parsed = crate::parse(transformer_non_extern);
+    assert_parse_error(
+        parsed.errors(),
+        ErrorPattern::from("transformer declarations must be extern"),
+        0,
+        transformer_non_extern.len(),
+    );
+    assert!(parsed.root().transformers().is_empty());
 }

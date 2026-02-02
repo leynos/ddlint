@@ -1,12 +1,12 @@
 //! Shared utilities used by the specialised span scanners.
 //!
-//! These helpers wrap common parsing patterns such as "parse and record" and
-//! extern declaration handling so individual scanners can focus on their own
-//! syntax without duplicating boilerplate.
+//! These helpers wrap common parsing patterns such as "parse and record" so
+//! individual scanners can focus on their own syntax without duplicating
+//! boilerplate.
 
 use chumsky::prelude::*;
 
-use crate::parser::{lexer_helpers::inline_ws, span_collector::SpanCollector};
+use crate::parser::span_collector::SpanCollector;
 use crate::{Span, SyntaxKind};
 
 /// Convenience alias for scanners that accumulate `Simple` errors.
@@ -54,45 +54,4 @@ where
     }
     st.extra.extend(errs.clone());
     (res, errs)
-}
-
-/// Collect spans for extern declarations parsed by `decl_parser`.
-///
-/// The `decl_parser` is invoked after the leading `extern` keyword. When the
-/// subsequent token does not match `decl_kind`, the handler skips the line to
-/// avoid misclassifying unrelated constructs.
-pub(crate) fn collect_extern_declarations<F, P>(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    decl_kind: SyntaxKind,
-    decl_parser: F,
-) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
-where
-    F: Fn() -> P,
-    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
-{
-    let mut st = State::new(tokens, src, Vec::new());
-
-    let handler = |st: &mut State<'_>, span: Span| {
-        let is_decl = st
-            .stream
-            .peek_after_ws_inline()
-            .is_some_and(|(k, _)| *k == decl_kind);
-        if !is_decl {
-            st.skip_line();
-            return;
-        }
-
-        let ws = inline_ws().repeated();
-        let start = span.start;
-        let parser = just(SyntaxKind::K_EXTERN)
-            .padded_by(ws.clone())
-            .ignore_then(decl_parser())
-            .map(move |sp: Span| start..sp.end);
-
-        parse_and_record(st, start, parser);
-    };
-
-    token_dispatch!(st, { SyntaxKind::K_EXTERN => handler });
-    st.into_parts()
 }

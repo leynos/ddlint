@@ -17,6 +17,7 @@ const SPAN_CURSOR_KINDS: &[(SpanSliceGetter, SyntaxKind)] = &[
     (ParsedSpans::indexes, SyntaxKind::N_INDEX),
     (ParsedSpans::functions, SyntaxKind::N_FUNCTION),
     (ParsedSpans::transformers, SyntaxKind::N_TRANSFORMER),
+    (ParsedSpans::applys, SyntaxKind::N_APPLY),
     (ParsedSpans::rules, SyntaxKind::N_RULE),
     (ParsedSpans::expressions, SyntaxKind::N_EXPR_NODE),
 ];
