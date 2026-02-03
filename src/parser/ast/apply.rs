@@ -66,16 +66,13 @@ where
     for e in iter.by_ref() {
         match e.kind() {
             SyntaxKind::T_LPAREN => depth += 1,
-            SyntaxKind::T_RPAREN => {
-                depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    break;
-                }
-            }
+            SyntaxKind::T_RPAREN if depth == 1 => break,
+            SyntaxKind::T_RPAREN => depth -= 1,
             SyntaxKind::T_IDENT if depth == 1 => {
-                if let SyntaxElement::Token(t) = e {
-                    names.push(t.text().to_string());
-                }
+                let SyntaxElement::Token(t) = e else {
+                    continue;
+                };
+                names.push(t.text().to_string());
             }
             _ => {}
         }
