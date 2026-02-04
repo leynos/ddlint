@@ -12,16 +12,18 @@ PLANS.md is not present in this repository.
 
 Implement parsing of top-level `apply` items and ensure non-extern
 `transformer` declarations emit diagnostics. Success means a user can parse a
-DDlog file containing valid `apply` items and see structured AST nodes for
-those items, while invalid `transformer` declarations without `extern` produce
-clear, spanned errors. Unit tests and behavioural tests must prove both the new
-parsing and the diagnostics. The roadmap entry for this task is marked "done"
-only after all validation steps pass.
+Differential Datalog (DDlog) file containing valid `apply` items and see
+structured abstract syntax tree (AST) nodes for those items, while invalid
+`transformer` declarations without `extern` produce clear, spanned errors. Unit
+tests and behavioural tests must prove both the new parsing and the
+diagnostics. The roadmap entry for this task is marked "done" only after all
+validation steps pass.
 
 ## Constraints
 
 - Follow the updated DDlog syntax spec and related parser docs in `docs/`.
-- Use the existing parser pipeline (tokeniser -> span scanners -> CST -> AST).
+- Use the existing parser pipeline (tokenizer -> span scanners -> concrete
+  syntax tree (CST) -> abstract syntax tree (AST)).
 - Do not add new dependencies without escalation.
 - Keep module files under 400 lines; split modules if needed.
 - Every new Rust module starts with a `//!` module comment.
@@ -93,7 +95,7 @@ new `Apply` AST wrapper and root accessor without additional parsing changes.
 ## Context and orientation
 
 The parser pipeline works by scanning token spans per top-level statement,
-building a CST (`rowan`), and exposing AST wrappers. `SyntaxKind` already
+building a CST (via `rowan`), and exposing AST wrappers. `SyntaxKind` already
 includes `K_APPLY` and `N_APPLY`, but there is no span scanner or AST wrapper
 for `apply` items, and `Root` cannot collect them. Transformer spans are
 collected only for `extern transformer` declarations, so a non-extern

@@ -14,5 +14,12 @@ fn parses_apply_items_in_program() {
         "unexpected parse errors: {:?}",
         parsed.errors()
     );
-    assert_eq!(parsed.root().applys().len(), 1);
+    let applys = parsed.root().applys();
+    assert_eq!(applys.len(), 1);
+    let Some(apply) = applys.first() else {
+        panic!("apply missing");
+    };
+    assert_eq!(apply.transformer_name().as_deref(), Some("normalise"));
+    assert_eq!(apply.inputs(), vec!["User".to_string()]);
+    assert_eq!(apply.outputs(), vec!["Normalised".to_string()]);
 }

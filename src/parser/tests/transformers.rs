@@ -51,6 +51,11 @@ fn transformer_non_extern() -> &'static str {
     "transformer local(input: InputType): OutputType"
 }
 
+#[fixture]
+fn transformer_non_extern_malformed() -> &'static str {
+    "transformer local(input: InputType)"
+}
+
 #[rstest]
 #[case(transformer_single_io(), "normalize", vec![("input", "UnnormalizedData")], vec!["NormalizedData".into()])]
 #[case(
@@ -136,5 +141,26 @@ fn transformer_requires_extern(transformer_non_extern: &str) {
         0,
         transformer_non_extern.len(),
     );
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+fn transformer_requires_extern_for_malformed(transformer_non_extern_malformed: &str) {
+    let parsed = crate::parse(transformer_non_extern_malformed);
+    let errors = parsed.errors();
+    let keyword_len = "transformer".len();
+    let expected = ErrorPattern::from("transformer declarations must be extern");
+    let expected_pattern = match &expected {
+        ErrorPattern::Custom(msg) => crate::test_util::normalise_tokens(msg),
+    };
+    let matching_error = errors.iter().find(|error| {
+        let rendered = format!("{error:?}");
+        let rendered_normalised = crate::test_util::normalise_tokens(&rendered);
+        rendered_normalised.contains(&expected_pattern)
+    });
+    let Some(error) = matching_error else {
+        panic!("expected non-extern transformer error");
+    };
+    assert_eq!(error.span(), 0..keyword_len);
     assert!(parsed.root().transformers().is_empty());
 }

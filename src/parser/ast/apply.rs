@@ -1,4 +1,3 @@
-//!
 //! AST wrapper for `apply` declarations.
 //!
 //! This module provides typed access to `apply` statements, exposing the
@@ -85,13 +84,15 @@ fn skip_to_open_paren<I>(iter: &mut std::iter::Peekable<I>) -> bool
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    while let Some(e) = iter.next() {
+    loop {
         skip_whitespace_and_comments(iter);
+        let Some(e) = iter.next() else {
+            return false;
+        };
         if e.kind() == SyntaxKind::T_LPAREN {
             return true;
         }
     }
-    false
 }
 
 #[cfg(test)]

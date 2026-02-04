@@ -6,6 +6,7 @@
 
 use chumsky::prelude::*;
 
+use crate::parser::lexer_helpers::inline_ws;
 use crate::parser::span_collector::SpanCollector;
 use crate::{Span, SyntaxKind};
 
@@ -54,4 +55,58 @@ where
     }
     st.extra.extend(errs.clone());
     (res, errs)
+}
+
+/// Collect spans for declarations that must be prefixed by `extern`.
+///
+/// The helper scans the token stream for `extern` declarations, recording
+/// spans and parse errors via `parse_and_record`. Any non-extern occurrence of
+/// `kind` is delegated to `on_non_extern` so callers can inject additional
+/// diagnostics or recovery behaviour.
+pub(crate) fn collect_extern_declarations_with_rule<P, FDecl, FNonExtern>(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    kind: SyntaxKind,
+    decl_parser: FDecl,
+    mut on_non_extern: FNonExtern,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
+where
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+    FDecl: Fn() -> P,
+    FNonExtern: FnMut(&mut State<'_>, Span),
+{
+    let mut st: State<'_> = State::new(tokens, src, Vec::new());
+
+    let handle_extern = |st: &mut State<'_>, span: Span| {
+        let is_decl = st
+            .stream
+            .peek_after_ws_inline()
+            .is_some_and(|(k, _)| *k == kind);
+        if !is_decl {
+            st.skip_line();
+            return;
+        }
+
+        let ws = inline_ws().repeated();
+        let start = span.start;
+        let parser = just(SyntaxKind::K_EXTERN)
+            .padded_by(ws.clone())
+            .ignore_then(decl_parser())
+            .map(move |sp: Span| start..sp.end);
+
+        parse_and_record(st, start, parser);
+    };
+
+    while let Some(&(token_kind, ref span_ref)) = st.stream.peek() {
+        let span = span_ref.clone();
+        if token_kind == SyntaxKind::K_EXTERN {
+            handle_extern(&mut st, span);
+        } else if token_kind == kind {
+            on_non_extern(&mut st, span);
+        } else {
+            st.stream.advance();
+        }
+    }
+
+    st.into_parts()
 }

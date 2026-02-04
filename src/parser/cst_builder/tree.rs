@@ -238,6 +238,7 @@ mod tests {
             "function greet(name: string): string {\n",
             "}\n",
             "extern transformer normalise(input: User): Normalized\n",
+            "apply normalise(User) -> (Normalized)\n",
             "User(id, name) :- name == \"a\", id > 0.\n"
         );
         let tokens = tokenize(src);
@@ -253,6 +254,7 @@ mod tests {
         assert_span_nodes_match(syntax, SyntaxKind::N_INDEX, spans.indexes());
         assert_span_nodes_match(syntax, SyntaxKind::N_FUNCTION, spans.functions());
         assert_span_nodes_match(syntax, SyntaxKind::N_TRANSFORMER, spans.transformers());
+        assert_span_nodes_match(syntax, SyntaxKind::N_APPLY, spans.applys());
         assert_span_nodes_match(syntax, SyntaxKind::N_RULE, spans.rules());
         assert_span_nodes_match(syntax, SyntaxKind::N_EXPR_NODE, spans.expressions());
     }
