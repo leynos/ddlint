@@ -214,15 +214,19 @@ formatting, linting, and test commands with logs captured via `tee`.
 
    - Markdown validation (only if docs changed):
 
-         set -o pipefail && make markdownlint 2>&1 | tee /tmp/ddlint-markdownlint.log
-         set -o pipefail && make fmt 2>&1 | tee /tmp/ddlint-fmt.log
-         set -o pipefail && make nixie 2>&1 | tee /tmp/ddlint-nixie.log
+     ```shell
+     set -o pipefail && make markdownlint 2>&1 | tee /tmp/ddlint-markdownlint.log
+     set -o pipefail && make fmt 2>&1 | tee /tmp/ddlint-fmt.log
+     set -o pipefail && make nixie 2>&1 | tee /tmp/ddlint-nixie.log
+     ```
 
    - Rust formatting, linting, and tests:
 
-         set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log
-         set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log
-         set -o pipefail && make test 2>&1 | tee /tmp/ddlint-test.log
+     ```shell
+     set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log
+     set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log
+     set -o pipefail && make test 2>&1 | tee /tmp/ddlint-test.log
+     ```
 
    - If any command fails, fix the issue and re-run the failed command before
      proceeding.
@@ -260,12 +264,14 @@ No new dependencies are required. The new public surface is limited to an AST
 wrapper and root accessor for `apply` items. After Stage A confirms grammar,
 define the accessors clearly, for example:
 
-    // src/parser/ast/apply.rs
-    pub struct Apply { /* wraps a SyntaxNode */ }
-    impl Apply {
-        pub fn name(&self) -> Option<String> { /* … */ }
-        pub fn arguments(&self) -> Vec<String> { /* … */ }
-    }
+```rust
+// src/parser/ast/apply.rs
+pub struct Apply { /* wraps a SyntaxNode */ }
+impl Apply {
+    pub fn name(&self) -> Option<String> { /* … */ }
+    pub fn arguments(&self) -> Vec<String> { /* … */ }
+}
+```
 
 Update `src/parser/ast/root.rs` to expose `applys()` (or an agreed name) that
 returns `Vec<Apply>`.
