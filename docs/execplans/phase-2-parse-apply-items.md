@@ -1,4 +1,4 @@
-# Align Parser with Updated DDlog Syntax: Apply Items and Extern Transformers
+# Align parser with updated DDlog syntax: apply items and extern transformers
 
 This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & discoveries`, `Decision log`, and
