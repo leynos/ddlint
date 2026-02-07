@@ -236,7 +236,7 @@ formatting, linting, and test commands with logs captured via `tee`.
 Acceptance is met when:
 
 - Parsing a valid DDlog programme containing `apply` items yields no parse
-  errors and `root.applys()` returns the correct number of items.
+  errors, and `root.applys()` returns the correct number of items.
 - A non-extern `transformer` declaration produces a diagnostic that includes
   the agreed wording and the span covers the declaration keyword or entire
   statement, as defined in tests.
