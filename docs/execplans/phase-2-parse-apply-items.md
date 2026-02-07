@@ -1,277 +1,331 @@
-# Align parser with updated DDlog syntax: apply items and extern transformers
+# Align parser with updated DDlog syntax: qualified-call parsing rule
 
 This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
-`Risks`, `Progress`, `Surprises & discoveries`, `Decision log`, and
-`Outcomes & retrospective` must be kept up to date as work proceeds.
+`Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
+`Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: COMPLETE
+Status: DRAFT
 
-PLANS.md is not present in this repository.
+`PLANS.md` is not present in this repository.
 
 ## Purpose / big picture
 
-Implement parsing of top-level `apply` items and ensure non-extern
-`transformer` declarations emit diagnostics. Success means a user can parse a
-Differential Datalog (DDlog) file containing valid `apply` items and see
-structured abstract syntax tree (AST) nodes for those items, while invalid
-`transformer` declarations without `extern` produce clear, spanned errors. Unit
-tests and behavioural tests must prove both the new parsing and the
-diagnostics. The roadmap entry for this task is marked "done" only after all
-validation steps pass.
+Implement the syntax-spec rule that only fully scoped identifiers
+(`module::path::name`) are parsed as function calls. Bare `name(...)` must be
+parsed as variable application and left unresolved for later name resolution.
+
+Success is observable in both parser layers:
+
+- Unit-level expression parsing distinguishes bare application from qualified
+  function call.
+- Behavioural rule parsing still extracts `group_by` and legacy `Aggregate`
+  correctly from unresolved bare applications.
+- The roadmap entry
+  `Align Parser with Updated DDlog Syntax -> Enforce the qualified-call rule`
+  is marked done after all gates pass.
 
 ## Constraints
 
-- Follow the updated DDlog syntax spec and related parser docs in `docs/`.
-- Use the existing parser pipeline (tokenizer -> span scanners -> concrete
-  syntax tree (CST) -> abstract syntax tree (AST)).
-- Do not add new dependencies without escalation.
-- Keep module files under 400 lines; split modules if needed.
-- Every new Rust module starts with a `//!` module comment.
-- Use en-GB spelling in comments and documentation.
-- Prefer Makefile targets and capture output with `tee` and `set -o pipefail`.
-- Update relevant design docs for any grammar or behaviour decisions.
+- Follow the normative rule in
+  `docs/differential-datalog-parser-syntax-spec-updated.md` section 2.2.
+- Preserve existing Pratt precedence and postfix behaviour for method calls,
+  tuple indices, bit slices, diff markers, and delay markers.
+- Keep parser error recovery behaviour intact (no panic-first shortcuts).
+- Do not add new dependencies.
+- Keep module files under 400 lines by extracting helpers when needed.
+- Use Makefile targets for final quality gates, with `set -o pipefail` and
+  `tee` logs.
+- Record implementation decisions in relevant design docs under `docs/`.
 
 ## Tolerances (exception triggers)
 
-- Scope: if implementation requires changes to more than 12 files or more than
-  400 net new lines, stop and escalate.
-- Grammar ambiguity: if `apply` syntax is not specified in `docs/` and cannot
-  be inferred without assumptions, stop and ask for guidance.
-- Public API: if changes go beyond adding `apply` accessors in AST/root,
-  escalate before proceeding.
-- Dependencies: if any new crate is needed, stop and escalate.
-- Test churn: if `make test` fails after two fix attempts, stop and escalate.
+- Scope: if implementation requires touching more than 14 files or more than
+  650 net changed lines, stop and escalate.
+- Public API: if this requires breaking non-parser public APIs beyond the
+  expression AST surface, stop and escalate.
+- Representation ambiguity: if there is no low-risk way to encode
+  "function call" vs "variable application" in the current AST, stop and
+  present options with trade-offs.
+- Test churn: if `make test` still fails after 3 full fix attempts, stop and
+  escalate with failing test clusters.
+- Time: if one milestone exceeds 2 hours without green targeted tests, stop
+  and report blocker evidence.
 
 ## Risks
 
-- Risk: `apply` item grammar is not fully documented in current specs.
-  Severity: high Likelihood: medium Mitigation: confirm grammar from docs or
-  Haskell analysis; document decisions in
-  `docs/differential-datalog-parser-syntax-spec-updated.md` and pause if
-  ambiguity remains.
-- Risk: span scanner changes can break CST span ordering if spans overlap.
-  Severity: medium Likelihood: low Mitigation: update span validation tests and
-  keep spans sorted.
-- Risk: new diagnostics for non-extern transformers could conflict with error
-  recovery paths, hiding the error. Severity: low Likelihood: low Mitigation:
-  add explicit tests for the diagnostic message and span.
+- Risk: expression AST representation change causes broad fixture/test churn.
+  Severity: medium Likelihood: high Mitigation: choose one explicit
+  representation and update test helpers first so compile errors converge
+  quickly.
+
+- Risk: rule-body aggregation extraction regresses because it currently keys on
+  `Expr::Call` with `Expr::Variable` callee names. Severity: high Likelihood:
+  medium Mitigation: update aggregation classification alongside AST changes
+  and add focused regression tests for `group_by` and `Aggregate`.
+
+- Risk: introducing scoped identifier parsing changes postfix parsing around
+  `.` and `[` chains. Severity: medium Likelihood: medium Mitigation: add
+  targeted postfix regression cases before refactor.
+
+- Risk: roadmap updated prematurely before all gates pass.
+  Severity: low Likelihood: low Mitigation: keep roadmap checkbox update in the
+  final milestone only.
 
 ## Progress
 
-- [x] (2026-02-02 00:00Z) Drafted ExecPlan and surveyed current docs and code.
-- [x] (2026-02-02 01:10Z) Confirmed `apply` grammar and updated the syntax
-  spec.
-- [x] (2026-02-02 01:25Z) Added unit and behavioural tests for `apply` items
-  and transformer diagnostics.
-- [x] (2026-02-02 01:45Z) Implemented span scanning, CST nodes, AST wrappers,
-  and diagnostics for `apply` and non-extern transformers.
-- [x] (2026-02-02 02:35Z) Ran validation gates and confirmed the roadmap entry
-  remains marked as done.
+- [x] (2026-02-07 02:24Z) Reviewed roadmap, spec, and parser code paths for
+  call parsing and rule-term classification.
+- [x] (2026-02-07 02:24Z) Drafted this ExecPlan in
+  `docs/execplans/phase-2-parse-apply-items.md`.
+- [ ] Finalize AST representation for qualified call vs bare application.
+- [ ] Add/adjust unit tests to encode the new rule before parser edits.
+- [ ] Implement scoped-identifier parsing and postfix call disambiguation.
+- [ ] Update rule-body aggregation classification for the new representation.
+- [ ] Add behavioural regression tests.
+- [ ] Update design docs and roadmap checkbox.
+- [ ] Run all quality gates and capture logs.
 
-## Surprises & discoveries
+## Surprises & Discoveries
 
-- Observation: `make fmt` requires `fd` to be available on `PATH`.
-  Evidence: `mdformat-all` invokes `fd` and fails without it. Impact: keep `fd`
-  installed or add a wrapper when running formatters.
+- Observation: project-memory CLI tools (`qdrant-find`) are unavailable in this
+  environment (`command not found`). Evidence: shell execution failed with exit
+  code 127. Impact: proceeded using repository docs and source as primary
+  context.
 
-## Decision log
+- Observation: this ExecPlan file previously documented a completed earlier
+  subtask (apply items + extern transformer diagnostics). Evidence: existing
+  file content had Status `COMPLETE` for that subtask. Impact: file is now
+  repurposed for the next unchecked roadmap item.
 
-- Decision: `apply` uses `apply Transformer(Args...) -> (Outputs...)` with
-  inputs accepting relation or function identifiers and allowing trailing
-  commas, mirroring the legacy DDlog parser. Rationale: matches upstream parse
-  behaviour and keeps the grammar compact. Date/Author: 2026-02-02 (assistant)
-- Decision: diagnostic text for non-extern transformers is
-  "transformer declarations must be extern". Rationale: aligns with the updated
-  syntax spec's error example. Date/Author: 2026-02-02 (assistant)
+- Observation: expression prefix parsing currently consumes only one
+  `T_IDENT`; scoped tokens (`T_SCOPE`) are not assembled into a path in the
+  Pratt parser. Evidence: `src/parser/expression/prefix.rs` and
+  `src/parser/expression/data_structures.rs`. Impact: scoped-call support
+  requires identifier-path parsing changes.
 
-## Outcomes & retrospective
+## Decision Log
 
-Implemented `apply` parsing with CST/AST coverage, added diagnostics for
-non-extern transformers, updated the syntax spec and roadmap entry, and added
-unit and behavioural tests. Validation gates (`make check-fmt`, `make lint`,
-`make test`, plus Markdown tooling) all passed. Future work can build on the
-new `Apply` AST wrapper and root accessor without additional parsing changes.
+- Decision: represent the syntax distinction explicitly in the expression AST
+  so parser output can encode "qualified function call" vs "unresolved variable
+  application" without needing name resolution. Rationale: this is the only
+  reliable way to enforce and test the roadmap requirement at parse time.
+  Date/Author: 2026-02-07 / assistant
+
+- Decision: keep aggregation extraction (`group_by`, `Aggregate`) as a parse
+  responsibility in rule-body classification, even though bare calls become
+  unresolved applications. Rationale: the spec requires parser-time extraction
+  and normalization. Date/Author: 2026-02-07 / assistant
+
+- Decision: update roadmap checkbox only after formatting, lint, and full test
+  suite are green. Rationale: avoids reporting completion before objective
+  validation. Date/Author: 2026-02-07 / assistant
+
+## Outcomes & Retrospective
+
+Not complete yet. This section will be updated after implementation with: what
+shipped, what changed from this draft, which risks materialized, and which
+follow-up tasks remain.
 
 ## Context and orientation
 
-The parser pipeline works by scanning token spans per top-level statement,
-building a CST (via `rowan`), and exposing AST wrappers. `SyntaxKind` already
-includes `K_APPLY` and `N_APPLY`, but there is no span scanner or AST wrapper
-for `apply` items, and `Root` cannot collect them. Transformer spans are
-collected only for `extern transformer` declarations, so a non-extern
-`transformer` currently produces no diagnostic.
+Current call parsing flow:
 
-Key files to touch:
+- `src/parser/expression/prefix.rs` dispatches `T_IDENT` to
+  `parse_identifier_or_struct`.
+- `src/parser/expression/data_structures.rs` currently turns identifiers into
+  `Expr::Variable` (or struct literal), not scoped identifier paths.
+- `src/parser/expression/pratt.rs` treats any `(...)` postfix as `Expr::Call`.
 
-- `src/parser/span_scanners/` for new `apply` scanning and transformer
-  diagnostics.
-- `src/parser/span_scanner.rs` and `src/parser/cst_builder/` for span
-  integration into the CST.
-- `src/parser/ast/` and `src/parser/ast/root.rs` for new AST wrappers and
-  accessors.
-- `src/parser/tests/` for unit-level parser tests.
-- `tests/` for behavioural tests covering end-to-end parsing.
-- `docs/differential-datalog-parser-syntax-spec-updated.md` (or a more
-  appropriate design doc) for recording grammar decisions.
-- `docs/roadmap.md` to mark the Phase 2 entry as done after validation.
+Current downstream coupling:
+
+- `src/parser/ast/rule.rs` classifies `group_by`/`Aggregate` by matching
+  `Expr::Call { callee: Expr::Variable(name), ... }`.
+- Test helpers in `src/test_util/expressions.rs` assume bare `name(...)`
+  always maps to `Expr::Call`.
+- Behavioural tests in `tests/expression_var_and_call.rs` and rule tests in
+  `tests/rule_behaviour.rs` assert this old shape.
+
+Key files expected to change:
+
+- `src/parser/ast/expr.rs`
+- `src/parser/expression/data_structures.rs`
+- `src/parser/expression/pratt.rs`
+- `src/parser/ast/rule.rs`
+- `src/test_util/expressions.rs`
+- `src/parser/tests/expression.rs`
+- `src/parser/tests/rules/aggregations.rs`
+- `tests/expression_var_and_call.rs`
+- `tests/rule_behaviour.rs`
+- `docs/pratt-parser-for-ddlog-expressions.md`
+- `docs/roadmap.md`
 
 ## Plan of work
 
-Stage A: confirm grammar and requirements (no code changes). Read the
-referenced docs, especially
-`docs/differential-datalog-parser-syntax-spec-updated.md` and
-`docs/parser-gap-analysis.md`, and determine the exact `apply` item grammar and
-expected diagnostics. If the grammar is not defined, pause and agree on a
-concrete syntax, then record it in the syntax spec and decision log before
-proceeding.
+Stage A: lock behaviour with tests first (no parser edits yet).
 
-Stage B: add tests first. Create unit tests in `src/parser/tests/` for parsing
-`apply` items, including at least one valid case and one invalid case. Add a
-unit test that asserts a non-extern `transformer` produces a diagnostic with a
-precise span. Add a behavioural test in `tests/` that parses a short program
-containing a valid `apply` item, asserting `parse()` returns no errors and the
-AST exposes the item. Update CST integration tests to count `N_APPLY` nodes.
+Add failing unit and behavioural cases that capture the target rule:
 
-Stage C: implement parsing and diagnostics. Add a span scanner for `apply`
-items and wire it into `ParsedSpans`, the CST builder, and the root AST.
-Introduce a new AST wrapper (for example, `Apply`) with accessors that reflect
-whatever grammar was confirmed in Stage A. Add diagnostic emission for
-non-extern `transformer` declarations, ensuring that the invalid declaration
-still occupies a span in the CST for round-tripping but does not register as a
-valid transformer.
+- Bare `foo(x)` is parsed as unresolved application.
+- Qualified `pkg::foo(x)` is parsed as function call.
+- Existing postfix chains and diagnostics continue to behave.
 
-Stage D: documentation, validation, and cleanup. Update the syntax spec (and
-any other relevant design doc) to capture the final `apply` grammar and
-transformer diagnostic wording. Update `docs/roadmap.md` to mark the Phase 2
-entry as "done" only after tests and linting succeed. Run all required
-formatting, linting, and test commands with logs captured via `tee`.
+Go/no-go for Stage A: new tests fail only for the expected disambiguation gap,
+not for unrelated parser regressions.
+
+Stage B: add AST representation for call disambiguation.
+
+Update `src/parser/ast/expr.rs` (and test helpers) to encode both forms:
+qualified function call and unresolved variable application. Keep the shape
+simple and explicit so rule-body classification can pattern-match safely.
+
+Go/no-go for Stage B: crate compiles and expression unit tests can assert both
+forms without ambiguity.
+
+Stage C: implement scoped-identifier parsing and postfix call routing.
+
+In `src/parser/expression/data_structures.rs`, parse identifier paths that
+include `::` into a dedicated expression form. In
+`src/parser/expression/pratt.rs`, route `(...)` postfix to:
+
+- function-call node only when callee is fully scoped identifier,
+- unresolved application node otherwise.
+
+Go/no-go for Stage C: targeted expression tests for bare vs qualified calls
+pass, and no new postfix regressions appear.
+
+Stage D: adapt rule-term classification and docs.
+
+Update `src/parser/ast/rule.rs` aggregation classification to recognise
+`group_by`/`Aggregate` from unresolved application form. Record the design in
+`docs/pratt-parser-for-ddlog-expressions.md` (and in the syntax spec only if
+normative wording needs clarification).
+
+Go/no-go for Stage D: rule-term unit/behaviour tests pass for both aggregation
+forms.
+
+Stage E: full validation and roadmap update.
+
+Run all required gates. Only after green results, mark the relevant roadmap
+entry as done in `docs/roadmap.md`.
+
+Go/no-go for Stage E: all commands succeed and logs confirm zero failures.
 
 ## Concrete steps
 
-1) Confirm `apply` grammar
+1. Add/adjust unit tests in parser internals:
 
-   - Read `docs/differential-datalog-parser-syntax-spec-updated.md` and
-     `docs/parser-gap-analysis.md`.
-   - If grammar is missing, pause and ask for the exact syntax. Record the
-     decision in the syntax spec and `Decision log` before coding.
+   - `src/parser/tests/expression.rs`: add explicit cases for bare and
+     qualified calls.
+   - `src/parser/tests/rules/aggregations.rs`: ensure `group_by` and
+     `Aggregate` extraction still works under the new call representation.
 
-2) Add unit tests (examples to adapt once grammar is confirmed)
+2. Add/adjust behavioural tests:
 
-   - Create `src/parser/tests/apply.rs` with fixtures and `#[rstest]` cases.
-   - Add helper `parse_apply` in `src/parser/tests/helpers.rs`.
-   - Update `src/parser/tests/mod.rs` to include the new module.
-   - Add a transformer error test in `src/parser/tests/transformers.rs` using
-     `assert_parse_error` with the chosen diagnostic message and span.
+   - `tests/expression_var_and_call.rs`: assert disambiguation at public API
+     level.
+   - `tests/rule_behaviour.rs`: assert aggregation extraction remains correct.
 
-3) Add behavioural tests
+3. Implement expression AST and parser changes:
 
-   - Add a new `tests/apply_items.rs` (or extend an existing behavioural test)
-     that parses a short DDlog programme containing at least one `apply` item
-     and asserts `parse()` reports no errors and `root.applys()` returns the
-     expected count.
+   - Update `src/parser/ast/expr.rs` with explicit representation and
+     `to_sexpr()` output.
+   - Update `src/test_util/expressions.rs` helpers so tests can construct the
+     two call forms cleanly.
+   - Update `src/parser/expression/data_structures.rs` to parse scoped
+     identifiers.
+   - Update `src/parser/expression/pratt.rs` call-postfix handling.
 
-4) Implement span scanning and CST nodes
+4. Update downstream rule classification:
 
-   - Add `src/parser/span_scanners/apply.rs` with a parser for the `apply`
-     statement and span recording, following the pattern in
-     `src/parser/span_scanners/imports.rs`.
-   - Update `src/parser/span_scanners/mod.rs` to export
-     `collect_apply_spans`.
-   - Update `src/parser/span_scanner.rs` to call the new collector, merge spans
-     into `ParsedSpans`, and include any errors.
-   - Extend `src/parser/cst_builder/spans.rs` to store `apply` spans and ensure
-     span validation includes the new list.
-   - Update `src/parser/cst_builder/tree.rs` to include `N_APPLY` in
-     `SPAN_CURSOR_KINDS`.
+   - Modify `src/parser/ast/rule.rs` aggregation detection to match the new
+     unresolved application representation.
 
-5) Implement AST wrapper and root accessors
+5. Update design documentation:
 
-   - Add `src/parser/ast/apply.rs` with a `//!` comment and typed accessors
-     that reflect the chosen grammar (e.g., `name()`, `arguments()`).
-   - Update `src/parser/ast/mod.rs` to include the new module and re-export the
-     type.
-   - Update `src/parser/ast/root.rs` to collect `N_APPLY` nodes in a new
-     `applys()` accessor (or another agreed name, but keep it consistent in
-     tests and docs).
+   - Add a section in `docs/pratt-parser-for-ddlog-expressions.md` describing
+     the chosen AST representation and why disambiguation is deferred.
 
-6) Add diagnostics for non-extern transformers
+6. Run focused checks during implementation:
 
-   - Extend `src/parser/span_scanners/transformers.rs` (or add a small helper
-     in `utils.rs`) to detect `transformer` without a leading `extern` and push
-     a `Simple::custom` error with the agreed message and span.
-   - Ensure the error is appended to the aggregated parse errors in
-     `parse_tokens`.
+   - `set -o pipefail && cargo test --workspace expression_var_and_call 2>&1 \`
+     `| tee /tmp/ddlint-qualified-call-focused-1.log`
+   - `set -o pipefail && cargo test --workspace rule_behaviour 2>&1 \`
+     `| tee /tmp/ddlint-qualified-call-focused-2.log`
 
-7) Update documentation and roadmap
+7. Run final quality gates from repository root:
 
-   - Record the final `apply` grammar and diagnostic wording in
-     `docs/differential-datalog-parser-syntax-spec-updated.md` (or another
-     relevant design doc identified in Stage A).
-   - Mark the Phase 2 roadmap entry as "done" in `docs/roadmap.md` after
-     validation succeeds.
+   - `set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log`
+   - `set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log`
+   - `set -o pipefail && make test 2>&1 | tee /tmp/ddlint-test.log`
 
-8) Validation commands (run from repo root)
+8. Mark roadmap item done only after Step 7 is fully green:
 
-   - Markdown validation (only if docs changed):
+   - Update `docs/roadmap.md` checkbox under
+     `Align Parser with Updated DDlog Syntax` for qualified-call rule.
 
-     ```shell
-     set -o pipefail && make markdownlint 2>&1 | tee /tmp/ddlint-markdownlint.log
-     set -o pipefail && make fmt 2>&1 | tee /tmp/ddlint-fmt.log
-     set -o pipefail && make nixie 2>&1 | tee /tmp/ddlint-nixie.log
-     ```
+Expected success transcript highlights:
 
-   - Rust formatting, linting, and tests:
-
-     ```shell
-     set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log
-     set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log
-     set -o pipefail && make test 2>&1 | tee /tmp/ddlint-test.log
-     ```
-
-   - If any command fails, fix the issue and re-run the failed command before
-     proceeding.
+- `make check-fmt`: exits 0 with no formatting diffs.
+- `make lint`: exits 0 with zero Clippy warnings.
+- `make test`: exits 0 and includes all parser/unit/behaviour tests passing.
 
 ## Validation and acceptance
 
-Acceptance is met when:
+Feature acceptance is complete when all of the following are true:
 
-- Parsing a valid DDlog programme containing `apply` items yields no parse
-  errors, and `root.applys()` returns the correct number of items.
-- A non-extern `transformer` declaration produces a diagnostic that includes
-  the agreed wording and the span covers the declaration keyword or entire
-  statement, as defined in tests.
+- `parse_expression("foo(x)")` yields unresolved variable application (not a
+  qualified function-call form).
+- `parse_expression("pkg::foo(x)")` yields a qualified function-call form.
+- Rule-body aggregation extraction still recognises and normalizes
+  `group_by(...)` and `Aggregate(...)`.
+- Existing postfix behaviour (method call, tuple index, bit-slice, diff,
+  delay) remains green.
 - `make check-fmt`, `make lint`, and `make test` succeed.
-- If documentation changed, `make markdownlint`, `make fmt`, and `make nixie`
-  succeed.
-- The Phase 2 roadmap entry is marked "done" after all checks pass.
+- Roadmap entry is marked done only after the above pass.
 
 ## Idempotence and recovery
 
-All steps are safe to re-run. If a span scanner change corrupts CST output,
-revert to the last passing tests and re-apply modifications incrementally. When
-validation fails, fix the specific failure and re-run the failed command only,
-then re-run the full validation set before marking the work complete.
+All plan steps are safe to rerun.
+
+If parser edits introduce broad compile churn:
+
+- Re-run focused tests first to isolate call-disambiguation failures.
+- Keep AST representation changes and parser logic changes in separate commits
+  during implementation for easier rollback.
+- If regression scope exceeds tolerance, stop and escalate with failing file
+  list and failing test groups.
 
 ## Artifacts and notes
 
-Keep test fixtures small and place any long sample programmes under `tests/`
-for readability. Ensure any new diagnostic text is stable and asserted in unit
-tests.
+During implementation, store command logs at:
+
+- `/tmp/ddlint-qualified-call-focused-1.log`
+- `/tmp/ddlint-qualified-call-focused-2.log`
+- `/tmp/ddlint-check-fmt.log`
+- `/tmp/ddlint-lint.log`
+- `/tmp/ddlint-test.log`
+
+Include concise excerpts from these logs in the final implementation report to
+prove behavioural and quality-gate success.
 
 ## Interfaces and dependencies
 
-No new dependencies are required. The new public surface is limited to an AST
-wrapper and root accessor for `apply` items. After Stage A confirms grammar,
-define the accessors clearly, for example:
+No new dependencies are expected.
 
-```rust
-// src/parser/ast/apply.rs
-pub struct Apply { /* wraps a SyntaxNode */ }
-impl Apply {
-    pub fn name(&self) -> Option<String> { /* … */ }
-    pub fn arguments(&self) -> Vec<String> { /* … */ }
-}
-```
+The implementation must leave parser-facing interfaces explicit enough for
+name-resolution follow-up work. At completion, expression AST and parser code
+must support two parse-time call forms:
 
-Update `src/parser/ast/root.rs` to expose `applys()` (or an agreed name) that
-returns `Vec<Apply>`.
+- Qualified function call (callee is fully scoped identifier).
+- Unresolved variable application (callee is not fully scoped).
+
+Rule-body aggregation code must consume the unresolved application form for
+`group_by` and `Aggregate` detection without requiring name resolution.
+
+## Revision note
+
+Updated this file from the previous completed apply-items ExecPlan to a new
+DRAFT plan for the next unchecked roadmap item: qualified-call parsing
+alignment. This changes remaining work from closed historical notes to an
+executable implementation plan with current milestones, tolerances, and
+validation gates.
