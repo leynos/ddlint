@@ -1,12 +1,13 @@
 //! Shared utilities used by the specialised span scanners.
 //!
-//! These helpers wrap common parsing patterns such as "parse and record" and
-//! extern declaration handling so individual scanners can focus on their own
-//! syntax without duplicating boilerplate.
+//! These helpers wrap common parsing patterns such as "parse and record" so
+//! individual scanners can focus on their own syntax without duplicating
+//! boilerplate.
 
 use chumsky::prelude::*;
 
-use crate::parser::{lexer_helpers::inline_ws, span_collector::SpanCollector};
+use crate::parser::lexer_helpers::inline_ws;
+use crate::parser::span_collector::SpanCollector;
 use crate::{Span, SyntaxKind};
 
 /// Convenience alias for scanners that accumulate `Simple` errors.
@@ -56,28 +57,31 @@ where
     (res, errs)
 }
 
-/// Collect spans for extern declarations parsed by `decl_parser`.
+/// Collect spans for declarations that must be prefixed by `extern`.
 ///
-/// The `decl_parser` is invoked after the leading `extern` keyword. When the
-/// subsequent token does not match `decl_kind`, the handler skips the line to
-/// avoid misclassifying unrelated constructs.
-pub(crate) fn collect_extern_declarations<F, P>(
+/// The helper scans the token stream for `extern` declarations, recording
+/// spans and parse errors via `parse_and_record`. Any non-extern occurrence of
+/// `kind` is delegated to `on_non_extern` so callers can inject additional
+/// diagnostics or recovery behaviour.
+pub(crate) fn collect_extern_declarations_with_rule<P, FDecl, FNonExtern>(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
-    decl_kind: SyntaxKind,
-    decl_parser: F,
+    kind: SyntaxKind,
+    decl_parser: FDecl,
+    mut on_non_extern: FNonExtern,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
 where
-    F: Fn() -> P,
     P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+    FDecl: Fn() -> P,
+    FNonExtern: FnMut(&mut State<'_>, Span),
 {
-    let mut st = State::new(tokens, src, Vec::new());
+    let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
-    let handler = |st: &mut State<'_>, span: Span| {
+    let handle_extern = |st: &mut State<'_>, span: Span| {
         let is_decl = st
             .stream
             .peek_after_ws_inline()
-            .is_some_and(|(k, _)| *k == decl_kind);
+            .is_some_and(|(k, _)| *k == kind);
         if !is_decl {
             st.skip_line();
             return;
@@ -93,6 +97,16 @@ where
         parse_and_record(st, start, parser);
     };
 
-    token_dispatch!(st, { SyntaxKind::K_EXTERN => handler });
+    while let Some(&(token_kind, ref span_ref)) = st.stream.peek() {
+        let span = span_ref.clone();
+        if token_kind == SyntaxKind::K_EXTERN {
+            handle_extern(&mut st, span);
+        } else if token_kind == kind {
+            on_non_extern(&mut st, span);
+        } else {
+            st.stream.advance();
+        }
+    }
+
     st.into_parts()
 }

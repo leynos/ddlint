@@ -232,10 +232,24 @@ IndexFieldList ::= IndexField (',' IndexField)*
 IndexField     ::= LcName ':' Type
 ```
 
-`on` targets an `Atom` (see §5.8) that may include delay/diff/ref/constructor
+`on` targets an `Atom` (see §5.9) that may include delay/diff/ref/constructor
 forms.
 
-### 5.7 Rules and bodies
+### 5.7 Apply items
+
+```ebnf
+Apply        ::= 'apply' UcName '(' ApplyArgs? ')' '->' '(' ApplyOutputs? ')'
+ApplyArgs    ::= ApplyArg (',' ApplyArg)*
+ApplyArg     ::= UcName | LcName
+ApplyOutputs ::= UcName (',' UcName)*
+```
+
+Notes:
+
+- Inputs may name relations (uppercase) or functions (lowercase).
+- Trailing commas are permitted to mirror the legacy DDlog parser.
+
+### 5.8 Rules and bodies
 
 ```ebnf
 Rule    ::= RuleLHS (',' RuleLHS)* ':-' RuleRHS '.'
@@ -248,9 +262,9 @@ RhsTerm ::= Atom Delay? | Condition | Assignment | StatementExpr
 
 - **Multiple heads:** `RuleLHS` is a comma‑separated, non‑empty list.
 - **Location:** D3log‑style location is permitted in **heads** as `@ Expr`.
-- **Delay and diff:** permitted on atoms in heads and bodies (see §5.8).
+- **Delay and diff:** permitted on atoms in heads and bodies (see §5.9).
 
-### 5.8 Atoms
+### 5.9 Atoms
 
 Two core shapes (constructor and bracket form), with optional adornments:
 
@@ -264,7 +278,7 @@ ArgList   ::= Expr (',' Expr)*
 UcOrLc    ::= UcName | LcName | ScopedPath
 ```
 
-### 5.9 Statements and desugaring
+### 5.10 Statements and desugaring
 
 Imperative forms are permitted inside rule bodies, and top-level statements may
 be desugared during parsing as described below.
@@ -293,13 +307,13 @@ where variables may appear.
 - `return` is permitted in function/closure bodies; it is not valid in rule
   bodies. Misuse must be reported with a clear diagnostic.
 
-### 5.10 Conditions and assignments in the rule right-hand side (RHS)
+### 5.11 Conditions and assignments in the rule right-hand side (RHS)
 
 `Condition` is any expression in a boolean context. The parser accepts
 assignment‑like forms (e.g., pattern `=` expression) inside RHS to support
 **flatmap**‑like binds; these are represented distinctly in the AST.
 
-### 5.11 Patterns
+### 5.12 Patterns
 
 Patterns appear in three contexts with the same surface syntax but different
 AST nodes:
@@ -321,7 +335,7 @@ LiteralPat  ::= Integer | StringConst | Bool
 
 Only **constant** strings may appear in `LiteralPat` (no interpolation).
 
-### 5.12 Conditional expressions
+### 5.13 Conditional expressions
 
 ```ebnf
 ExprIf ::= 'if' Expr 'then' TermExpr 'else' TermExpr
@@ -458,6 +472,7 @@ porting and testing.
 - **Function:** `FuncDef { name, params, ret, body }`, collated into
   `FuncGroup` by name.
 - **Transformer:** `TransformerDef { extern: true, name, params }`.
+- **Apply:** `Apply { transformer, inputs, outputs }`.
 - **RelationDecl:** `Relation { role, kind, name, typeOrFields, primaryKey? }`.
 - **IndexDecl:** `Index { name, fields: [(name, type)], on: Atom }`.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.

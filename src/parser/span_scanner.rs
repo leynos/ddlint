@@ -9,8 +9,8 @@ use crate::{Span, SyntaxKind};
 
 use super::ParsedSpans;
 use super::span_scanners::{
-    collect_function_spans, collect_import_spans, collect_index_spans, collect_relation_spans,
-    collect_rule_spans, collect_transformer_spans, collect_typedef_spans,
+    collect_apply_spans, collect_function_spans, collect_import_spans, collect_index_spans,
+    collect_relation_spans, collect_rule_spans, collect_transformer_spans, collect_typedef_spans,
 };
 
 /// Scan the token stream and collect spans for each statement category.
@@ -24,13 +24,15 @@ pub(super) fn parse_tokens(
     let (index_spans, index_errors) = collect_index_spans(tokens, src);
     let (function_spans, function_errors) = collect_function_spans(tokens, src);
     let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
+    let (apply_spans, apply_errors) = collect_apply_spans(tokens, src);
 
     let non_rule_span_capacity = import_spans.len()
         + typedef_spans.len()
         + relation_spans.len()
         + index_spans.len()
         + function_spans.len()
-        + transformer_spans.len();
+        + transformer_spans.len()
+        + apply_spans.len();
 
     let mut non_rule_spans = Vec::with_capacity(non_rule_span_capacity);
     non_rule_spans.extend(import_spans.iter().cloned());
@@ -39,6 +41,7 @@ pub(super) fn parse_tokens(
     non_rule_spans.extend(index_spans.iter().cloned());
     non_rule_spans.extend(function_spans.iter().cloned());
     non_rule_spans.extend(transformer_spans.iter().cloned());
+    non_rule_spans.extend(apply_spans.iter().cloned());
     let non_rule_spans = merge_spans(non_rule_spans);
 
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
@@ -49,6 +52,7 @@ pub(super) fn parse_tokens(
     all_errors.extend(index_errors);
     all_errors.extend(function_errors);
     all_errors.extend(transformer_errors);
+    all_errors.extend(apply_errors);
     all_errors.extend(rule_errors);
 
     let span_result = ParsedSpans::builder()
@@ -58,6 +62,7 @@ pub(super) fn parse_tokens(
         .indexes(index_spans)
         .functions(function_spans)
         .transformers(transformer_spans)
+        .applys(apply_spans)
         .rules(rule_spans)
         .expressions(expr_spans)
         .build();

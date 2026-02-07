@@ -90,6 +90,19 @@ fn skip_to_transformer_keyword(
     skip_to_match(iter, |k| k == SyntaxKind::K_TRANSFORMER)
 }
 
+/// Advance the iterator until `apply` is encountered.
+///
+/// # Parameters
+/// - `iter`: Iterator yielding tokens from the syntax tree.
+///
+/// # Returns
+/// `true` if the keyword was found before exhaustion.
+fn skip_to_apply_keyword(
+    iter: &mut impl Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+) -> bool {
+    skip_to_match(iter, |k| k == SyntaxKind::K_APPLY)
+}
+
 /// Extract the first identifier token from the iterator.
 ///
 /// Whitespace, and comments, are skipped. If a non-identifier token is
@@ -128,6 +141,7 @@ where
 
 pub mod parse_utils;
 
+mod apply;
 pub(crate) mod expr;
 mod function;
 mod import;
@@ -147,6 +161,7 @@ mod type_def;
 ///
 /// Re-exports [`MatchArm`], allowing callers to assemble match expressions
 /// without reaching into private modules.
+pub use apply::Apply;
 pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;

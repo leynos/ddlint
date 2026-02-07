@@ -163,3 +163,8 @@ pub(super) fn parse_transformer(src: impl Into<SourceText>) -> Transformer {
 pub(super) fn parse_import(src: impl Into<SourceText>) -> Import {
     parse_single_item(src, crate::parser::ast::Root::imports)
 }
+
+/// Parse a program containing a single apply statement and return it.
+pub(super) fn parse_apply(src: impl Into<SourceText>) -> crate::parser::ast::Apply {
+    parse_single_item(src, crate::parser::ast::Root::applys)
+}
