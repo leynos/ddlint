@@ -20,7 +20,7 @@ smallvec = "1.15.1"
 test-support = []
 
 [dev-dependencies]
-rstest = "0.25"
+rstest = "0.26"
 ddlint = { path = ".", features = ["test-support"] }
 
 [lints.clippy]
