@@ -5,13 +5,16 @@ use crate::parser::expression::parse_expression;
 use crate::test_util::{
     assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, call_expr, closure,
     field, field_access, for_loop, if_expr, lit_bool, lit_num, lit_str, map_entry, map_lit,
-    match_arm, match_expr, method_call, struct_expr, tuple, tuple_index, var, vec_lit,
+    match_arm, match_expr, method_call, qualified_call, struct_expr, tuple, tuple_index, var,
+    vec_lit,
 };
 use rstest::rstest;
 
 #[rstest]
 #[case("x", var("x"))]
 #[case("foo()", call("foo", vec![]))]
+#[case("pkg::Foo()", call("pkg::Foo", vec![]))]
+#[case("pkg::foo()", qualified_call("pkg::foo", vec![]))]
 #[case("add(x, 1)", call("add", vec![var("x"), lit_num("1")]))]
 #[case("(1, 2)", tuple(vec![lit_num("1"), lit_num("2")]))]
 #[case("(1, 2, 3)", tuple(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
@@ -381,6 +384,7 @@ fn rejects_chained_type_ops_with_single_diag() {
 #[case::vector_unclosed("[1, 2", "expected right bracket", 5, 5, true)]
 #[case::map_unclosed("{a: 1", "expected right brace", 5, 5, true)]
 #[case::map_comma_without_colon("{a, b}", "expected ':'", 2, 3, false)]
+#[case::scoped_identifier_missing_segment("pkg::()", "expected identifier after '::'", 5, 6, false)]
 fn postfix_expression_errors(
     #[case] src: &str,
     #[case] msg: &str,

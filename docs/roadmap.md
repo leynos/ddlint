@@ -171,7 +171,7 @@ as control flow constructs. This phase aims to build a complete grammar.
   - [x] Parse `apply` items and enforce that `transformer` declarations outside
     `extern` blocks raise diagnostics.
 
-  - [ ] Enforce the qualified-call rule so only fully scoped identifiers parse
+  - [x] Enforce the qualified-call rule so only fully scoped identifiers parse
     as function calls, deferring bare `name(…)` disambiguation to name
     resolution.
 

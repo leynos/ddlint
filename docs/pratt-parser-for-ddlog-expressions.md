@@ -31,6 +31,20 @@ The key steps are:
    invoked, the resulting AST is correctly represented within a `rowan`
    `GreenNode`.
 
+### 1.1 Decision: qualified calls versus unresolved applications
+
+To align with the updated DDlog syntax specification, the Pratt parser now
+distinguishes between parse-time qualified function calls and unresolved
+applications:
+
+- Only fully scoped, lower-case terminal names such as `pkg::math::sum(...)`
+  parse as `Expr::Call`.
+- Bare or otherwise non-qualified forms such as `sum(...)`, `Foo(...)`, and
+  `(f)(x)` parse as `Expr::Apply`.
+
+This keeps parse-time behaviour deterministic while deferring semantic
+disambiguation of bare names to the later name-resolution phase.
+
 ______________________________________________________________________
 
 ## 2. Expression AST definition

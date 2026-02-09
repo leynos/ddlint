@@ -443,10 +443,14 @@ fn classify_expression(expr: Expr, ctx: &mut ClassificationContext<'_>) -> Optio
             },
             ctx,
         )),
+        Expr::Apply { callee, args } => {
+            if let Some(source) = invocation_aggregation_source(&callee) {
+                return classify_aggregation_with_tracking(args, source, ctx);
+            }
+            Some(RuleBodyTerm::Expression(Expr::Apply { callee, args }))
+        }
         Expr::Call { callee, args } => {
-            if let Expr::Variable(name) = &*callee
-                && let Some(source) = aggregation_source_for(name.as_str())
-            {
+            if let Some(source) = invocation_aggregation_source(&callee) {
                 return classify_aggregation_with_tracking(args, source, ctx);
             }
             Some(RuleBodyTerm::Expression(Expr::Call { callee, args }))
@@ -460,6 +464,14 @@ fn aggregation_source_for(name: &str) -> Option<AggregationSource> {
         "group_by" => Some(AggregationSource::GroupBy),
         "Aggregate" => Some(AggregationSource::LegacyAggregate),
         _ => None,
+    }
+}
+
+fn invocation_aggregation_source(callee: &Expr) -> Option<AggregationSource> {
+    if let Expr::Variable(name) = callee {
+        aggregation_source_for(name.as_str())
+    } else {
+        None
     }
 }
 

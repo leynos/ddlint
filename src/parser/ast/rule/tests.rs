@@ -116,7 +116,7 @@ fn parses_multi_head_rules_with_location_delay_and_diff() {
     assert_eq!(heads.len(), 2);
 
     let first = heads.first().expect("first head missing");
-    assert!(matches!(first.location, Some(Expr::Call { .. })));
+    assert!(matches!(first.location, Some(Expr::Apply { .. })));
     assert!(matches!(first.atom, Expr::AtomDelay { delay: 10, .. }));
 
     let second = heads.get(1).expect("second head missing");

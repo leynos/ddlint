@@ -6,7 +6,8 @@
 use ddlint::parser::ast::Expr;
 use ddlint::parser::expression::parse_expression;
 use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, assert_unclosed_delimiter_error, call, lit_num, var,
+    assert_delimiter_error, assert_parse_error, assert_unclosed_delimiter_error, call, lit_num,
+    qualified_call, var,
 };
 use rstest::rstest;
 
@@ -14,6 +15,11 @@ use rstest::rstest;
 #[case("x", var("x"))]
 #[case("foo()", call("foo", vec![]))]
 #[case("foo(x, 1)", call("foo", vec![var("x"), lit_num("1")]))]
+#[case("pkg::Foo(x)", call("pkg::Foo", vec![var("x")]))]
+#[case(
+    "pkg::foo(x, 1)",
+    qualified_call("pkg::foo", vec![var("x"), lit_num("1")]),
+)]
 fn parses_vars_and_calls(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
     assert_eq!(expr, expected);

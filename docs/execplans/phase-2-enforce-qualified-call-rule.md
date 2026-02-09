@@ -4,7 +4,7 @@ This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & discoveries`, `Decision log`, and
 `Outcomes & retrospective` must be kept up to date as work proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 PLANS.md is not present in this repository.
 
@@ -70,12 +70,15 @@ only after all quality gates pass.
 
 - [x] (2026-02-09 00:00Z) Drafted ExecPlan after reviewing roadmap, parser
   spec, parser design docs, and current parser/tests.
-- [ ] Finalize AST representation choice for unresolved application and record
-  it in `Decision log`.
-- [ ] Add failing unit and behavioural tests for qualified vs bare call forms.
-- [ ] Implement parser and AST changes, then adapt rule classification.
-- [ ] Update docs/design notes and mark roadmap entry done.
-- [ ] Run full quality gates and verify green logs.
+- [x] (2026-02-09 00:40Z) Finalized AST representation choice for unresolved
+  application and recorded it in `Decision log`.
+- [x] (2026-02-09 00:55Z) Added and updated unit and behavioural tests for
+  qualified versus bare call forms.
+- [x] (2026-02-09 01:20Z) Implemented scoped identifier parsing, qualified-call
+  enforcement, and AST/rule-classification updates.
+- [x] (2026-02-09 01:30Z) Updated design docs and marked the roadmap entry
+  done.
+- [x] (2026-02-09 01:35Z) Ran full quality gates and verified green logs.
 
 ## Surprises & discoveries
 
@@ -89,6 +92,10 @@ only after all quality gates pass.
   `src/parser/ast/rule.rs` checks `Expr::Call` and name string directly.
   Impact: aggregation classification must be updated in the same milestone as
   call disambiguation to avoid regressions.
+- Observation: project memory MCP tools are not available in this environment,
+  so Qdrant retrieval/storage steps could not be executed. Evidence:
+  `list_mcp_resources` returned an empty resource list. Impact: no persistent
+  project note could be written for this turn.
 
 ## Decision log
 
@@ -104,10 +111,17 @@ only after all quality gates pass.
 
 ## Outcomes & retrospective
 
-Planned outcome: parse-time call classification matches the updated DDlog spec,
-regression risk is bounded by tests, and docs/roadmap stay aligned. This
-section should be updated during implementation with actual outcomes, gaps, and
-lessons.
+Implemented parse-time call classification so only fully scoped lower-case
+identifiers produce `Expr::Call`; all other `name(...)` forms produce
+`Expr::Apply`. Added scoped-identifier parsing (`::`) in prefix parsing, kept
+method/field behaviour intact, and updated aggregation extraction to recognize
+`group_by` and `Aggregate` from unresolved applications. Added or updated unit
+and behavioural tests, updated `docs/pratt-parser-for-ddlog-expressions.md`
+with the decision, and marked the roadmap item done.
+
+Quality gates all passed (`make check-fmt`, `make lint`, `make test`,
+`make markdownlint`, `make fmt`, and `make nixie`). No follow-up work is
+required for this roadmap item.
 
 ## Context and orientation
 
@@ -268,3 +282,8 @@ No new dependencies are expected. Planned interface changes are internal to the
 parser AST and test helpers. If `Expr` gains an unresolved-application variant,
 all pattern matches over `Expr` in parser and tests must be exhaustively
 updated.
+
+Revision note: Updated this ExecPlan from DRAFT to COMPLETE after implementing
+the feature, recording execution progress, documenting environment limitations
+(Qdrant MCP unavailable), and capturing final outcomes and validation results.
+No remaining implementation work is left for this plan.

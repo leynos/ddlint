@@ -167,6 +167,17 @@ pub enum Expr {
     Literal(Literal),
     /// Variable reference expression.
     Variable(String),
+    /// Unresolved application expression.
+    ///
+    /// This variant captures syntactic `name(...)` application forms that are
+    /// not parse-time qualified function calls. Name resolution disambiguates
+    /// these later.
+    Apply {
+        /// Callee expression being applied.
+        callee: Box<Expr>,
+        /// Argument expressions supplied to the callee.
+        args: Vec<Expr>,
+    },
     /// Function call expression.
     Call {
         /// Callee expression being invoked.
@@ -302,7 +313,7 @@ impl Expr {
             Self::Literal(Literal::String(s)) => s.to_sexpr(),
             Self::Literal(Literal::Bool(b)) => b.to_string(),
             Self::Variable(name) => name.clone(),
-            Self::Call { callee, args } => format_nary(
+            Self::Apply { callee, args } | Self::Call { callee, args } => format_nary(
                 "call",
                 std::iter::once(callee.to_sexpr()).chain(args.iter().map(Self::to_sexpr)),
             ),

@@ -301,10 +301,17 @@ where
 
     fn parse_function_call_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         let args = self.parse_parenthesized_args()?;
-        Some(Expr::Call {
-            callee: Box::new(lhs),
-            args,
-        })
+        if is_qualified_function_callee(&lhs) {
+            Some(Expr::Call {
+                callee: Box::new(lhs),
+                args,
+            })
+        } else {
+            Some(Expr::Apply {
+                callee: Box::new(lhs),
+                args,
+            })
+        }
     }
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
@@ -419,4 +426,47 @@ where
         }
         Some(ty)
     }
+}
+
+fn is_qualified_function_callee(callee: &Expr) -> bool {
+    match callee {
+        Expr::Variable(name) => is_qualified_function_name(name),
+        _ => false,
+    }
+}
+
+fn is_qualified_function_name(name: &str) -> bool {
+    let mut count = 0usize;
+    let mut final_segment = None;
+    for segment in name.split("::") {
+        if !is_identifier_segment(segment) {
+            return false;
+        }
+        count += 1;
+        final_segment = Some(segment);
+    }
+
+    let Some(last) = final_segment else {
+        return false;
+    };
+
+    count >= 2 && is_lowercase_identifier_segment(last)
+}
+
+fn is_identifier_segment(segment: &str) -> bool {
+    let mut chars = segment.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+fn is_lowercase_identifier_segment(segment: &str) -> bool {
+    let mut chars = segment.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_lowercase())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
 }
