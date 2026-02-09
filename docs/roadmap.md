@@ -175,6 +175,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     as function calls, deferring bare `name(…)` disambiguation to name
     resolution.
     **Acceptance criteria (measurable finish line):**
+
     - Parsing accepts only fully qualified call syntax as function calls (for
       example `foo.bar()` / `pkg::foo()`), and parses bare `bar(…)` as a name
       application form for later name-resolution disambiguation.
