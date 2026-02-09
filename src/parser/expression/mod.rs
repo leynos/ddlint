@@ -21,6 +21,7 @@ mod numeric_newtypes;
 mod pattern_collection;
 mod pratt;
 mod prefix;
+mod qualified;
 mod token_stream;
 
 pub use numeric::parse_numeric_literal;

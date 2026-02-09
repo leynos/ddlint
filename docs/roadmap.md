@@ -174,6 +174,19 @@ as control flow constructs. This phase aims to build a complete grammar.
   - [x] Enforce the qualified-call rule so only fully scoped identifiers parse
     as function calls, deferring bare `name(…)` disambiguation to name
     resolution.
+    **Acceptance criteria (measurable finish line):**
+    - Parsing accepts only fully qualified call syntax as function calls (for
+      example `foo.bar()` / `pkg::foo()`), and parses bare `bar(…)` as a name
+      application form for later name-resolution disambiguation.
+    - Unit tests include at least **2** explicit examples:
+      `qualified foo.bar()` (or equivalent `pkg::foo()`) is accepted as a call,
+      and bare `bar()` is **not** parsed as a function call.
+    - Integration/behaviour tests include at least **2** end-to-end examples
+      proving the same distinction through the full parser entrypoints.
+    - A dedicated regression test suite entry (at least **1** case) is added
+      and runs in CI; CI is green after the change.
+    - Relevant documentation and `CHANGELOG` entries are updated to describe the
+      qualified-call parsing rule and the deferred name-resolution behaviour.
 
   - [ ] Add validators for attribute placement and name uniqueness to mirror
     the specification's guarantees.
