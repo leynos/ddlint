@@ -178,9 +178,9 @@ as control flow constructs. This phase aims to build a complete grammar.
     - Parsing accepts only fully qualified call syntax as function calls (for
       example `foo.bar()` / `pkg::foo()`), and parses bare `bar(…)` as a name
       application form for later name-resolution disambiguation.
-    - Unit tests include at least **2** explicit examples:
-      `qualified foo.bar()` (or equivalent `pkg::foo()`) is accepted as a call,
-      and bare `bar()` is **not** parsed as a function call.
+    - Unit tests include at least **2** explicit examples: qualified
+      `foo.bar()` (or equivalent `pkg::foo()`) is accepted as a call, and bare
+      `bar()` is **not** parsed as a function call.
     - Integration/behaviour tests include at least **2** end-to-end examples
       proving the same distinction through the full parser entrypoints.
     - A dedicated regression test suite entry (at least **1** case) is added
