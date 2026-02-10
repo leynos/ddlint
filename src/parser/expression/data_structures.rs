@@ -11,8 +11,8 @@ where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
     pub(super) fn parse_identifier_or_struct(&mut self, span: &Span) -> Option<Expr> {
-        let name = self.ts.slice(span);
-        self.parse_ident_expression(name, span)
+        let (name, full_span) = self.parse_scoped_identifier(span)?;
+        self.parse_ident_expression(name, &full_span)
     }
 
     pub(super) fn parse_ident_expression(&mut self, name: String, span: &Span) -> Option<Expr> {
@@ -280,5 +280,32 @@ where
             }
         }
         Some(items)
+    }
+
+    fn parse_scoped_identifier(&mut self, first_span: &Span) -> Option<(String, Span)> {
+        let mut name = self.ts.slice(first_span);
+        let mut full_span = first_span.clone();
+
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COLON_COLON)) {
+            self.ts.next_tok();
+
+            let Some((next_kind, next_span)) = self.ts.next_tok() else {
+                let eof = self.ts.eof_span();
+                self.ts.push_error(eof, "expected identifier after '::'");
+                return None;
+            };
+
+            if next_kind != SyntaxKind::T_IDENT {
+                self.ts
+                    .push_error(next_span, "expected identifier after '::'");
+                return None;
+            }
+
+            name.push_str("::");
+            name.push_str(&self.ts.slice(&next_span));
+            full_span.end = next_span.end;
+        }
+
+        Some((name, full_span))
     }
 }

@@ -13,23 +13,33 @@ pub fn var(name: impl Into<Name>) -> Expr {
     Expr::Variable(name.0)
 }
 
-/// Construct a function call [`Expr::Call`].
+/// Construct an unresolved application [`Expr::Apply`].
 ///
-/// Accepts any type convertible into [`Name`] for the function name.
+/// Accepts any type convertible into [`Name`] for the callee name.
 #[must_use]
 pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
     let name: Name = name.into();
-    Expr::Call {
+    Expr::Apply {
         callee: Box::new(Expr::Variable(name.0)),
         args,
     }
 }
 
-/// Construct a call expression with an arbitrary callee [`Expr::Call`].
+/// Construct an unresolved application with an arbitrary callee [`Expr::Apply`].
 #[must_use]
 pub fn call_expr(callee: Expr, args: Vec<Expr>) -> Expr {
-    Expr::Call {
+    Expr::Apply {
         callee: Box::new(callee),
+        args,
+    }
+}
+
+/// Construct a qualified function call [`Expr::Call`].
+#[must_use]
+pub fn qualified_call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
+    let name: Name = name.into();
+    Expr::Call {
+        callee: Box::new(Expr::Variable(name.0)),
         args,
     }
 }

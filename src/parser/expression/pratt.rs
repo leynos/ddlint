@@ -12,6 +12,7 @@ use crate::parser::ast::{Expr, StringLiteral};
 use crate::parser::span_utils::parse_u32_decimal;
 use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
+use super::qualified::is_qualified_function_callee;
 use super::token_stream::TokenStream;
 
 const MAX_EXPR_DEPTH: usize = 256;
@@ -301,10 +302,17 @@ where
 
     fn parse_function_call_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         let args = self.parse_parenthesized_args()?;
-        Some(Expr::Call {
-            callee: Box::new(lhs),
-            args,
-        })
+        if is_qualified_function_callee(&lhs) {
+            Some(Expr::Call {
+                callee: Box::new(lhs),
+                args,
+            })
+        } else {
+            Some(Expr::Apply {
+                callee: Box::new(lhs),
+                args,
+            })
+        }
     }
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
