@@ -199,7 +199,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     - Parsing `typedef A = u32\ntypedef A = string` produces
       exactly **1** error containing "duplicate" and "A".
     - Function arity overloading is permitted: two functions
-      with the same name but different parameter counts produce
+      with the same name, but different parameter counts produce
       no duplicate error.
     - Unit, parser-level, and integration tests cover all
       permitted and forbidden attribute targets and every

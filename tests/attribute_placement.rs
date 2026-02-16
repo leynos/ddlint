@@ -31,6 +31,7 @@ fn valid_attribute_placement(#[case] src: &str) {
 #[case("#[cold]\napply T(R) -> (S)")]
 #[case("#[cold]\nimport foo")]
 #[case("#[cold]\nextern transformer t(x: A): B")]
+#[case("#[cold]\nextern typedef T = u32")]
 fn invalid_attribute_placement(#[case] src: &str) {
     let parsed = parse(src);
     let has_attr_error = parsed

@@ -37,10 +37,7 @@ fn is_simple_attribute_target(kind: SyntaxKind) -> bool {
 /// Whether the keyword following `extern` is a permitted extern-prefixed
 /// attribute target (`type` or `function`).
 fn is_permitted_extern_continuation(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::K_TYPE | SyntaxKind::K_FUNCTION | SyntaxKind::K_TYPEDEF
-    )
+    matches!(kind, SyntaxKind::K_TYPE | SyntaxKind::K_FUNCTION)
 }
 
 /// Check whether the stream is positioned at a valid attribute target.
@@ -156,7 +153,9 @@ fn handle_hash(st: &mut State<'_>, _span: Span) {
 
     let is_valid = is_valid_attribute_target(st);
 
-    if !is_valid {
+    if is_valid {
+        st.spans.extend(attr_spans);
+    } else {
         // SAFETY: `attr_spans` is guaranteed non-empty — we early-return
         // above if the first `consume_attribute` fails.
         let first_start = attr_spans
@@ -172,8 +171,6 @@ fn handle_hash(st: &mut State<'_>, _span: Span) {
             "attribute not permitted on this item",
         ));
     }
-
-    st.spans.extend(attr_spans);
 }
 
 /// Advance past whitespace and comment tokens, including those containing

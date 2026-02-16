@@ -29,7 +29,7 @@ fn mixed_program_no_duplicates() {
 #[rstest]
 #[case("typedef A = u32\ntypedef A = string", "duplicate", "A")]
 #[case(
-    "input relation R(x: u32)\ntypedef Z = u32\noutput relation R(y: string)\n",
+    "input relation R(x: u32)\noutput relation R(y: string)\n",
     "duplicate",
     "R"
 )]

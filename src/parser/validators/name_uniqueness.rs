@@ -180,16 +180,10 @@ mod tests {
 
     #[test]
     fn duplicate_relation_names() {
-        // Separate the two relations with a typedef so the relation span
-        // scanner treats them as distinct spans (consecutive relations on
-        // adjacent lines get merged into a single span — a pre-existing
-        // parser limitation).
-        let src = concat!(
-            "input relation R(x: u32)\n",
-            "typedef Spacer = u32\n",
-            "output relation R(y: string)\n",
+        assert_duplicate_name_error(
+            "input relation R(x: u32)\noutput relation R(y: string)\n",
+            "duplicate relation name 'R'",
         );
-        assert_duplicate_name_error(src, "duplicate relation name 'R'");
     }
 
     #[test]

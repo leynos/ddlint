@@ -122,14 +122,12 @@ message contains "duplicate" and "A".
   when using `.to_string()` on `Simple`. Impact: test assertion patterns must
   use Debug formatting.
 
-- Observation: consecutive relation declarations (e.g.
-  `input relation R(…)\noutput relation R(…)`) get merged into a single
-  `N_RELATION_DECL` span by the existing relation span scanner. This is because
-  `relation_columns()` uses `inline_ws()` which consumes `\n` tokens, causing
-  the cursor to overshoot into the next line. Evidence: CST dump showing a
-  single `N_RELATION_DECL@0..54` node. Impact: duplicate-relation tests must
-  separate declarations with another item type (e.g. a typedef) to get two
-  distinct CST nodes.
+- Observation (RESOLVED): consecutive relation declarations (e.g.
+  `input relation R(…)\noutput relation R(…)`) were merged into a single
+  `N_RELATION_DECL` span because `record_relation` extended spans to
+  `line_end`, overshooting past the `\n` separator into the next declaration.
+  Fixed by using the parser span end directly instead of `line_end` in
+  `src/parser/span_scanners/relations.rs`.
 
 ## Decision log
 
@@ -179,11 +177,11 @@ Summary of delivered artefacts:
 - Integration tests (`tests/attribute_placement.rs`,
   `tests/name_uniqueness.rs`).
 
-Lessons learned: the relation span scanner has a pre-existing issue where
-consecutive relation declarations on adjacent lines get merged into a single
-CST span. Tests for duplicate relation names must work around this by
-interleaving a different item type. This issue is worth tracking for a future
-fix.
+Lessons learned: the relation span scanner had a bug where `record_relation`
+used `line_end` to extend spans past the newline separator, causing consecutive
+relation declarations to merge into one CST node. Fixed by using the parser
+span end directly. Consecutive duplicate relation names are now detected
+without spacers.
 
 ## Context and orientation
 

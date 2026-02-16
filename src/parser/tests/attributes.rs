@@ -28,6 +28,7 @@ fn attribute_on_permitted_item_no_error(#[case] src: &str) {
 #[case("#[cold]\napply T(R) -> (S)", "attribute")]
 #[case("#[cold]\nimport foo", "attribute")]
 #[case("#[cold]\nextern transformer t(x: A): B", "attribute")]
+#[case("#[cold]\nextern typedef T = u32", "attribute")]
 fn attribute_on_forbidden_item_emits_error(#[case] src: &str, #[case] expected_msg: &str) {
     let parsed = parse(src);
     assert!(!parsed.errors().is_empty(), "expected errors for: {src}");
