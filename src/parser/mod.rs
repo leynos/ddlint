@@ -46,15 +46,18 @@ pub use cst_builder::{Parsed, ParsedSpans};
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
     let tokens = tokenize_with_trivia(src);
-    let (spans, errors) = parse_tokens(&tokens, src);
+    let (spans, mut errors) = parse_tokens(&tokens, src);
 
     let green = build_green_tree(&tokens, src, &spans);
     let root = ast::Root::from_green(green.clone());
+
+    errors.extend(validators::validate_name_uniqueness(&root));
 
     Parsed::new(green, root, errors)
 }
 
 pub mod ast;
+mod validators;
 
 #[cfg(test)]
 mod tests;

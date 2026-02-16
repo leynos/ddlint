@@ -189,7 +189,7 @@ as control flow constructs. This phase aims to build a complete grammar.
     - Relevant documentation and `CHANGELOG` entries are updated to describe the
       qualified-call parsing rule and the deferred name-resolution behaviour.
 
-  - [ ] Add validators for attribute placement and name uniqueness to mirror
+  - [x] Add validators for attribute placement and name uniqueness to mirror
     the specification's guarantees.
 
 ______________________________________________________________________

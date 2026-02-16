@@ -9,8 +9,9 @@ use crate::{Span, SyntaxKind};
 
 use super::ParsedSpans;
 use super::span_scanners::{
-    collect_apply_spans, collect_function_spans, collect_import_spans, collect_index_spans,
-    collect_relation_spans, collect_rule_spans, collect_transformer_spans, collect_typedef_spans,
+    collect_apply_spans, collect_attribute_spans, collect_function_spans, collect_import_spans,
+    collect_index_spans, collect_relation_spans, collect_rule_spans, collect_transformer_spans,
+    collect_typedef_spans,
 };
 
 /// Scan the token stream and collect spans for each statement category.
@@ -18,6 +19,7 @@ pub(super) fn parse_tokens(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
 ) -> (ParsedSpans, Vec<chumsky::error::Simple<SyntaxKind>>) {
+    let (attribute_spans, attribute_errors) = collect_attribute_spans(tokens, src);
     let (import_spans, errors) = collect_import_spans(tokens, src);
     let (typedef_spans, typedef_errors) = collect_typedef_spans(tokens, src);
     let (relation_spans, relation_errors) = collect_relation_spans(tokens, src);
@@ -26,7 +28,8 @@ pub(super) fn parse_tokens(
     let (transformer_spans, transformer_errors) = collect_transformer_spans(tokens, src);
     let (apply_spans, apply_errors) = collect_apply_spans(tokens, src);
 
-    let non_rule_span_capacity = import_spans.len()
+    let non_rule_span_capacity = attribute_spans.len()
+        + import_spans.len()
         + typedef_spans.len()
         + relation_spans.len()
         + index_spans.len()
@@ -35,6 +38,7 @@ pub(super) fn parse_tokens(
         + apply_spans.len();
 
     let mut non_rule_spans = Vec::with_capacity(non_rule_span_capacity);
+    non_rule_spans.extend(attribute_spans.iter().cloned());
     non_rule_spans.extend(import_spans.iter().cloned());
     non_rule_spans.extend(typedef_spans.iter().cloned());
     non_rule_spans.extend(relation_spans.iter().cloned());
@@ -46,7 +50,8 @@ pub(super) fn parse_tokens(
 
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
 
-    let mut all_errors = errors;
+    let mut all_errors = attribute_errors;
+    all_errors.extend(errors);
     all_errors.extend(typedef_errors);
     all_errors.extend(relation_errors);
     all_errors.extend(index_errors);
@@ -56,6 +61,7 @@ pub(super) fn parse_tokens(
     all_errors.extend(rule_errors);
 
     let span_result = ParsedSpans::builder()
+        .attributes(attribute_spans)
         .imports(import_spans)
         .typedefs(typedef_spans)
         .relations(relation_spans)

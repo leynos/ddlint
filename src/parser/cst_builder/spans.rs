@@ -106,6 +106,8 @@ pub struct ParsedSpans {
     rules: Vec<Span>,
     /// Expression spans.
     expressions: Vec<Span>,
+    /// Attribute spans.
+    attributes: Vec<Span>,
 }
 
 /// Builder for [`ParsedSpans`].
@@ -120,6 +122,7 @@ pub struct ParsedSpansBuilder {
     applys: Vec<Span>,
     rules: Vec<Span>,
     expressions: Vec<Span>,
+    attributes: Vec<Span>,
 }
 
 impl ParsedSpansBuilder {
@@ -186,13 +189,20 @@ impl ParsedSpansBuilder {
         self
     }
 
+    /// Set attribute spans.
+    #[must_use]
+    pub fn attributes(mut self, spans: Vec<Span>) -> Self {
+        self.attributes = spans;
+        self
+    }
+
     /// Build the [`ParsedSpans`], returning an error for invalid span lists.
     pub fn build(self) -> Result<ParsedSpans, SpanListValidationError> {
         enforce_valid_span_lists(&self.span_lists())?;
         Ok(self.into_parsed_spans())
     }
 
-    fn span_lists(&self) -> [(&'static str, &[Span]); 9] {
+    fn span_lists(&self) -> [(&'static str, &[Span]); 10] {
         [
             ("imports", &self.imports),
             ("typedefs", &self.typedefs),
@@ -203,6 +213,7 @@ impl ParsedSpansBuilder {
             ("applys", &self.applys),
             ("rules", &self.rules),
             ("expressions", &self.expressions),
+            ("attributes", &self.attributes),
         ]
     }
 
@@ -217,6 +228,7 @@ impl ParsedSpansBuilder {
             applys,
             rules,
             expressions,
+            attributes,
         } = self;
 
         ParsedSpans {
@@ -229,6 +241,7 @@ impl ParsedSpansBuilder {
             applys,
             rules,
             expressions,
+            attributes,
         }
     }
 }
@@ -294,6 +307,12 @@ impl ParsedSpans {
     #[must_use]
     pub fn expressions(&self) -> &[Span] {
         &self.expressions
+    }
+
+    /// Access attribute spans.
+    #[must_use]
+    pub fn attributes(&self) -> &[Span] {
+        &self.attributes
     }
 }
 

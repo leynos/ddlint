@@ -11,6 +11,7 @@ use super::spans::ParsedSpans;
 type SpanSliceGetter = fn(&ParsedSpans) -> &[Span];
 
 const SPAN_CURSOR_KINDS: &[(SpanSliceGetter, SyntaxKind)] = &[
+    (ParsedSpans::attributes, SyntaxKind::N_ATTRIBUTE),
     (ParsedSpans::imports, SyntaxKind::N_IMPORT_STMT),
     (ParsedSpans::typedefs, SyntaxKind::N_TYPE_DEF),
     (ParsedSpans::relations, SyntaxKind::N_RELATION_DECL),

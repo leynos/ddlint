@@ -2,8 +2,8 @@
 
 use super::rules::rule_statement;
 use super::{
-    collect_function_spans, collect_import_spans, collect_index_spans, collect_relation_spans,
-    collect_rule_spans, collect_transformer_spans, collect_typedef_spans,
+    collect_attribute_spans, collect_function_spans, collect_import_spans, collect_index_spans,
+    collect_relation_spans, collect_rule_spans, collect_transformer_spans, collect_typedef_spans,
 };
 use crate::parser::lexer_helpers::inline_ws;
 use crate::parser::span_scanner::{merge_spans, parse_tokens};
@@ -383,4 +383,103 @@ fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
         .unwrap_or_else(|| panic!("expression span {expr_span:?} out of bounds"))
         .trim();
     assert_eq!(expr_text, "Log(x)");
+}
+
+#[expect(
+    clippy::expect_used,
+    reason = "tests unwrap spans to provide crisp failure messages"
+)]
+#[test]
+fn collect_attribute_spans_valid_on_typedef() {
+    let src = "#[cold]\ntypedef T = u32\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+    let text = spans
+        .first()
+        .and_then(|sp| src.get(sp.clone()))
+        .expect("first span text missing");
+    assert_eq!(text, "#[cold]");
+}
+
+#[test]
+fn collect_attribute_spans_valid_on_function() {
+    let src = "#[inline]\nfunction f() {}\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+}
+
+#[test]
+fn collect_attribute_spans_valid_on_relation() {
+    let src = "#[hot]\ninput relation R(x: u32)\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+}
+
+#[test]
+fn collect_attribute_spans_valid_on_extern_function() {
+    let src = "#[cold]\nextern function f()\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+}
+
+#[expect(
+    clippy::expect_used,
+    reason = "tests unwrap errors to provide crisp failure messages"
+)]
+#[test]
+fn collect_attribute_spans_rejected_on_index() {
+    let src = "#[cold]\nindex I on R(x)\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert_eq!(errors.len(), 1);
+    let first_error = errors.first().expect("expected at least one error");
+    assert!(
+        format!("{first_error:?}").contains("attribute"),
+        "unexpected error: {first_error:?}",
+    );
+}
+
+#[test]
+fn collect_attribute_spans_rejected_on_apply() {
+    let src = "#[cold]\napply T(R) -> (S)\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert_eq!(errors.len(), 1);
+}
+
+#[test]
+fn collect_attribute_spans_rejected_on_import() {
+    let src = "#[cold]\nimport foo\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 1);
+    assert_eq!(errors.len(), 1);
+}
+
+#[test]
+fn collect_attribute_spans_stacked() {
+    let src = "#[a]\n#[b]\ntypedef T = u32\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert_eq!(spans.len(), 2);
+    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+}
+
+#[test]
+fn collect_attribute_spans_hash_without_bracket() {
+    let src = "# typedef T = u32\n";
+    let tokens = tokenize(src);
+    let (spans, errors) = collect_attribute_spans(&tokens, src);
+    assert!(spans.is_empty());
+    assert!(errors.is_empty());
 }

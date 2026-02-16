@@ -22,6 +22,8 @@ pub(super) use transformers::collect_transformer_spans;
 pub(super) use typedefs::collect_typedef_spans;
 
 pub(super) mod apply;
+pub(super) mod attributes;
 #[cfg(test)]
 mod tests;
 pub(super) use apply::collect_apply_spans;
+pub(super) use attributes::collect_attribute_spans;
