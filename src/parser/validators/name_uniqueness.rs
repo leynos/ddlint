@@ -144,6 +144,19 @@ mod tests {
         format!("{err:?}")
     }
 
+    /// Helper to assert a single duplicate-name error with the expected message.
+    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+    fn assert_duplicate_name_error(src: &str, expected_message: &str) {
+        let parsed = parse(src);
+        let errors = super::validate_name_uniqueness(parsed.root());
+        assert_eq!(errors.len(), 1);
+        let e = errors.first().expect("expected one error");
+        assert!(
+            render(e).contains(expected_message),
+            "unexpected error: {e:?}",
+        );
+    }
+
     #[test]
     fn no_duplicates_no_errors() {
         let src = concat!(
@@ -157,21 +170,14 @@ mod tests {
         assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn duplicate_typedef_names() {
-        let src = "typedef A = u32\ntypedef A = string";
-        let parsed = parse(src);
-        let errors = super::validate_name_uniqueness(parsed.root());
-        assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains("duplicate type name 'A'"),
-            "unexpected error: {e:?}",
+        assert_duplicate_name_error(
+            "typedef A = u32\ntypedef A = string",
+            "duplicate type name 'A'",
         );
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn duplicate_relation_names() {
         // Separate the two relations with a typedef so the relation span
@@ -183,72 +189,38 @@ mod tests {
             "typedef Spacer = u32\n",
             "output relation R(y: string)\n",
         );
-        let parsed = parse(src);
-        let errors = super::validate_name_uniqueness(parsed.root());
-        assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains("duplicate relation name 'R'"),
-            "unexpected error: {e:?}",
-        );
+        assert_duplicate_name_error(src, "duplicate relation name 'R'");
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn duplicate_index_names() {
-        let src = concat!("index I on R(x)\n", "index I on S(y)\n",);
-        let parsed = parse(src);
-        let errors = super::validate_name_uniqueness(parsed.root());
-        assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains("duplicate index name 'I'"),
-            "unexpected error: {e:?}",
+        assert_duplicate_name_error(
+            concat!("index I on R(x)\n", "index I on S(y)\n",),
+            "duplicate index name 'I'",
         );
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn duplicate_transformer_names() {
-        let src = concat!(
-            "extern transformer t(x: A): B\n",
-            "extern transformer t(y: C): D\n",
-        );
-        let parsed = parse(src);
-        let errors = super::validate_name_uniqueness(parsed.root());
-        assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains("duplicate transformer name 't'"),
-            "unexpected error: {e:?}",
+        assert_duplicate_name_error(
+            concat!(
+                "extern transformer t(x: A): B\n",
+                "extern transformer t(y: C): D\n",
+            ),
+            "duplicate transformer name 't'",
         );
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn duplicate_import_paths() {
-        let src = "import foo\nimport foo";
-        let parsed = parse(src);
-        let errors = super::validate_name_uniqueness(parsed.root());
-        assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains("duplicate import name 'foo'"),
-            "unexpected error: {e:?}",
-        );
+        assert_duplicate_name_error("import foo\nimport foo", "duplicate import name 'foo'");
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn duplicate_function_name_and_arity() {
-        let src = "function f(x: u32) {}\nfunction f(y: u32) {}";
-        let parsed = parse(src);
-        let errors = super::validate_name_uniqueness(parsed.root());
-        assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains("duplicate function 'f'"),
-            "unexpected error: {e:?}",
+        assert_duplicate_name_error(
+            "function f(x: u32) {}\nfunction f(y: u32) {}",
+            "duplicate function 'f'",
         );
     }
 
