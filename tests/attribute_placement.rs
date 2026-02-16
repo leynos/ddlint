@@ -14,6 +14,8 @@ use rstest::rstest;
 #[case("#[hot]\ninput relation R(x: u32)")]
 #[case("#[hot]\noutput relation R(x: u32)")]
 #[case("#[hot]\nrelation R(x: u32)")]
+#[case("#[hot]\nstream relation R(x: u32)")]
+#[case("#[hot]\nmultiset relation R(x: u32)")]
 #[case("#[cold]\nextern function f()")]
 #[case("#[cold]\nextern type Handle")]
 #[case("#[a]\n#[b]\ntypedef T = u32")]
@@ -22,10 +24,13 @@ fn valid_attribute_placement(#[case] src: &str) {
     assert_no_parse_errors(parsed.errors());
 }
 
+/// Spec §12: attributes are only permitted on typedef, function, and
+/// relation declarations.
 #[rstest]
 #[case("#[cold]\nindex Ix(a: T) on A(a)")]
 #[case("#[cold]\napply T(R) -> (S)")]
 #[case("#[cold]\nimport foo")]
+#[case("#[cold]\nextern transformer t(x: A): B")]
 fn invalid_attribute_placement(#[case] src: &str) {
     let parsed = parse(src);
     let has_attr_error = parsed
@@ -36,16 +41,5 @@ fn invalid_attribute_placement(#[case] src: &str) {
         has_attr_error,
         "expected attribute placement error for: {src}\n  errors: {:?}",
         parsed.errors()
-    );
-}
-
-/// Spec §12 example: `#[cold]` on an index is an error.
-#[test]
-fn spec_section_12_attribute_on_index() {
-    let src = "#[cold]\nindex Ix(a: T) on A(a)";
-    let parsed = parse(src);
-    assert!(
-        !parsed.errors().is_empty(),
-        "spec §12: attribute on index must be rejected"
     );
 }

@@ -1,8 +1,9 @@
 # Add validators for attribute placement and name uniqueness
 
-This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
-`Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
-`Outcomes & Retrospective` must be kept up to date as work proceeds.
+This Execution Plan (ExecPlan) is a living document. The sections
+`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
+`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
+proceeds.
 
 Status: COMPLETE
 
@@ -10,9 +11,9 @@ PLANS.md is not present in this repository.
 
 ## Purpose / big picture
 
-After this change a user running `ddlint` on a DDlog program will see
-span-accurate diagnostics for two categories of mistake that the parser
-currently ignores:
+After this change a user running `ddlint` on a Differential Datalog (DDlog)
+program will see span-accurate diagnostics for two categories of mistake that
+the parser currently ignores:
 
 1. Misplaced attributes: an attribute (`#[…]`) preceding an item other than
    `typedef`/`type`, `function`, or `relation` is rejected with a clear error
@@ -39,7 +40,8 @@ message contains "duplicate" and "A".
 - Follow `docs/differential-datalog-parser-syntax-spec-updated.md` sections
   5.1, 8, 9, and 12 as the normative specification.
 - Preserve existing parser architecture: tokenizer -> span scanners ->
-  `ParsedSpans` builder -> CST green tree -> AST wrappers -> `Parsed`.
+  `ParsedSpans` builder -> Concrete Syntax Tree (CST) green tree -> Abstract
+  Syntax Tree (AST) wrappers -> `Parsed`.
 - Do not add new crate dependencies.
 - Keep every Rust source file under 400 lines.
 - Every new Rust module must start with a `//!` module comment.
@@ -47,7 +49,7 @@ message contains "duplicate" and "A".
 - Comments and documentation must use en-GB-oxendict spelling.
 - Errors are `chumsky::error::Simple<SyntaxKind>` with byte-offset spans,
   consistent with all existing parser diagnostics.
-- Use `rstest` for parameterised tests and shared fixtures.
+- Use `rstest` for parameterized tests and shared fixtures.
 - Use Make targets; run required gates with `set -o pipefail` and `tee`.
 - Record design decisions in this ExecPlan's `Decision Log` section.
 
@@ -55,8 +57,9 @@ message contains "duplicate" and "A".
 
 - Scope: if implementation requires changes to more than 15 files or 600 net
   new lines, stop and escalate.
-- Interface: if any existing public API signature (on `Parsed`, `Root`, or any
-  AST wrapper) must change, stop and escalate.
+- Interface: if any existing public Application Programming Interface
+  (API) signature (on `Parsed`, `Root`, or any AST wrapper) must change, stop
+  and escalate.
 - Dependencies: if a new external crate dependency is required, stop and
   escalate.
 - Iterations: if `make test` still fails after three focused fix iterations,
@@ -70,7 +73,7 @@ message contains "duplicate" and "A".
 ## Risks
 
 - Risk: existing span scanners rely on `T_HASH` tokens "falling through" as
-  unrecognised tokens. Introducing an attribute scanner that consumes `T_HASH`
+  unrecognized tokens. Introducing an attribute scanner that consumes `T_HASH`
   tokens could cause the rule scanner to see fewer tokens, changing rule span
   boundaries. Severity: medium Likelihood: medium Mitigation: attribute spans
   are added to `non_rule_spans` so the rule scanner skips over them, exactly as
@@ -79,7 +82,7 @@ message contains "duplicate" and "A".
 
 - Risk: `T_HASH` not followed by `T_LBRACKET` (for example `#` as a comment
   character in data) should not be treated as an attribute. Severity: low
-  Likelihood: low Mitigation: the scanner only recognises `T_HASH` immediately
+  Likelihood: low Mitigation: the scanner only recognizes `T_HASH` immediately
   followed by `T_LBRACKET` (after optional inline whitespace) as an attribute
   start. A lone `T_HASH` is skipped.
 
@@ -216,7 +219,7 @@ The DDlog parser lives under `src/parser/`. Parsing proceeds through a pipeline:
 
 Tests live in two places: `src/parser/tests/*.rs` for parser-level tests (using
 `crate::parse()`), and `tests/*.rs` for integration/behavioural tests (using
-`ddlint::parse()`). Both use `rstest` for parameterisation and helper functions
+`ddlint::parse()`). Both use `rstest` for parameterization and helper functions
 from `src/test_util/`.
 
 The `text_range_to_span()` utility in `src/parser/ast/rule.rs` (line 642)
@@ -426,16 +429,16 @@ block:
 Create `tests/attribute_placement.rs`:
 
 - Uses `ddlint::parse` and `ddlint::test_util::assert_no_parse_errors`.
-- `rstest`-parameterised happy paths (typedef, function, relation, extern
+- `rstest`-parameterized happy paths (typedef, function, relation, extern
   variants).
-- `rstest`-parameterised error paths (index, apply, import, rule).
+- `rstest`-parameterized error paths (index, apply, import, rule).
 - Spec section 12 example: `"#[cold]\nindex Ix(a: T) on A[a]."` produces an
   error.
 
 Create `tests/name_uniqueness.rs`:
 
 - Uses `ddlint::parse`.
-- `rstest`-parameterised cases for each category.
+- `rstest`-parameterized cases for each category.
 - Mixed program with no duplicates produces no errors.
 - Function arity overloading is permitted.
 
@@ -483,9 +486,9 @@ failed target, then re-run all gates. The attribute scanner and name uniqueness
 validator are independent of each other, so either can be reverted without
 affecting the other.
 
-## Artifacts and notes
+## Artefacts and notes
 
-Keep command logs under `/tmp/ddlint-*.log` and summarise relevant pass/fail
+Keep command logs under `/tmp/ddlint-*.log` and summarize relevant pass/fail
 lines in the `Progress` section.
 
 ## Interfaces and dependencies

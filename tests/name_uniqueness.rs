@@ -54,6 +54,32 @@ fn duplicate_detected(#[case] src: &str, #[case] expected_word: &str, #[case] ex
     );
 }
 
+/// Multiple distinct duplicate-name violations in a single program should
+/// each produce their own diagnostic, confirming the validator accumulates
+/// errors rather than short-circuiting after the first.
+#[test]
+fn multiple_duplicate_categories_all_reported() {
+    let src = concat!(
+        "typedef A = u32\n",
+        "typedef A = string\n",
+        "index I on R(x)\n",
+        "index I on S(y)\n",
+        "import foo\n",
+        "import foo\n",
+    );
+    let parsed = parse(src);
+    let dup_errors: Vec<_> = parsed
+        .errors()
+        .iter()
+        .filter(|e| format!("{e:?}").contains("duplicate"))
+        .collect();
+    assert_eq!(
+        dup_errors.len(),
+        3,
+        "expected three duplicate errors (typedef, index, import): {dup_errors:?}"
+    );
+}
+
 #[test]
 fn function_arity_overloading_permitted() {
     let src = concat!("function f(x: u32) {}\n", "function f(x: u32, y: u32) {}\n",);

@@ -189,8 +189,22 @@ as control flow constructs. This phase aims to build a complete grammar.
     - Relevant documentation and `CHANGELOG` entries are updated to describe the
       qualified-call parsing rule and the deferred name-resolution behaviour.
 
-  - [x] Add validators for attribute placement and name uniqueness to mirror
-    the specification's guarantees.
+  - [x] Add validators for attribute placement and name uniqueness
+    to mirror the specification's guarantees.
+    **Acceptance criteria (measurable finish line):**
+
+    - Parsing `#[cold]\ntypedef T = u32` produces no errors;
+      parsing `#[cold]\nindex I on R(x)` produces exactly **1**
+      error whose message contains "attribute".
+    - Parsing `typedef A = u32\ntypedef A = string` produces
+      exactly **1** error containing "duplicate" and "A".
+    - Function arity overloading is permitted: two functions
+      with the same name but different parameter counts produce
+      no duplicate error.
+    - Unit, parser-level, and integration tests cover all
+      permitted and forbidden attribute targets and every
+      duplicate-name category. `make test` is green.
+    - `make check-fmt` and `make lint` exit 0.
 
 ______________________________________________________________________
 

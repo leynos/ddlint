@@ -11,25 +11,59 @@ use crate::{Span, SyntaxKind};
 
 type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
-/// Whether the given keyword may be preceded by attributes.
+/// Whether the given keyword may directly begin an attributed item.
 ///
 /// Permitted targets per spec §5.1: `Typedef`, `Function`, and
 /// `RelationDecl`. Relation declarations may be prefixed with role keywords
-/// (`input`, `output`, `stream`, `multiset`), and both typedefs and
-/// functions may be prefixed with `extern`.
-fn is_permitted_attribute_target(kind: SyntaxKind) -> bool {
+/// (`input`, `output`, `stream`, `multiset`).
+///
+/// Note: `extern` is **not** included here — it requires a lookahead to
+/// confirm the following keyword is `type` or `function`. That check is
+/// performed separately in [`is_valid_attribute_target`].
+fn is_simple_attribute_target(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::K_TYPEDEF
             | SyntaxKind::K_TYPE
             | SyntaxKind::K_FUNCTION
-            | SyntaxKind::K_EXTERN
             | SyntaxKind::K_INPUT
             | SyntaxKind::K_OUTPUT
             | SyntaxKind::K_RELATION
             | SyntaxKind::K_STREAM
             | SyntaxKind::K_MULTISET
     )
+}
+
+/// Whether the keyword following `extern` is a permitted extern-prefixed
+/// attribute target (`type` or `function`).
+fn is_permitted_extern_continuation(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::K_TYPE | SyntaxKind::K_FUNCTION | SyntaxKind::K_TYPEDEF
+    )
+}
+
+/// Check whether the stream is positioned at a valid attribute target.
+///
+/// For most keywords a single peek suffices. For `extern` we must peek
+/// past any inline whitespace to confirm the next keyword is `type` or
+/// `function` — otherwise constructs like `extern transformer` would be
+/// incorrectly accepted.
+fn is_valid_attribute_target(st: &State<'_>) -> bool {
+    let Some(&(kind, _)) = st.stream.peek() else {
+        return false;
+    };
+    if is_simple_attribute_target(kind) {
+        return true;
+    }
+    if kind == SyntaxKind::K_EXTERN {
+        // Peek past inline whitespace to find the keyword after `extern`.
+        return st
+            .stream
+            .peek_after_ws_inline()
+            .is_some_and(|(k, _)| is_permitted_extern_continuation(*k));
+    }
+    false
 }
 
 /// Consume a single `#[…]` attribute, returning its span.
@@ -85,6 +119,10 @@ fn consume_attribute(st: &mut State<'_>) -> Option<Span> {
 /// After gathering one or more `#[…]` spans, peeks at the next
 /// non-whitespace token to determine the target item. If the target is not
 /// a permitted attribute host, emits a diagnostic.
+#[expect(
+    clippy::expect_used,
+    reason = "attr_spans is guaranteed non-empty after the early-return guard"
+)]
 fn handle_hash(st: &mut State<'_>, _span: Span) {
     let mut attr_spans: Vec<Span> = Vec::new();
 
@@ -116,14 +154,19 @@ fn handle_hash(st: &mut State<'_>, _span: Span) {
     skip_trivia_across_lines(st);
     st.stream.skip_ws_inline();
 
-    let is_valid = st
-        .stream
-        .peek()
-        .is_some_and(|(kind, _)| is_permitted_attribute_target(*kind));
+    let is_valid = is_valid_attribute_target(st);
 
     if !is_valid {
-        let first_start = attr_spans.first().map(|s| s.start).unwrap_or_default();
-        let last_end = attr_spans.last().map(|s| s.end).unwrap_or_default();
+        // SAFETY: `attr_spans` is guaranteed non-empty — we early-return
+        // above if the first `consume_attribute` fails.
+        let first_start = attr_spans
+            .first()
+            .expect("attr_spans must be non-empty after successful consume")
+            .start;
+        let last_end = attr_spans
+            .last()
+            .expect("attr_spans must be non-empty after successful consume")
+            .end;
         st.extra.push(Simple::custom(
             first_start..last_end,
             "attribute not permitted on this item",

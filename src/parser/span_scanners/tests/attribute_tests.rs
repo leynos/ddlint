@@ -2,6 +2,7 @@
 
 use super::super::collect_attribute_spans;
 use crate::test_util::tokenize;
+use rstest::rstest;
 
 #[expect(
     clippy::expect_used,
@@ -21,27 +22,11 @@ fn collect_attribute_spans_valid_on_typedef() {
     assert_eq!(text, "#[cold]");
 }
 
-#[test]
-fn collect_attribute_spans_valid_on_function() {
-    let src = "#[inline]\nfunction f() {}\n";
-    let tokens = tokenize(src);
-    let (spans, errors) = collect_attribute_spans(&tokens, src);
-    assert_eq!(spans.len(), 1);
-    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
-}
-
-#[test]
-fn collect_attribute_spans_valid_on_relation() {
-    let src = "#[hot]\ninput relation R(x: u32)\n";
-    let tokens = tokenize(src);
-    let (spans, errors) = collect_attribute_spans(&tokens, src);
-    assert_eq!(spans.len(), 1);
-    assert!(errors.is_empty(), "unexpected errors: {errors:?}");
-}
-
-#[test]
-fn collect_attribute_spans_valid_on_extern_function() {
-    let src = "#[cold]\nextern function f()\n";
+#[rstest]
+#[case("#[inline]\nfunction f() {}\n")]
+#[case("#[hot]\ninput relation R(x: u32)\n")]
+#[case("#[cold]\nextern function f()\n")]
+fn collect_attribute_spans_valid_on_permitted_item(#[case] src: &str) {
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);
     assert_eq!(spans.len(), 1);
@@ -66,18 +51,11 @@ fn collect_attribute_spans_rejected_on_index() {
     );
 }
 
-#[test]
-fn collect_attribute_spans_rejected_on_apply() {
-    let src = "#[cold]\napply T(R) -> (S)\n";
-    let tokens = tokenize(src);
-    let (spans, errors) = collect_attribute_spans(&tokens, src);
-    assert_eq!(spans.len(), 1);
-    assert_eq!(errors.len(), 1);
-}
-
-#[test]
-fn collect_attribute_spans_rejected_on_import() {
-    let src = "#[cold]\nimport foo\n";
+#[rstest]
+#[case("#[cold]\napply T(R) -> (S)\n")]
+#[case("#[cold]\nimport foo\n")]
+#[case("#[cold]\nextern transformer t(x: A): B\n")]
+fn collect_attribute_spans_rejected_on_forbidden_item(#[case] src: &str) {
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);
     assert_eq!(spans.len(), 1);

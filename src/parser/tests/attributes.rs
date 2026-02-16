@@ -1,7 +1,7 @@
 //! Tests for attribute parsing and placement validation.
 //!
 //! These tests exercise the full `parse()` pipeline to verify that
-//! attributes are recognised, wrapped in `N_ATTRIBUTE` CST nodes, and
+//! attributes are recognized, wrapped in `N_ATTRIBUTE` CST nodes, and
 //! that misplaced attributes emit diagnostics.
 
 use crate::parse;
@@ -14,6 +14,8 @@ use rstest::rstest;
 #[case("#[hot]\ninput relation R(x: u32)")]
 #[case("#[cold]\noutput relation R(x: u32)")]
 #[case("#[cold]\nrelation R(x: u32)")]
+#[case("#[hot]\nstream relation R(x: u32)")]
+#[case("#[hot]\nmultiset relation R(x: u32)")]
 #[case("#[cold]\nextern function f()")]
 #[case("#[cold]\nextern type Handle")]
 fn attribute_on_permitted_item_no_error(#[case] src: &str) {
@@ -25,6 +27,7 @@ fn attribute_on_permitted_item_no_error(#[case] src: &str) {
 #[case("#[cold]\nindex I on R(x)", "attribute")]
 #[case("#[cold]\napply T(R) -> (S)", "attribute")]
 #[case("#[cold]\nimport foo", "attribute")]
+#[case("#[cold]\nextern transformer t(x: A): B", "attribute")]
 fn attribute_on_forbidden_item_emits_error(#[case] src: &str, #[case] expected_msg: &str) {
     let parsed = parse(src);
     assert!(!parsed.errors().is_empty(), "expected errors for: {src}");
