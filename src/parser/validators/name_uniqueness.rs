@@ -89,6 +89,9 @@ fn check_unique(
     use std::collections::hash_map::Entry;
     let mut seen: HashMap<String, Span> = HashMap::new();
     for (name, span) in items {
+        // Defensive: `.name()` may return `Some("")` for a malformed AST
+        // node. Skip rather than panic or flag an empty identifier as a
+        // duplicate.
         if name.is_empty() {
             continue;
         }
