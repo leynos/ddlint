@@ -141,6 +141,7 @@ fn check_function_uniqueness(errors: &mut Vec<Simple<SyntaxKind>>, root: &Root) 
 #[cfg(test)]
 mod tests {
     use crate::parse;
+    use rstest::rstest;
 
     /// Render a `Simple` error via `Debug` for pattern matching.
     fn render(err: &chumsky::error::Simple<crate::SyntaxKind>) -> String {
@@ -148,16 +149,18 @@ mod tests {
     }
 
     /// Helper to assert a single duplicate-name error with the expected message.
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     fn assert_duplicate_name_error(src: &str, expected_message: &str) {
         let parsed = parse(src);
         let errors = super::validate_name_uniqueness(parsed.root());
         assert_eq!(errors.len(), 1);
-        let e = errors.first().expect("expected one error");
-        assert!(
-            render(e).contains(expected_message),
-            "unexpected error: {e:?}",
-        );
+        if let Some(e) = errors.first() {
+            assert!(
+                render(e).contains(expected_message),
+                "unexpected error: {e:?}",
+            );
+        } else {
+            panic!("expected one error, got {}", errors.len());
+        }
     }
 
     #[test]
@@ -173,52 +176,24 @@ mod tests {
         assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     }
 
-    #[test]
-    fn duplicate_typedef_names() {
-        assert_duplicate_name_error(
-            "typedef A = u32\ntypedef A = string",
-            "duplicate type name 'A'",
-        );
-    }
-
-    #[test]
-    fn duplicate_relation_names() {
-        assert_duplicate_name_error(
-            "input relation R(x: u32)\noutput relation R(y: string)\n",
-            "duplicate relation name 'R'",
-        );
-    }
-
-    #[test]
-    fn duplicate_index_names() {
-        assert_duplicate_name_error(
-            concat!("index I on R(x)\n", "index I on S(y)\n",),
-            "duplicate index name 'I'",
-        );
-    }
-
-    #[test]
-    fn duplicate_transformer_names() {
-        assert_duplicate_name_error(
-            concat!(
-                "extern transformer t(x: A): B\n",
-                "extern transformer t(y: C): D\n",
-            ),
-            "duplicate transformer name 't'",
-        );
-    }
-
-    #[test]
-    fn duplicate_import_paths() {
-        assert_duplicate_name_error("import foo\nimport foo", "duplicate import name 'foo'");
-    }
-
-    #[test]
-    fn duplicate_function_name_and_arity() {
-        assert_duplicate_name_error(
-            "function f(x: u32) {}\nfunction f(y: u32) {}",
-            "duplicate function 'f'",
-        );
+    #[rstest]
+    #[case("typedef A = u32\ntypedef A = string", "duplicate type name 'A'")]
+    #[case(
+        "input relation R(x: u32)\noutput relation R(y: string)\n",
+        "duplicate relation name 'R'"
+    )]
+    #[case("index I on R(x)\nindex I on S(y)\n", "duplicate index name 'I'")]
+    #[case(
+        "extern transformer t(x: A): B\nextern transformer t(y: C): D\n",
+        "duplicate transformer name 't'"
+    )]
+    #[case("import foo\nimport foo", "duplicate import name 'foo'")]
+    #[case(
+        "function f(x: u32) {}\nfunction f(y: u32) {}",
+        "duplicate function 'f'"
+    )]
+    fn duplicate_name_detected(#[case] src: &str, #[case] expected_message: &str) {
+        assert_duplicate_name_error(src, expected_message);
     }
 
     #[test]
