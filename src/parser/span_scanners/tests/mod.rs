@@ -384,3 +384,5 @@ fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
         .trim();
     assert_eq!(expr_text, "Log(x)");
 }
+
+mod attribute_tests;

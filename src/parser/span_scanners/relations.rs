@@ -43,9 +43,11 @@ fn record_relation(st: &mut State<'_>, start: usize) {
                 ));
                 st.skip_line();
             } else {
-                let end = st.stream.line_end(st.stream.cursor());
-                st.stream.skip_until(end);
-                st.spans.push(start..end);
+                // Use the parser span end directly rather than scanning
+                // to line_end; line_end can overshoot into the next
+                // declaration when `relation_columns()` trailing ws
+                // consumes the newline separator.
+                st.spans.push(start..sp.end);
             }
         } else {
             st.skip_line();

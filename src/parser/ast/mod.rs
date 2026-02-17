@@ -14,10 +14,6 @@ use rowan::SyntaxElement;
 use self::parse_utils::is_trivia;
 use crate::{DdlogLanguage, SyntaxKind};
 
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "primarily exercised through test modules")
-)]
 /// Common interface for AST wrappers.
 pub(crate) trait AstNode {
     /// Access the underlying syntax node.
