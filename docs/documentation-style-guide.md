@@ -41,7 +41,8 @@ consistent for developers.
 
 ## Markdown rules
 
-- Follow [markdownlint](https://github.com/DavidAnson/markdownlint)
+- Follow
+  [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2)
   recommendations[^1].
 - Provide code blocks and lists using standard Markdown syntax.
 - Always provide a language identifier for fenced code blocks; use `plaintext`
@@ -254,8 +255,8 @@ Include these sections as appropriate to the decision's complexity:
 ### Formatting guidance
 
 - Use second-level headings (`##`) for major sections.
-- Apply third-level headings (`###`) to subsections (e.g. phases, option names).
-- Compare options in tables when multiple dimensions are relevant. Include
+- Use third-level headings (`###`) for subsections (e.g. phases, option names).
+- Use tables to compare options when multiple dimensions are relevant. Include
   a caption below the table (e.g. “_Table 1: Trade-offs between X and Y._”).
 - Include code snippets with language identifiers when illustrating technical
   approaches. Use `no_run` for illustrative Rust code that should not be
@@ -276,7 +277,7 @@ Include these sections as appropriate to the decision's complexity:
 
 YYYY-MM-DD.
 
-## Context and Problem Statement
+## Context and problem statement
 
 <Describe the situation, constraints, and the question being addressed.>
 
@@ -285,7 +286,7 @@ YYYY-MM-DD.
 - <Driver 1>
 - <Driver 2>
 
-## Options Considered
+## Options considered
 
 ### Option A: <Name>
 
@@ -301,16 +302,16 @@ YYYY-MM-DD.
 
 _Table 1: Comparison of options._
 
-## Decision Outcome / Proposed Direction
+## Decision outcome / proposed direction
 
-<State the chosen or recommended approach and summarize the rationale.>
+<State the chosen or recommended approach and summarise the rationale.>
 
-## Known Risks and Limitations
+## Known risks and limitations
 
 - <Risk or limitation 1>
 - <Risk or limitation 2>
 
-## Outstanding Decisions
+## Outstanding decisions
 
 - <Open question 1>
 - <Open question 2>
