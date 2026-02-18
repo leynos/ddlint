@@ -1,370 +1,333 @@
 # Project roadmap: `ddlint`
 
-This roadmap breaks down the work into logical phases, from the foundational
-parsing layer to the implementation of the linter engine and user-facing
-features.
+This roadmap groups work into phases, steps, and measurable tasks, from parser
+foundation through lint engine delivery and editor integration.
 
 Terminology: references to the Abstract Syntax Tree (AST) describe the typed
 tree produced after parsing, while the Concrete Syntax Tree (CST) captures the
 lossless token-level structure built during parsing.
 
-______________________________________________________________________
-
-## **Phase 1: foundational components (largely complete)**
-
-This phase covers the core infrastructure for turning source text into a
-navigable syntax tree.
-
-- [x] **Project Scaffolding & Continuous Integration (CI)**
-
-  - [x] Set up the Cargo project with a library and binary structure.
-
-  - [x] Configure strict Clippy lints in `clippy.toml` and `Cargo.toml`.
-
-  - [x] Establish a Continuous Integration (CI) pipeline using GitHub Actions
-        for formatting, linting, and testing (`.github/workflows/ci.yml`).
-
-  - [x] Define project documentation standards and agent instructions
-    (`AGENTS.md`, `docs/documentation-style-guide.md`).
-
-- [x] **Lexical Analysis (Tokenizer)**
-
-  - [x] Define all DDlog tokens, including keywords, operators, literals, and
-    trivia (whitespace, comments), using `logos` (`src/tokenizer.rs`).
-
-  - [x] Implement a keyword map using `phf` for efficient identifier-to-keyword
-    conversion.
-
-  - [x] Create a comprehensive test suite for the tokenizer, verifying token
-    kinds, spans, and values for all cases, including trivia and errors
-    (`tests/tokenizer.rs`).
-
-- [x] **Core Syntax Tree (CST) Representation**
-
-  - [x] Define the complete `SyntaxKind` enum for all tokens and grammar nodes
-    (`src/language.rs`), as required by `rowan`.
-
-  - [x] Implement the `rowan::Language` trait for `DdlogLanguage` to bridge the
-    custom `SyntaxKind` with the `rowan` CST.
-
-- [x] **Parsing Pipeline and CST Construction**
-
-  - [x] Implement a token stream wrapper for safe cursor-based navigation
-    (`src/parser/token_stream.rs`).
-
-  - [x] Implement a span-scanning parser (`src/parser/span_scanner.rs`) to
-    identify the byte ranges of top-level DDlog statements (imports, relations,
-    functions, etc.).
-
-  - [x] Implement the `GreenNode` builder (`src/parser/cst_builder/tree.rs`)
-    that consumes tokens and statement spans to construct a full-fidelity
-    `rowan` CST.
-
-  - [x] Expose a unified `parse()` function that orchestrates the entire
-    tokenizing and CST-building process (`src/parser/mod.rs`).
-
-- [x] **Typed AST Layer**
-
-  - [x] Create a `Root` AST node to serve as the entry point for semantic
-    analysis (`src/parser/ast/root.rs`).
-
-  - [x] Implement typed AST wrappers for all parsed top-level statements,
-    providing convenient, high-level accessors for their properties:
-
-    - [x] `Import` (`src/parser/ast/import.rs`)
-
-    - [x] `TypeDef` (`src/parser/ast/type_def.rs`)
-
-    - [x] `Relation` (`src/parser/ast/relation.rs`)
-
-    - [x] `Index` (`src/parser/ast/index.rs`)
-
-    - [x] `Function` (`src/parser/ast/function.rs`)
-
-    - [x] `Transformer` (`src/parser/ast/transformer.rs`)
-
-    - [x] `Rule` (`src/parser/ast/rule.rs`)
-
-  - [x] Develop and test robust parsing utilities for complex nested structures
-    like parameter and type lists, with error recovery
-    (`src/parser/ast/parse_utils/`).
-
-______________________________________________________________________
-
-## **Phase 2: parser grammar expansion**
-
-The current parser excels at identifying top-level statements but has a
-simplified understanding of statement bodies, particularly expressions, as well
-as control flow constructs. This phase aims to build a complete grammar.
-
-- [ ] **Implement Detailed Expression Parsing**
-
-  - [x] Design and implement a Pratt parser for DDlog expressions to correctly
-    handle operator precedence and associativity, as defined in the updated
-    syntax specification
-    (`docs/differential-datalog-parser-syntax-spec-updated.md`).
-
-  - [x] Add support for parsing all literal types within expressions (e.g.,
-    strings, numbers, and booleans). The `SyntaxKind` enum already defines
-    these.
-
-  - [x] Implement parsers for variable references (`e_var`) and function calls
-    (`e_func`).
-
-  - [x] Implement parsers for compound data structures: struct literals
-    (`e_struct`), tuple literals (`e_tuple`), and closures (`e_closure`).
-
-- [ ] **Implement Control-Flow Parsing**
-
-  - [x] Implement a parser for `if`/`else` expressions (`e_ite`).
-
-  - [x] Implement a parser for `for` loops within rules, including optional
-    `if` guards (`parseForStatement` from the Haskell analysis).
-
-  - [x] Implement a parser for `match` expressions (`e_match`).
-
-  - [x] Implement parsers for imperative statements like `break`, `continue`,
-    and `return`.
-
-- [ ] **Enhance Rule Body Parsing**
-
-  - [x] Refactor the current `rule.rs` and `span_scanner.rs` to use the new
-    expression and control-flow parsers, replacing the simple `atom` parser.
-    This allows for detailed analysis of rule bodies.
-
-  - [x] Add support for parsing aggregations and `FlatMap` constructs within
-    rules.
-
-- [ ] **Align Parser with Updated DDlog Syntax**
-
-  - [x] Extend the tokenizer and literal parser to support raw and interpolated
-    string forms, their interned variants, and to reject interpolated strings
-    inside patterns as specified in the updated
-    [parser syntax spec](docs/differential-datalog-parser-syntax-spec-updated.md).
-
-  - [x] Parse width-qualified numeric literals (signed and unsigned integers,
-    floats) with range validation and a shaped literal AST, so later passes can
-    reason about widths.
-
-  - [x] Complete the operator table to match the specification, including
-    `++`, `^`, and `=>`, and add precedence tests that cover their interaction
-    with existing operators.
-
-  - [x] Introduce a dedicated pattern parser that produces AST nodes for use in
-    `match` arms, `for` bindings, and flatmap constructs instead of storing
-    pattern text.
-
-  - [x] Teach the rule parser to accept multi-head rules, head `@` locations,
-    delay `-<N>` markers, and diff `'` adornments, and to lower by-ref heads to
-    `ref_new`.
-
-  - [x] Implement vector and map literal parsing. Raw AST representation
-    (`Expr::VecLit`, `Expr::MapLit`) is stored for linting; builder desugarings
-    are deferred to a later lowering pass.
-
-  - [x] Extract `group_by` and legacy `Aggregate` constructs during parsing, so
-    downstream analyses see the normalized representation.
-
-  - [x] Desugar top-level `for` statements in rule contexts into equivalent
-    rules, matching the specification's semantics.
-
-  - [x] Parse `apply` items and enforce that `transformer` declarations outside
-    `extern` blocks raise diagnostics.
-
-  - [x] Enforce the qualified-call rule so only fully scoped identifiers parse
-    as function calls, deferring bare `name(…)` disambiguation to name
-    resolution.
-    **Acceptance criteria (measurable finish line):**
-
-    - Parsing accepts only fully qualified call syntax as function calls (for
-      example `foo.bar()` / `pkg::foo()`), and parses bare `bar(…)` as a name
-      application form for later name-resolution disambiguation.
-    - Unit tests include at least **2** explicit examples: qualified
-      `foo.bar()` (or equivalent `pkg::foo()`) is accepted as a call, and bare
-      `bar()` is **not** parsed as a function call.
-    - Integration/behaviour tests include at least **2** end-to-end examples
-      proving the same distinction through the full parser entrypoints.
-    - A dedicated regression test suite entry (at least **1** case) is added
-      and runs in CI; CI is green after the change.
-    - Relevant documentation and `CHANGELOG` entries are updated to describe the
-      qualified-call parsing rule and the deferred name-resolution behaviour.
-
-  - [x] Add validators for attribute placement and name uniqueness
-    to mirror the specification's guarantees.
-    **Acceptance criteria (measurable finish line):**
-
-    - Parsing `#[cold]\ntypedef T = u32` produces no errors;
-      parsing `#[cold]\nindex I on R(x)` produces exactly **1**
-      error whose message contains "attribute".
-    - Parsing `typedef A = u32\ntypedef A = string` produces
-      exactly **1** error containing "duplicate" and "A".
-    - Function arity overloading is permitted: two functions
-      with the same name, but different parameter counts produce
-      no duplicate error.
-    - Unit, parser-level, and integration tests cover all
-      permitted and forbidden attribute targets and every
-      duplicate-name category. `make test` is green.
-    - `make check-fmt` and `make lint` exit 0.
-
-______________________________________________________________________
-
-## **Phase 3: linter engine and semantic analysis**
-
-This phase involves building the core engine that will execute lint rules, as
-envisioned in `ddlint-design-and-road-map.md`.
-
-- [ ] **Implement the Linter Engine Core**
-
-  - [ ] Define the core `Rule` and `CstRule` traits.
-
-  - [ ] Implement the `RuleCtx` struct to provide context (source text,
-    configuration, AST root) to rules.
-
-  - [ ] Create the `CstRuleStore` to register and manage all available lint
-    rules.
-
-  - [ ] Build the visitor-based, parallelized Rule Runner (using `rayon`) that
-    traverses the CST and invokes the appropriate rules for each node.
-
-  - [ ] Implement the `declare_lint!` macro to simplify rule creation.
-
-- [ ] **Build Semantic Analysis Infrastructure**
-
-  - [ ] Design and implement a `Symbol` table and `Scope` resolution pass. This
-    is a critical prerequisite for many correctness lints.
-
-  - [ ] The pass should traverse the CST and populate the symbol table with
-    information about:
-
-    - [ ] All declared relations, functions, and types.
-
-    - [ ] The scope of each rule, including variables bound in the head and in
-      each literal.
-
-    - [ ] The usage sites of each variable and relation.
-
-______________________________________________________________________
-
-## **Phase 4: lint rule implementation**
-
-With the engine and semantic analysis in place, the initial set of lint rules
-from the design document can be implemented.
-
-- [ ] **Correctness Rules**
-
-  - [ ] `unused-relation`:
-
-    - Requires the symbol table.
-
-    - Logic: Iterate through all declared relations in the symbol table. For
-      each, check for usage sites (for example, a rule body reference). If none
-      exist, emit a diagnostic.
-
-  - [ ] `unused-variable`:
-
-    - Requires the symbol table and scope analysis.
-
-    - Logic: For each rule's scope, iterate through all variable definitions.
-      If a variable has a definition site but no usage sites within that rule,
-      emit a diagnostic. Handle `_` as an explicit ignore.
-
-  - [ ] `shadowed-variable`:
-
-    - Requires the symbol table and scope analysis.
-
-    - Logic: During scope analysis, when binding a new variable, check if a
-      variable with the same name is already in scope from a preceding literal
-      in the same rule. If so, emit a diagnostic.
-
-  - [ ] `recursive-negation`:
-
-    - Requires building a dependency graph of relations.
-
-    - Logic: Build a directed graph where an edge `R -> S` exists if `R`
-      appears in a rule defining `S`. Mark edges as "negated" if `R` appears
-      inside a `not` clause. Detect cycles in the graph that contain at least
-      one negated edge.
-
-- [ ] **Performance Rules**
-
-  - [ ] `inefficient-join-order`:
-
-    - Requires heuristics or a simple cost model for relation literals.
-
-    - Logic: For each rule body, analyse the sequence of literals. Emit a hint
-      if a literal that is likely to be highly selective (e.g., an equality
-      check on a primary key) appears after a less selective one.
-
-  - [ ] `superfluous-group-by`:
-
-    - Requires parsing aggregation expressions.
-
-    - Logic: For each aggregation, compare the set of grouped variables with
-      the set of all variables in the atom. If they are the same, the
-      `group_by` is redundant.
-
-- [ ] **Style Rules**
-
-  - [ ] `consistent-casing`:
-
-    - Logic: Implement checks for identifier nodes (`T_IDENT`). Based on
-      configuration (e.g., `relation_style = "PascalCase"`), verify the casing
-      of relation, type, and variable names.
-
-    - This rule needs to be `Autofixable`.
-
-  - [ ] `no-magic-numbers`:
-
-    - Logic: Identify numeric literals (`T_NUMBER`) that appear in rule bodies
-      outside a `const` definition. Allow a configurable list of exceptions
-      (e.g., 0, 1).
-
-______________________________________________________________________
-
-## **Phase 5: user interface and experience**
-
-This phase focuses on creating a polished and usable tool for the end-user.
-
-- [ ] **Command-Line Interface (CLI)**
-
-  - [ ] Replace the placeholder `main.rs` with a full CLI using the `clap`
-    crate.
-
-  - [ ] Implement the default linting command: `ddlint <FILES…>`.
-
-  - [ ] Implement the `ddlint rules` subcommand to list all available rules.
-
-  - [ ] Implement the `ddlint explain <RULE_NAME>` subcommand.
-
-  - [ ] Implement configuration loading via `ddlint.toml` using the `config-rs`
-    crate.
-
-- [ ] **Rich Diagnostics**
-
-  - [ ] Integrate the `miette` crate for diagnostic reporting.
-
-  - [ ] Refactor the linter engine and rules to emit `miette`-compatible
-    diagnostic structs instead of simple errors.
-
-  - [ ] Ensure all diagnostics include error codes and links to documentation.
-
-______________________________________________________________________
-
-## **Phase 6: advanced features and future work**
-
-- [ ] **Autofixing**
-
-  - [ ] Implement the autofixing mechanism in the Rule Runner, as described in
-    the design document. This includes collecting suggestions, checking for
-    conflicts, and applying non-overlapping changes in reverse order.
-
-  - [ ] Implement the `--fix` CLI flag.
-
-  - [ ] Add "dual snapshot" tests with `insta` for all `Autofixable` rules to
-    verify both the diagnostic message and the resulting code transformation.
-
-- [ ] **IDE Integration**
-
-  - [ ] Plan and implement a Language Server Protocol (LSP) server in a new
-    binary crate, reusing the `ddlint` core library to provide on-the-fly
-    diagnostics in editors.
+## 1. Foundational components (largely complete)
+
+This phase covers the core infrastructure required to turn source text into a
+navigable CST and typed AST.
+
+### 1.1. Project scaffolding and continuous integration
+
+- [x] 1.1.1. Set up the Cargo project with library and binary targets.
+  See docs/parser-plan.md §7.
+- [x] 1.1.2. Configure strict Clippy lints in `clippy.toml` and
+  `Cargo.toml`. See docs/ddlint-design-and-road-map.md §6.
+- [x] 1.1.3. Establish a Continuous Integration (CI) pipeline for formatting,
+  linting, and tests (`.github/workflows/ci.yml`). See
+  docs/ddlint-design-and-road-map.md §6.
+- [x] 1.1.4. Define project documentation standards and agent guidance
+  (`AGENTS.md`, `docs/documentation-style-guide.md`). See
+  docs/documentation-style-guide.md §Documentation style guide.
+
+### 1.2. Lexical analysis (tokenizer)
+
+- [x] 1.2.1. Define DDlog tokens for keywords, operators, literals, and trivia
+  with `logos` (`src/tokenizer.rs`). See docs/parser-plan.md §3 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §2.
+- [x] 1.2.2. Implement keyword mapping with `phf` for efficient
+  identifier-to-keyword conversion. See docs/parser-plan.md §3.
+- [x] 1.2.3. Add tokenizer tests that validate token kinds, spans, and values,
+  including trivia and error cases (`tests/tokenizer.rs`). See
+  docs/parser-plan.md §6.
+
+### 1.3. Core CST representation
+
+- [x] 1.3.1. Define the complete `SyntaxKind` enum for tokens and grammar
+  nodes (`src/language.rs`). See docs/ddlint-design-and-road-map.md §2.1 and
+  docs/parser-plan.md §2.
+- [x] 1.3.2. Implement `rowan::Language` for `DdlogLanguage` to bridge custom
+  syntax kinds into the CST. See docs/ddlint-design-and-road-map.md §1.3.
+
+### 1.4. Parsing pipeline and CST construction
+
+- [x] 1.4.1. Implement token-stream cursor utilities for safe parser
+  navigation (`src/parser/token_stream.rs`). See
+  docs/ddlint-design-and-road-map.md §2.2.
+- [x] 1.4.2. Implement span scanning for top-level DDlog statements
+  (`src/parser/span_scanner.rs`). See docs/parser-plan.md §4.
+- [x] 1.4.3. Implement a `GreenNode` builder that consumes tokens and statement
+  spans to produce a full-fidelity CST (`src/parser/cst_builder/tree.rs`). See
+  docs/ddlint-design-and-road-map.md §2.
+- [x] 1.4.4. Expose a unified `parse()` entrypoint that orchestrates tokenizing
+  and CST construction (`src/parser/mod.rs`). See
+  docs/ddlint-design-and-road-map.md §2.
+
+### 1.5. Typed AST layer
+
+- [x] 1.5.1. Create a `Root` AST node for semantic analysis entry
+  (`src/parser/ast/root.rs`). See docs/parser-plan.md §5.
+- [x] 1.5.2. Implement typed AST wrappers for parsed top-level statements.
+  See docs/parser-plan.md §5.
+  - [x] 1.5.2.1. Implement `Import` (`src/parser/ast/import.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
+  - [x] 1.5.2.2. Implement `TypeDef` (`src/parser/ast/type_def.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
+  - [x] 1.5.2.3. Implement `Relation` (`src/parser/ast/relation.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.5.
+  - [x] 1.5.2.4. Implement `Index` (`src/parser/ast/index.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.6.
+  - [x] 1.5.2.5. Implement `Function` (`src/parser/ast/function.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.3.
+  - [x] 1.5.2.6. Implement `Transformer` (`src/parser/ast/transformer.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.4.
+  - [x] 1.5.2.7. Implement `Rule` (`src/parser/ast/rule.rs`).
+    See docs/differential-datalog-parser-syntax-spec-updated.md §5.8.
+- [x] 1.5.3. Add and test parsing utilities for nested structures such as
+  parameter and type lists (`src/parser/ast/parse_utils/`). See
+  docs/parser-plan.md §5 and docs/parser-plan.md §6.
+
+## 2. Parser grammar expansion
+
+The parser now identifies top-level statements, but this phase completes
+expression parsing, control flow, and syntax-spec alignment.
+
+### 2.1. Detailed expression parsing
+
+- [x] 2.1.1. Implement a Pratt parser with correct operator precedence and
+  associativity. See docs/pratt-parser-for-ddlog-expressions.md §3 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §4.
+- [x] 2.1.2. Parse all literal forms in expressions (strings, numbers,
+  booleans). See docs/pratt-parser-for-ddlog-expressions.md §2 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §3.
+- [x] 2.1.3. Parse variable references (`e_var`) and function calls (`e_func`).
+  See docs/pratt-parser-for-ddlog-expressions.md §2.
+- [x] 2.1.4. Parse struct literals, tuple literals, and closures (`e_struct`,
+  `e_tuple`, `e_closure`). See docs/pratt-parser-for-ddlog-expressions.md §2.
+
+### 2.2. Control-flow parsing
+
+- [x] 2.2.1. Parse `if` and `else` expressions (`e_ite`).
+  See docs/pratt-parser-for-ddlog-expressions.md §Handling `if`/`else`
+  expressions and docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
+- [x] 2.2.2. Parse `for` loops inside rules, including optional `if` guards.
+  See docs/pratt-parser-for-ddlog-expressions.md §Handling `for` loop
+  expressions and docs/differential-datalog-parser-syntax-spec-updated.md §5.10.
+- [x] 2.2.3. Parse `match` expressions (`e_match`).
+  See docs/pratt-parser-for-ddlog-expressions.md §Handling `match` expressions
+  and docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
+- [x] 2.2.4. Parse imperative statements (`break`, `continue`, `return`).
+  See docs/differential-datalog-parser-syntax-spec-updated.md §5.10.
+
+### 2.3. Rule body parsing integration
+
+- [x] 2.3.1. Refactor `rule.rs` and `span_scanner.rs` to use expression and
+  control-flow parsers instead of the simple atom parser. See
+  docs/pratt-parser-for-ddlog-expressions.md §5.4.
+- [x] 2.3.2. Parse aggregation and FlatMap constructs in rule bodies.
+  See docs/differential-datalog-parser-syntax-spec-updated.md §5.12 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.1.
+
+### 2.4. Syntax-spec lexical and expression conformance
+
+- [x] 2.4.1. Support raw and interpolated string forms, including interned
+  variants, and reject interpolated strings in patterns. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §3.2 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.12.
+- [x] 2.4.2. Parse width-qualified numeric literals (signed and unsigned
+  integers, floats) with range validation and shaped AST literals. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §3.1.
+- [x] 2.4.3. Complete the operator table for `++`, `^`, and `=>`, including
+  precedence tests against existing operators. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §4 and
+  docs/pratt-parser-for-ddlog-expressions.md §5.5.
+- [x] 2.4.4. Parse vector and map literals as raw AST (`Expr::VecLit`,
+  `Expr::MapLit`) while deferring builder-call desugaring. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §3.3 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.4.
+- [x] 2.4.5. Enforce the qualified-call rule so only fully scoped identifiers
+  parse as function calls. See docs/pratt-parser-for-ddlog-expressions.md §1.1
+  and docs/differential-datalog-parser-syntax-spec-updated.md §2.2.
+  - [x] 2.4.5.1. Parser accepts only fully qualified call syntax (for example,
+    `foo.bar()` and `pkg::foo()`), and parses bare `bar(...)` as a deferred
+    name-application form.
+    See docs/pratt-parser-for-ddlog-expressions.md §1.1.
+  - [x] 2.4.5.2. Unit tests include at least two explicit cases: one qualified
+    call accepted, and one bare call not parsed as a function call.
+    See docs/ddlint-design-and-road-map.md §6.1.
+  - [x] 2.4.5.3. Integration tests include at least two end-to-end cases proving
+    the same distinction through parser entrypoints.
+    See docs/ddlint-design-and-road-map.md §6.3.
+  - [x] 2.4.5.4. Add at least one dedicated regression case and keep CI green.
+    See docs/ddlint-design-and-road-map.md §6.
+  - [x] 2.4.5.5. Update documentation and changelog entries for qualified-call
+    parsing and deferred name resolution.
+    See docs/pratt-parser-for-ddlog-expressions.md §1.1.
+
+### 2.5. Syntax-spec structural and semantic conformance
+
+- [x] 2.5.1. Introduce a dedicated pattern parser for `match` arms, `for`
+  bindings, and FlatMap constructs. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.12.
+- [x] 2.5.2. Parse rule-head extensions: multi-head rules, head locations,
+  delay markers (`-<N>`), diff adornments (`'`), and by-reference head lowering
+  to `ref_new`. See docs/differential-datalog-parser-syntax-spec-updated.md §7
+  and docs/differential-datalog-parser-syntax-spec-updated.md §6.3.
+- [x] 2.5.3. Extract `group_by` and legacy `Aggregate` constructs during
+  parsing into normalized representation. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.1 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.2.
+- [x] 2.5.4. Desugar top-level `for` statements in rule contexts into
+  equivalent rules. See docs/differential-datalog-parser-syntax-spec-updated.md
+  §6.5.
+- [x] 2.5.5. Parse `apply` items and enforce that non-`extern` transformers
+  produce diagnostics. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.7 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.4.
+- [x] 2.5.6. Validate attribute placement and top-level name uniqueness.
+  See docs/differential-datalog-parser-syntax-spec-updated.md §8 and
+  docs/differential-datalog-parser-syntax-spec-updated.md §9.
+  - [x] 2.5.6.1. `#[cold]\ntypedef T = u32` parses without errors, while
+    `#[cold]\nindex I on R(x)` yields exactly one attribute-placement error.
+    See docs/differential-datalog-parser-syntax-spec-updated.md §9.
+  - [x] 2.5.6.2. Duplicate top-level typedef names yield exactly one duplicate
+    error that includes the duplicated identifier.
+    See docs/differential-datalog-parser-syntax-spec-updated.md §8.
+  - [x] 2.5.6.3. Function overloading by arity is accepted without duplicate
+    errors.
+    See docs/differential-datalog-parser-syntax-spec-updated.md §8.
+  - [x] 2.5.6.4. Unit, parser-level, and integration tests cover permitted and
+    forbidden attribute targets, plus all duplicate-name categories.
+    See docs/ddlint-design-and-road-map.md §6.
+  - [x] 2.5.6.5. `make test`, `make check-fmt`, and `make lint` pass.
+    See docs/ddlint-design-and-road-map.md §6.
+
+## 3. Linter engine and semantic analysis
+
+This phase builds the execution engine and semantic context used by rule
+implementations.
+
+### 3.1. Linter engine core
+
+- [ ] 3.1.1. Define the core `Rule` and `CstRule` traits.
+  See docs/ddlint-design-and-road-map.md §3.1.
+- [ ] 3.1.2. Implement `RuleCtx` to provide source text, configuration, and AST
+  context to rules. See docs/ddlint-design-and-road-map.md §1.2 and
+  docs/ddlint-design-and-road-map.md §3.1.
+- [ ] 3.1.3. Create `CstRuleStore` to register and resolve rule handlers by
+  syntax kind. See docs/ddlint-design-and-road-map.md §1.2.
+- [ ] 3.1.4. Build a visitor-based parallel rule runner (using `rayon`) to walk
+  the CST and invoke applicable rules. See docs/ddlint-design-and-road-map.md
+  §1.2.
+
+### 3.2. Rule-authoring ergonomics
+
+- [ ] 3.2.1. Implement the `declare_lint!` macro to reduce boilerplate when
+  defining rule metadata and behaviour. See docs/ddlint-design-and-road-map.md
+  §3.2.
+- [ ] 3.2.2. Ensure macro output integrates with rule registration and runtime
+  dispatch in `CstRuleStore`. Requires 3.1.3. See
+  docs/ddlint-design-and-road-map.md §3.2.
+
+### 3.3. Semantic analysis infrastructure
+
+- [ ] 3.3.1. Implement symbol-table and scope-resolution passes.
+  See docs/ddlint-design-and-road-map.md §2.3.
+- [ ] 3.3.2. Record declarations for relations, functions, and types.
+  Requires 3.3.1. See docs/ddlint-design-and-road-map.md §2.3.
+- [ ] 3.3.3. Record per-rule scope bindings for head variables and
+  literal-derived variables. Requires 3.3.1. See
+  docs/ddlint-design-and-road-map.md §2.3.
+- [ ] 3.3.4. Record usage sites for variables and relations.
+  Requires 3.3.1. See docs/ddlint-design-and-road-map.md §2.3.
+
+## 4. Lint rule implementation
+
+With the rule runner and semantic analysis in place, implement the initial lint
+catalog.
+
+### 4.1. Correctness rules
+
+- [ ] 4.1.1. Implement `unused-relation` diagnostics for declared relations with
+  no usage sites. Requires 3.3.2 and 3.3.4. See
+  docs/ddlint-design-and-road-map.md §3.3.
+- [ ] 4.1.2. Implement `unused-variable` diagnostics for variables defined but
+  not used within a rule, treating `_` as explicit ignore. Requires 3.3.3 and
+  3.3.4. See docs/ddlint-design-and-road-map.md §3.3.
+- [ ] 4.1.3. Implement `shadowed-variable` diagnostics for same-scope rebinding
+  in later literals. Requires 3.3.3. See docs/ddlint-design-and-road-map.md
+  §3.3.
+- [ ] 4.1.4. Implement `recursive-negation` detection via relation dependency
+  graphs that track negated edges and reject cycles containing negation. See
+  docs/ddlint-design-and-road-map.md §3.3.
+
+### 4.2. Performance rules
+
+- [ ] 4.2.1. Implement `inefficient-join-order` hints using literal selectivity
+  heuristics or a simple cost model. See docs/ddlint-design-and-road-map.md
+  §3.3.
+- [ ] 4.2.2. Implement `superfluous-group-by` detection when grouped variables
+  equal the atom variable set. Requires parser support from 2.5.3. See
+  docs/ddlint-design-and-road-map.md §3.3.
+
+### 4.3. Style rules
+
+- [ ] 4.3.1. Implement `consistent-casing` checks for identifier nodes using
+  rule configuration (`relation_style`, and related settings). See
+  docs/ddlint-design-and-road-map.md §3.3 and
+  docs/ddlint-design-and-road-map.md §4.3.
+- [ ] 4.3.2. Make `consistent-casing` autofixable.
+  Requires 6.1.1. See docs/ddlint-design-and-road-map.md §3.3 and
+  docs/ddlint-design-and-road-map.md §5.2.
+- [ ] 4.3.3. Implement `no-magic-numbers` checks for numeric literals in rule
+  bodies outside `const` definitions, with configurable exceptions. See
+  docs/ddlint-design-and-road-map.md §3.3.
+
+## 5. User interface and experience
+
+This phase delivers the end-user command-line interface and diagnostic output.
+
+### 5.1. Command-line interface
+
+- [ ] 5.1.1. Replace placeholder `main.rs` with a `clap`-based CLI.
+  See docs/ddlint-design-and-road-map.md §4.1.
+- [ ] 5.1.2. Implement default lint command: `ddlint <FILES...>`.
+  See docs/ddlint-design-and-road-map.md §4.1.
+- [ ] 5.1.3. Implement `ddlint rules` to list available rules.
+  See docs/ddlint-design-and-road-map.md §4.1.
+- [ ] 5.1.4. Implement `ddlint explain <RULE_NAME>`.
+  See docs/ddlint-design-and-road-map.md §4.1.
+- [ ] 5.1.5. Implement `ddlint.toml` loading via `config-rs`.
+  See docs/ddlint-design-and-road-map.md §4.2 and
+  docs/ddlint-design-and-road-map.md §4.3.
+
+### 5.2. Rich diagnostics
+
+- [ ] 5.2.1. Integrate `miette` for diagnostic rendering.
+  See docs/ddlint-design-and-road-map.md §5.1.
+- [ ] 5.2.2. Refactor rule outputs to emit `miette`-compatible diagnostic
+  structures. See docs/ddlint-design-and-road-map.md §5.1.
+- [ ] 5.2.3. Ensure diagnostics include stable error codes and documentation
+  links. See docs/ddlint-design-and-road-map.md §5.1.
+
+## 6. Advanced features and future work
+
+### 6.1. Autofixing
+
+- [ ] 6.1.1. Implement autofix collection and conflict resolution in the rule
+  runner, applying non-overlapping edits in reverse order. See
+  docs/ddlint-design-and-road-map.md §5.2.
+- [ ] 6.1.2. Implement the `--fix` CLI flag.
+  Requires 6.1.1 and 5.1.1. See docs/ddlint-design-and-road-map.md §4.1 and
+  docs/ddlint-design-and-road-map.md §5.2.
+- [ ] 6.1.3. Add dual-snapshot tests with `insta` for each autofixable rule,
+  covering both diagnostics and transformed output. Requires 6.1.1. See
+  docs/ddlint-design-and-road-map.md §5.3 and
+  docs/ddlint-design-and-road-map.md §6.2.
+
+### 6.2. Integrated development environment (IDE) integration
+
+- [ ] 6.2.1. Create a dedicated Language Server Protocol (LSP) binary crate
+  that reuses the `ddlint` core library. See docs/ddlint-design-and-road-map.md
+  §7.
+- [ ] 6.2.2. Integrate an LSP framework (`tower-lsp`) and protocol types
+  (`lsp-types`) for transport and message contracts. Requires 6.2.1. See
+  docs/ddlint-design-and-road-map.md §7.
+- [ ] 6.2.3. Implement on-the-fly diagnostics publication (`didOpen`,
+  `didChange`) backed by the existing lint engine. Requires 6.2.1 and 5.2.1.
+  See docs/ddlint-design-and-road-map.md §7.
