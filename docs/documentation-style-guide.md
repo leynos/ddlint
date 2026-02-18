@@ -203,7 +203,7 @@ navigability:
   - [ ] Write integration tests for permission boundaries.
 ```
 
-## Architectural Decision Records (ADRs)
+## Architectural decision records (ADRs)
 
 Use ADRs to document significant architectural and design decisions. ADRs
 capture the context, options considered, and rationale behind decisions,
