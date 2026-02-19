@@ -137,6 +137,32 @@ a first-class library with layered surfaces:
 useful), while `telephone` will consume `ddlog-sema` and parser facade
 entrypoints intended for compiler workflows.
 
+## Ownership and cross-crate coordination
+
+This split only succeeds if ownership boundaries are explicit and enforced.
+
+- `ddlog-syntax` ownership:
+  maintained by the `ddlint` maintainers, with responsibility for CST fidelity,
+  token model stability, and source mapping contracts.
+- `ddlog-sema` ownership:
+  maintained by the `telephone` maintainers, with responsibility for typed
+  semantic model evolution, semantic validation, and dependency extraction
+  contracts.
+- `ddlog-parser` ownership:
+  jointly maintained by `ddlint` and `telephone` maintainers as the public
+  integration surface and compatibility facade.
+
+Cross-crate change coordination policy:
+
+- Breaking API changes in any crate require an ADR update and migration notes.
+- Changes that modify shared contracts (diagnostics, spans, semantic node
+  shapes, facade entrypoints) require approval from both consumer maintainer
+  groups.
+- `ddlog-parser` compatibility shims must include a deprecation target release
+  and tracked removal issue.
+- `CODEOWNERS` must mirror these crate boundaries so review routing is
+  automatic.
+
 ## Goals and non-goals
 
 ### Goals
@@ -164,6 +190,13 @@ Deliverables:
 
 - compiling workspace with no behavioural regression in parser tests.
 
+Exit criteria:
+
+- `ddlog-syntax`, `ddlog-sema`, and `ddlog-parser` compile in CI.
+- Existing top-level parser entrypoints are available via `ddlog-parser`.
+- Parser regression suite passes with no net increase in failures.
+- `CODEOWNERS` entries exist for all three crates.
+
 ### Phase 2: formalize diagnostics contract
 
 - Introduce stable diagnostic types with explicit parse and semantic categories.
@@ -173,6 +206,13 @@ Deliverables:
 Deliverables:
 
 - parser diagnostics documentation and contract tests.
+
+Exit criteria:
+
+- 100% of public parser diagnostics are emitted through the stable diagnostic
+  types.
+- Diagnostic code list is documented and treated as compatibility surface.
+- Contract tests cover parse-stage and semantic-stage diagnostics.
 
 ### Phase 3: semantic model extraction
 
@@ -184,6 +224,13 @@ Deliverables:
 
 - semantic model tests and dependency extraction fixtures.
 
+Exit criteria:
+
+- 100% of compiler-facing semantic reads use `ddlog-sema` typed nodes.
+- Zero compiler paths depend on CST-string reparsing for semantic extraction.
+- Dependency extraction fixtures are green for representative recursive and
+  non-recursive programs.
+
 ### Phase 4: consumer migration
 
 - Migrate `ddlint` imports to the syntax-layer APIs.
@@ -194,6 +241,14 @@ Deliverables:
 
 - both consumers building against new crates without legacy direct imports.
 
+Exit criteria:
+
+- 100% of `ddlint` parser imports resolve through `ddlog-syntax` or
+  `ddlog-parser`.
+- 100% of `telephone` parser/semantic imports resolve through `ddlog-sema` or
+  `ddlog-parser`.
+- Temporary shims are limited to `ddlog-parser` and tracked with removal issues.
+
 ### Phase 5: deprecation and cleanup
 
 - Remove deprecated compatibility shims.
@@ -203,6 +258,14 @@ Deliverables:
 Deliverables:
 
 - a fully split parser library surface with documented maintenance ownership.
+
+Exit criteria:
+
+- All deprecated shim APIs are removed or have approved exception ADRs.
+- Workspace builds and tests pass with the compatibility layer minimized to
+  intended long-term surface area.
+- Ownership and support expectations are documented in crate READMEs and
+  `docs/roadmap.md`.
 
 ## Known risks and limitations
 
