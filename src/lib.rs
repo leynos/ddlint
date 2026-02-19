@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 pub mod language;
+pub mod linter;
 pub mod parser;
 pub mod syntax_utils;
 pub mod tokenizer;

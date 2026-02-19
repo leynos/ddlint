@@ -4,7 +4,7 @@ This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
 `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 PLANS.md is not present in this repository.
 
@@ -75,12 +75,15 @@ Observable success is:
 - [x] (2026-02-18 00:00Z) Reviewed roadmap item `3.1.1`, referenced design
   docs, and existing parser/test structure.
 - [x] (2026-02-18 00:10Z) Authored initial ExecPlan draft.
-- [ ] Implement linter trait module and exports.
-- [ ] Add unit tests for trait contracts.
-- [ ] Add behavioural tests for CST hook dispatch.
-- [ ] Update design docs with final signature decisions.
-- [ ] Run quality gates and capture logs.
-- [ ] Mark roadmap item `3.1.1` done.
+- [x] (2026-02-19 00:15Z) Implemented linter trait module and crate exports.
+- [x] (2026-02-19 00:20Z) Added unit tests for trait contracts and helper
+  types.
+- [x] (2026-02-19 00:25Z) Added behavioural CST dispatch tests using
+  `examples/hello_join.dl` and `examples/reachability.dl`.
+- [x] (2026-02-19 00:30Z) Updated design docs with concrete trait signatures.
+- [x] (2026-02-19 00:50Z) Ran Markdown and Rust quality gates with logged
+  output.
+- [x] (2026-02-19 00:55Z) Marked roadmap item `3.1.1` done.
 
 ## Surprises & Discoveries
 
@@ -97,6 +100,11 @@ Observable success is:
   only. Impact: this milestone must introduce the initial linter module
   boundary.
 
+- Observation: the environment does not expose qdrant MCP tools.
+  Evidence: `list_mcp_resources` and `list_mcp_resource_templates` returned
+  empty lists. Impact: project-memory retrieval/storage could not be completed
+  during this implementation session.
+
 ## Decision Log
 
 - Decision: use `docs/ddlint-design.md` section `3.1` as the normative source
@@ -109,12 +117,44 @@ Observable success is:
   Rationale: preserves roadmap sequencing and keeps change scope atomic.
   Date/Author: 2026-02-18 / assistant
 
+- Decision: include `RuleCtx` and `LintDiagnostic` as lightweight placeholders
+  in `3.1.1` to stabilize trait signatures while deferring rich context and
+  reporting behaviour to later milestones. Rationale: allows immediate rule
+  authoring and behavioural testing without pre-empting `3.1.2` design.
+  Date/Author: 2026-02-19 / assistant
+
 ## Outcomes & Retrospective
 
-Pending implementation.
+Implemented a new `crate::linter` module with core traits and lightweight
+supporting types:
 
-Success for this plan is a minimal, documented trait surface with tests proving
-its contracts, and no regressions in existing parser behaviour.
+- `Rule` for rule metadata;
+- `CstRule` for CST node/token hooks with default no-op methods;
+- `RuleCtx` placeholder context type;
+- `LintDiagnostic` minimal diagnostic container.
+
+Validation added:
+
+- Unit tests in `src/linter/rule.rs` verify metadata dispatch, trait-object
+  usage, `Send + Sync` constraints, and diagnostic accessor behaviour.
+- Behavioural tests in `tests/linter_rule_traits.rs` run a local dispatch loop
+  against real examples and confirm node/token hook invocation counts and
+  default no-op behaviour.
+
+Documentation and roadmap:
+
+- `docs/ddlint-design.md` section `3.1` now records concrete signatures and
+  implementation location.
+- `docs/roadmap.md` marks `3.1.1` as done.
+
+All quality gates passed:
+
+- `make fmt`
+- `make markdownlint`
+- `make nixie`
+- `make check-fmt`
+- `make lint`
+- `make test`
 
 ## Context and orientation
 
@@ -297,5 +337,5 @@ named fixture constants to keep test intent readable.
 
 ## Revision note
 
-Initial draft created for roadmap item `3.1.1` with explicit interfaces,
-contract tests, and completion gates.
+Revised to COMPLETE after implementing `3.1.1`, adding tests and docs, and
+passing all required quality gates.

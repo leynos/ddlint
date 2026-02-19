@@ -403,6 +403,39 @@ or configuration, and report any discovered issues by creating and returning
 `Diagnostic` objects. This design keeps the logic for each rule encapsulated
 and testable in isolation.
 
+The initial implementation for roadmap item `3.1.1` lives in
+`src/linter/rule.rs` and defines the following public contracts:
+
+```rust,no_run
+pub trait Rule {
+    fn name(&self) -> &'static str;
+    fn group(&self) -> &'static str;
+    fn docs(&self) -> &'static str;
+}
+
+pub trait CstRule: Rule + Send + Sync {
+    fn target_kinds(&self) -> &'static [SyntaxKind];
+
+    fn check_node(
+        &self,
+        node: &SyntaxNode<DdlogLanguage>,
+        ctx: &RuleCtx,
+        diagnostics: &mut Vec<LintDiagnostic>,
+    ) { /* default no-op */ }
+
+    fn check_token(
+        &self,
+        token: &SyntaxToken<DdlogLanguage>,
+        ctx: &RuleCtx,
+        diagnostics: &mut Vec<LintDiagnostic>,
+    ) { /* default no-op */ }
+}
+```
+
+`RuleCtx` and `LintDiagnostic` are intentionally lightweight in `3.1.1`,
+allowing later milestones to extend context payload and reporting behaviour
+without redefining the core trait boundaries.
+
 ### 3.2. A declarative macro for rule creation (`declare_lint!`)
 
 To streamline the development of new rules, reduce boilerplate, and improve the

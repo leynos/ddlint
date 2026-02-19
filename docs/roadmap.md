@@ -204,7 +204,7 @@ implementations.
 
 ### 3.1. Linter engine core
 
-- [ ] 3.1.1. Define the core `Rule` and `CstRule` traits.
+- [x] 3.1.1. Define the core `Rule` and `CstRule` traits.
   See docs/ddlint-design-and-road-map.md §3.1.
 - [ ] 3.1.2. Implement `RuleCtx` to provide source text, configuration, and AST
   context to rules. See docs/ddlint-design-and-road-map.md §1.2 and
