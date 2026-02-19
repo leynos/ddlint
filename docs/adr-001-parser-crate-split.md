@@ -31,6 +31,23 @@ friction:
 This ADR proposes a crate split and migration plan that makes the parser a
 first-class library with explicit layers and versioned contracts.
 
+## Glossary
+
+- Concrete Syntax Tree (CST):
+  a lossless syntax tree preserving tokens, trivia, and source layout.
+- Semantic model:
+  an owned, typed program representation used by compiler-facing workflows.
+- Planner-handoff:
+  the stable interface that exports `ddlog-sema` data into planner inputs.
+- Provenance:
+  source-location mapping from semantic nodes back to original spans.
+- Canonicalisation:
+  deterministic normalisation of equivalent plans into a stable shape.
+- Intermediate representation (IR):
+  planner-facing structured form consumed after semantic lowering.
+- Continuous integration (CI):
+  the automated pipeline that builds and validates the workspace.
+
 ## Decision drivers
 
 - Support two first-class consumers with different correctness and ergonomics
@@ -60,9 +77,9 @@ first-class library with explicit layers and versioned contracts.
 - Maintain deterministic source mapping for rule heads, body terms, and
   adornments.
 - Preserve semantic metadata required for planner rewrite safety checks (for
-  example semiring, stratification, and key/constraint facts).
-- Define a stable lowering boundary from `ddlog-sema` into planner-facing IR
-  inputs, without reparsing source text.
+  example, semiring, stratification, and key/constraint facts).
+- Define a stable lowering boundary from `ddlog-sema` into planner-facing
+  intermediate representation (IR) inputs, without reparsing source text.
 - Ensure deterministic semantic traversal and serialisation semantics for
   downstream cache-key generation.
 - Keep compatibility with workspace quality gates and existing tests.
@@ -171,6 +188,25 @@ Cross-crate change coordination policy:
 - `CODEOWNERS` must mirror these crate boundaries so review routing is
   automatic.
 
+Approval matrix for common change types:
+
+Joint approval required from both maintainer groups:
+
+- New or renamed public diagnostic codes, severity semantics, or stage labels.
+- New public semantic node fields or variants used by both consumers.
+- `ddlog-parser` facade entrypoint additions/removals or signature changes.
+- Crate/module renames, public path moves, and public contract relocations.
+- Planner-handoff schema changes affecting ordering, provenance, or hashes.
+
+Unilateral approval allowed within owning crate:
+
+- Internal parser/lexer refactors in `ddlog-syntax` with unchanged public
+  contracts and diagnostics behaviour.
+- Internal semantic validation implementation updates in `ddlog-sema` with
+  unchanged public model shape and diagnostics contract.
+- Internal orchestration/performance changes in `ddlog-parser` with unchanged
+  public behaviour and compatibility surface.
+
 ## Goals and non-goals
 
 ### Goals
@@ -215,6 +251,17 @@ Acceptance gate for parser-front-end completion:
 
 ## Migration plan
 
+### Validation scope for phase exits
+
+- Parser unit scope:
+  `src/parser/tests/**`, `src/parser/ast/**/tests.rs`,
+  `src/parser/cst_builder/spans/tests.rs`, and
+  `src/parser/span_scanners/tests/**`.
+- Integration scope:
+  all suites under `tests/*.rs`.
+- Phase 3 fixture corpus scope (to be introduced):
+  `tests/fixtures/phase3/*.ddlog`.
+
 ### Phase 1: establish crate skeletons and compatibility facade
 
 - Create new crates and workspace wiring.
@@ -227,9 +274,11 @@ Deliverables:
 
 Exit criteria:
 
-- `ddlog-syntax`, `ddlog-sema`, and `ddlog-parser` compile in CI.
+- `ddlog-syntax`, `ddlog-sema`, and `ddlog-parser` compile in continuous
+  integration (CI).
 - Existing top-level parser entrypoints are available via `ddlog-parser`.
-- Parser regression suite passes with no net increase in failures.
+- Validation scope suites pass with no skipped tests in parser unit and
+  integration scope.
 - `CODEOWNERS` entries exist for all three crates.
 
 ### Phase 2: formalize diagnostics contract
@@ -247,7 +296,8 @@ Exit criteria:
 - 100% of public parser diagnostics are emitted through the stable diagnostic
   types.
 - Diagnostic code list is documented and treated as compatibility surface.
-- Contract tests cover parse-stage and semantic-stage diagnostics.
+- Contract tests in parser unit and integration scope cover parse-stage and
+  semantic-stage diagnostics with span assertions.
 
 ### Phase 3: semantic model extraction
 
@@ -261,13 +311,16 @@ Deliverables:
 
 - semantic model tests and dependency extraction fixtures.
 - planner-handoff interface note and worked mapping example in `docs/`.
+- fixture corpus at `tests/fixtures/phase3/` containing categorized programs
+  for dependency extraction validation.
 
 Exit criteria:
 
 - 100% of compiler-facing semantic reads use `ddlog-sema` typed nodes.
 - Zero compiler paths depend on CST-string reparsing for semantic extraction.
-- Dependency extraction fixtures are green for representative recursive and
-  non-recursive programs.
+- Dependency extraction fixtures are green for at least 12 programs in
+  `tests/fixtures/phase3/`: 4 non-recursive, 4 single-SCC recursive, and 4
+  multi-SCC stratified programs.
 - Deterministic export tests verify stable ordering of planner-relevant semantic
   collections.
 
