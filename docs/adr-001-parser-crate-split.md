@@ -39,6 +39,8 @@ first-class library with explicit layers and versioned contracts.
 - Provide a typed semantic model for compiler consumers without CST reparsing.
 - Establish stable API and diagnostics contracts suitable for reuse.
 - Reduce coupling between lint-only utilities and compiler-only concerns.
+- Prepare parser outputs for deterministic lowering into future `pliron`
+  dialect and `egg` canonicalisation pipelines.
 - Enable incremental adoption with low migration risk.
 
 ## Requirements
@@ -57,6 +59,12 @@ first-class library with explicit layers and versioned contracts.
 - Define stable diagnostic types (code, message, span, severity, stage).
 - Maintain deterministic source mapping for rule heads, body terms, and
   adornments.
+- Preserve semantic metadata required for planner rewrite safety checks (for
+  example semiring, stratification, and key/constraint facts).
+- Define a stable lowering boundary from `ddlog-sema` into planner-facing IR
+  inputs, without reparsing source text.
+- Ensure deterministic semantic traversal and serialisation semantics for
+  downstream cache-key generation.
 - Keep compatibility with workspace quality gates and existing tests.
 
 ## Options considered
@@ -178,6 +186,33 @@ Cross-crate change coordination policy:
 - Introducing pliron/egg/egglog planning in the same migration.
 - Implementing runtime result caching behaviour changes.
 
+## Forward compatibility for pliron and egg adoption
+
+This ADR does not adopt `pliron` or `egg`, but it must define parser-side
+contracts that allow that work to proceed safely in a later ADR.
+
+Parser and semantic model obligations for future planner work:
+
+- Do not encode planner-relevant semantics in opaque string fields.
+- Provide typed, explicit representation for constructs that become planner
+  operations (joins, filters, projections, aggregations, recursion boundaries).
+- Preserve source provenance mapping from semantic nodes to spans so rewrites
+  can be explained with compiler diagnostics.
+- Preserve semantic facts needed for guarded rewrites (keys, arity, relation
+  kinds, stratification, and semiring annotations where applicable).
+- Provide deterministic ordering for semantic collections and symbol views so
+  downstream canonicalisation and hash derivation are stable.
+- Reserve a forward-compatible extension point for planner hints/attributes so
+  new planner metadata can be added without source reparsing.
+
+Acceptance gate for parser-front-end completion:
+
+- Before the parser split is marked complete, a short interface note in
+  `docs/` must specify the planner handoff shape from `ddlog-sema` (types,
+  invariants, deterministic ordering rules, and provenance expectations).
+- That interface note must include at least one worked example showing how a
+  parsed rule maps to planner-facing semantic data without CST reparsing.
+
 ## Migration plan
 
 ### Phase 1: establish crate skeletons and compatibility facade
@@ -219,10 +254,13 @@ Exit criteria:
 - Introduce an owned semantic model in `ddlog-sema`.
 - Replace compiler-facing string reparsing paths with typed fields and nodes.
 - Add semantic validation and dependency extraction entrypoints.
+- Define planner-handoff invariants for deterministic semantic export
+  (without introducing `pliron` or `egg` dependencies yet).
 
 Deliverables:
 
 - semantic model tests and dependency extraction fixtures.
+- planner-handoff interface note and worked mapping example in `docs/`.
 
 Exit criteria:
 
@@ -230,6 +268,8 @@ Exit criteria:
 - Zero compiler paths depend on CST-string reparsing for semantic extraction.
 - Dependency extraction fixtures are green for representative recursive and
   non-recursive programs.
+- Deterministic export tests verify stable ordering of planner-relevant semantic
+  collections.
 
 ### Phase 4: consumer migration
 
@@ -283,6 +323,8 @@ Exit criteria:
 - Versioning policy: independent crate versions or lockstep workspace versions.
 - Whether dependency extraction belongs in `ddlog-sema` or a separate
   `ddlog-plan` crate.
+- Final ownership boundary for planner integration artefacts (`pliron` dialect,
+  rewrite rules, canonicaliser, and hash policy).
 - Compatibility window for deprecated facade APIs after consumer migration.
 
 ## Architectural rationale
@@ -291,4 +333,6 @@ This direction aligns with the project's existing CST-first design for linting
 while introducing a dedicated semantic contract for compiler workflows. It
 separates concerns at the crate boundary, improves API truthfulness, and
 creates a stable foundation for future canonical planning and cache-key
-generation in downstream compiler layers.
+generation in downstream compiler layers. By defining planner-readiness
+contracts now, the parser front end can progress independently while preserving
+the invariants that later `pliron` and `egg` adoption will require.
