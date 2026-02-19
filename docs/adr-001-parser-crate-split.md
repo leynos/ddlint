@@ -6,7 +6,7 @@ Proposed.
 
 ## Date
 
-2026-02-18.
+2026-02-18
 
 ## Context and problem statement
 
@@ -24,7 +24,7 @@ Keeping both concerns behind one implicit surface has already introduced
 friction:
 
 - public APIs are not clearly partitioned by consumer role,
-- compiler-facing access still relies on string extraction and re-parsing in
+- compiler-facing access still relies on string extraction and reparsing in
   places, and
 - diagnostics are transportable, but not yet stable as a formal contract.
 
@@ -196,7 +196,7 @@ Parser and semantic model obligations for future planner work:
 - Do not encode planner-relevant semantics in opaque string fields.
 - Provide typed, explicit representation for constructs that become planner
   operations (joins, filters, projections, aggregations, recursion boundaries).
-- Preserve source provenance mapping from semantic nodes to spans so rewrites
+- Preserve source provenance mapping from semantic nodes to spans, so rewrites
   can be explained with compiler diagnostics.
 - Preserve semantic facts needed for guarded rewrites (keys, arity, relation
   kinds, stratification, and semiring annotations where applicable).
