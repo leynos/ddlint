@@ -41,8 +41,8 @@ first-class library with explicit layers and versioned contracts.
   the stable interface that exports `ddlog-sema` data into planner inputs.
 - Provenance:
   source-location mapping from semantic nodes back to original spans.
-- Canonicalisation:
-  deterministic normalisation of equivalent plans into a stable shape.
+- Canonicalization:
+  deterministic normalization of equivalent plans into a stable shape.
 - Intermediate representation (IR):
   planner-facing structured form consumed after semantic lowering.
 - Continuous integration (CI):
@@ -57,7 +57,7 @@ first-class library with explicit layers and versioned contracts.
 - Establish stable API and diagnostics contracts suitable for reuse.
 - Reduce coupling between lint-only utilities and compiler-only concerns.
 - Prepare parser outputs for deterministic lowering into future `pliron`
-  dialect and `egg` canonicalisation pipelines.
+  dialect and `egg` canonicalization pipelines.
 - Enable incremental adoption with low migration risk.
 
 ## Requirements
@@ -80,7 +80,7 @@ first-class library with explicit layers and versioned contracts.
   example, semiring, stratification, and key/constraint facts).
 - Define a stable lowering boundary from `ddlog-sema` into planner-facing
   intermediate representation (IR) inputs, without reparsing source text.
-- Ensure deterministic semantic traversal and serialisation semantics for
+- Ensure deterministic semantic traversal and serialization semantics for
   downstream cache-key generation.
 - Keep compatibility with workspace quality gates and existing tests.
 
@@ -237,7 +237,7 @@ Parser and semantic model obligations for future planner work:
 - Preserve semantic facts needed for guarded rewrites (keys, arity, relation
   kinds, stratification, and semiring annotations where applicable).
 - Provide deterministic ordering for semantic collections and symbol views so
-  downstream canonicalisation and hash derivation are stable.
+  downstream canonicalization and hash derivation are stable.
 - Reserve a forward-compatible extension point for planner hints/attributes so
   new planner metadata can be added without source reparsing.
 
