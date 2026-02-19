@@ -11,6 +11,17 @@ const TOKEN_HIT_MESSAGE: &str = "token hit";
 
 struct CountingRule;
 
+impl CountingRule {
+    fn push_diagnostic(
+        &self,
+        message: &'static str,
+        range: rowan::TextRange,
+        diagnostics: &mut Vec<LintDiagnostic>,
+    ) {
+        diagnostics.push(LintDiagnostic::new(self.name(), message, range));
+    }
+}
+
 impl Rule for CountingRule {
     fn name(&self) -> &'static str {
         "counting-rule"
@@ -36,11 +47,7 @@ impl CstRule for CountingRule {
         _ctx: &RuleCtx,
         diagnostics: &mut Vec<LintDiagnostic>,
     ) {
-        diagnostics.push(LintDiagnostic::new(
-            self.name(),
-            NODE_HIT_MESSAGE,
-            node.text_range(),
-        ));
+        self.push_diagnostic(NODE_HIT_MESSAGE, node.text_range(), diagnostics);
     }
 
     fn check_token(
@@ -49,11 +56,7 @@ impl CstRule for CountingRule {
         _ctx: &RuleCtx,
         diagnostics: &mut Vec<LintDiagnostic>,
     ) {
-        diagnostics.push(LintDiagnostic::new(
-            self.name(),
-            TOKEN_HIT_MESSAGE,
-            token.text_range(),
-        ));
+        self.push_diagnostic(TOKEN_HIT_MESSAGE, token.text_range(), diagnostics);
     }
 }
 
