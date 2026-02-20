@@ -12,24 +12,14 @@ This page lists the current documents in the `docs/` directory.
   refactoring approaches.
 - [ddlint design](./ddlint-design.md): Core architecture and implementation
   roadmap for the `ddlint` linter.
-- [Differential Datalog parser syntax specification migration plan](./differential-datalog-parser-syntax-spec-migration-plan.md):
-  Gap analysis and migration steps for aligning parser behaviour with the
-  updated syntax specification.
+- [Documentation style guide](./documentation-style-guide.md): Authoring
+  conventions for Markdown structure, spelling, formatting, and ADR content.
 - [Differential Datalog parser syntax specification updated](./differential-datalog-parser-syntax-spec-updated.md):
   Normative reference for DDlog syntax, lexer rules, operator precedence, and
   parser desugarings.
-- [Documentation style guide](./documentation-style-guide.md): Authoring
-  conventions for Markdown structure, spelling, formatting, and ADR content.
-- [Function parsing design](./function-parsing-design.md): Design details for
-  parsing function declarations and definitions, with shared parsing helpers.
-- [Haskell parser analysis](./haskell-parser-analysis.md): Technical summary of
-  the legacy Haskell parser to inform Rust porting work.
-- [Parser gap analysis](./parser-gap-analysis.md): Assessment of implemented
-  parser features versus specification coverage, including known gaps.
-- [Parser plan](./parser-plan.md): Step-by-step plan for porting the Haskell
-  parser to a Rust `chumsky` and `rowan` implementation.
-- [Pratt parser for DDlog expressions](./pratt-parser-for-ddlog-expressions.md):
-  Design for expression parsing using Chumsky's Pratt parsing facilities.
+- [Parser implementation notes](./parser-implementation-notes.md):
+  Non-normative implementation invariants, parser architecture details, and
+  cross-module parser utility notes.
 - [Reliable testing in Rust via dependency injection](./reliable-testing-in-rust-via-dependency-injection.md):
   Testing patterns that use dependency injection to improve determinism and
   parallel test safety.
@@ -45,6 +35,39 @@ This page lists the current documents in the `docs/` directory.
   parameterized cases.
 - [Scripting standards](./scripting-standards.md): Standards for project
   scripts covering tooling defaults, structure, and reproducibility.
+
+## Active parser documentation
+
+- [Differential Datalog parser syntax specification updated](./differential-datalog-parser-syntax-spec-updated.md):
+  Normative reference for DDlog syntax, lexer rules, operator precedence, and
+  parser desugarings.
+- [Parser implementation notes](./parser-implementation-notes.md):
+  Non-normative implementation invariants, parser architecture details, and
+  cross-module parser utility notes.
+- [Parser conformance register](./parser-conformance-register.md):
+  Source-of-truth tracker for spec/code deltas, resolved contradictions, and
+  open parser design decisions.
+
+## Archived parser history
+
+- [Parser gap analysis (archived)][a-gap]
+- [Parser syntax-spec migration plan (archived)][a-migration]
+- [Pratt parser design (archived)][a-pratt]
+- [Function parsing design (archived)][a-function]
+- [Parser porting plan (archived)][a-plan]
+- [Parser documentation analysis (archived)][a-analysis]
+
+[a-gap]: archive/parser-gap-analysis.md
+
+[a-migration]: archive/differential-datalog-parser-syntax-spec-migration-plan.md
+
+[a-pratt]: archive/pratt-parser-for-ddlog-expressions.md
+
+[a-function]: archive/function-parsing-design.md
+
+[a-plan]: archive/parser-plan.md
+
+[a-analysis]: archive/documentation-analysis-parser-design.md
 
 ## Execution plans
 
