@@ -14,8 +14,12 @@ This page lists the current documents in the `docs/` directory.
   roadmap for the `ddlint` linter.
 - [Documentation style guide](./documentation-style-guide.md): Authoring
   conventions for Markdown structure, spelling, formatting, and ADR content.
-- [Haskell parser analysis](./haskell-parser-analysis.md): Technical summary of
-  the legacy Haskell parser to inform Rust porting work.
+- [Differential Datalog parser syntax specification updated](./differential-datalog-parser-syntax-spec-updated.md):
+  Normative reference for DDlog syntax, lexer rules, operator precedence, and
+  parser desugarings.
+- [Parser implementation notes](./parser-implementation-notes.md):
+  Non-normative implementation invariants, parser architecture details, and
+  cross-module parser utility notes.
 - [Reliable testing in Rust via dependency injection](./reliable-testing-in-rust-via-dependency-injection.md):
   Testing patterns that use dependency injection to improve determinism and
   parallel test safety.
