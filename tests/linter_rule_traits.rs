@@ -1,7 +1,7 @@
 //! Behavioural tests for linter rule traits and hook dispatch.
 
 use rowan::NodeOrToken;
-use rstest::rstest;
+use rstest::{fixture, rstest};
 
 use ddlint::linter::{CstRule, LintDiagnostic, Rule, RuleCtx};
 use ddlint::{Parsed, SyntaxKind, parse};
@@ -111,19 +111,57 @@ fn count_kind_hits(parsed: &Parsed, kind: SyntaxKind) -> usize {
         .count()
 }
 
-#[rstest]
-#[case("hello_join", include_str!("../examples/hello_join.dl"))]
-#[case("reachability", include_str!("../examples/reachability.dl"))]
-fn dispatch_invokes_node_and_token_hooks(#[case] fixture_name: &str, #[case] source: &str) {
+fn collect_node_ranges(parsed: &Parsed) -> Vec<rowan::TextRange> {
+    parsed
+        .root()
+        .syntax()
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::N_RELATION_DECL)
+        .map(|node| node.text_range())
+        .collect()
+}
+
+fn collect_token_ranges(parsed: &Parsed) -> Vec<rowan::TextRange> {
+    parsed
+        .root()
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(rowan::NodeOrToken::into_token)
+        .filter(|token| token.kind() == SyntaxKind::K_RELATION)
+        .map(|token| token.text_range())
+        .collect()
+}
+
+#[fixture]
+fn parsed_fixture(
+    #[default(include_str!("../examples/hello_join.dl"))] source: &str,
+    #[default("hello_join")] fixture_name: &str,
+) -> Parsed {
     let parsed = parse(source);
     assert!(
         parsed.errors().is_empty(),
         "fixture source `{fixture_name}` should parse cleanly"
     );
+    parsed
+}
 
-    let expected_node_hits = count_kind_hits(&parsed, SyntaxKind::N_RELATION_DECL);
-    let expected_token_hits = count_kind_hits(&parsed, SyntaxKind::K_RELATION);
-    let diagnostics = run_rule_over_cst(&parsed, &CountingRule);
+#[rstest]
+#[case("hello_join", include_str!("../examples/hello_join.dl"))]
+#[case("reachability", include_str!("../examples/reachability.dl"))]
+fn dispatch_invokes_node_and_token_hooks(
+    #[case] fixture_name: &str,
+    #[case] source: &str,
+    #[with(source, fixture_name)] parsed_fixture: Parsed,
+) {
+    let expected_node_hits = count_kind_hits(&parsed_fixture, SyntaxKind::N_RELATION_DECL);
+    let expected_token_hits = count_kind_hits(&parsed_fixture, SyntaxKind::K_RELATION);
+    let diagnostics = run_rule_over_cst(&parsed_fixture, &CountingRule);
+    let Ok(source_len_u32) = u32::try_from(source.len()) else {
+        panic!("fixture `{fixture_name}` has an invalid source length for range checks");
+    };
+    let source_end = rowan::TextSize::from(source_len_u32);
+    let node_ranges = collect_node_ranges(&parsed_fixture);
+    let token_ranges = collect_token_ranges(&parsed_fixture);
 
     let node_hits = diagnostics
         .iter()
@@ -136,16 +174,56 @@ fn dispatch_invokes_node_and_token_hooks(#[case] fixture_name: &str, #[case] sou
 
     assert_eq!(node_hits, expected_node_hits);
     assert_eq!(token_hits, expected_token_hits);
-}
 
-#[test]
-fn default_hook_implementations_emit_no_diagnostics() {
-    let parsed = parse(include_str!("../examples/hello_join.dl"));
+    assert_eq!(
+        diagnostics.len(),
+        expected_node_hits + expected_token_hits,
+        "expected one diagnostic per hook invocation in `{fixture_name}`",
+    );
     assert!(
-        parsed.errors().is_empty(),
-        "fixture source should parse cleanly"
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.rule_name() == "counting-rule"),
+        "all diagnostics should be attributed to `counting-rule`",
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| !diagnostic.span().is_empty()),
+        "all diagnostics should have non-empty spans",
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.span().end() <= source_end),
+        "all diagnostics should stay within source bounds",
     );
 
-    let diagnostics = run_rule_over_cst(&parsed, &MetadataOnlyRule);
+    let matched_node_diagnostics = diagnostics
+        .iter()
+        .filter(|diagnostic| {
+            diagnostic.message() == NODE_HIT_MESSAGE && node_ranges.contains(&diagnostic.span())
+        })
+        .count();
+    let matched_token_diagnostics = diagnostics
+        .iter()
+        .filter(|diagnostic| {
+            diagnostic.message() == TOKEN_HIT_MESSAGE && token_ranges.contains(&diagnostic.span())
+        })
+        .count();
+
+    assert_eq!(
+        matched_node_diagnostics, expected_node_hits,
+        "node diagnostics should map to node ranges in `{fixture_name}`",
+    );
+    assert_eq!(
+        matched_token_diagnostics, expected_token_hits,
+        "token diagnostics should map to token ranges in `{fixture_name}`",
+    );
+}
+
+#[rstest]
+fn default_hook_implementations_emit_no_diagnostics(parsed_fixture: Parsed) {
+    let diagnostics = run_rule_over_cst(&parsed_fixture, &MetadataOnlyRule);
     assert!(diagnostics.is_empty());
 }

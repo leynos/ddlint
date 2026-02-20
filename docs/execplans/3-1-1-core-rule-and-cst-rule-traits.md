@@ -12,8 +12,9 @@ PLANS.md is not present in this repository.
 
 This milestone introduces the first linter-engine contracts so rules can be
 implemented behind stable trait boundaries. After this work, contributors can
-create CST-based rules that expose consistent metadata (`Rule`) and analysis
-hooks (`CstRule`) with compile-time guarantees for thread-safety and dispatch.
+create concrete syntax tree (CST)-based rules that expose consistent metadata
+(`Rule`) and analysis hooks (`CstRule`) with compile-time guarantees for
+thread-safety and dispatch.
 
 Observable success is:
 
@@ -31,7 +32,8 @@ Observable success is:
   data plumbing, rule store registration, and parallel runner are separate
   roadmap items (`3.1.2` to `3.1.4`).
 - Do not add external dependencies.
-- Keep parser behaviour and existing AST/CST APIs unchanged.
+- Keep parser behaviour and existing abstract syntax tree (AST) / concrete
+  syntax tree (CST) APIs unchanged.
 - Every new Rust module begins with a `//!` module comment.
 - Public APIs added in this milestone must include Rustdoc comments.
 - Keep files below 400 lines; split modules if needed.
@@ -100,10 +102,10 @@ Observable success is:
   only. Impact: this milestone must introduce the initial linter module
   boundary.
 
-- Observation: the environment does not expose qdrant MCP tools.
-  Evidence: `list_mcp_resources` and `list_mcp_resource_templates` returned
-  empty lists. Impact: project-memory retrieval/storage could not be completed
-  during this implementation session.
+- Observation: the environment does not expose qdrant Model Context Protocol
+  (MCP) tools. Evidence: `list_mcp_resources` and `list_mcp_resource_templates`
+  returned empty lists. Impact: project-memory retrieval/storage could not be
+  completed during this implementation session.
 
 ## Decision Log
 
