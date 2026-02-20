@@ -144,8 +144,10 @@ document.
 4) Deprecate the Haskell analysis document
 
    - After spec and tests land, add a deprecation banner to
-     `docs/haskell-parser-analysis.md` pointing to the spec, noting it is
-     preserved only for historical context.
+     the historical Haskell analysis document, and point readers to
+     `docs/differential-datalog-parser-syntax-spec-updated.md` and
+     `docs/parser-implementation-notes.md`, noting the historical document is
+     preserved only for context.
    - Remove any normative lists in the Haskell doc (or relabel as “historical
      snapshot”) to avoid confusion.
 
@@ -162,17 +164,20 @@ ______________________________________________________________________
 Search scope: repository tracked files.
 
 - docs/roadmap.md:100
-  - Text: “parser analysis (`docs/haskell-parser-analysis.md`).”
-  - Action: Update reference to the spec (and/or this migration plan or a new
-    “Implementation Notes” section in the spec).
+  - Text: parser analysis reference.
+  - Action: Update reference to
+    `docs/differential-datalog-parser-syntax-spec-updated.md` and
+    `docs/parser-implementation-notes.md`.
 
 - docs/pratt-parser-for-ddlog-expressions.md:270
-  - Text: “parser analysis (`docs/haskell-parser-analysis.md`).”
+  - Text: parser analysis reference.
   - Action: Update reference to the spec’s operator table and grammar, and the
-    new appendix on host keyword reservations.
+    implementation notes.
 
-Note: re‑run `rg -n "haskell-parser-analysis.md"` prior to removing the old
-document to capture any new references.
+Note: re-run `rg -n "haskell-parser-analysis.md"` before removing the old
+document, then replace remaining references with
+`docs/differential-datalog-parser-syntax-spec-updated.md` and
+`docs/parser-implementation-notes.md`.
 
 ______________________________________________________________________
 

@@ -50,12 +50,24 @@ This page lists the current documents in the `docs/` directory.
 
 ## Archived parser history
 
-- [Parser gap analysis (archived)](./archive/parser-gap-analysis.md)
-- [Parser syntax-spec migration plan (archived)](./archive/differential-datalog-parser-syntax-spec-migration-plan.md)
-- [Pratt parser design (archived)](./archive/pratt-parser-for-ddlog-expressions.md)
-- [Function parsing design (archived)](./archive/function-parsing-design.md)
-- [Parser porting plan (archived)](./archive/parser-plan.md)
-- [Parser documentation analysis (archived)](./archive/documentation-analysis-parser-design.md)
+- [Parser gap analysis (archived)][a-gap]
+- [Parser syntax-spec migration plan (archived)][a-migration]
+- [Pratt parser design (archived)][a-pratt]
+- [Function parsing design (archived)][a-function]
+- [Parser porting plan (archived)][a-plan]
+- [Parser documentation analysis (archived)][a-analysis]
+
+[a-gap]: archive/parser-gap-analysis.md
+
+[a-migration]: archive/differential-datalog-parser-syntax-spec-migration-plan.md
+
+[a-pratt]: archive/pratt-parser-for-ddlog-expressions.md
+
+[a-function]: archive/function-parsing-design.md
+
+[a-plan]: archive/parser-plan.md
+
+[a-analysis]: archive/documentation-analysis-parser-design.md
 
 ## Execution plans
 

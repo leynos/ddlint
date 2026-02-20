@@ -557,6 +557,8 @@ section 4). The following operators are now included:
 
 **Binary operators:**
 
+Table: Binary operators and Pratt binding powers.
+
 | Operator | `BinaryOp` variant | Binding power        | Associativity |
 | -------- | ------------------ | -------------------- | ------------- |
 | `++`     | `Concat`           | 60 (same as `+`/`-`) | left          |
@@ -573,6 +575,8 @@ section 4). The following operators are now included:
 | `>=`     | `Gte`              | 30                   | left          |
 
 **Unary (prefix) operators:**
+
+Table: Unary prefix operators and Pratt binding powers.
 
 | Operator | `UnaryOp` variant | Binding power |
 | -------- | ----------------- | ------------- |

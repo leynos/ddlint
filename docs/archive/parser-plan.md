@@ -63,7 +63,7 @@ sequenceDiagram
 2. Wrap every recognized token into its `SyntaxKind` and push it into a
    `GreenNodeBuilder` from `rowan`.
 3. For syntactic errors, emit an `N_ERROR` node and recover by skipping to a
-   known synchronisation point, as recommended by the design document ([design
+   known synchronization point, as recommended by the design document ([design
    document](docs/ddlint-design-and-road-map.md#L124-L139)).
 
 The parser's final output is the AST root together with a `GreenNode` that
