@@ -2,6 +2,8 @@
 
 This document has been consolidated.
 
+Sunset notice: this pointer file will be removed after 31 March 2026.
+
 Use these active documents instead:
 
 - `docs/parser-conformance-register.md` for current parser/spec deltas,

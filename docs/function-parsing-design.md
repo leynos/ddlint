@@ -2,6 +2,8 @@
 
 This document has been merged into the consolidated parser implementation notes.
 
+Sunset notice: this pointer file will be removed after 31 March 2026.
+
 Use:
 
 - `docs/parser-implementation-notes.md` for shared parse-utility behaviour,

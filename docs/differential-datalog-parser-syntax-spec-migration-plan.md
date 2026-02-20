@@ -2,6 +2,8 @@
 
 Migration from historical parser-analysis guidance is complete.
 
+Sunset notice: this pointer file will be removed after 31 March 2026.
+
 Use these active documents:
 
 - `docs/differential-datalog-parser-syntax-spec-updated.md` for normative

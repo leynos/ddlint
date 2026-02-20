@@ -2,6 +2,8 @@
 
 This document has been consolidated into implementation notes.
 
+Sunset notice: this pointer file will be removed after 31 March 2026.
+
 Use:
 
 - `docs/parser-implementation-notes.md` for current expression-parser

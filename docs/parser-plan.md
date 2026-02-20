@@ -2,6 +2,8 @@
 
 This historical parser-porting plan has been archived.
 
+Sunset notice: this pointer file will be removed after 31 March 2026.
+
 Use these active documents for current work:
 
 - `docs/differential-datalog-parser-syntax-spec-updated.md` for normative
