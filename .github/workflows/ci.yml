@@ -24,12 +24,11 @@ jobs:
         run: make check-fmt
       - name: Lint
         run: make lint
-      - name: Test
-        run: make test
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
-      - name: Run coverage
-        run: cargo tarpaulin --out lcov
+      - name: Generate coverage
+        uses: leynos/shared-actions/.github/actions/generate-coverage@aebb3f5b831102e2a10ef909c83d7d50ea86c332
+        with:
+          output-path: lcov.info
+          format: lcov
       - name: Upload coverage data to CodeScene
         if: env.CS_ACCESS_TOKEN
         uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@aebb3f5b831102e2a10ef909c83d7d50ea86c332
@@ -37,4 +36,3 @@ jobs:
           format: lcov
           access-token: ${{ env.CS_ACCESS_TOKEN }}
           installer-checksum: ${{ env.CODESCENE_CLI_SHA256 }}
-
