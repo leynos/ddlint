@@ -4,9 +4,27 @@
 linter/IDE authors.
 
 **Scope:** A precise, self‑contained reference for the concrete syntax, lexical
-rules, operator table, and the early semantic transformations performed by the
-parser (aka “desugarings”). This document resolves prior ambiguities, aligns
-the grammar with current behaviour, and highlights validation/error cases.
+rules, operator table, and early semantic transformations (aka “desugarings”).
+This document resolves prior ambiguities and defines the intended parser
+contract, including validation/error cases.
+
+## Status and source-of-truth policy
+
+### Current implementation contract
+
+- Behaviour implemented in code and tests is tracked in
+  `docs/parser-conformance-register.md`.
+- `docs/parser-implementation-notes.md` documents non-normative implementation
+  details and invariants.
+
+### Target and compatibility contract
+
+- This document remains the normative syntax contract.
+- If the current implementation diverges from this spec, record the delta in
+  `docs/parser-conformance-register.md` and schedule resolution in
+  `docs/roadmap.md`.
+- Do not silently update either spec or code in isolation; keep both aligned
+  through an explicit conformance change.
 
 ______________________________________________________________________
 

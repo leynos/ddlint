@@ -15,7 +15,7 @@ navigable CST and typed AST.
 ### 1.1. Project scaffolding and continuous integration
 
 - [x] 1.1.1. Set up the Cargo project with library and binary targets.
-  See docs/parser-plan.md §7.
+  See docs/parser-implementation-notes.md.
 - [x] 1.1.2. Configure strict Clippy lints in `clippy.toml` and
   `Cargo.toml`. See docs/ddlint-design-and-road-map.md §6.
 - [x] 1.1.3. Establish a Continuous Integration (CI) pipeline for formatting,
@@ -28,19 +28,19 @@ navigable CST and typed AST.
 ### 1.2. Lexical analysis (tokenizer)
 
 - [x] 1.2.1. Define DDlog tokens for keywords, operators, literals, and trivia
-  with `logos` (`src/tokenizer.rs`). See docs/parser-plan.md §3 and
-  docs/differential-datalog-parser-syntax-spec-updated.md §2.
+  with `logos` (`src/tokenizer.rs`). See docs/parser-implementation-notes.md
+  and docs/differential-datalog-parser-syntax-spec-updated.md §2.
 - [x] 1.2.2. Implement keyword mapping with `phf` for efficient
-  identifier-to-keyword conversion. See docs/parser-plan.md §3.
+  identifier-to-keyword conversion. See docs/parser-implementation-notes.md.
 - [x] 1.2.3. Add tokenizer tests that validate token kinds, spans, and values,
   including trivia and error cases (`tests/tokenizer.rs`). See
-  docs/parser-plan.md §6.
+  docs/parser-implementation-notes.md.
 
 ### 1.3. Core CST representation
 
 - [x] 1.3.1. Define the complete `SyntaxKind` enum for tokens and grammar
   nodes (`src/language.rs`). See docs/ddlint-design-and-road-map.md §2.1 and
-  docs/parser-plan.md §2.
+  docs/parser-implementation-notes.md.
 - [x] 1.3.2. Implement `rowan::Language` for `DdlogLanguage` to bridge custom
   syntax kinds into the CST. See docs/ddlint-design-and-road-map.md §1.3.
 
@@ -50,7 +50,7 @@ navigable CST and typed AST.
   navigation (`src/parser/token_stream.rs`). See
   docs/ddlint-design-and-road-map.md §2.2.
 - [x] 1.4.2. Implement span scanning for top-level DDlog statements
-  (`src/parser/span_scanner.rs`). See docs/parser-plan.md §4.
+  (`src/parser/span_scanner.rs`). See docs/parser-implementation-notes.md.
 - [x] 1.4.3. Implement a `GreenNode` builder that consumes tokens and statement
   spans to produce a full-fidelity CST (`src/parser/cst_builder/tree.rs`). See
   docs/ddlint-design-and-road-map.md §2.
@@ -61,9 +61,9 @@ navigable CST and typed AST.
 ### 1.5. Typed AST layer
 
 - [x] 1.5.1. Create a `Root` AST node for semantic analysis entry
-  (`src/parser/ast/root.rs`). See docs/parser-plan.md §5.
+  (`src/parser/ast/root.rs`). See docs/parser-implementation-notes.md.
 - [x] 1.5.2. Implement typed AST wrappers for parsed top-level statements.
-  See docs/parser-plan.md §5.
+  See docs/parser-implementation-notes.md.
   - [x] 1.5.2.1. Implement `Import` (`src/parser/ast/import.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
   - [x] 1.5.2.2. Implement `TypeDef` (`src/parser/ast/type_def.rs`).
@@ -80,7 +80,7 @@ navigable CST and typed AST.
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.8.
 - [x] 1.5.3. Add and test parsing utilities for nested structures such as
   parameter and type lists (`src/parser/ast/parse_utils/`). See
-  docs/parser-plan.md §5 and docs/parser-plan.md §6.
+  docs/parser-implementation-notes.md.
 
 ## 2. Parser grammar expansion
 
@@ -90,27 +90,27 @@ expression parsing, control flow, and syntax-spec alignment.
 ### 2.1. Detailed expression parsing
 
 - [x] 2.1.1. Implement a Pratt parser with correct operator precedence and
-  associativity. See docs/pratt-parser-for-ddlog-expressions.md §3 and
+  associativity. See docs/parser-implementation-notes.md and
   docs/differential-datalog-parser-syntax-spec-updated.md §4.
 - [x] 2.1.2. Parse all literal forms in expressions (strings, numbers,
-  booleans). See docs/pratt-parser-for-ddlog-expressions.md §2 and
+  booleans). See docs/parser-implementation-notes.md and
   docs/differential-datalog-parser-syntax-spec-updated.md §3.
 - [x] 2.1.3. Parse variable references (`e_var`) and function calls (`e_func`).
-  See docs/pratt-parser-for-ddlog-expressions.md §2.
+  See docs/parser-implementation-notes.md.
 - [x] 2.1.4. Parse struct literals, tuple literals, and closures (`e_struct`,
-  `e_tuple`, `e_closure`). See docs/pratt-parser-for-ddlog-expressions.md §2.
+  `e_tuple`, `e_closure`). See docs/parser-implementation-notes.md.
 
 ### 2.2. Control-flow parsing
 
 - [x] 2.2.1. Parse `if` and `else` expressions (`e_ite`).
-  See docs/pratt-parser-for-ddlog-expressions.md §Handling `if`/`else`
-  expressions and docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
+  See docs/parser-implementation-notes.md and
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
 - [x] 2.2.2. Parse `for` loops inside rules, including optional `if` guards.
-  See docs/pratt-parser-for-ddlog-expressions.md §Handling `for` loop
-  expressions and docs/differential-datalog-parser-syntax-spec-updated.md §5.10.
+  See docs/parser-implementation-notes.md and
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.10.
 - [x] 2.2.3. Parse `match` expressions (`e_match`).
-  See docs/pratt-parser-for-ddlog-expressions.md §Handling `match` expressions
-  and docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
+  See docs/parser-implementation-notes.md and
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
 - [x] 2.2.4. Parse imperative statements (`break`, `continue`, `return`).
   See docs/differential-datalog-parser-syntax-spec-updated.md §5.10.
 
@@ -118,7 +118,7 @@ expression parsing, control flow, and syntax-spec alignment.
 
 - [x] 2.3.1. Refactor `rule.rs` and `span_scanner.rs` to use expression and
   control-flow parsers instead of the simple atom parser. See
-  docs/pratt-parser-for-ddlog-expressions.md §5.4.
+  docs/parser-implementation-notes.md.
 - [x] 2.3.2. Parse aggregation and FlatMap constructs in rule bodies.
   See docs/differential-datalog-parser-syntax-spec-updated.md §5.12 and
   docs/differential-datalog-parser-syntax-spec-updated.md §6.1.
@@ -135,18 +135,18 @@ expression parsing, control flow, and syntax-spec alignment.
 - [x] 2.4.3. Complete the operator table for `++`, `^`, and `=>`, including
   precedence tests against existing operators. See
   docs/differential-datalog-parser-syntax-spec-updated.md §4 and
-  docs/pratt-parser-for-ddlog-expressions.md §5.5.
+  docs/parser-implementation-notes.md.
 - [x] 2.4.4. Parse vector and map literals as raw AST (`Expr::VecLit`,
   `Expr::MapLit`) while deferring builder-call desugaring. See
   docs/differential-datalog-parser-syntax-spec-updated.md §3.3 and
   docs/differential-datalog-parser-syntax-spec-updated.md §6.4.
 - [x] 2.4.5. Enforce the qualified-call rule so only fully scoped identifiers
-  parse as function calls. See docs/pratt-parser-for-ddlog-expressions.md §1.1
-  and docs/differential-datalog-parser-syntax-spec-updated.md §2.2.
+  parse as function calls. See docs/parser-implementation-notes.md and
+  docs/differential-datalog-parser-syntax-spec-updated.md §2.2.
   - [x] 2.4.5.1. Parser accepts only fully qualified call syntax (for example,
     `foo.bar()` and `pkg::foo()`), and parses bare `bar(...)` as a deferred
     name-application form.
-    See docs/pratt-parser-for-ddlog-expressions.md §1.1.
+    See docs/parser-implementation-notes.md.
   - [x] 2.4.5.2. Unit tests include at least two explicit cases: one qualified
     call accepted, and one bare call not parsed as a function call.
     See docs/ddlint-design-and-road-map.md §6.1.
@@ -157,7 +157,7 @@ expression parsing, control flow, and syntax-spec alignment.
     See docs/ddlint-design-and-road-map.md §6.
   - [x] 2.4.5.5. Update documentation and changelog entries for qualified-call
     parsing and deferred name resolution.
-    See docs/pratt-parser-for-ddlog-expressions.md §1.1.
+    See docs/parser-implementation-notes.md.
 
 ### 2.5. Syntax-spec structural and semantic conformance
 
@@ -172,9 +172,11 @@ expression parsing, control flow, and syntax-spec alignment.
   parsing into normalized representation. See
   docs/differential-datalog-parser-syntax-spec-updated.md §6.1 and
   docs/differential-datalog-parser-syntax-spec-updated.md §6.2.
-- [x] 2.5.4. Desugar top-level `for` statements in rule contexts into
-  equivalent rules. See docs/differential-datalog-parser-syntax-spec-updated.md
-  §6.5.
+- [ ] 2.5.4. Resolve top-level `for` contract and implementation status.
+  Decide whether to implement top-level `for` desugaring into rules or to mark
+  top-level `for` as unsupported in the normative grammar. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.5 and
+  docs/parser-conformance-register.md item 8.
 - [x] 2.5.5. Parse `apply` items and enforce that non-`extern` transformers
   produce diagnostics. See
   docs/differential-datalog-parser-syntax-spec-updated.md §5.7 and
@@ -196,6 +198,30 @@ expression parsing, control flow, and syntax-spec alignment.
     See docs/ddlint-design-and-road-map.md §6.
   - [x] 2.5.6.5. `make test`, `make check-fmt`, and `make lint` pass.
     See docs/ddlint-design-and-road-map.md §6.
+
+### 2.6. Parser conformance decisions before ADR-001 planning
+
+- [ ] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
+  tests, and spec language. See docs/parser-conformance-register.md item 8.
+- [ ] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
+  semantic stage), then align parser pipeline guarantees and docs. See
+  docs/parser-conformance-register.md item 9.
+- [ ] 2.6.3. Decide collection literal lowering stage ownership (parser,
+  semantic pass, or later lowering), then align docs and tests. See
+  docs/parser-conformance-register.md item 10.
+- [ ] 2.6.4. Align index declaration grammar between scanner implementation and
+  syntax specification. See docs/parser-conformance-register.md item 11.
+- [ ] 2.6.5. Align transformer declaration grammar, including output signature
+  requirements. See docs/parser-conformance-register.md item 12.
+- [ ] 2.6.6. Resolve relation form coverage (role/kind/bracket variants) and
+  document supported forms explicitly. See docs/parser-conformance-register.md
+  item 13.
+- [ ] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
+  legacy type names, `#`, `<=>`) with deterministic diagnostics. See
+  docs/parser-conformance-register.md item 14.
+- [ ] 2.6.8. Decide brace-group extension policy (`{ expr }`): codify or
+  remove with migration diagnostics. See docs/parser-conformance-register.md
+  item 15.
 
 ## 3. Linter engine and semantic analysis
 
