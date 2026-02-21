@@ -1,4 +1,4 @@
-# Implement `RuleCtx` with source, config, and AST context
+# Implement `RuleCtx` with source, config, and abstract syntax tree (AST) context
 
 This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
@@ -10,10 +10,11 @@ PLANS.md is not present in this repository.
 
 ## Purpose / big picture
 
-Roadmap item `3.1.2` introduces a real rule execution context so CST rules can
-read source text, inspect per-rule configuration, and access typed AST data
-without global state. After this milestone, rule implementations can rely on a
-stable `RuleCtx` API that is ready for upcoming `CstRuleStore` and runner work.
+Roadmap item `3.1.2` introduces a real rule execution context so concrete
+syntax tree (CST) rules can read source text, inspect per-rule configuration,
+and access typed AST data without global state. After this milestone, rule
+implementations can rely on a stable `RuleCtx` API that is ready for upcoming
+`CstRuleStore` and runner work.
 
 Observable success is:
 
@@ -104,10 +105,10 @@ Observable success is:
   Evidence: `src/parser/cst_builder/mod.rs` stores only green tree, root, and
   errors. Impact: `RuleCtx` constructors must accept source text from callers.
 
-- Observation: project-memory MCP resources are unavailable in this runtime.
-  Evidence: `list_mcp_resources` and `list_mcp_resource_templates` returned
-  empty lists. Impact: no Qdrant note retrieval/storage could be performed this
-  session.
+- Observation: project-memory model context protocol (MCP) resources are
+  unavailable in this runtime. Evidence: `list_mcp_resources` and
+  `list_mcp_resource_templates` returned empty lists. Impact: no Qdrant note
+  retrieval/storage could be performed this session.
 
 - Observation: `clippy::similar-names` and `clippy::needless-borrow` failed in
   `tests/linter_rule_traits.rs` on the first lint pass. Evidence: `make lint`

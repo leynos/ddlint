@@ -161,6 +161,24 @@ impl RuleCtx {
     pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue> {
         self.config.get(key)
     }
+
+    /// Return a boolean configuration value by key when present and typed.
+    #[must_use]
+    pub fn config_bool(&self, key: &str) -> Option<bool> {
+        self.config_value(key).and_then(RuleConfigValue::as_bool)
+    }
+
+    /// Return an integer configuration value by key when present and typed.
+    #[must_use]
+    pub fn config_int(&self, key: &str) -> Option<i64> {
+        self.config_value(key).and_then(RuleConfigValue::as_integer)
+    }
+
+    /// Return a string configuration value by key when present and typed.
+    #[must_use]
+    pub fn config_string(&self, key: &str) -> Option<&str> {
+        self.config_value(key).and_then(RuleConfigValue::as_string)
+    }
 }
 
 /// Metadata shared by every lint rule.
@@ -299,6 +317,10 @@ mod tests {
             ctx.config_value("enabled"),
             Some(&RuleConfigValue::Bool(true))
         );
+        assert_eq!(ctx.config_bool("enabled"), Some(true));
+        assert_eq!(ctx.config_int("max_depth"), Some(2));
+        assert_eq!(ctx.config_string("style"), Some("strict"));
+        assert_eq!(ctx.config_bool("style"), None);
         assert_eq!(ctx.config_value("missing"), None);
     }
 }

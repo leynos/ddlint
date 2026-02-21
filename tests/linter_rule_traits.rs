@@ -126,14 +126,14 @@ impl ContextAwareRule {
         let has_source_text = ctx.source_text().contains("relation");
         let has_ast_relations = !ctx.ast_root().relations().is_empty();
         let has_program_cst_root = ctx.cst_root().kind() == SyntaxKind::N_DATALOG_PROGRAM;
-        let has_config = ctx.config_value("enabled") == Some(&RuleConfigValue::Bool(true));
+        let has_config = ctx.config_bool("enabled") == Some(true);
 
         has_source_text && has_ast_relations && has_program_cst_root && has_config
     }
 }
 
 fn build_ctx(source: &str, parsed: &Parsed, config: RuleConfig) -> RuleCtx {
-    RuleCtx::from_parsed(source.to_owned(), parsed, config)
+    RuleCtx::from_parsed(source, parsed, config)
 }
 
 fn run_rule_over_cst(parsed: &Parsed, ctx: &RuleCtx, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
