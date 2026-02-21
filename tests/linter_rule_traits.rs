@@ -3,9 +3,10 @@
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
 
-use ddlint::linter::{CstRule, LintDiagnostic, Rule, RuleCtx};
+use ddlint::linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx};
 use ddlint::{Parsed, SyntaxKind, parse};
 
+const CONTEXT_HIT_MESSAGE: &str = "context hit";
 const NODE_HIT_MESSAGE: &str = "node hit";
 const TOKEN_HIT_MESSAGE: &str = "token hit";
 
@@ -82,18 +83,63 @@ impl CstRule for MetadataOnlyRule {
     }
 }
 
-fn run_rule_over_cst(parsed: &Parsed, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
-    let ctx = RuleCtx::default();
+struct ContextAwareRule;
+
+impl Rule for ContextAwareRule {
+    fn name(&self) -> &'static str {
+        "context-aware-rule"
+    }
+
+    fn group(&self) -> &'static str {
+        "correctness"
+    }
+
+    fn docs(&self) -> &'static str {
+        "Validates that RuleCtx exposes source, config, and AST context."
+    }
+}
+
+impl CstRule for ContextAwareRule {
+    fn target_kinds(&self) -> &'static [SyntaxKind] {
+        &[SyntaxKind::N_RELATION_DECL]
+    }
+
+    fn check_node(
+        &self,
+        node: &rowan::SyntaxNode<ddlint::DdlogLanguage>,
+        ctx: &RuleCtx,
+        diagnostics: &mut Vec<LintDiagnostic>,
+    ) {
+        let has_source_text = ctx.source_text().contains("relation");
+        let has_ast_relations = !ctx.ast_root().relations().is_empty();
+        let has_program_cst_root = ctx.cst_root().kind() == SyntaxKind::N_DATALOG_PROGRAM;
+        let has_config = ctx.config_value("enabled") == Some(&RuleConfigValue::Bool(true));
+
+        if has_source_text && has_ast_relations && has_program_cst_root && has_config {
+            diagnostics.push(LintDiagnostic::new(
+                self.name(),
+                CONTEXT_HIT_MESSAGE,
+                node.text_range(),
+            ));
+        }
+    }
+}
+
+fn build_ctx(source: &str, parsed: &Parsed, config: RuleConfig) -> RuleCtx {
+    RuleCtx::from_parsed(source.to_owned(), parsed, config)
+}
+
+fn run_rule_over_cst(parsed: &Parsed, ctx: &RuleCtx, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
     let mut diagnostics = Vec::new();
     let target_kinds = rule.target_kinds();
 
     for element in parsed.root().syntax().descendants_with_tokens() {
         match element {
             NodeOrToken::Node(node) if target_kinds.contains(&node.kind()) => {
-                rule.check_node(&node, &ctx, &mut diagnostics);
+                rule.check_node(&node, ctx, &mut diagnostics);
             }
             NodeOrToken::Token(token) if target_kinds.contains(&token.kind()) => {
-                rule.check_token(&token, &ctx, &mut diagnostics);
+                rule.check_token(&token, ctx, &mut diagnostics);
             }
             _ => {}
         }
@@ -153,9 +199,10 @@ fn dispatch_invokes_node_and_token_hooks(
     #[case] source: &str,
     #[with(source, fixture_name)] parsed_fixture: Parsed,
 ) {
+    let ctx = build_ctx(source, &parsed_fixture, RuleConfig::new());
     let expected_node_hits = count_kind_hits(&parsed_fixture, SyntaxKind::N_RELATION_DECL);
     let expected_token_hits = count_kind_hits(&parsed_fixture, SyntaxKind::K_RELATION);
-    let diagnostics = run_rule_over_cst(&parsed_fixture, &CountingRule);
+    let diagnostics = run_rule_over_cst(&parsed_fixture, &ctx, &CountingRule);
     let Ok(source_len_u32) = u32::try_from(source.len()) else {
         panic!("fixture `{fixture_name}` has an invalid source length for range checks");
     };
@@ -224,6 +271,29 @@ fn dispatch_invokes_node_and_token_hooks(
 
 #[rstest]
 fn default_hook_implementations_emit_no_diagnostics(parsed_fixture: Parsed) {
-    let diagnostics = run_rule_over_cst(&parsed_fixture, &MetadataOnlyRule);
+    let source = parsed_fixture.root().text();
+    let ctx = build_ctx(&source, &parsed_fixture, RuleConfig::new());
+    let diagnostics = run_rule_over_cst(&parsed_fixture, &ctx, &MetadataOnlyRule);
     assert!(diagnostics.is_empty());
+}
+
+#[rstest]
+fn rules_can_consume_source_config_and_ast_context(parsed_fixture: Parsed) {
+    let source = parsed_fixture.root().text();
+    let config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(true))]);
+    let ctx = build_ctx(&source, &parsed_fixture, config);
+    let diagnostics = run_rule_over_cst(&parsed_fixture, &ctx, &ContextAwareRule);
+
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message() == CONTEXT_HIT_MESSAGE),
+        "expected at least one diagnostic proving RuleCtx access during dispatch",
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.rule_name() == "context-aware-rule"),
+        "all context diagnostics should be attributed to context-aware-rule",
+    );
 }

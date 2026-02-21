@@ -403,7 +403,7 @@ or configuration, and report any discovered issues by creating and returning
 `Diagnostic` objects. This design keeps the logic for each rule encapsulated
 and testable in isolation.
 
-The initial implementation for roadmap item `3.1.1` lives in
+The current implementation for roadmap items `3.1.1` and `3.1.2` lives in
 `src/linter/rule.rs` and defines the following public contracts:
 
 ```rust,no_run
@@ -430,11 +430,46 @@ pub trait CstRule: Rule + Send + Sync {
         diagnostics: &mut Vec<LintDiagnostic>,
     ) { /* default no-op */ }
 }
+
+pub enum RuleConfigValue {
+    Bool(bool),
+    Integer(i64),
+    String(String),
+}
+
+pub type RuleConfig = BTreeMap<String, RuleConfigValue>;
+
+pub struct RuleCtx {
+    source_text: Arc<str>,
+    ast_root: crate::parser::ast::Root,
+    config: RuleConfig,
+}
+
+impl RuleCtx {
+    pub fn new(
+        source_text: impl Into<Arc<str>>,
+        ast_root: crate::parser::ast::Root,
+        config: RuleConfig,
+    ) -> Self;
+
+    pub fn from_parsed(
+        source_text: impl Into<Arc<str>>,
+        parsed: &crate::Parsed,
+        config: RuleConfig,
+    ) -> Self;
+
+    pub fn source_text(&self) -> &str;
+    pub fn ast_root(&self) -> &crate::parser::ast::Root;
+    pub fn cst_root(&self) -> &SyntaxNode<DdlogLanguage>;
+    pub fn config(&self) -> &RuleConfig;
+    pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue>;
+}
 ```
 
-`RuleCtx` and `LintDiagnostic` are intentionally lightweight in `3.1.1`,
-allowing later milestones to extend context payload and reporting behaviour
-without redefining the core trait boundaries.
+`RuleCtx` now provides the three context channels required by roadmap item
+`3.1.2`: full source text, typed AST/CST access, and per-rule configuration.
+`LintDiagnostic` remains lightweight so later milestones can extend reporting
+behaviour without redefining the core trait boundaries.
 
 ### 3.2. A declarative macro for rule creation (`declare_lint!`)
 

@@ -6,4 +6,4 @@
 
 mod rule;
 
-pub use rule::{CstRule, LintDiagnostic, Rule, RuleCtx};
+pub use rule::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx};

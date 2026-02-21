@@ -4,7 +4,7 @@ This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
 `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 PLANS.md is not present in this repository.
 
@@ -75,13 +75,18 @@ Observable success is:
 - [x] (2026-02-20 00:20Z) Reviewed roadmap item `3.1.2`, current linter trait
   code, parser context surfaces, and referenced docs.
 - [x] (2026-02-20 00:35Z) Drafted this ExecPlan.
-- [ ] Implement concrete `RuleCtx` and configuration value types.
-- [ ] Add or update unit tests for context constructors and accessors.
-- [ ] Add or update behavioural CST-dispatch tests proving rule access to
-  source/config/AST context.
-- [ ] Update `docs/ddlint-design.md` with final `RuleCtx` contract.
-- [ ] Run all required quality gates and capture logs.
-- [ ] Mark roadmap item `3.1.2` done in `docs/roadmap.md`.
+- [x] (2026-02-21 00:30Z) Implemented concrete `RuleCtx` with typed
+  `RuleConfigValue` and `RuleConfig`.
+- [x] (2026-02-21 00:40Z) Updated unit tests for context constructors and
+  accessors in `src/linter/rule.rs`.
+- [x] (2026-02-21 00:50Z) Updated behavioural CST-dispatch tests to prove rule
+  access to source/config/AST context.
+- [x] (2026-02-21 01:00Z) Updated `docs/ddlint-design.md` with final `RuleCtx`
+  contract.
+- [x] (2026-02-21 01:20Z) Ran all required quality gates and captured logs in
+  `/tmp/ddlint-*.log`.
+- [x] (2026-02-21 01:05Z) Marked roadmap item `3.1.2` done in
+  `docs/roadmap.md`.
 
 ## Surprises & Discoveries
 
@@ -104,6 +109,12 @@ Observable success is:
   empty lists. Impact: no Qdrant note retrieval/storage could be performed this
   session.
 
+- Observation: `clippy::similar-names` and `clippy::needless-borrow` failed in
+  `tests/linter_rule_traits.rs` on the first lint pass. Evidence: `make lint`
+  reported failures for temporary variable names and `&ctx` double-borrows.
+  Impact: renamed local variables for clarity and removed needless borrows
+  before rerunning quality gates.
+
 ## Decision Log
 
 - Decision: map roadmap references to `docs/ddlint-design.md` for this
@@ -116,22 +127,40 @@ Observable success is:
   `3.1.3` and `3.1.4`. Rationale: preserves roadmap sequencing and limits blast
   radius. Date/Author: 2026-02-20 / assistant
 
+- Decision: model rule configuration as a small typed enum
+  (`RuleConfigValue`) backed by `BTreeMap<String, RuleConfigValue>` rather than
+  introducing an external deserialization layer at this stage. Rationale: this
+  keeps `3.1.2` additive and dependency-free while providing enough type
+  information for rule implementations. Date/Author: 2026-02-21 / assistant
+
 ## Outcomes & Retrospective
 
-Pending implementation.
+Completed roadmap item `3.1.2` by implementing a concrete `RuleCtx` with source
+text, typed rule configuration, and AST/CST access. Added typed configuration
+values (`RuleConfigValue`) and map alias (`RuleConfig`), updated unit and
+behavioural tests to validate context access, and documented the final contract
+in `docs/ddlint-design.md`.
 
-Success at completion is a concrete `RuleCtx` API used by tests and documented
-in design docs, with all gates passing and roadmap item `3.1.2` marked done.
+Roadmap update is complete: `docs/roadmap.md` now marks `3.1.2` done.
+
+Validation completed successfully:
+
+- `make markdownlint`
+- `make fmt`
+- `make nixie`
+- `make check-fmt`
+- `make lint`
+- `make test`
 
 ## Context and orientation
 
 Current linter surfaces:
 
-- `src/linter/rule.rs` contains `Rule`, `CstRule`, `LintDiagnostic`, and the
-  placeholder `RuleCtx`.
+- `src/linter/rule.rs` now contains `Rule`, `CstRule`, `LintDiagnostic`,
+  concrete `RuleCtx`, `RuleConfig`, and `RuleConfigValue`.
 - `src/linter/mod.rs` re-exports linter contracts.
-- `tests/linter_rule_traits.rs` provides behavioural CST dispatch tests and
-  currently uses `RuleCtx::default()`.
+- `tests/linter_rule_traits.rs` provides behavioural CST dispatch tests and now
+  constructs `RuleCtx` instances from source + parsed AST + configuration.
 
 Relevant parser and AST surfaces used by context:
 
@@ -301,3 +330,5 @@ implementation handoff. Keep new tests concise and fixture-based.
 
 - 2026-02-20: Initial draft created for roadmap item `3.1.2`, including API
   proposal, staged implementation sequence, and validation gates.
+- 2026-02-21: Implemented `RuleCtx`, updated tests/docs/roadmap, captured a
+  Clippy-driven test cleanup, and completed all quality gates.
