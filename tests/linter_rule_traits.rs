@@ -110,18 +110,25 @@ impl CstRule for ContextAwareRule {
         ctx: &RuleCtx,
         diagnostics: &mut Vec<LintDiagnostic>,
     ) {
-        let has_source_text = ctx.source_text().contains("relation");
-        let has_ast_relations = !ctx.ast_root().relations().is_empty();
-        let has_program_cst_root = ctx.cst_root().kind() == SyntaxKind::N_DATALOG_PROGRAM;
-        let has_config = ctx.config_value("enabled") == Some(&RuleConfigValue::Bool(true));
-
-        if has_source_text && has_ast_relations && has_program_cst_root && has_config {
+        if self.validates_rule_ctx(ctx) {
             diagnostics.push(LintDiagnostic::new(
                 self.name(),
                 CONTEXT_HIT_MESSAGE,
                 node.text_range(),
             ));
         }
+    }
+}
+
+impl ContextAwareRule {
+    fn validates_rule_ctx(&self, ctx: &RuleCtx) -> bool {
+        let _ = self.name();
+        let has_source_text = ctx.source_text().contains("relation");
+        let has_ast_relations = !ctx.ast_root().relations().is_empty();
+        let has_program_cst_root = ctx.cst_root().kind() == SyntaxKind::N_DATALOG_PROGRAM;
+        let has_config = ctx.config_value("enabled") == Some(&RuleConfigValue::Bool(true));
+
+        has_source_text && has_ast_relations && has_program_cst_root && has_config
     }
 }
 
