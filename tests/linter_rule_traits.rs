@@ -278,17 +278,17 @@ fn dispatch_invokes_node_and_token_hooks(
 
 #[rstest]
 fn default_hook_implementations_emit_no_diagnostics(parsed_fixture: Parsed) {
-    let source = parsed_fixture.root().text();
-    let ctx = build_ctx(&source, &parsed_fixture, RuleConfig::new());
+    let source: String = parsed_fixture.root().text();
+    let ctx = build_ctx(source.as_str(), &parsed_fixture, RuleConfig::new());
     let diagnostics = run_rule_over_cst(&parsed_fixture, &ctx, &MetadataOnlyRule);
     assert!(diagnostics.is_empty());
 }
 
 #[rstest]
 fn rules_can_consume_source_config_and_ast_context(parsed_fixture: Parsed) {
-    let source = parsed_fixture.root().text();
+    let source: String = parsed_fixture.root().text();
     let config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(true))]);
-    let ctx = build_ctx(&source, &parsed_fixture, config);
+    let ctx = build_ctx(source.as_str(), &parsed_fixture, config);
     let diagnostics = run_rule_over_cst(&parsed_fixture, &ctx, &ContextAwareRule);
 
     assert!(

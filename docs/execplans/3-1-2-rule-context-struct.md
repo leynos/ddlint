@@ -184,33 +184,37 @@ Target public API after this milestone:
 
 Planned shape (final names may vary, behaviour must match):
 
-    pub type RuleConfig = BTreeMap<String, RuleConfigValue>;
+<!-- markdownlint-disable MD046 -->
+```rust
+pub type RuleConfig = BTreeMap<String, RuleConfigValue>;
 
-    pub enum RuleConfigValue {
-        Bool(bool),
-        Integer(i64),
-        String(String),
-    }
+pub enum RuleConfigValue {
+    Bool(bool),
+    Integer(i64),
+    String(String),
+}
 
-    pub struct RuleCtx {
-        source_text: Arc<str>,
+pub struct RuleCtx {
+    source_text: Arc<str>,
+    ast_root: crate::parser::ast::Root,
+    config: RuleConfig,
+}
+
+impl RuleCtx {
+    pub fn new(
+        source_text: impl Into<Arc<str>>,
         ast_root: crate::parser::ast::Root,
         config: RuleConfig,
-    }
+    ) -> Self;
 
-    impl RuleCtx {
-        pub fn new(
-            source_text: impl Into<Arc<str>>,
-            ast_root: crate::parser::ast::Root,
-            config: RuleConfig,
-        ) -> Self;
-
-        pub fn source_text(&self) -> &str;
-        pub fn ast_root(&self) -> &crate::parser::ast::Root;
-        pub fn cst_root(&self) -> &rowan::SyntaxNode<crate::DdlogLanguage>;
-        pub fn config(&self) -> &RuleConfig;
-        pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue>;
-    }
+    pub fn source_text(&self) -> &str;
+    pub fn ast_root(&self) -> &crate::parser::ast::Root;
+    pub fn cst_root(&self) -> &rowan::SyntaxNode<crate::DdlogLanguage>;
+    pub fn config(&self) -> &RuleConfig;
+    pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue>;
+}
+```
+<!-- markdownlint-enable MD046 -->
 
 Dependency policy:
 
@@ -284,15 +288,23 @@ as done in `docs/roadmap.md`.
 
    - Documentation gates:
 
-       set -o pipefail && make markdownlint 2>&1 | tee /tmp/ddlint-markdownlint.log
-       set -o pipefail && make fmt 2>&1 | tee /tmp/ddlint-fmt.log
-       set -o pipefail && make nixie 2>&1 | tee /tmp/ddlint-nixie.log
+   <!-- markdownlint-disable MD046 -->
+   ```shell
+   set -o pipefail && make markdownlint 2>&1 | tee /tmp/ddlint-markdownlint.log
+   set -o pipefail && make fmt 2>&1 | tee /tmp/ddlint-fmt.log
+   set -o pipefail && make nixie 2>&1 | tee /tmp/ddlint-nixie.log
+   ```
+   <!-- markdownlint-enable MD046 -->
 
    - Required Rust gates:
 
-       set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log
-       set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log
-       set -o pipefail && make test 2>&1 | tee /tmp/ddlint-test.log
+   <!-- markdownlint-disable MD046 -->
+   ```shell
+   set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log
+   set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log
+   set -o pipefail && make test 2>&1 | tee /tmp/ddlint-test.log
+   ```
+   <!-- markdownlint-enable MD046 -->
 
 6. Mark roadmap item done only after all gates pass.
 
