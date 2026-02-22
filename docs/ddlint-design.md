@@ -463,6 +463,9 @@ impl RuleCtx {
     pub fn cst_root(&self) -> &SyntaxNode<DdlogLanguage>;
     pub fn config(&self) -> &RuleConfig;
     pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue>;
+    pub fn config_bool(&self, key: &str) -> Option<bool>;
+    pub fn config_int(&self, key: &str) -> Option<i64>;
+    pub fn config_string(&self, key: &str) -> Option<&str>;
 }
 ```
 

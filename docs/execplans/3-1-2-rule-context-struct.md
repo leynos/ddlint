@@ -89,7 +89,7 @@ Observable success is:
 - [x] (2026-02-21 01:05Z) Marked roadmap item `3.1.2` done in
   `docs/roadmap.md`.
 
-## Surprises & Discoveries
+## Surprises & discoveries
 
 - Observation: `docs/roadmap.md` references
   `docs/ddlint-design-and-road-map.md`, but this repository currently provides
@@ -116,7 +116,7 @@ Observable success is:
   Impact: renamed local variables for clarity and removed needless borrows
   before rerunning quality gates.
 
-## Decision Log
+## Decision log
 
 - Decision: map roadmap references to `docs/ddlint-design.md` for this
   milestone. Rationale: it is the only in-repo design doc containing sections
@@ -134,7 +134,7 @@ Observable success is:
   keeps `3.1.2` additive and dependency-free while providing enough type
   information for rule implementations. Date/Author: 2026-02-21 / assistant.
 
-## Outcomes & Retrospective
+## Outcomes & retrospective
 
 Completed roadmap item `3.1.2` by implementing a concrete `RuleCtx` with source
 text, typed rule configuration, and AST/CST access. Added typed configuration
