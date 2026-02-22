@@ -471,7 +471,7 @@ impl RuleCtx {
 
 `RuleCtx` now provides the three context channels required by roadmap item
 `3.1.2`: full source text, typed AST/CST access, and per-rule configuration.
-`LintDiagnostic` remains lightweight so later milestones can extend reporting
+`LintDiagnostic` remains lightweight, so later milestones can extend reporting
 behaviour without redefining the core trait boundaries.
 
 ### 3.2. A declarative macro for rule creation (`declare_lint!`)
