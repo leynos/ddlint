@@ -121,18 +121,18 @@ Observable success is:
 - Decision: map roadmap references to `docs/ddlint-design.md` for this
   milestone. Rationale: it is the only in-repo design doc containing sections
   `1.2` and `3.1` for linter engine architecture. Date/Author: 2026-02-20 /
-  assistant
+  assistant.
 
 - Decision: keep this milestone atomic by implementing only context data shape
   and access APIs, while deferring dispatch/store concerns to roadmap items
   `3.1.3` and `3.1.4`. Rationale: preserves roadmap sequencing and limits blast
-  radius. Date/Author: 2026-02-20 / assistant
+  radius. Date/Author: 2026-02-20 / assistant.
 
 - Decision: model rule configuration as a small typed enum
   (`RuleConfigValue`) backed by `BTreeMap<String, RuleConfigValue>` rather than
   introducing an external deserialization layer at this stage. Rationale: this
   keeps `3.1.2` additive and dependency-free while providing enough type
-  information for rule implementations. Date/Author: 2026-02-21 / assistant
+  information for rule implementations. Date/Author: 2026-02-21 / assistant.
 
 ## Outcomes & Retrospective
 
