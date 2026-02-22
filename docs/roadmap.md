@@ -232,7 +232,7 @@ implementations.
 
 - [x] 3.1.1. Define the core `Rule` and `CstRule` traits.
   See docs/ddlint-design-and-road-map.md §3.1.
-- [ ] 3.1.2. Implement `RuleCtx` to provide source text, configuration, and AST
+- [x] 3.1.2. Implement `RuleCtx` to provide source text, configuration, and AST
   context to rules. See docs/ddlint-design-and-road-map.md §1.2 and
   docs/ddlint-design-and-road-map.md §3.1.
 - [ ] 3.1.3. Create `CstRuleStore` to register and resolve rule handlers by
