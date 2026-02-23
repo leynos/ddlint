@@ -474,6 +474,31 @@ impl RuleCtx {
 `LintDiagnostic` remains lightweight, so later milestones can extend reporting
 behaviour without redefining the core trait boundaries.
 
+`CstRuleStore` (roadmap item `3.1.3`) is the central registry that maps
+`SyntaxKind` values to `CstRule` implementations.  Each registered rule is
+wrapped in `Arc<dyn CstRule>` so that rules targeting multiple syntax kinds
+share a single allocation rather than being duplicated.  During CST traversal,
+the rule runner queries the store with the current element's `SyntaxKind` and
+receives back only the interested rules, providing O(1) dispatch.  The
+implementation lives in `src/linter/store.rs` and is re-exported from
+`crate::linter`.
+
+```rust,no_run
+pub struct CstRuleStore {
+    rules: Vec<Arc<dyn CstRule>>,
+    by_kind: HashMap<SyntaxKind, Vec<Arc<dyn CstRule>>>,
+}
+
+impl CstRuleStore {
+    pub fn new() -> Self;
+    pub fn register(&mut self, rule: Box<dyn CstRule>) -> &mut Self;
+    pub fn rules_for_kind(&self, kind: SyntaxKind) -> &[Arc<dyn CstRule>];
+    pub fn all_rules(&self) -> &[Arc<dyn CstRule>];
+    pub fn len(&self) -> usize;
+    pub fn is_empty(&self) -> bool;
+}
+```
+
 ### 3.2. A declarative macro for rule creation (`declare_lint!`)
 
 To streamline the development of new rules, reduce boilerplate, and improve the
