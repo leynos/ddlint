@@ -64,6 +64,85 @@ impl CstRule for CountingRule {
     }
 }
 
+/// A rule with no target kinds; must never be dispatched.
+struct EmptyTargetsRule;
+
+impl Rule for EmptyTargetsRule {
+    fn name(&self) -> &'static str {
+        "empty-targets-rule"
+    }
+
+    fn group(&self) -> &'static str {
+        "test"
+    }
+
+    fn docs(&self) -> &'static str {
+        "Rule with empty target_kinds; must never be dispatched."
+    }
+}
+
+impl CstRule for EmptyTargetsRule {
+    fn target_kinds(&self) -> &'static [SyntaxKind] {
+        &[]
+    }
+
+    fn check_node(
+        &self,
+        _node: &rowan::SyntaxNode<ddlint::DdlogLanguage>,
+        _ctx: &RuleCtx,
+        _diagnostics: &mut Vec<LintDiagnostic>,
+    ) {
+        panic!("EmptyTargetsRule::check_node must never be called");
+    }
+
+    fn check_token(
+        &self,
+        _token: &rowan::SyntaxToken<ddlint::DdlogLanguage>,
+        _ctx: &RuleCtx,
+        _diagnostics: &mut Vec<LintDiagnostic>,
+    ) {
+        panic!("EmptyTargetsRule::check_token must never be called");
+    }
+}
+
+/// A rule that reads config and only emits diagnostics when enabled.
+struct ConfigAwareRule;
+
+impl Rule for ConfigAwareRule {
+    fn name(&self) -> &'static str {
+        "config-aware-rule"
+    }
+
+    fn group(&self) -> &'static str {
+        "test"
+    }
+
+    fn docs(&self) -> &'static str {
+        "Only emits diagnostics when config key 'enabled' is true."
+    }
+}
+
+impl CstRule for ConfigAwareRule {
+    fn target_kinds(&self) -> &'static [SyntaxKind] {
+        &[SyntaxKind::N_RELATION_DECL]
+    }
+
+    fn check_node(
+        &self,
+        node: &rowan::SyntaxNode<ddlint::DdlogLanguage>,
+        ctx: &RuleCtx,
+        diagnostics: &mut Vec<LintDiagnostic>,
+    ) {
+        if ctx.config_bool("enabled") == Some(true) {
+            diagnostics.push(LintDiagnostic::new(
+                self.name(),
+                "config-enabled hit",
+                node.text_range(),
+            ));
+        }
+    }
+}
+
 struct IdentTokenRule;
 
 impl Rule for IdentTokenRule {
@@ -245,21 +324,59 @@ fn empty_store_produces_no_matches(parsed_fixture: Parsed) {
 #[rstest]
 fn store_dispatch_with_context_config(parsed_fixture: Parsed) {
     let source: String = parsed_fixture.root().text();
-    let config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(true))]);
-    let ctx = RuleCtx::from_parsed(source.as_str(), &parsed_fixture, config);
+
+    // With "enabled" = true the config-aware rule emits diagnostics.
+    let enabled_config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(true))]);
+    let enabled_ctx = RuleCtx::from_parsed(source.as_str(), &parsed_fixture, enabled_config);
 
     let mut store = CstRuleStore::new();
-    store.register(Box::new(CountingRule));
+    store.register(Box::new(ConfigAwareRule));
 
+    let enabled_diagnostics = run_store_over_cst(&parsed_fixture, &enabled_ctx, &store);
+
+    assert!(
+        !enabled_diagnostics.is_empty(),
+        "config-aware rule should emit diagnostics when enabled"
+    );
+    assert!(
+        enabled_diagnostics
+            .iter()
+            .all(|d| d.rule_name() == "config-aware-rule"),
+        "all diagnostics should be from config-aware-rule"
+    );
+
+    // With "enabled" = false the same rule emits nothing.
+    let disabled_config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(false))]);
+    let disabled_ctx = RuleCtx::from_parsed(source.as_str(), &parsed_fixture, disabled_config);
+
+    let disabled_diagnostics = run_store_over_cst(&parsed_fixture, &disabled_ctx, &store);
+
+    assert!(
+        disabled_diagnostics.is_empty(),
+        "config-aware rule should emit nothing when disabled"
+    );
+}
+
+#[rstest]
+fn rule_with_empty_target_kinds_is_never_dispatched(parsed_fixture: Parsed) {
+    let source: String = parsed_fixture.root().text();
+    let ctx = RuleCtx::from_parsed(source.as_str(), &parsed_fixture, RuleConfig::new());
+
+    let mut store = CstRuleStore::new();
+    store
+        .register(Box::new(EmptyTargetsRule))
+        .register(Box::new(CountingRule));
+
+    // If EmptyTargetsRule were dispatched its check_* methods would panic.
     let diagnostics = run_store_over_cst(&parsed_fixture, &ctx, &store);
 
-    // Verify context is available through the store dispatch path.
+    // Only CountingRule diagnostics should appear.
     assert!(
         !diagnostics.is_empty(),
-        "store-dispatched rules should receive a valid RuleCtx"
+        "counting-rule should still produce diagnostics"
     );
     assert!(
         diagnostics.iter().all(|d| d.rule_name() == "counting-rule"),
-        "all diagnostics should be attributed to counting-rule"
+        "no diagnostics should come from empty-targets-rule"
     );
 }

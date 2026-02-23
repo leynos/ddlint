@@ -5,7 +5,7 @@
 //! queries the store during CST traversal to identify which rules apply to
 //! each node or token.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::SyntaxKind;
@@ -68,16 +68,21 @@ impl CstRuleStore {
 
     /// Register a rule, indexing it under each of its target syntax kinds.
     ///
+    /// Duplicate kinds within a single rule's [`CstRule::target_kinds`] are
+    /// silently deduplicated so the rule is invoked at most once per element.
     /// The rule is wrapped in [`Arc`] internally so it can be shared across
     /// multiple kind entries without duplication.  Returns `&mut Self` for
     /// chaining.
     pub fn register(&mut self, rule: Box<dyn CstRule>) -> &mut Self {
         let rule: Arc<dyn CstRule> = Arc::from(rule);
+        let mut seen = HashSet::new();
         for &kind in rule.target_kinds() {
-            self.by_kind
-                .entry(kind)
-                .or_default()
-                .push(Arc::clone(&rule));
+            if seen.insert(kind) {
+                self.by_kind
+                    .entry(kind)
+                    .or_default()
+                    .push(Arc::clone(&rule));
+            }
         }
         self.rules.push(rule);
         self
@@ -118,6 +123,8 @@ impl Default for CstRuleStore {
 
 #[cfg(test)]
 mod tests {
+    use rstest::{fixture, rstest};
+
     use super::*;
     use crate::linter::Rule;
 
@@ -148,7 +155,7 @@ mod tests {
         }
     }
 
-    // -- helpers --------------------------------------------------------------
+    // -- helpers / fixtures ---------------------------------------------------
 
     fn assert_send_sync<T: Send + Sync>() {}
 
@@ -156,20 +163,22 @@ mod tests {
         Box::new(StubRule { name, kinds })
     }
 
+    #[fixture]
+    fn store() -> CstRuleStore {
+        CstRuleStore::new()
+    }
+
     // -- tests ----------------------------------------------------------------
 
-    #[test]
-    fn new_store_is_empty() {
-        let store = CstRuleStore::new();
-
+    #[rstest]
+    fn new_store_is_empty(store: CstRuleStore) {
         assert_eq!(store.len(), 0);
         assert!(store.is_empty());
         assert!(store.all_rules().is_empty());
     }
 
-    #[test]
-    fn register_single_rule() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn register_single_rule(mut store: CstRuleStore) {
         store.register(stub("alpha", &[SyntaxKind::N_RULE]));
 
         assert_eq!(store.len(), 1);
@@ -178,9 +187,8 @@ mod tests {
         assert_eq!(store.rules_for_kind(SyntaxKind::N_RULE).len(), 1);
     }
 
-    #[test]
-    fn register_rule_with_multiple_targets() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn register_rule_with_multiple_targets(mut store: CstRuleStore) {
         store.register(stub(
             "multi",
             &[SyntaxKind::N_RELATION_DECL, SyntaxKind::K_RELATION],
@@ -194,9 +202,8 @@ mod tests {
         assert_eq!(store.all_rules().len(), 1);
     }
 
-    #[test]
-    fn multiple_rules_same_kind() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn multiple_rules_same_kind(mut store: CstRuleStore) {
         store.register(stub("alpha", &[SyntaxKind::N_RULE]));
         store.register(stub("beta", &[SyntaxKind::N_RULE]));
 
@@ -204,17 +211,15 @@ mod tests {
         assert_eq!(store.len(), 2);
     }
 
-    #[test]
-    fn rules_for_unregistered_kind_returns_empty() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn rules_for_unregistered_kind_returns_empty(mut store: CstRuleStore) {
         store.register(stub("alpha", &[SyntaxKind::N_RULE]));
 
         assert!(store.rules_for_kind(SyntaxKind::T_COMMA).is_empty());
     }
 
-    #[test]
-    fn rule_with_empty_target_kinds() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn rule_with_empty_target_kinds(mut store: CstRuleStore) {
         store.register(stub("empty", &[]));
 
         // Present in all_rules but not in any kind entry.
@@ -223,9 +228,20 @@ mod tests {
         assert!(store.rules_for_kind(SyntaxKind::T_COMMA).is_empty());
     }
 
-    #[test]
-    fn register_chaining_works() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn duplicate_kinds_in_target_kinds_are_deduplicated(mut store: CstRuleStore) {
+        store.register(stub(
+            "dupes",
+            &[SyntaxKind::N_RULE, SyntaxKind::N_RULE, SyntaxKind::N_RULE],
+        ));
+
+        // Registered only once despite three identical kinds.
+        assert_eq!(store.rules_for_kind(SyntaxKind::N_RULE).len(), 1);
+        assert_eq!(store.all_rules().len(), 1);
+    }
+
+    #[rstest]
+    fn register_chaining_works(mut store: CstRuleStore) {
         store
             .register(stub("alpha", &[SyntaxKind::N_RULE]))
             .register(stub("beta", &[SyntaxKind::K_RELATION]));
@@ -238,9 +254,8 @@ mod tests {
         assert_send_sync::<CstRuleStore>();
     }
 
-    #[test]
-    fn rules_for_kind_preserves_insertion_order() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn rules_for_kind_preserves_insertion_order(mut store: CstRuleStore) {
         store.register(stub("alpha", &[SyntaxKind::N_RULE]));
         store.register(stub("beta", &[SyntaxKind::N_RULE]));
         store.register(stub("gamma", &[SyntaxKind::N_RULE]));
@@ -254,9 +269,8 @@ mod tests {
         assert_eq!(names, vec!["alpha", "beta", "gamma"]);
     }
 
-    #[test]
-    fn rule_metadata_accessible_through_store() {
-        let mut store = CstRuleStore::new();
+    #[rstest]
+    fn rule_metadata_accessible_through_store(mut store: CstRuleStore) {
         store.register(stub("alpha", &[SyntaxKind::N_RULE]));
 
         let names: Vec<&str> = store

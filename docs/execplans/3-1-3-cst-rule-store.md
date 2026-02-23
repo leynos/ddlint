@@ -13,10 +13,10 @@ PLANS.md is not present in this repository.
 Roadmap item `3.1.3` introduces the central registry that maps `SyntaxKind`
 values to `CstRule` implementations. The `CstRuleStore` sits between rule
 definitions (completed in 3.1.1 and 3.1.2) and the visitor-based parallel rule
-runner (3.1.4, next milestone). During CST traversal the runner will query the
-store with each node or token's `SyntaxKind` and receive back only the rules
-interested in that kind, avoiding the cost of checking every rule against every
-element.
+runner (3.1.4, next milestone). During concrete syntax tree (CST) traversal the
+runner will query the store with each node or token's `SyntaxKind` and receive
+back only the rules interested in that kind, avoiding the cost of checking
+every rule against every element.
 
 Observable success is:
 
@@ -74,7 +74,7 @@ Observable success is:
 - Risk: Strict Clippy lints (`indexing_slicing`, `unwrap_used`) may flag
   patterns in HashMap usage. Severity: low. Likelihood: low. Mitigation: use
   only `HashMap::get` (returns `Option`) and `Vec::as_slice` (safe). No
-  indexing or unwrapping needed. Outcome: realised in test code. Initial unit
+  indexing or unwrapping needed. Outcome: realized in test code. Initial unit
   test used direct indexing which tripped `indexing_slicing`. Replaced with
   iterator-based assertions.
 
@@ -310,7 +310,7 @@ Quality criteria (what "done" means):
   contract.
 - Roadmap: `docs/roadmap.md` item 3.1.3 is marked `[x]`.
 
-Quality method (how we check):
+Quality method (verification steps):
 
     set -o pipefail && make check-fmt 2>&1 | tee /tmp/ddlint-check-fmt.log
     set -o pipefail && make lint 2>&1 | tee /tmp/ddlint-lint.log
@@ -370,7 +370,7 @@ A minimal test helper used across unit tests:
 
 ### Store-based dispatch helper for behavioural tests
 
-A preview of the dispatch pattern that `3.1.4` will formalise:
+A preview of the dispatch pattern that `3.1.4` will formalize:
 
     fn run_store_over_cst(
         parsed: &Parsed,
