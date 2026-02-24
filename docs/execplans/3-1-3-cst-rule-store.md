@@ -177,9 +177,9 @@ milestones should use iterator-based test assertions from the start.
 
 ## Context and orientation
 
-The `ddlint` project is a CST-based linter for Differential Datalog. Its source
-tree lives in `/home/user/project/`. The linter module is at `src/linter/`, now
-containing:
+The `ddlint` project is a concrete syntax tree (CST)-based linter for
+Differential Datalog. Its source tree lives in `/home/user/project/`. The
+linter module is at `src/linter/`, now containing:
 
 - `src/linter/mod.rs` (12 lines): module declaration and re-exports.
 - `src/linter/rule.rs` (327 lines): `Rule` trait, `CstRule` trait,
