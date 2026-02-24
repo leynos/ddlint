@@ -235,7 +235,7 @@ implementations.
 - [x] 3.1.2. Implement `RuleCtx` to provide source text, configuration, and AST
   context to rules. See docs/ddlint-design-and-road-map.md §1.2 and
   docs/ddlint-design-and-road-map.md §3.1.
-- [ ] 3.1.3. Create `CstRuleStore` to register and resolve rule handlers by
+- [x] 3.1.3. Create `CstRuleStore` to register and resolve rule handlers by
   syntax kind. See docs/ddlint-design-and-road-map.md §1.2.
 - [ ] 3.1.4. Build a visitor-based parallel rule runner (using `rayon`) to walk
   the CST and invoke applicable rules. See docs/ddlint-design-and-road-map.md
