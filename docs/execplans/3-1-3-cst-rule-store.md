@@ -81,7 +81,7 @@ Observable success is:
 - Risk: `Arc<dyn CstRule>` forces the runner (3.1.4) to work with `Arc`.
   Severity: low. Likelihood: high (this is deliberate). Mitigation: the runner
   will need shared references for parallel dispatch anyway. `Arc` is the
-  idiomatic choice and `Arc::clone` is cheap (atomic increment). Outcome:
+  idiomatic choice, and `Arc::clone` is cheap (atomic increment). Outcome:
   accepted by design.
 
 ## Progress
