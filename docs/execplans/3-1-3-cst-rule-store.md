@@ -13,7 +13,7 @@ PLANS.md is not present in this repository.
 Roadmap item `3.1.3` introduces the central registry that maps `SyntaxKind`
 values to `CstRule` implementations. The `CstRuleStore` sits between rule
 definitions (completed in 3.1.1 and 3.1.2) and the visitor-based parallel rule
-runner (3.1.4, next milestone). During concrete syntax tree (CST) traversal the
+runner (3.1.4, next milestone). During concrete syntax tree (CST) traversal, the
 runner will query the store with each node or token's `SyntaxKind` and receive
 back only the rules interested in that kind, avoiding the cost of checking
 every rule against every element.
@@ -75,7 +75,7 @@ Observable success is:
   patterns in HashMap usage. Severity: low. Likelihood: low. Mitigation: use
   only `HashMap::get` (returns `Option`) and `Vec::as_slice` (safe). No
   indexing or unwrapping needed. Outcome: realized in test code. Initial unit
-  test used direct indexing which tripped `indexing_slicing`. Replaced with
+  test used direct indexing, which tripped `indexing_slicing`. Replaced with
   iterator-based assertions.
 
 - Risk: `Arc<dyn CstRule>` forces the runner (3.1.4) to work with `Arc`.
@@ -104,7 +104,7 @@ Observable success is:
   Evidence: `make lint` failed with `indexing may panic` on `rules[0]` in the
   `rule_metadata_accessible_through_store` test. Impact: tests must use
   iterator-based assertions or `.first()` with
-  `#[expect(clippy::expect_used)]`. Chose iterator-based approach to avoid
+  `#[expect(clippy::expect_used)]`. Chose an iterator-based approach to avoid
   needing lint suppression.
 
 ## Decision log
@@ -347,7 +347,7 @@ All steps are idempotent. Creating or overwriting `store.rs` and
 `roadmap.md` are additive and can be re-applied. Quality gate commands are
 read-only checks. If a step fails, fix the issue and re-run from that step.
 
-## Artifacts and notes
+## Artefacts and notes
 
 ### Stub rule for unit tests
 
