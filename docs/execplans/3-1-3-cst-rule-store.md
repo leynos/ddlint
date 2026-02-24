@@ -178,7 +178,7 @@ milestones should use iterator-based test assertions from the start.
 ## Context and orientation
 
 The `ddlint` project is a concrete syntax tree (CST)-based linter for
-Differential Datalog. Its source tree lives in `/home/user/project/`. The
+Differential Datalog. Its source tree lives at the repository root. The
 linter module is at `src/linter/`, now containing:
 
 - `src/linter/mod.rs` (12 lines): module declaration and re-exports.
@@ -268,7 +268,7 @@ Fix any issues. Then mark `docs/roadmap.md` item 3.1.3 as done.
 
 ## Concrete steps
 
-All commands run from the repository root `/home/user/project/`.
+All commands run from the repository root.
 
 1. Create `src/linter/store.rs` with the full implementation, doc comments, and
    unit tests.
