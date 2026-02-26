@@ -171,6 +171,17 @@ mod tests {
         }
     }
 
+    impl StubRule {
+        fn push_diagnostic(
+            &self,
+            message: &str,
+            range: rowan::TextRange,
+            diagnostics: &mut Vec<LintDiagnostic>,
+        ) {
+            diagnostics.push(LintDiagnostic::new(self.name(), message, range));
+        }
+    }
+
     impl CstRule for StubRule {
         fn target_kinds(&self) -> &'static [SyntaxKind] {
             self.kinds
@@ -182,11 +193,7 @@ mod tests {
             _ctx: &RuleCtx,
             diagnostics: &mut Vec<LintDiagnostic>,
         ) {
-            diagnostics.push(LintDiagnostic::new(
-                self.name(),
-                "node hit",
-                node.text_range(),
-            ));
+            self.push_diagnostic("node hit", node.text_range(), diagnostics);
         }
 
         fn check_token(
@@ -195,11 +202,7 @@ mod tests {
             _ctx: &RuleCtx,
             diagnostics: &mut Vec<LintDiagnostic>,
         ) {
-            diagnostics.push(LintDiagnostic::new(
-                self.name(),
-                "token hit",
-                token.text_range(),
-            ));
+            self.push_diagnostic("token hit", token.text_range(), diagnostics);
         }
     }
 
