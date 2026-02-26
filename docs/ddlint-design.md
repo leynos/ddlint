@@ -499,6 +499,38 @@ impl CstRuleStore {
 }
 ```
 
+`Runner` (roadmap item `3.1.4`) is the visitor-based parallel rule runner that
+connects the store, context, and rule traits into a functioning execution
+pipeline.  It dispatches rule evaluations across a `rayon` thread pool for
+concurrent execution.  Because `rowan`'s `SyntaxNode` and `SyntaxToken` are
+`!Send + !Sync` (they use `Rc` and thread-local allocators), the runner employs
+a per-rule parallelism strategy: each `rayon` task clones the shared
+`GreenNode` (`Send + Sync + Clone`), constructs a thread-local red tree via
+`Root::from_green()`, and walks it independently.  Diagnostics are sorted by
+`(span.start, span.end, rule_name)` before being returned, ensuring
+deterministic output regardless of thread scheduling.  The implementation lives
+in `src/linter/runner.rs` and is re-exported from `crate::linter`.
+
+```rust,no_run
+pub struct Runner<'a> {
+    store: &'a CstRuleStore,
+    green: GreenNode,
+    source_text: Arc<str>,
+    config: RuleConfig,
+}
+
+impl<'a> Runner<'a> {
+    pub fn new(
+        store: &'a CstRuleStore,
+        source_text: impl Into<Arc<str>>,
+        parsed: &Parsed,
+        config: RuleConfig,
+    ) -> Self;
+
+    pub fn run(&self) -> Vec<LintDiagnostic>;
+}
+```
+
 ### 3.2. A declarative macro for rule creation (`declare_lint!`)
 
 To streamline the development of new rules, reduce boilerplate, and improve the

@@ -13,10 +13,10 @@ PLANS.md is not present in this repository.
 Roadmap item `3.1.3` introduces the central registry that maps `SyntaxKind`
 values to `CstRule` implementations. The `CstRuleStore` sits between rule
 definitions (completed in 3.1.1 and 3.1.2) and the visitor-based parallel rule
-runner (3.1.4, next milestone). During concrete syntax tree (CST) traversal, the
-runner will query the store with each node or token's `SyntaxKind` and receive
-back only the rules interested in that kind, avoiding the cost of checking
-every rule against every element.
+runner (3.1.4, next milestone). During concrete syntax tree (CST) traversal,
+the runner will query the store with each node or token's `SyntaxKind` and
+receive back only the rules interested in that kind, avoiding the cost of
+checking every rule against every element.
 
 Observable success is:
 
@@ -178,8 +178,8 @@ milestones should use iterator-based test assertions from the start.
 ## Context and orientation
 
 The `ddlint` project is a concrete syntax tree (CST)-based linter for
-Differential Datalog. Its source tree lives at the repository root. The
-linter module is at `src/linter/`, now containing:
+Differential Datalog. Its source tree lives at the repository root. The linter
+module is at `src/linter/`, now containing:
 
 - `src/linter/mod.rs` (12 lines): module declaration and re-exports.
 - `src/linter/rule.rs` (327 lines): `Rule` trait, `CstRule` trait,
