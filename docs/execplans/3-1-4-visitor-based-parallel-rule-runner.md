@@ -100,7 +100,8 @@ Observable success is:
   parallel dispatch, and unit tests.
 - [x] (2026-02-26) Update `src/linter/mod.rs` to wire runner module and
   re-export `Runner`.
-- [x] (2026-02-26) Create `tests/linter_runner.rs` with behavioural tests.
+- [x] (2026-02-26) Create `tests/linter_runner/` with behavioural tests
+  (`main.rs` and `rules.rs`).
 - [x] (2026-02-26) Update `docs/ddlint-design.md` section 3.1 with `Runner`
   contract.
 - [x] (2026-02-26) Run quality gates (`make check-fmt`, `make lint`,
@@ -113,14 +114,14 @@ Observable success is:
   for all trait method implementations in test code, even trivial single-line
   accessors like `fn name(&self) -> &'static str { "x" }`. Evidence:
   `make check-fmt` flagged all single-line `Rule` impls in both
-  `src/linter/runner.rs` and `tests/linter_runner.rs`. Impact: future test
+  `src/linter/runner.rs` and `tests/linter_runner/main.rs`. Impact: future test
   rules must use multi-line bodies from the start.
 
 - Observation: Clippy's `needless_borrow` lint catches `.cmp(&b.rule_name())`
   on `&'static str` comparisons. The fix is `.cmp(b.rule_name())`. Evidence:
   `make lint` failed with `needless_borrow` in both `runner.rs` and
-  `linter_runner.rs` for the sort comparator. Impact: string comparisons via
-  `Ord::cmp` should not take a reference when the type is already `&str`.
+  `linter_runner/main.rs` for the sort comparator. Impact: string comparisons
+  via `Ord::cmp` should not take a reference when the type is already `&str`.
 
 - Observation: Clippy's `redundant_closure_for_method_calls` lint flags
   `|d| d.rule_name()` closures in `.map()` calls, suggesting the method
@@ -181,14 +182,15 @@ All observable success criteria met:
 - All quality gates pass: `make check-fmt`, `make lint`, `make test`,
   `make markdownlint`.
 
-Files modified (7, within tolerance of 8):
+Files modified (8, within tolerance of 8):
 
 - `Cargo.toml` (edit): added `rayon = "1.10"`.
 - `src/linter/runner.rs` (new): `Runner` struct, parallel dispatch, unit
   tests.
 - `src/linter/mod.rs` (edit): added `mod runner;` and `pub use
   runner::Runner;`.
-- `tests/linter_runner.rs` (new): behavioural tests.
+- `tests/linter_runner/main.rs` (new): behavioural tests and helpers.
+- `tests/linter_runner/rules.rs` (new): shared test rule stubs.
 - `docs/ddlint-design.md` (edit): documented `Runner` contract in section 3.1.
 - `docs/roadmap.md` (edit): marked 3.1.4 done.
 - `docs/execplans/3-1-4-visitor-based-parallel-rule-runner.md` (new): this
@@ -241,6 +243,9 @@ sequential dispatch helper `run_store_over_cst()` that walks
 pattern.
 
 Thread-safety summary for relevant types:
+
+Table: Send/Sync properties of types used by the visitor-based parallel rule
+runner.
 
 | Type               | Send | Sync | Notes                           |
 | ------------------ | ---- | ---- | ------------------------------- |
@@ -316,12 +321,13 @@ These tests use lightweight `StubRule` structs following the pattern from
 Add `mod runner;` and `pub use runner::Runner;`. Update the module-level `//!`
 comment to mention the parallel runner.
 
-### Stage D: create `tests/linter_runner.rs`
+### Stage D: create `tests/linter_runner/`
 
 Behavioural tests following the established pattern from
-`tests/linter_rule_store.rs`. These re-use the same test rule patterns
-(`CountingRule`, `EmptyTargetsRule`, `ConfigAwareRule`, `IdentTokenRule`) from
-the existing store tests.
+`tests/linter_rule_store.rs`, split into `main.rs` (tests, helpers, fixtures)
+and `rules.rs` (shared test rule stubs). These re-use the same test rule
+patterns (`CountingRule`, `EmptyTargetsRule`, `ConfigAwareRule`,
+`IdentTokenRule`) from the existing store tests.
 
 Key tests:
 
@@ -378,7 +384,8 @@ All commands run from the repository root (`/home/user/project`).
 4. Edit `src/linter/mod.rs`: add `mod runner;`, update `pub use` to include
    `Runner`, and update the module-level doc comment.
 
-5. Create `tests/linter_runner.rs` with behavioural tests.
+5. Create `tests/linter_runner/main.rs` and `tests/linter_runner/rules.rs`
+   with behavioural tests and shared rule stubs.
 
 6. Run:
 
@@ -409,7 +416,7 @@ All commands run from the repository root (`/home/user/project`).
 Quality criteria (what "done" means):
 
 - Tests: `make test` passes. New unit tests in `src/linter/runner.rs` and
-  behavioural tests in `tests/linter_runner.rs` are green.
+  behavioural tests in `tests/linter_runner/main.rs` are green.
 - Lint/typecheck: `make check-fmt` and `make lint` pass with zero warnings.
 - Markdown: `make markdownlint` passes.
 - Design doc: `docs/ddlint-design.md` section 3.1 includes the `Runner`
@@ -440,8 +447,8 @@ The new tests verify:
 
 ## Idempotence and recovery
 
-All steps are idempotent. Creating or overwriting `runner.rs` and
-`linter_runner.rs` is safe. Edits to `mod.rs`, `Cargo.toml`,
+All steps are idempotent. Creating or overwriting `runner.rs` and the
+`linter_runner/` test module is safe. Edits to `mod.rs`, `Cargo.toml`,
 `ddlint-design.md`, and `roadmap.md` are additive and can be re-applied.
 Quality gate commands are read-only checks. If a step fails, fix the issue and
 re-run from that step.
@@ -539,13 +546,14 @@ Files modified:
 - `Cargo.toml` (edit): add rayon dependency.
 - `src/linter/runner.rs` (new): `Runner` struct, impl, unit tests.
 - `src/linter/mod.rs` (edit): add `mod runner;` and re-export.
-- `tests/linter_runner.rs` (new): behavioural tests.
+- `tests/linter_runner/main.rs` (new): behavioural tests and helpers.
+- `tests/linter_runner/rules.rs` (new): shared test rule stubs.
 - `docs/ddlint-design.md` (edit): document `Runner` contract.
 - `docs/roadmap.md` (edit): mark 3.1.4 done.
 - `docs/execplans/3-1-4-visitor-based-parallel-rule-runner.md` (new): this
   ExecPlan.
 
-Total: 7 files (within 8-file tolerance).
+Total: 8 files (within 8-file tolerance).
 
 Existing functions and utilities to reuse:
 
