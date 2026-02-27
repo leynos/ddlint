@@ -171,7 +171,7 @@ All observable success criteria met:
 
 - `Runner` implemented in `src/linter/runner.rs` (~270 lines including tests),
   well within the 400-line limit.
-- 6 unit tests and 8 behavioural tests (including 2 parameterised fixture
+- 6 unit tests and 8 behavioural tests (including 2 parameterized fixture
   cases) pass, covering empty stores, single rules, multiple rules, overlapping
   kinds, empty target kinds, config-aware rules, deterministic ordering,
   sort-invariant verification, and `Send + Sync` conformance.
@@ -200,9 +200,9 @@ Lessons:
   worked cleanly. `Root::from_green(green.clone())` produces a fully functional
   thread-local tree without complications.
 - Strict Clippy lints in test code continue to require attention:
-  `needless_borrow`,
-  `redundant_closure_for_method_calls`, and `indexing_slicing` all fired.
-  Iterator-based assertions and method references should be the default pattern.
+  `needless_borrow`, `redundant_closure_for_method_calls`, and
+  `indexing_slicing` all fired. Iterator-based assertions and method references
+  should be the default pattern.
 - The formatter enforces multi-line bodies even for trivial trait methods in
   test code. Single-line accessors like `fn name() -> &str { "x" }` are
   reformatted to multi-line.
@@ -226,8 +226,8 @@ Key types for the runner:
 
 - `Parsed` (`src/parser/cst_builder/mod.rs`): holds `GreenNode`, `Root`, and
   parse errors. Exposes `green() -> &GreenNode` and `root() -> &Root`.
-- `Root` (`src/parser/ast/root.rs`): typed AST root wrapping
-  `SyntaxNode<DdlogLanguage>`. Has `from_green(GreenNode) -> Self` and
+- `Root` (`src/parser/ast/root.rs`): typed abstract syntax tree (AST) root
+  wrapping `SyntaxNode<DdlogLanguage>`. Has `from_green(GreenNode) -> Self` and
   `syntax() -> &SyntaxNode<DdlogLanguage>`.
 - `GreenNode` (from `rowan`): immutable, `Send + Sync + Clone`. The shared
   backbone that enables per-rule parallelism.
@@ -325,7 +325,7 @@ the existing store tests.
 
 Key tests:
 
-- `runner_matches_sequential_dispatch` (parameterised with `#[rstest]` over
+- `runner_matches_sequential_dispatch` (parameterized with `#[rstest]` over
   `hello_join.dl` and `reachability.dl`): runs both the existing sequential
   `run_store_over_cst` helper and `Runner::run()`, sorts both results, asserts
   they are identical. This is the critical correctness test.

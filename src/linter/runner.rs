@@ -111,9 +111,13 @@ fn run_single_rule(
     source_text: &Arc<str>,
     config: &RuleConfig,
 ) -> Vec<LintDiagnostic> {
+    let target_kinds = rule.target_kinds();
+    if target_kinds.is_empty() {
+        return Vec::new();
+    }
+
     let root = Root::from_green(green.clone());
     let ctx = RuleCtx::new(Arc::clone(source_text), root.clone(), config.clone());
-    let target_kinds = rule.target_kinds();
     let mut diagnostics = Vec::new();
 
     for element in root.syntax().descendants_with_tokens() {
