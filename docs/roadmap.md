@@ -237,7 +237,7 @@ implementations.
   docs/ddlint-design-and-road-map.md §3.1.
 - [x] 3.1.3. Create `CstRuleStore` to register and resolve rule handlers by
   syntax kind. See docs/ddlint-design-and-road-map.md §1.2.
-- [ ] 3.1.4. Build a visitor-based parallel rule runner (using `rayon`) to walk
+- [x] 3.1.4. Build a visitor-based parallel rule runner (using `rayon`) to walk
   the CST and invoke applicable rules. See docs/ddlint-design-and-road-map.md
   §1.2.
 
