@@ -14,6 +14,9 @@ use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
+const UNSUPPORTED_TOP_LEVEL_FOR: &str =
+    "top-level `for` is not supported; use `for` inside rule bodies instead";
+
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
     let ws = inline_ws().repeated().ignored();
 
@@ -328,6 +331,11 @@ pub(crate) fn collect_rule_spans(
         match kind {
             SyntaxKind::T_IDENT | SyntaxKind::T_IMPLIES | SyntaxKind::T_AMP => {
                 parse_rule_at_line_start(&mut st, span, &mut expr_spans);
+            }
+            SyntaxKind::K_FOR if is_at_line_start(&st, &span) => {
+                st.extra
+                    .push(Simple::custom(span, UNSUPPORTED_TOP_LEVEL_FOR));
+                st.stream.advance();
             }
             _ => st.stream.advance(),
         }
