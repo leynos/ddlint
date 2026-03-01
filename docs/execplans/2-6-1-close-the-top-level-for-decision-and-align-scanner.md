@@ -123,7 +123,7 @@ Observable success is:
 
 ## Surprises & discoveries
 
-- Observation: the `make fmt` target includes markdown formatting via
+- Observation: the `make fmt` target includes Markdown formatting via
   `mdformat-all` and `markdownlint --fix`, which rewrapped the spec section 6.5
   content slightly differently from the hand-written version. Evidence:
   `make fmt` reformatted the spec file automatically. Impact: none; the content

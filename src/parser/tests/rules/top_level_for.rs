@@ -52,6 +52,12 @@ fn top_level_for_after_dot_separator() {
 fn top_level_for_multiline_does_not_produce_rule() {
     let src = "for (x in Items(x))\nProcess(x).";
     let parsed = parse_err(src);
+    let errors = parsed.errors();
+    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR);
+    assert!(
+        crate::test_util::find_matching_error(errors, &pattern).is_some(),
+        "expected UNSUPPORTED_TOP_LEVEL_FOR diagnostic, got: {errors:?}"
+    );
     assert!(
         parsed.root().rules().is_empty(),
         "multiline top-level `for` must not produce a rule span"
@@ -61,5 +67,10 @@ fn top_level_for_multiline_does_not_produce_rule() {
 #[rstest]
 fn rule_body_for_still_accepted() {
     let src = "R(x) :- for (item in Items(item)) Process(item).";
-    let _parsed = parse_ok(src);
+    let parsed = parse_ok(src);
+    assert_eq!(
+        parsed.root().rules().len(),
+        1,
+        "rule-body `for` must still produce one rule"
+    );
 }
