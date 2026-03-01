@@ -105,15 +105,40 @@ Observable success is:
   `docs/roadmap.md`.
 - [x] (2026-02-28) Run quality gates (`make check-fmt`, `make lint`,
   `make test`, `make markdownlint`). All passed. 923 tests, 0 failures.
+- [x] (2026-03-01) Review revision: consume full top-level `for` statement
+  body (not just the keyword token) after emitting the diagnostic, preventing
+  body tokens from leaking into the rule scanner as standalone rules.
+- [x] (2026-03-01) Review revision: expose `UNSUPPORTED_TOP_LEVEL_FOR`
+  constant as `pub(crate)` and use it in unit tests to prevent message
+  duplication drift.
+- [x] (2026-03-01) Review revision: add `find_matching_error` helper to
+  `src/test_util/assertions.rs` and replace `format!("{e:?}")` substring
+  matching with structured `ErrorPattern`-based assertions.
+- [x] (2026-03-01) Review revision: add multiline top-level `for` test
+  cases confirming that body tokens are not misinterpreted as standalone rules.
+- [x] (2026-03-01) Fix ExecPlan typos ("programmes" to "programs", expand
+  AST acronym on first use).
+- [x] (2026-03-01) Run quality gates after review revisions. All passed.
+  927 tests, 0 failures.
 
 ## Surprises & discoveries
 
 - Observation: the `make fmt` target includes markdown formatting via
-  `mdformat-all` and `markdownlint --fix`, which rewrapped the spec section
-  6.5 content slightly differently from the hand-written version. Evidence:
-  `make fmt` reformatted the spec file automatically. Impact: none; the
-  content is identical, only line breaks changed. Always run `make fmt` before
+  `mdformat-all` and `markdownlint --fix`, which rewrapped the spec section 6.5
+  content slightly differently from the hand-written version. Evidence:
+  `make fmt` reformatted the spec file automatically. Impact: none; the content
+  is identical, only line breaks changed. Always run `make fmt` before
   `make check-fmt` to avoid false positives.
+
+- Observation: advancing by only one token after the `K_FOR` diagnostic left
+  the for-statement body in the stream. On a multiline input like
+  `for (x in Items(x))\nProcess(x).`, the second line started with `T_IDENT` at
+  a logical line start, causing `parse_rule_at_line_start` to parse
+  `Process(x).` as a standalone rule. Evidence: review feedback identified the
+  bug; a new test `top_level_for_multiline_does_not_produce_rule` confirms the
+  fix. Impact: the scanner now builds a greedy parser to consume the full
+  top-level `for` shape (including balanced delimiters and trailing dot) before
+  continuing, preventing body token leakage.
 
 ## Decision log
 
@@ -139,26 +164,53 @@ Observable success is:
   non-extern case uses span `0..keyword_len`). Simpler implementation with
   clear error location. Date: 2026-02-28.
 
+- Decision: after emitting the diagnostic, consume the full top-level `for`
+  statement (including balanced delimiters and trailing dot) using a greedy
+  Chumsky parser via `parse_span`, falling back to `skip_line` on parse
+  failure. Rationale: advancing by a single token left the for-statement body
+  in the stream, where body tokens like `Process(x).` on a new line could be
+  misinterpreted as standalone rules by `parse_rule_at_line_start`. The greedy
+  skip prevents this leakage. Date: 2026-03-01.
+
+- Decision: expose `UNSUPPORTED_TOP_LEVEL_FOR` as `pub(crate)` and reference
+  it in unit tests instead of duplicating the message string. Rationale:
+  changes to the diagnostic message in one place should not silently desync
+  test expectations. Integration tests (separate crate) use a local constant
+  mirroring the message, which is acceptable since they test observable
+  behaviour. Date: 2026-03-01.
+
+- Decision: introduce `find_matching_error` in `src/test_util/assertions.rs`
+  for searching error lists by `ErrorPattern`. Rationale: the existing
+  `assert_parse_error` requires exactly one error. Tests with multiple errors
+  (e.g. after-dot-separator) needed a way to find a specific error in a list
+  without resorting to `format!("{e:?}")` substring matching, which is fragile
+  to formatting changes. Date: 2026-03-01.
+
 ## Outcomes & retrospective
 
 All observable success criteria met:
 
 - Scanner emits diagnostic for top-level `for` with span `0..3`.
+- Scanner consumes the full rejected `for` statement body (including multiline
+  forms), preventing body tokens from leaking as standalone rules.
 - Rule-body `for` continues to work without errors.
-- 4 unit tests and 2 behavioural tests pass, covering the diagnostic,
-  no-rule-produced, after-dot-separator, and rule-body regression guard
-  scenarios.
+- 5 unit tests and 3 behavioural tests pass, covering the diagnostic,
+  no-rule-produced, after-dot-separator, multiline body consumption, and
+  rule-body regression guard scenarios.
 - Spec section 6.5, conformance register item 8, implementation notes, and
   roadmap items 2.5.4 and 2.6.1 all updated.
 - All quality gates pass: `make check-fmt`, `make lint`, `make test`,
   `make markdownlint`.
 
-Files modified (9, within 9-file tolerance):
+Files modified:
 
 - `src/parser/span_scanners/rules.rs` (edit): added `UNSUPPORTED_TOP_LEVEL_FOR`
-  constant and `K_FOR` match arm.
+  constant (`pub(crate)`), `skip_rejected_top_level_for` helper, and `K_FOR`
+  match arm.
 - `src/parser/tests/rules/top_level_for.rs` (new): unit tests.
 - `src/parser/tests/rules/mod.rs` (edit): registered new module.
+- `src/test_util/assertions.rs` (edit): added `find_matching_error` helper.
+- `src/test_util/mod.rs` (edit): exported `find_matching_error`.
 - `tests/top_level_for_rejection.rs` (new): behavioural tests.
 - `docs/differential-datalog-parser-syntax-spec-updated.md` (edit): rewrote
   section 6.5.
@@ -173,8 +225,12 @@ Lessons:
 
 - The `is_at_line_start` guard already handles `.` as a line boundary, making
   the after-dot-separator test case pass without additional logic.
-- The single-token advance after the diagnostic is sufficient; remaining
-  tokens are consumed by the wildcard arm without producing false positives.
+- Advancing by only one token after the diagnostic was insufficient for
+  multiline forms. A greedy parser that consumes balanced delimiters up to
+  `T_DOT` correctly handles both single-line and multiline top-level `for`.
+- Exposing scanner constants as `pub(crate)` and reusing them in tests
+  prevents message drift. Integration tests (separate crate) can mirror the
+  message in a local constant since they test observable behaviour.
 
 ## Context and orientation
 
@@ -185,7 +241,8 @@ two-phase scanning architecture:
 1. **Span scanners** (`src/parser/span_scanners/`) identify top-level statement
    boundaries (imports, typedefs, relations, indexes, functions, transformers,
    apply items, rules) by scanning the token stream.
-2. **Full parsing** uses these spans to build the CST and extract AST nodes.
+2. **Full parsing** uses these spans to build the CST and extract abstract
+   syntax tree (AST) nodes.
 
 The rule scanner (`src/parser/span_scanners/rules.rs`) is the catch-all: after
 all other scanners have claimed their spans, the rule scanner processes
@@ -229,8 +286,8 @@ follow the pattern established by `src/parser/tests/rules/invalid.rs` and
 ### Stage C: behavioural test
 
 Create `tests/top_level_for_rejection.rs` with end-to-end tests that parse
-multi-statement programmes and verify the diagnostic is emitted, no rule span
-is recorded, and other declarations parse correctly.
+multi-statement programs and verify the diagnostic is emitted, no rule span is
+recorded, and other declarations parse correctly.
 
 ### Stage D: documentation updates
 

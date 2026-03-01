@@ -4,6 +4,11 @@
 //! while other declarations and rule-body `for` remain unaffected.
 
 use ddlint::parse;
+use ddlint::test_util::{ErrorPattern, find_matching_error};
+
+/// Diagnostic substring shared across tests to avoid duplication.
+const TOP_LEVEL_FOR_PATTERN: &str =
+    "top-level `for` is not supported; use `for` inside rule bodies instead";
 
 #[test]
 fn top_level_for_produces_diagnostic_and_no_rule() {
@@ -14,12 +19,9 @@ fn top_level_for_produces_diagnostic_and_no_rule() {
     let parsed = parse(src);
 
     let errors = parsed.errors();
-    let has_top_level_for_error = errors.iter().any(|e| {
-        let rendered = format!("{e:?}");
-        rendered.contains("top-level") && rendered.contains("for")
-    });
+    let pattern = ErrorPattern::from(TOP_LEVEL_FOR_PATTERN);
     assert!(
-        has_top_level_for_error,
+        find_matching_error(errors, &pattern).is_some(),
         "expected top-level `for` diagnostic, got: {errors:?}"
     );
 
@@ -32,6 +34,28 @@ fn top_level_for_produces_diagnostic_and_no_rule() {
         parsed.root().relations().len(),
         1,
         "relation declaration must still parse successfully"
+    );
+}
+
+#[test]
+fn top_level_for_multiline_does_not_leak_body_as_rule() {
+    let src = concat!(
+        "input relation Items(x: u32)\n",
+        "for (x in Items(x))\n",
+        "Process(x).\n",
+    );
+    let parsed = parse(src);
+
+    let errors = parsed.errors();
+    let pattern = ErrorPattern::from(TOP_LEVEL_FOR_PATTERN);
+    assert!(
+        find_matching_error(errors, &pattern).is_some(),
+        "expected top-level `for` diagnostic, got: {errors:?}"
+    );
+
+    assert!(
+        parsed.root().rules().is_empty(),
+        "multiline top-level `for` body must not produce a rule"
     );
 }
 

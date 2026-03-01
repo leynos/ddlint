@@ -14,7 +14,7 @@ use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
-const UNSUPPORTED_TOP_LEVEL_FOR: &str =
+pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR: &str =
     "top-level `for` is not supported; use `for` inside rule bodies instead";
 
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
@@ -294,6 +294,40 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     st.stream.skip_until(end);
 }
 
+/// Emit the unsupported-top-level-`for` diagnostic and skip past the full
+/// statement so that the body tokens are not misinterpreted as standalone
+/// rules.
+fn skip_rejected_top_level_for(st: &mut State<'_>, for_span: Span) {
+    st.extra
+        .push(Simple::custom(for_span.clone(), UNSUPPORTED_TOP_LEVEL_FOR));
+
+    // Build a greedy parser that consumes `K_FOR` + balanced body + trailing
+    // dot.  On success we skip the entire rejected statement; on failure we
+    // fall back to skipping to the end of the current line (consistent with
+    // how `parse_rule_at_line_start` recovers from parse failures).
+    let ws = inline_ws().repeated().ignored();
+    let body_token = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        filter(|kind: &SyntaxKind| !matches!(kind, SyntaxKind::T_DOT)).ignored(),
+    ))
+    .padded_by(ws.clone());
+    let top_level_for = just(SyntaxKind::K_FOR)
+        .padded_by(ws.clone())
+        .ignore_then(body_token.repeated())
+        .then_ignore(just(SyntaxKind::T_DOT).padded_by(ws))
+        .map_with_span(|_, sp: Span| sp);
+
+    let (span, _errs) = st.parse_span(top_level_for, for_span.start);
+    if let Some(ref sp) = span {
+        st.stream.skip_until(sp.end);
+    } else {
+        let end = st.stream.line_end(st.stream.cursor());
+        st.stream.skip_until(end);
+    }
+}
+
 pub(crate) fn collect_rule_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -333,9 +367,7 @@ pub(crate) fn collect_rule_spans(
                 parse_rule_at_line_start(&mut st, span, &mut expr_spans);
             }
             SyntaxKind::K_FOR if is_at_line_start(&st, &span) => {
-                st.extra
-                    .push(Simple::custom(span, UNSUPPORTED_TOP_LEVEL_FOR));
-                st.stream.advance();
+                skip_rejected_top_level_for(&mut st, span);
             }
             _ => st.stream.advance(),
         }

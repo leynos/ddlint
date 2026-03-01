@@ -93,6 +93,38 @@ pub fn assert_parse_error(
     assert_eq!(error.span(), start..end);
 }
 
+/// Find the first error in `errors` whose rendered text contains `pattern`.
+///
+/// Returns `Some(index)` for the matching error, or `None` if no error
+/// matches.  Uses the same normalised token comparison as
+/// [`assert_parse_error`], so callers searching a multi-error list get
+/// consistent behaviour.
+///
+/// # Examples
+///
+/// ```
+/// use chumsky::error::Simple;
+/// use ddlint::{SyntaxKind, test_util::{ErrorPattern, find_matching_error}};
+///
+/// let errors = vec![
+///     Simple::custom(0..1, "other error"),
+///     Simple::custom(2..5, "target message"),
+/// ];
+/// let pattern = ErrorPattern::from("target message");
+/// assert_eq!(find_matching_error(&errors, &pattern), Some(1));
+/// ```
+#[must_use]
+pub fn find_matching_error(errors: &[Simple<SyntaxKind>], pattern: &ErrorPattern) -> Option<usize> {
+    let pattern_normalised = match pattern {
+        ErrorPattern::Custom(msg) => normalise_tokens(msg),
+    };
+    errors.iter().position(|error| {
+        let rendered = format!("{error:?}");
+        let rendered_normalised = normalise_tokens(&rendered);
+        rendered_normalised.contains(&pattern_normalised)
+    })
+}
+
 #[track_caller]
 #[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 fn assert_delimiter_error_impl<'a>(
