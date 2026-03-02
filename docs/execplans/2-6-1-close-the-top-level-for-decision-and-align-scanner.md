@@ -270,11 +270,14 @@ Key files:
 
 ### Stage A: scanner change
 
-In `src/parser/span_scanners/rules.rs`, add a constant for the diagnostic
-message near the top of the file, then add a `K_FOR` match arm to the
-`match kind` block in `collect_rule_spans`. The arm fires only when
-`is_at_line_start` returns true, emits a diagnostic via `Simple::custom`, and
-advances by one token.
+In `src/parser/span_scanners/rules.rs`, add a `pub(crate)` constant
+`UNSUPPORTED_TOP_LEVEL_FOR` for the diagnostic message near the top of the
+file, then add a `K_FOR` match arm to the `match kind` block in
+`collect_rule_spans`. The arm fires only when `is_at_line_start` returns true
+and calls `skip_rejected_top_level_for`, which emits the diagnostic via
+`Simple::custom` and consumes the entire rejected top-level `for` statement
+(balanced delimiters and trailing dot) to prevent body tokens from leaking into
+the rule scanner.
 
 ### Stage B: unit tests
 
@@ -399,14 +402,16 @@ match kind {
 ### Planned change to `collect_rule_spans`
 
 ```rust
+pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR: &str =
+    "top-level `for` is not supported; use `for` inside rule bodies instead";
+
+// In collect_rule_spans match block:
 match kind {
     SyntaxKind::T_IDENT | SyntaxKind::T_IMPLIES | SyntaxKind::T_AMP => {
         parse_rule_at_line_start(&mut st, span, &mut expr_spans);
     }
     SyntaxKind::K_FOR if is_at_line_start(&st, &span) => {
-        st.extra
-            .push(Simple::custom(span, UNSUPPORTED_TOP_LEVEL_FOR));
-        st.stream.advance();
+        skip_rejected_top_level_for(&mut st, span);
     }
     _ => st.stream.advance(),
 }
@@ -422,6 +427,8 @@ Files modified:
   `K_FOR` match arm.
 - `src/parser/tests/rules/top_level_for.rs` (new): unit tests.
 - `src/parser/tests/rules/mod.rs` (edit): register new module.
+- `src/test_util/assertions.rs` (edit): add `find_matching_error` helper.
+- `src/test_util/mod.rs` (edit): export `find_matching_error`.
 - `tests/top_level_for_rejection.rs` (new): behavioural tests.
 - `docs/differential-datalog-parser-syntax-spec-updated.md` (edit): rewrite
   section 6.5.
@@ -431,7 +438,7 @@ Files modified:
 - `docs/execplans/2-6-1-close-the-top-level-for-decision-and-align-scanner.md`
   (new): this ExecPlan.
 
-Total: 9 files (within 9-file tolerance).
+Total: 11 files.
 
 Existing functions and utilities to reuse:
 

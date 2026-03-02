@@ -46,6 +46,11 @@ fn top_level_for_after_dot_separator() {
         has_top_level_for_error,
         "expected top-level `for` diagnostic after dot separator, got: {errors:?}"
     );
+    assert_eq!(
+        parsed.root().rules().len(),
+        1,
+        "rejected top-level `for` must not add a standalone rule after dot separator"
+    );
 }
 
 #[rstest]
