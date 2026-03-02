@@ -125,7 +125,7 @@ Observable success is:
 
 - Observation: the `make fmt` target includes Markdown formatting via
   `mdformat-all` and `markdownlint --fix`, which rewrapped the spec section 6.5
-  content slightly differently from the hand-written version. Evidence:
+  content slightly differently from the handwritten version. Evidence:
   `make fmt` reformatted the spec file automatically. Impact: none; the content
   is identical, only line breaks changed. Always run `make fmt` before
   `make check-fmt` to avoid false positives.
