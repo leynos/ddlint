@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -70,13 +70,13 @@ behavioural tests, spec/conformance alignment, and green quality gates.
 
 - [x] (2026-03-03 00:00Z) Drafted ExecPlan structure and gathered spec, roadmap,
   and parser implementation context.
-- [ ] Finalize and document top-level `for` conversion contract and unsupported
+- [x] Finalize and document top-level `for` conversion contract and unsupported
   statement diagnostics.
-- [ ] Add failing unit and behavioural tests for top-level `for` desugaring.
-- [ ] Implement scanner and desugaring pipeline with additive semantic API.
-- [ ] Update spec/conformance/implementation docs and mark roadmap item `2.5.4`
+- [x] Add failing unit and behavioural tests for top-level `for` desugaring.
+- [x] Implement scanner and desugaring pipeline with additive semantic API.
+- [x] Update spec/conformance/implementation docs and mark roadmap item `2.5.4`
   done.
-- [ ] Run validation gates (`make check-fmt`, `make lint`, `make test`).
+- [x] Run validation gates (`make check-fmt`, `make lint`, `make test`).
 
 ## Surprises & Discoveries
 
@@ -102,8 +102,11 @@ behavioural tests, spec/conformance alignment, and green quality gates.
 
 ## Outcomes & Retrospective
 
-Work not started yet. This section will be updated after implementation and
-validation to summarize outcomes, gaps, and follow-up lessons.
+Implemented top-level `for` desugaring via `Parsed::semantic_rules()` while
+keeping CST `Root::rules()` unchanged and lossless. The previous 2.6.1
+unsupported-mode scanner rejection path was removed, tests were rewritten
+around semantic desugaring behaviour, and spec/conformance/implementation docs
+were aligned with the new contract.
 
 ## Context and orientation
 

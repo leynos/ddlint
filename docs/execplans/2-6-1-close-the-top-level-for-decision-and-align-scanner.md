@@ -4,37 +4,28 @@ This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
 `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: COMPLETE
+Status: SUPERSEDED
+
+> Update (2026-03-04): superseded by roadmap item 2.5.4 implementation.
+> Top-level `for` now desugars into semantic rules via
+> `Parsed::semantic_rules()`. Unsupported-mode rejection and the
+> `UNSUPPORTED_TOP_LEVEL_FOR` scanner diagnostic are no longer the active
+> contract.
 
 ## Purpose / big picture
 
-Roadmap item 2.6.1 closes the conformance gap identified in parser conformance
-register item 8. The syntax specification (section 6.5) states that top-level
-`for` statements desugar into rules via `convertStatement`, but the scanner
-(`src/parser/span_scanners/rules.rs`) silently ignores `K_FOR` tokens at the
-top level — it only starts rule parsing on `T_IDENT`, `T_IMPLIES`, or `T_AMP`.
+Roadmap item 2.6.1 originally closed conformance item 8 by choosing an
+unsupported top-level `for` contract. That decision was later replaced by the
+2.5.4 implementation, which now performs top-level `for` desugaring and aligns
+scanner/tests/spec language with that behaviour.
 
-The decision is to **mark top-level `for` as unsupported** in this parser
-generation and emit an explicit diagnostic when the scanner encounters `K_FOR`
-at a top-level line-start position. This is pragmatic because the
-`convertStatement` desugaring algorithm from the reference implementation is
-not fully specified, and implementing it without a complete specification would
-risk semantic divergence. Rule-body `for` loops remain fully supported as
-`Expr::ForLoop` (spec section 5.10).
+This historical plan is retained for traceability only. Current source of truth
+for active behaviour is:
 
-Observable success is:
-
-- Parsing `"for (x in Items(x)) Process(x).\n"` produces a diagnostic error
-  containing "top-level `for` is not supported; use `for` inside rule bodies
-  instead" with span covering the `for` keyword (`0..3`).
-- Parsing `"R(x) :- for (item in Items(item)) Process(item)."` continues to
-  succeed without errors (rule-body `for` is unaffected).
 - `docs/differential-datalog-parser-syntax-spec-updated.md` section 6.5
-  documents the unsupported status.
-- `docs/parser-conformance-register.md` item 8 status is `implemented`.
-- `docs/parser-implementation-notes.md` `for` section reflects the decision.
-- `docs/roadmap.md` items 2.5.4 and 2.6.1 are marked done.
-- `make check-fmt`, `make lint`, and `make test` all succeed.
+  (desugaring contract),
+- `docs/parser-conformance-register.md` item 8,
+- `docs/parser-implementation-notes.md` control-flow `for` section.
 
 ## Constraints
 

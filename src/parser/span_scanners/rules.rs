@@ -14,9 +14,6 @@ use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
-pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR: &str =
-    "top-level `for` is not supported; use `for` inside rule bodies instead";
-
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
     let ws = inline_ws().repeated().ignored();
 
@@ -294,17 +291,9 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
     st.stream.skip_until(end);
 }
 
-/// Emit the unsupported-top-level-`for` diagnostic and skip past the full
-/// statement so that the body tokens are not misinterpreted as standalone
-/// rules.
-fn skip_rejected_top_level_for(st: &mut State<'_>, for_span: Span) {
-    st.extra
-        .push(Simple::custom(for_span.clone(), UNSUPPORTED_TOP_LEVEL_FOR));
-
-    // Build a greedy parser that consumes `K_FOR` + balanced body + trailing
-    // dot.  On success we skip the entire rejected statement; on failure we
-    // fall back to skipping to the end of the current line (consistent with
-    // how `parse_rule_at_line_start` recovers from parse failures).
+/// Skip a top-level `for` statement span so multiline bodies do not leak into
+/// standalone rule spans.
+fn skip_top_level_for_statement(st: &mut State<'_>, for_span: Span) {
     let ws = inline_ws().repeated().ignored();
     let body_token = choice((
         balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
@@ -367,7 +356,7 @@ pub(crate) fn collect_rule_spans(
                 parse_rule_at_line_start(&mut st, span, &mut expr_spans);
             }
             SyntaxKind::K_FOR if is_at_line_start(&st, &span) => {
-                skip_rejected_top_level_for(&mut st, span);
+                skip_top_level_for_statement(&mut st, span);
             }
             _ => st.stream.advance(),
         }

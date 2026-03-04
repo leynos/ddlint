@@ -1,81 +1,89 @@
-//! Tests for top-level `for` rejection diagnostic.
-//!
-//! Validates that the scanner emits a clear diagnostic when `for` appears at a
-//! top-level line-start position, while rule-body `for` remains accepted.
+//! Tests for top-level `for` desugaring into semantic rules.
 
 use super::super::helpers::{parse_err, parse_ok};
-use crate::parser::span_scanners::rules::UNSUPPORTED_TOP_LEVEL_FOR;
-use crate::test_util::{ErrorPattern, assert_parse_error};
-use rstest::rstest;
+use crate::parser::ast::SemanticRuleOrigin;
+use crate::parser::top_level_for::UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT;
+use crate::test_util::{ErrorPattern, find_matching_error};
 
-const FOR_KEYWORD_LEN: usize = "for".len();
-
-#[rstest]
-fn top_level_for_emits_diagnostic() {
+#[test]
+fn top_level_for_desugars_into_semantic_rule() {
     let src = "for (x in Items(x)) Process(x).";
-    let parsed = parse_err(src);
-    let errors = parsed.errors();
-    #[expect(clippy::expect_used, reason = "test expects at least one parse error")]
-    let first = errors.first().expect("expected diagnostic");
-    assert_parse_error(
-        std::slice::from_ref(first),
-        ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR),
-        0,
-        FOR_KEYWORD_LEN,
-    );
+    let parsed = parse_ok(src);
+    assert!(parsed.root().rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 1);
+
+    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
+    let rule = parsed
+        .semantic_rules()
+        .first()
+        .expect("missing semantic rule");
+    assert_eq!(rule.origin(), SemanticRuleOrigin::TopLevelFor);
+    assert_eq!(rule.head().to_sexpr(), "(call Process x)");
+    assert_eq!(rule.body().len(), 1);
+    #[expect(clippy::expect_used, reason = "test expects one body term")]
+    let first_body = rule.body().first().expect("missing body term");
+    assert_eq!(first_body.to_sexpr(), "(call Items x)");
 }
 
-#[rstest]
-fn top_level_for_does_not_produce_rule() {
-    let src = "for (x in Items(x)) Process(x).";
-    let parsed = parse_err(src);
-    assert!(
-        parsed.root().rules().is_empty(),
-        "top-level `for` must not produce a rule span"
-    );
-}
+#[test]
+fn top_level_for_with_guard_and_nested_loop_desugars_in_order() {
+    let src = "for (a in A(a) if ready(a)) for (b in B(b)) Pair(a, b).";
+    let parsed = parse_ok(src);
+    assert_eq!(parsed.semantic_rules().len(), 1);
 
-#[rstest]
-fn top_level_for_after_dot_separator() {
-    let src = "A(x) :- B(x). for (y in C(y)) D(y).";
-    let parsed = crate::parse(src);
-    let errors = parsed.errors();
-    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR);
-    let has_top_level_for_error = crate::test_util::find_matching_error(errors, &pattern).is_some();
-    assert!(
-        has_top_level_for_error,
-        "expected top-level `for` diagnostic after dot separator, got: {errors:?}"
-    );
+    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
+    let rule = parsed
+        .semantic_rules()
+        .first()
+        .expect("missing semantic rule");
+    let body = rule
+        .body()
+        .iter()
+        .map(crate::parser::ast::Expr::to_sexpr)
+        .collect::<Vec<_>>();
+
+    assert_eq!(rule.head().to_sexpr(), "(call Pair a b)");
     assert_eq!(
-        parsed.root().rules().len(),
-        1,
-        "rejected top-level `for` must not add a standalone rule after dot separator"
+        body,
+        vec![
+            "(call A a)".to_string(),
+            "(call ready a)".to_string(),
+            "(call B b)".to_string(),
+        ]
     );
 }
 
-#[rstest]
-fn top_level_for_multiline_does_not_produce_rule() {
-    let src = "for (x in Items(x))\nProcess(x).";
+#[test]
+fn top_level_for_after_dot_separator_desugars() {
+    let src = "A(x) :- B(x). for (y in C(y)) D(y).";
+    let parsed = parse_ok(src);
+    assert_eq!(parsed.root().rules().len(), 1);
+    assert_eq!(parsed.semantic_rules().len(), 1);
+    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
+    let rule = parsed
+        .semantic_rules()
+        .first()
+        .expect("missing semantic rule");
+    assert_eq!(rule.head().to_sexpr(), "(call D y)");
+}
+
+#[test]
+fn unsupported_top_level_for_body_reports_diagnostic() {
+    let src = "for (x in Items(x)) if (ready(x)) Process(x).";
     let parsed = parse_err(src);
-    let errors = parsed.errors();
-    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR);
+    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT);
     assert!(
-        crate::test_util::find_matching_error(errors, &pattern).is_some(),
-        "expected UNSUPPORTED_TOP_LEVEL_FOR diagnostic, got: {errors:?}"
+        find_matching_error(parsed.errors(), &pattern).is_some(),
+        "expected top-level for lowering diagnostic, got: {:?}",
+        parsed.errors()
     );
-    assert!(
-        parsed.root().rules().is_empty(),
-        "multiline top-level `for` must not produce a rule span"
-    );
+    assert!(parsed.semantic_rules().is_empty());
 }
 
-#[rstest]
+#[test]
 fn rule_body_for_still_accepted() {
     let src = "R(x) :- for (item in Items(item)) Process(item).";
     let parsed = parse_ok(src);
-    assert_eq!(
-        parsed.root().rules().len(),
-        1,
-        "rule-body `for` must still produce one rule"
-    );
+    assert_eq!(parsed.root().rules().len(), 1);
+    assert!(parsed.semantic_rules().is_empty());
 }

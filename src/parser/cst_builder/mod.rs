@@ -18,6 +18,7 @@ pub(crate) use self::tree::build_green_tree;
 pub struct Parsed {
     green: GreenNode,
     root: super::ast::Root,
+    semantic_rules: Vec<super::ast::SemanticRule>,
     errors: Vec<Simple<SyntaxKind>>,
 }
 
@@ -25,11 +26,13 @@ impl Parsed {
     pub(super) fn new(
         green: GreenNode,
         root: super::ast::Root,
+        semantic_rules: Vec<super::ast::SemanticRule>,
         errors: Vec<Simple<SyntaxKind>>,
     ) -> Self {
         Self {
             green,
             root,
+            semantic_rules,
             errors,
         }
     }
@@ -44,6 +47,12 @@ impl Parsed {
     #[must_use]
     pub fn root(&self) -> &super::ast::Root {
         &self.root
+    }
+
+    /// Access parse-time semantic rules (for example desugared top-level `for`).
+    #[must_use]
+    pub fn semantic_rules(&self) -> &[super::ast::SemanticRule] {
+        &self.semantic_rules
     }
 
     /// Access parser errors collected during recovery.
