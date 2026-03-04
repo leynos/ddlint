@@ -172,7 +172,7 @@ expression parsing, control flow, and syntax-spec alignment.
   parsing into normalized representation. See
   docs/differential-datalog-parser-syntax-spec-updated.md §6.1 and
   docs/differential-datalog-parser-syntax-spec-updated.md §6.2.
-- [ ] 2.5.4. Resolve top-level `for` contract and implementation status.
+- [x] 2.5.4. Resolve top-level `for` contract and implementation status.
   Decide whether to implement top-level `for` desugaring into rules or to mark
   top-level `for` as unsupported in the normative grammar. See
   docs/differential-datalog-parser-syntax-spec-updated.md §6.5 and
@@ -201,7 +201,7 @@ expression parsing, control flow, and syntax-spec alignment.
 
 ### 2.6. Parser conformance decisions before ADR-001 planning
 
-- [ ] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
+- [x] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
   tests, and spec language. See docs/parser-conformance-register.md item 8.
 - [ ] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
   semantic stage), then align parser pipeline guarantees and docs. See

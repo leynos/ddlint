@@ -87,10 +87,12 @@ This register tracks parser behaviour against the syntax specification.
 ### 8. Top-level `for` desugaring
 
 - Topic: spec requires top-level `for` to be desugared into rules.
-- Current behaviour (code): top-level rule scanning triggers do not provide a
-  `K_FOR` entry path (`src/parser/span_scanners/rules.rs`).
-- Spec/target behaviour: section 6.5 currently states desugaring.
-- Decision status: `scheduled`.
+- Current behaviour (code): the rule scanner emits a diagnostic when `K_FOR`
+  appears at a top-level line-start position. Rule-body `for` loops remain
+  supported as `Expr::ForLoop`.
+- Spec/target behaviour: section 6.5 now documents that top-level `for` is
+  unsupported in this parser generation.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.1`.
 
 ### 9. Aggregation extraction stage boundary

@@ -10,7 +10,7 @@ mod literals;
 
 pub use assertions::{
     assert_delimiter_error, assert_no_parse_errors, assert_panic_with_message, assert_parse_error,
-    assert_unclosed_delimiter_error,
+    assert_unclosed_delimiter_error, find_matching_error,
 };
 pub use expressions::{
     bit_slice, break_expr, call, call_expr, closure, continue_expr, field, field_access, for_loop,

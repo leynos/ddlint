@@ -394,11 +394,17 @@ ______________________________________________________________________
   `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v`.
 - `{k: v, …}` → `let m = map_empty(); m.insert(k, v); …; m`.
 
-### 6.5 Top‑level `for` → rules
+### 6.5 Top‑level `for` (unsupported)
 
-- `for (p in e) …` at the top level rewrites to one or more rules via
-  `convertStatement`. The precise expansion depends on the nested statements
-  and pattern shape.
+- Top‑level `for` statements are not supported in this parser generation.
+  The `convertStatement` desugaring algorithm from the reference implementation
+  is not fully specified, and implementing it without a complete specification
+  would risk semantic divergence.
+- Rule‑body `for` loops remain fully supported as `Expr::ForLoop` (see
+  section 5.10).
+- The scanner emits a diagnostic when `for` appears at a top‑level rule
+  position: "top-level \`for\` is not supported; use \`for\` inside rule bodies
+  instead".
 
 ______________________________________________________________________
 

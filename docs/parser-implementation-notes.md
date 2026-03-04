@@ -90,8 +90,10 @@ conformance register.
 - Binding uses the shared pattern parser.
 - Optional `if` guard is represented as `Option<Box<Expr>>`.
 
-Top-level `for` policy is tracked in the conformance register because scanner
-entry behaviour and spec language are not fully aligned.
+Top-level `for` is unsupported in this parser generation. The rule scanner
+emits a diagnostic ("top-level \`for\` is not supported; use \`for\` inside
+rule bodies instead") when `K_FOR` appears at a top-level line-start position.
+This decision is recorded in the conformance register (item 8).
 
 ## Rule-body integration and term extraction
 
