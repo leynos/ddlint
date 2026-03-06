@@ -143,43 +143,34 @@ fn parse_top_level_for_statement(
     };
     let start = start_span.start;
 
-    let mut depth = DelimiterDepth::default();
+    let mut search_idx = start_idx;
+    let mut parsed_statement = None;
     let mut last_errors = None;
 
-    for (kind, span) in tokens.iter().skip(start_idx) {
-        depth.update(*kind);
+    while let Some((dot_span, dot_idx)) = find_top_level_dot(tokens, src, search_idx) {
+        search_idx = dot_idx + 1;
 
-        if *kind != SyntaxKind::T_DOT {
-            continue;
-        }
-        if !depth.is_top_level()
-            || !is_top_level_for_statement_terminator_dot(tokens, src, span.start)
-        {
-            continue;
-        }
-
-        let Some(raw_statement) = src.get(start..span.start) else {
-            continue;
-        };
-        let (trim_start, trim_end) = trim_byte_range(raw_statement);
-        if trim_start == trim_end {
-            continue;
-        }
-        let Some(trimmed_statement) = raw_statement.get(trim_start..trim_end) else {
+        let Some((trim_start, _trim_end, trimmed_statement)) =
+            extract_trimmed_statement(src, start, dot_span.start)
+        else {
             continue;
         };
 
-        match parse_expression(trimmed_statement) {
-            Ok(expr) if matches!(expr, Expr::ForLoop { .. }) => {
-                let statement_span = start..span.end;
+        match try_parse_for_expression(trimmed_statement, start, trim_start) {
+            Ok(Some(expr)) => {
+                let statement_span = start..dot_span.end;
                 let next_cursor = skip_until(tokens, start_idx, statement_span.end);
-                return (Some((statement_span, expr, next_cursor)), Vec::new());
+                parsed_statement = Some((statement_span, expr, next_cursor));
             }
-            Ok(_) => {}
+            Ok(None) => {}
             Err(errs) => {
-                last_errors = Some(shift_errors(errs, start.saturating_add(trim_start)));
+                last_errors = Some(errs);
             }
         }
+    }
+
+    if let Some(statement) = parsed_statement {
+        return (Some(statement), Vec::new());
     }
 
     let fallback = vec![Simple::custom(
@@ -187,6 +178,50 @@ fn parse_top_level_for_statement(
         UNTERMINATED_TOP_LEVEL_FOR,
     )];
     (None, last_errors.unwrap_or(fallback))
+}
+
+fn find_top_level_dot(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    start_idx: usize,
+) -> Option<(Span, usize)> {
+    let mut depth = DelimiterDepth::default();
+    for (idx, (kind, span)) in tokens.iter().enumerate().skip(start_idx) {
+        depth.update(*kind);
+        if *kind == SyntaxKind::T_DOT
+            && depth.is_top_level()
+            && is_top_level_for_statement_terminator_dot(tokens, src, span.start)
+        {
+            return Some((span.clone(), idx));
+        }
+    }
+    None
+}
+
+fn extract_trimmed_statement(
+    src: &str,
+    start: usize,
+    dot_start: usize,
+) -> Option<(usize, usize, &str)> {
+    let raw_statement = src.get(start..dot_start)?;
+    let (trim_start, trim_end) = trim_byte_range(raw_statement);
+    if trim_start == trim_end {
+        return None;
+    }
+    let trimmed_statement = raw_statement.get(trim_start..trim_end)?;
+    Some((trim_start, trim_end, trimmed_statement))
+}
+
+fn try_parse_for_expression(
+    trimmed_statement: &str,
+    start: usize,
+    trim_start: usize,
+) -> Result<Option<Expr>, Vec<Simple<SyntaxKind>>> {
+    match parse_expression(trimmed_statement) {
+        Ok(expr) if matches!(expr, Expr::ForLoop { .. }) => Ok(Some(expr)),
+        Ok(_) => Ok(None),
+        Err(errs) => Err(shift_errors(errs, start.saturating_add(trim_start))),
+    }
 }
 
 fn lower_top_level_for(

@@ -299,25 +299,24 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
 
 /// Skip a top-level `for` statement span so multiline bodies do not leak into
 /// standalone rule spans.
-fn skip_top_level_for_statement(st: &mut State<'_>, for_span: Span) {
+fn skip_top_level_for_statement(
+    st: &mut State<'_>,
+    for_span: Span,
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+) {
     let ws = inline_ws().repeated().ignored();
-    let token_copy = st.stream.tokens().to_vec();
-    let src_copy = st.stream.src().to_string();
-    let body_non_terminator_dot = filter_map({
-        let tokens = token_copy.clone();
-        let src = src_copy.clone();
-        move |span: Span, kind| {
-            if kind == SyntaxKind::T_DOT
-                && is_top_level_for_statement_terminator_dot(&tokens, &src, span.start)
-            {
-                Err(Simple::expected_input_found(
-                    span,
-                    Vec::<Option<SyntaxKind>>::new(),
-                    Some(kind),
-                ))
-            } else {
-                Ok(())
-            }
+    let body_non_terminator_dot = filter_map(move |span: Span, kind| {
+        if kind == SyntaxKind::T_DOT
+            && is_top_level_for_statement_terminator_dot(tokens, src, span.start)
+        {
+            Err(Simple::expected_input_found(
+                span,
+                Vec::<Option<SyntaxKind>>::new(),
+                Some(kind),
+            ))
+        } else {
+            Ok(())
         }
     })
     .ignored();
@@ -382,7 +381,7 @@ pub(crate) fn collect_rule_spans(
                 parse_rule_at_line_start(&mut st, span, &mut expr_spans);
             }
             SyntaxKind::K_FOR if is_at_line_start(&st, &span) => {
-                skip_top_level_for_statement(&mut st, span);
+                skip_top_level_for_statement(&mut st, span, tokens, src);
             }
             _ => st.stream.advance(),
         }

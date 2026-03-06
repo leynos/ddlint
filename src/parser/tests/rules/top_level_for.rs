@@ -130,6 +130,14 @@ fn top_level_for_body_with_tuple_index_head_desugars() {
 }
 
 #[test]
+fn top_level_for_body_with_spaced_tuple_index_head_desugars() {
+    let src = "for (x in Items(x)) pair. 0(x).";
+    let parsed = parse_ok(src);
+    assert!(parsed.root().rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 1);
+}
+
+#[test]
 fn top_level_for_with_leading_indentation_desugars() {
     let src = "    for (x in Items(x)) Process(x).";
     let parsed = parse_ok(src);

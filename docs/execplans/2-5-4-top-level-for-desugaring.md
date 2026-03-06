@@ -1,4 +1,4 @@
-# Implement Top-Level `for` Desugaring Into Rules
+# Implement top-level `for` desugaring into rules
 
 This ExecPlan (execution plan) is a living document. The sections
 `Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,

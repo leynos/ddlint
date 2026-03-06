@@ -6,6 +6,7 @@
 
 use ddlint::parse;
 use ddlint::test_util::{ErrorPattern, find_matching_error};
+use rstest::{fixture, rstest};
 
 /// Diagnostic substring shared across tests to avoid duplication.
 const UNSUPPORTED_FOR_BODY_PATTERN: &str =
@@ -13,154 +14,145 @@ const UNSUPPORTED_FOR_BODY_PATTERN: &str =
 const UNTERMINATED_FOR_PATTERN: &str =
     "unterminated top-level `for` statement; expected trailing `.`";
 
-#[test]
-fn top_level_for_desugars_without_cst_rule_nodes() {
-    let src = concat!(
-        "input relation Items(x: u32)\n",
-        "for (x in Items(x)) Process(x).\n",
-    );
-    let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected parse errors for top-level `for`: {:?}",
-        parsed.errors()
-    );
-
-    assert!(
-        parsed.root().rules().is_empty(),
-        "top-level `for` should not create CST `N_RULE` nodes"
-    );
-    assert_eq!(
-        parsed.semantic_rules().len(),
-        1,
-        "expected exactly one semantic rule from top-level `for`"
-    );
-    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
-    let rule = parsed
-        .semantic_rules()
-        .first()
-        .expect("missing semantic rule");
-    #[expect(clippy::expect_used, reason = "test expects one body term")]
-    let first_body = rule.body().first().expect("missing body term");
-    assert_eq!(rule.head().to_sexpr(), "(call Process x)");
-    assert_eq!(first_body.to_sexpr(), "(call Items x)");
-
-    assert_eq!(
-        parsed.root().relations().len(),
-        1,
-        "relation declaration must still parse successfully"
-    );
+#[fixture]
+fn parse_case(#[default("")] src: &str) -> ddlint::Parsed {
+    parse(src)
 }
 
-#[test]
-fn top_level_for_multiline_desugars_without_leaking_body_rule() {
-    let src = concat!(
+#[rstest]
+#[case::single_line_desugar(
+    concat!(
+        "input relation Items(x: u32)\n",
+        "for (x in Items(x)) Process(x).\n",
+    ),
+    1,
+    0,
+    1,
+    None,
+    Some("(call Process x)"),
+    Some("(call Items x)")
+)]
+#[case::multiline_desugar(
+    concat!(
         "input relation Items(x: u32)\n",
         "for (x in Items(x))\n",
         "Process(x).\n",
-    );
+    ),
+    1,
+    0,
+    1,
+    None,
+    None,
+    None
+)]
+#[case::dot_separated_after_rule("A(x) :- B(x). for (y in C(y)) D(y).", 1, 1, 0, None, None, None)]
+#[case::tuple_index_with_spaced_dot("for (x in Items(x)) pair. 0(x).", 1, 0, 0, None, None, None)]
+#[case::unterminated_statement(
+    "for (x in Items(x)) Process(x)",
+    0,
+    0,
+    0,
+    Some(UNTERMINATED_FOR_PATTERN),
+    None,
+    None
+)]
+#[case::unsupported_non_atom_head(
+    "for (x in Items(x)) x + 1.",
+    0,
+    0,
+    0,
+    Some(UNSUPPORTED_FOR_BODY_PATTERN),
+    None,
+    None
+)]
+#[case::unsupported_if_body(
+    "for (x in Items(x)) if (ready(x)) Process(x).",
+    0,
+    0,
+    0,
+    Some(UNSUPPORTED_FOR_BODY_PATTERN),
+    None,
+    None
+)]
+fn top_level_for_behaviour(
+    #[case] src: &str,
+    #[case] expected_semantic_rules: usize,
+    #[case] expected_cst_rules: usize,
+    #[case] expected_relations: usize,
+    #[case] expected_error_pattern: Option<&str>,
+    #[case] expected_head: Option<&str>,
+    #[case] expected_first_body: Option<&str>,
+) {
     let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected parse errors for multiline top-level `for`: {:?}",
-        parsed.errors()
-    );
 
-    assert!(
-        parsed.root().rules().is_empty(),
-        "multiline top-level `for` body must not produce a CST rule"
-    );
+    if let Some(pattern) = expected_error_pattern {
+        let pattern = ErrorPattern::from(pattern);
+        assert!(
+            find_matching_error(parsed.errors(), &pattern).is_some(),
+            "expected diagnostic `{pattern:?}`, got: {:?}",
+            parsed.errors()
+        );
+    } else {
+        assert!(
+            parsed.errors().is_empty(),
+            "unexpected parse errors for top-level `for`: {:?}",
+            parsed.errors()
+        );
+    }
+
     assert_eq!(
         parsed.semantic_rules().len(),
-        1,
-        "multiline top-level `for` should still desugar once"
+        expected_semantic_rules,
+        "unexpected semantic rule count"
     );
-}
-
-#[test]
-fn rule_body_for_unaffected() {
-    let src = "R(x) :- for (item in Items(item)) Process(item).";
-    let parsed = parse(src);
-
-    assert!(
-        parsed.errors().is_empty(),
-        "rule-body `for` must not produce errors: {:?}",
-        parsed.errors()
-    );
-
     assert_eq!(
         parsed.root().rules().len(),
+        expected_cst_rules,
+        "unexpected CST rule count"
+    );
+    assert_eq!(
+        parsed.root().relations().len(),
+        expected_relations,
+        "unexpected relation declaration count"
+    );
+
+    if let Some(expected_head) = expected_head {
+        #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
+        let rule = parsed
+            .semantic_rules()
+            .first()
+            .expect("missing semantic rule");
+        assert_eq!(rule.head().to_sexpr(), expected_head);
+    }
+
+    if let Some(expected_first_body) = expected_first_body {
+        #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
+        let rule = parsed
+            .semantic_rules()
+            .first()
+            .expect("missing semantic rule");
+        #[expect(clippy::expect_used, reason = "test expects one body term")]
+        let first_body = rule.body().first().expect("missing body term");
+        assert_eq!(first_body.to_sexpr(), expected_first_body);
+    }
+}
+
+#[rstest]
+fn rule_body_for_unaffected(
+    #[with("R(x) :- for (item in Items(item)) Process(item).")] parse_case: ddlint::Parsed,
+) {
+    assert!(
+        parse_case.errors().is_empty(),
+        "rule-body `for` must not produce errors: {:?}",
+        parse_case.errors()
+    );
+    assert_eq!(
+        parse_case.root().rules().len(),
         1,
         "expected one rule with body `for`"
     );
     assert!(
-        parsed.semantic_rules().is_empty(),
+        parse_case.semantic_rules().is_empty(),
         "rule-body `for` must not generate top-level semantic rules"
-    );
-}
-
-#[test]
-fn unsupported_top_level_for_body_emits_targeted_diagnostic() {
-    let src = "for (x in Items(x)) if (ready(x)) Process(x).";
-    let parsed = parse(src);
-    let pattern = ErrorPattern::from(UNSUPPORTED_FOR_BODY_PATTERN);
-    assert!(
-        find_matching_error(parsed.errors(), &pattern).is_some(),
-        "expected unsupported top-level body diagnostic, got: {:?}",
-        parsed.errors()
-    );
-    assert!(parsed.semantic_rules().is_empty());
-}
-
-#[test]
-fn top_level_for_after_dot_separator_desugars_on_same_line() {
-    let src = "A(x) :- B(x). for (y in C(y)) D(y).";
-    let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected parse errors with dot-separated top-level `for`: {:?}",
-        parsed.errors()
-    );
-    assert_eq!(parsed.root().rules().len(), 1);
-    assert_eq!(parsed.semantic_rules().len(), 1);
-}
-
-#[test]
-fn unterminated_top_level_for_reports_error() {
-    let src = "for (x in Items(x)) Process(x)";
-    let parsed = parse(src);
-    let pattern = ErrorPattern::from(UNTERMINATED_FOR_PATTERN);
-    assert!(
-        find_matching_error(parsed.errors(), &pattern).is_some(),
-        "expected unterminated top-level `for` diagnostic, got: {:?}",
-        parsed.errors()
-    );
-    assert!(
-        parsed.semantic_rules().is_empty(),
-        "unterminated top-level `for` must not emit semantic rules"
-    );
-    assert!(
-        parsed.root().rules().is_empty(),
-        "unterminated top-level `for` must not produce CST rules"
-    );
-}
-
-#[test]
-fn unsupported_top_level_for_non_atom_head_reports_diagnostic() {
-    let src = "for (x in Items(x)) x + 1.";
-    let parsed = parse(src);
-    let pattern = ErrorPattern::from(UNSUPPORTED_FOR_BODY_PATTERN);
-    assert!(
-        find_matching_error(parsed.errors(), &pattern).is_some(),
-        "expected unsupported top-level head diagnostic, got: {:?}",
-        parsed.errors()
-    );
-    assert!(
-        parsed.semantic_rules().is_empty(),
-        "unsupported top-level `for` head must not emit semantic rules"
-    );
-    assert!(
-        parsed.root().rules().is_empty(),
-        "unsupported top-level `for` head must not produce CST rules"
     );
 }
