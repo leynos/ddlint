@@ -175,14 +175,14 @@ behaviour regressed.
 
 ## Concrete steps
 
-1. Define and lock desugaring contract.
+- Step 1: Define and lock desugaring contract.
 
 - Update `docs/differential-datalog-parser-syntax-spec-updated.md` §6.5 with an
   explicit conversion algorithm description and unsupported-form diagnostics.
 - Update `docs/parser-conformance-register.md` item 8 wording to reference this
   implementation target and planned API surface.
 
-1. Add failing tests first.
+- Step 2: Add failing tests first.
 
 - Add parser unit tests in `src/parser/tests/` (new
   `src/parser/tests/top_level_for.rs`) covering:
@@ -194,7 +194,7 @@ behaviour regressed.
 - Add behavioural tests in `tests/top_level_for_desugaring.rs` validating
   end-to-end desugared rule outputs and diagnostics.
 
-1. Implement scanning and lowering modules.
+- Step 3: Implement scanning and lowering modules.
 
 - Add `src/parser/top_level_for.rs` for:
   - collecting top-level `for` statement spans using token stream and exclusion
@@ -204,7 +204,7 @@ behaviour regressed.
 - Add semantic rule types in `src/parser/ast/semantic_rule.rs` (or equivalent)
   and re-export from `src/parser/ast/mod.rs`.
 
-1. Integrate with parser entrypoint.
+- Step 4: Integrate with parser entrypoint.
 
 - Update `src/parser/mod.rs` and `src/parser/cst_builder/mod.rs` so `Parsed`
   stores desugared semantic rules and exposes them via a new accessor (for
@@ -212,14 +212,14 @@ behaviour regressed.
 - Ensure lowering diagnostics are appended to `Parsed::errors()` with stable
   spans/messages.
 
-1. Documentation and roadmap updates.
+- Step 5: Documentation and roadmap updates.
 
 - Update `docs/parser-implementation-notes.md` control-flow section with the new
   top-level lowering pipeline and API.
 - Mark `docs/roadmap.md` item `2.5.4` as done once all quality gates pass.
 - Reconcile roadmap linkage for conformance register item 8.
 
-1. Validation commands (run from repository root).
+- Step 6: Validation commands (run from repository root).
 
 ```bash
 set -o pipefail; make markdownlint 2>&1 | tee /tmp/2-5-4-markdownlint.log

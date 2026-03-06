@@ -71,13 +71,70 @@ fn top_level_for_after_dot_separator_desugars() {
 fn unsupported_top_level_for_body_reports_diagnostic() {
     let src = "for (x in Items(x)) if (ready(x)) Process(x).";
     let parsed = parse_err(src);
+    let errors = parsed.errors();
+    assert_eq!(
+        errors.len(),
+        1,
+        "expected exactly one diagnostic for unsupported top-level `for`, got: {errors:?}"
+    );
     let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT);
+    let Some(index) = find_matching_error(errors, &pattern) else {
+        panic!("expected top-level for lowering diagnostic, got: {errors:?}");
+    };
+    #[expect(
+        clippy::expect_used,
+        reason = "index from find_matching_error is valid"
+    )]
+    let error = errors.get(index).expect("diagnostic index out of range");
+    #[expect(clippy::expect_used, reason = "test source includes leading `for`")]
+    let for_offset = src
+        .find("for")
+        .expect("`for` keyword missing in test source");
     assert!(
-        find_matching_error(parsed.errors(), &pattern).is_some(),
-        "expected top-level for lowering diagnostic, got: {:?}",
-        parsed.errors()
+        error.span().start <= for_offset && for_offset < error.span().end,
+        "expected diagnostic span {:?} to include `for` at {for_offset}",
+        error.span()
+    );
+    assert!(
+        index == 0,
+        "expected unsupported-body diagnostic to be first, got index {index}"
     );
     assert!(parsed.semantic_rules().is_empty());
+}
+
+#[test]
+fn top_level_multiple_for_desugars_in_order() {
+    let src = "for (x in Items(x)) Process(x).\nfor (y in More(y)) Process2(y).";
+    let parsed = parse_ok(src);
+    assert_eq!(parsed.semantic_rules().len(), 2);
+    let heads = parsed
+        .semantic_rules()
+        .iter()
+        .map(|rule| rule.head().to_sexpr())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        heads,
+        vec![
+            "(call Process x)".to_string(),
+            "(call Process2 y)".to_string()
+        ]
+    );
+}
+
+#[test]
+fn top_level_for_body_with_tuple_index_head_desugars() {
+    let src = "for (x in Items(x)) pair.0(x).";
+    let parsed = parse_ok(src);
+    assert!(parsed.root().rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 1);
+}
+
+#[test]
+fn top_level_for_with_leading_indentation_desugars() {
+    let src = "    for (x in Items(x)) Process(x).";
+    let parsed = parse_ok(src);
+    assert!(parsed.root().rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 1);
 }
 
 #[test]

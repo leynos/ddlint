@@ -24,6 +24,63 @@ const FOR_KEYWORD_LEN: usize = "for".len();
 type ParsedTopLevelFor = Option<(Span, Expr, usize)>;
 type TopLevelForParseOutcome = (ParsedTopLevelFor, Vec<Simple<SyntaxKind>>);
 
+#[derive(Debug)]
+struct ExclusionCursor<'a> {
+    exclusions: &'a [Span],
+    index: usize,
+}
+
+impl<'a> ExclusionCursor<'a> {
+    fn new(exclusions: &'a [Span]) -> Self {
+        Self {
+            exclusions,
+            index: 0,
+        }
+    }
+
+    fn overlap_with(&mut self, span: &Span) -> Option<Span> {
+        while let Some(ex) = self.exclusions.get(self.index) {
+            if ex.end > span.start {
+                break;
+            }
+            self.index += 1;
+        }
+
+        self.exclusions.get(self.index).and_then(|ex| {
+            if span.start < ex.end && ex.start < span.end {
+                Some(ex.clone())
+            } else {
+                None
+            }
+        })
+    }
+}
+
+#[derive(Debug, Default)]
+struct DelimiterDepth {
+    paren: usize,
+    brace: usize,
+    bracket: usize,
+}
+
+impl DelimiterDepth {
+    fn update(&mut self, kind: SyntaxKind) {
+        match kind {
+            SyntaxKind::T_LPAREN => self.paren += 1,
+            SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
+            SyntaxKind::T_LBRACE => self.brace += 1,
+            SyntaxKind::T_RBRACE => self.brace = self.brace.saturating_sub(1),
+            SyntaxKind::T_LBRACKET => self.bracket += 1,
+            SyntaxKind::T_RBRACKET => self.bracket = self.bracket.saturating_sub(1),
+            _ => {}
+        }
+    }
+
+    fn is_top_level(&self) -> bool {
+        self.paren == 0 && self.brace == 0 && self.bracket == 0
+    }
+}
+
 /// Collect and desugar top-level `for` statements.
 ///
 /// `exclusions` must be sorted and non-overlapping. Tokens whose starts fall
@@ -44,21 +101,11 @@ pub(crate) fn collect_desugared_top_level_for_rules(
     let mut rules = Vec::new();
     let mut errors = Vec::new();
     let mut cursor = 0usize;
-    let mut exclude_idx = 0usize;
+    let mut exclusion_cursor = ExclusionCursor::new(exclusions);
 
     while let Some((kind, span)) = tokens.get(cursor) {
-        while let Some(ex) = exclusions.get(exclude_idx) {
-            if ex.end > span.start {
-                break;
-            }
-            exclude_idx += 1;
-        }
-
-        if let Some(ex) = exclusions.get(exclude_idx)
-            && ex.start <= span.start
-            && span.start < ex.end
-        {
-            cursor = skip_until(tokens, cursor, ex.end);
+        if let Some(exclusion) = exclusion_cursor.overlap_with(span) {
+            cursor = skip_until(tokens, cursor, exclusion.end);
             continue;
         }
 
@@ -96,23 +143,18 @@ fn parse_top_level_for_statement(
     };
     let start = start_span.start;
 
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
+    let mut depth = DelimiterDepth::default();
     let mut last_errors = None;
 
-    for (idx, (kind, span)) in tokens.iter().enumerate().skip(start_idx) {
-        adjust_depths(
-            *kind,
-            &mut paren_depth,
-            &mut brace_depth,
-            &mut bracket_depth,
-        );
+    for (kind, span) in tokens.iter().skip(start_idx) {
+        depth.update(*kind);
 
         if *kind != SyntaxKind::T_DOT {
             continue;
         }
-        if paren_depth != 0 || brace_depth != 0 || bracket_depth != 0 {
+        if !depth.is_top_level()
+            || !is_top_level_for_statement_terminator_dot(tokens, src, span.start)
+        {
             continue;
         }
 
@@ -137,10 +179,6 @@ fn parse_top_level_for_statement(
             Err(errs) => {
                 last_errors = Some(shift_errors(errs, start.saturating_add(trim_start)));
             }
-        }
-
-        if idx + 1 >= tokens.len() {
-            break;
         }
     }
 
@@ -217,23 +255,6 @@ fn is_supported_head_expression(expr: &Expr) -> bool {
     }
 }
 
-fn adjust_depths(
-    kind: SyntaxKind,
-    paren_depth: &mut usize,
-    brace_depth: &mut usize,
-    bracket_depth: &mut usize,
-) {
-    match kind {
-        SyntaxKind::T_LPAREN => *paren_depth += 1,
-        SyntaxKind::T_RPAREN => *paren_depth = paren_depth.saturating_sub(1),
-        SyntaxKind::T_LBRACE => *brace_depth += 1,
-        SyntaxKind::T_RBRACE => *brace_depth = brace_depth.saturating_sub(1),
-        SyntaxKind::T_LBRACKET => *bracket_depth += 1,
-        SyntaxKind::T_RBRACKET => *bracket_depth = bracket_depth.saturating_sub(1),
-        _ => {}
-    }
-}
-
 fn is_at_line_start(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -256,16 +277,75 @@ fn is_at_line_start(
             continue;
         }
 
-        if range_contains_newline(src, prev_span.end..span_start) {
+        if slice_contains_newline(src, prev_span.end, span_start) {
             return true;
         }
         return *kind == SyntaxKind::T_DOT;
     }
-    false
+
+    true
 }
 
 fn range_contains_newline(src: &str, range: std::ops::Range<usize>) -> bool {
     src.get(range).is_some_and(|text| text.contains('\n'))
+}
+
+fn slice_contains_newline(src: &str, start: usize, end: usize) -> bool {
+    range_contains_newline(src, start..end)
+}
+
+fn token_index_by_start(tokens: &[(SyntaxKind, Span)], start: usize) -> Option<usize> {
+    tokens
+        .binary_search_by_key(&start, |(_, span)| span.start)
+        .ok()
+}
+
+fn next_significant_token(
+    tokens: &[(SyntaxKind, Span)],
+    start_idx: usize,
+) -> Option<(SyntaxKind, Span)> {
+    tokens
+        .iter()
+        .skip(start_idx)
+        .find(|(kind, _)| !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .map(|(kind, span)| (*kind, span.clone()))
+}
+
+/// Return `true` when the `.` token at `dot_start` terminates a top-level
+/// `for` statement.
+///
+/// Dots immediately followed by identifier/tuple-index tokens with no trivia
+/// gap are treated as expression postfix access (for example `pair.0`), not as
+/// statement terminators.
+pub(crate) fn is_top_level_for_statement_terminator_dot(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    dot_start: usize,
+) -> bool {
+    let Some(dot_idx) = token_index_by_start(tokens, dot_start) else {
+        return false;
+    };
+    let Some((kind, dot_span)) = tokens.get(dot_idx) else {
+        return false;
+    };
+    if *kind != SyntaxKind::T_DOT {
+        return false;
+    }
+
+    let Some((next_kind, next_span)) = next_significant_token(tokens, dot_idx + 1) else {
+        return true;
+    };
+
+    if slice_contains_newline(src, dot_span.end, next_span.start) {
+        return true;
+    }
+
+    let has_trivia_gap = next_span.start > dot_span.end;
+    if !has_trivia_gap && matches!(next_kind, SyntaxKind::T_IDENT | SyntaxKind::T_NUMBER) {
+        return false;
+    }
+
+    true
 }
 
 fn skip_until(tokens: &[(SyntaxKind, Span)], mut cursor: usize, end: usize) -> usize {
@@ -283,10 +363,7 @@ fn line_end(tokens: &[(SyntaxKind, Span)], src: &str, start: usize) -> usize {
     let mut end = tokens.get(start).map_or(src.len(), |t| t.1.end);
     for (_, span) in tokens.iter().skip(start) {
         end = span.end;
-        if src
-            .get(span.clone())
-            .is_some_and(|text| text.contains('\n'))
-        {
+        if range_contains_newline(src, span.clone()) {
             break;
         }
     }

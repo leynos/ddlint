@@ -10,6 +10,8 @@ use ddlint::test_util::{ErrorPattern, find_matching_error};
 /// Diagnostic substring shared across tests to avoid duplication.
 const UNSUPPORTED_FOR_BODY_PATTERN: &str =
     "top-level `for` body must end in an atom-like expression";
+const UNTERMINATED_FOR_PATTERN: &str =
+    "unterminated top-level `for` statement; expected trailing `.`";
 
 #[test]
 fn top_level_for_desugars_without_cst_rule_nodes() {
@@ -108,4 +110,57 @@ fn unsupported_top_level_for_body_emits_targeted_diagnostic() {
         parsed.errors()
     );
     assert!(parsed.semantic_rules().is_empty());
+}
+
+#[test]
+fn top_level_for_after_dot_separator_desugars_on_same_line() {
+    let src = "A(x) :- B(x). for (y in C(y)) D(y).";
+    let parsed = parse(src);
+    assert!(
+        parsed.errors().is_empty(),
+        "unexpected parse errors with dot-separated top-level `for`: {:?}",
+        parsed.errors()
+    );
+    assert_eq!(parsed.root().rules().len(), 1);
+    assert_eq!(parsed.semantic_rules().len(), 1);
+}
+
+#[test]
+fn unterminated_top_level_for_reports_error() {
+    let src = "for (x in Items(x)) Process(x)";
+    let parsed = parse(src);
+    let pattern = ErrorPattern::from(UNTERMINATED_FOR_PATTERN);
+    assert!(
+        find_matching_error(parsed.errors(), &pattern).is_some(),
+        "expected unterminated top-level `for` diagnostic, got: {:?}",
+        parsed.errors()
+    );
+    assert!(
+        parsed.semantic_rules().is_empty(),
+        "unterminated top-level `for` must not emit semantic rules"
+    );
+    assert!(
+        parsed.root().rules().is_empty(),
+        "unterminated top-level `for` must not produce CST rules"
+    );
+}
+
+#[test]
+fn unsupported_top_level_for_non_atom_head_reports_diagnostic() {
+    let src = "for (x in Items(x)) x + 1.";
+    let parsed = parse(src);
+    let pattern = ErrorPattern::from(UNSUPPORTED_FOR_BODY_PATTERN);
+    assert!(
+        find_matching_error(parsed.errors(), &pattern).is_some(),
+        "expected unsupported top-level head diagnostic, got: {:?}",
+        parsed.errors()
+    );
+    assert!(
+        parsed.semantic_rules().is_empty(),
+        "unsupported top-level `for` head must not emit semantic rules"
+    );
+    assert!(
+        parsed.root().rules().is_empty(),
+        "unsupported top-level `for` head must not produce CST rules"
+    );
 }
