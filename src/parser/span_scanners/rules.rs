@@ -239,10 +239,13 @@ fn line_start_boundary(
         if slice_contains_newline(src, prev_span.end, span_start) {
             return true;
         }
-        return *kind == SyntaxKind::T_DOT;
+        if *kind == SyntaxKind::T_DOT {
+            return true;
+        }
+        return false;
     }
 
-    false
+    true
 }
 
 fn range_contains_newline(src: &str, range: std::ops::Range<usize>) -> bool {

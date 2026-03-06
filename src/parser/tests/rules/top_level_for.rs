@@ -4,25 +4,88 @@ use super::super::helpers::{parse_err, parse_ok};
 use crate::parser::ast::SemanticRuleOrigin;
 use crate::parser::top_level_for::UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT;
 use crate::test_util::{ErrorPattern, find_matching_error};
+use rstest::rstest;
 
-#[test]
-fn top_level_for_desugars_into_semantic_rule() {
-    let src = "for (x in Items(x)) Process(x).";
+#[rstest]
+#[case(
+    "for (x in Items(x)) Process(x).",
+    1,
+    0,
+    &["(call Process x)"],
+    &["(call Items x)"],
+)]
+#[case(
+    "A(x) :- B(x). for (y in C(y)) D(y).",
+    1,
+    1,
+    &["(call D y)"],
+    &[],
+)]
+#[case(
+    "for (x in Items(x)) Process(x).\nfor (y in More(y)) Process2(y).",
+    2,
+    0,
+    &["(call Process x)", "(call Process2 y)"],
+    &[],
+)]
+#[case("for (x in Items(x)) pair.0(x).", 1, 0, &[], &[])]
+#[case("for (x in Items(x)) pair. 0(x).", 1, 0, &[], &[])]
+#[case("    for (x in Items(x)) Process(x).", 1, 0, &[], &[])]
+#[case("R(x) :- for (item in Items(item)) Process(item).", 0, 1, &[], &[])]
+fn top_level_for_desugaring_cases(
+    #[case] src: &str,
+    #[case] expected_semantic_rules: usize,
+    #[case] expected_cst_rules: usize,
+    #[case] expected_heads: &[&str],
+    #[case] expected_body: &[&str],
+) {
     let parsed = parse_ok(src);
-    assert!(parsed.root().rules().is_empty());
-    assert_eq!(parsed.semantic_rules().len(), 1);
+    assert_eq!(parsed.root().rules().len(), expected_cst_rules);
+    assert_eq!(parsed.semantic_rules().len(), expected_semantic_rules);
 
-    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
-    let rule = parsed
-        .semantic_rules()
-        .first()
-        .expect("missing semantic rule");
-    assert_eq!(rule.origin(), SemanticRuleOrigin::TopLevelFor);
-    assert_eq!(rule.head().to_sexpr(), "(call Process x)");
-    assert_eq!(rule.body().len(), 1);
-    #[expect(clippy::expect_used, reason = "test expects one body term")]
-    let first_body = rule.body().first().expect("missing body term");
-    assert_eq!(first_body.to_sexpr(), "(call Items x)");
+    if expected_semantic_rules > 0 {
+        assert!(
+            parsed
+                .semantic_rules()
+                .iter()
+                .all(|rule| rule.origin() == SemanticRuleOrigin::TopLevelFor),
+            "all semantic rules should originate from top-level `for`"
+        );
+    }
+
+    if !expected_heads.is_empty() {
+        let heads = parsed
+            .semantic_rules()
+            .iter()
+            .map(|rule| rule.head().to_sexpr())
+            .collect::<Vec<_>>();
+        let expected = expected_heads
+            .iter()
+            .map(|head| (*head).to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(heads, expected);
+    }
+
+    if !expected_body.is_empty() {
+        #[expect(
+            clippy::expect_used,
+            reason = "body assertions require one semantic rule"
+        )]
+        let rule = parsed
+            .semantic_rules()
+            .first()
+            .expect("missing semantic rule for body assertion");
+        let body = rule
+            .body()
+            .iter()
+            .map(crate::parser::ast::Expr::to_sexpr)
+            .collect::<Vec<_>>();
+        let expected = expected_body
+            .iter()
+            .map(|item| (*item).to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(body, expected);
+    }
 }
 
 #[test]
@@ -51,20 +114,6 @@ fn top_level_for_with_guard_and_nested_loop_desugars_in_order() {
             "(call B b)".to_string(),
         ]
     );
-}
-
-#[test]
-fn top_level_for_after_dot_separator_desugars() {
-    let src = "A(x) :- B(x). for (y in C(y)) D(y).";
-    let parsed = parse_ok(src);
-    assert_eq!(parsed.root().rules().len(), 1);
-    assert_eq!(parsed.semantic_rules().len(), 1);
-    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
-    let rule = parsed
-        .semantic_rules()
-        .first()
-        .expect("missing semantic rule");
-    assert_eq!(rule.head().to_sexpr(), "(call D y)");
 }
 
 #[test]
@@ -99,56 +148,5 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
         index == 0,
         "expected unsupported-body diagnostic to be first, got index {index}"
     );
-    assert!(parsed.semantic_rules().is_empty());
-}
-
-#[test]
-fn top_level_multiple_for_desugars_in_order() {
-    let src = "for (x in Items(x)) Process(x).\nfor (y in More(y)) Process2(y).";
-    let parsed = parse_ok(src);
-    assert_eq!(parsed.semantic_rules().len(), 2);
-    let heads = parsed
-        .semantic_rules()
-        .iter()
-        .map(|rule| rule.head().to_sexpr())
-        .collect::<Vec<_>>();
-    assert_eq!(
-        heads,
-        vec![
-            "(call Process x)".to_string(),
-            "(call Process2 y)".to_string()
-        ]
-    );
-}
-
-#[test]
-fn top_level_for_body_with_tuple_index_head_desugars() {
-    let src = "for (x in Items(x)) pair.0(x).";
-    let parsed = parse_ok(src);
-    assert!(parsed.root().rules().is_empty());
-    assert_eq!(parsed.semantic_rules().len(), 1);
-}
-
-#[test]
-fn top_level_for_body_with_spaced_tuple_index_head_desugars() {
-    let src = "for (x in Items(x)) pair. 0(x).";
-    let parsed = parse_ok(src);
-    assert!(parsed.root().rules().is_empty());
-    assert_eq!(parsed.semantic_rules().len(), 1);
-}
-
-#[test]
-fn top_level_for_with_leading_indentation_desugars() {
-    let src = "    for (x in Items(x)) Process(x).";
-    let parsed = parse_ok(src);
-    assert!(parsed.root().rules().is_empty());
-    assert_eq!(parsed.semantic_rules().len(), 1);
-}
-
-#[test]
-fn rule_body_for_still_accepted() {
-    let src = "R(x) :- for (item in Items(item)) Process(item).";
-    let parsed = parse_ok(src);
-    assert_eq!(parsed.root().rules().len(), 1);
     assert!(parsed.semantic_rules().is_empty());
 }
