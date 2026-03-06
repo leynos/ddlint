@@ -67,14 +67,9 @@ fn top_level_for_desugaring_cases(
     }
 
     if !expected_body.is_empty() {
-        #[expect(
-            clippy::expect_used,
-            reason = "body assertions require one semantic rule"
-        )]
-        let rule = parsed
-            .semantic_rules()
-            .first()
-            .expect("missing semantic rule for body assertion");
+        let Some(rule) = parsed.semantic_rules().first() else {
+            panic!("missing semantic rule for body assertion");
+        };
         let body = rule
             .body()
             .iter()
@@ -94,11 +89,9 @@ fn top_level_for_with_guard_and_nested_loop_desugars_in_order() {
     let parsed = parse_ok(src);
     assert_eq!(parsed.semantic_rules().len(), 1);
 
-    #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
-    let rule = parsed
-        .semantic_rules()
-        .first()
-        .expect("missing semantic rule");
+    let Some(rule) = parsed.semantic_rules().first() else {
+        panic!("missing semantic rule");
+    };
     let body = rule
         .body()
         .iter()
@@ -130,15 +123,12 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
     let Some(index) = find_matching_error(errors, &pattern) else {
         panic!("expected top-level for lowering diagnostic, got: {errors:?}");
     };
-    #[expect(
-        clippy::expect_used,
-        reason = "index from find_matching_error is valid"
-    )]
-    let error = errors.get(index).expect("diagnostic index out of range");
-    #[expect(clippy::expect_used, reason = "test source includes leading `for`")]
-    let for_offset = src
-        .find("for")
-        .expect("`for` keyword missing in test source");
+    let Some(error) = errors.get(index) else {
+        panic!("diagnostic index out of range");
+    };
+    let Some(for_offset) = src.find("for") else {
+        panic!("`for` keyword missing in test source");
+    };
     assert!(
         error.span().start <= for_offset && for_offset < error.span().end,
         "expected diagnostic span {:?} to include `for` at {for_offset}",
