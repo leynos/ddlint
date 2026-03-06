@@ -156,3 +156,39 @@ fn rule_body_for_unaffected(
         "rule-body `for` must not generate top-level semantic rules"
     );
 }
+
+fn assert_invalid_top_level_for(src: &str, pattern: &str, label: &str) {
+    let parsed = parse(src);
+    let error_pattern = ErrorPattern::from(pattern);
+    assert!(
+        find_matching_error(parsed.errors(), &error_pattern).is_some(),
+        "expected {label} diagnostic, got: {:?}",
+        parsed.errors()
+    );
+    assert!(
+        parsed.semantic_rules().is_empty(),
+        "{label} must not emit semantic rules"
+    );
+    assert!(
+        parsed.root().rules().is_empty(),
+        "{label} must not produce CST rules"
+    );
+}
+
+#[test]
+fn unterminated_top_level_for_reports_error() {
+    assert_invalid_top_level_for(
+        "for (x in Items(x)) Process(x)",
+        UNTERMINATED_FOR_PATTERN,
+        "unterminated top-level `for`",
+    );
+}
+
+#[test]
+fn unsupported_top_level_for_non_atom_head_reports_diagnostic() {
+    assert_invalid_top_level_for(
+        "for (x in Items(x)) x + 1.",
+        UNSUPPORTED_FOR_BODY_PATTERN,
+        "unsupported top-level `for` head",
+    );
+}
