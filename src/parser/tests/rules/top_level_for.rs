@@ -139,4 +139,5 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
         "expected unsupported-body diagnostic to be first, got index {index}"
     );
     assert!(parsed.semantic_rules().is_empty());
+    assert!(parsed.root().rules().is_empty());
 }
