@@ -32,7 +32,9 @@ Observable success is:
   `CstRuleStore` and `Runner` on parsed DDlog fixtures.
 - `docs/ddlint-design.md` section `3.2` documents the final macro syntax and
   any design adjustments taken during implementation.
-- `docs/roadmap.md` marks `3.2.1` done once all quality gates pass.
+- `docs/roadmap.md` replaces stale `docs/ddlint-design-and-road-map.md`
+  references with `docs/ddlint-design.md` where applicable and marks `3.2.1`
+  done once all quality gates pass.
 - `make check-fmt`, `make lint`, and `make test` all succeed at the end of the
   feature.
 
@@ -57,6 +59,8 @@ Observable success is:
 - Validate with both unit tests and behavioural tests.
 - Record final design decisions in
   [docs/ddlint-design.md](docs/ddlint-design.md).
+- When editing [docs/roadmap.md](docs/roadmap.md) for this milestone, also fix
+  stale references to the missing `docs/ddlint-design-and-road-map.md` file.
 - Use Make targets for final quality gates and run every gate with
   `set -o pipefail` and `tee`.
 - Use en-GB-oxendict spelling in comments and documentation.
@@ -120,7 +124,8 @@ Observable success is:
   contract and any deviations from the original example.
 - [ ] Run `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
   `make lint`, and `make test`.
-- [ ] Mark `docs/roadmap.md` item `3.2.1` as done.
+- [ ] Update stale `docs/ddlint-design-and-road-map.md` references in
+  `docs/roadmap.md` and mark item `3.2.1` as done.
 
 ## Surprises & Discoveries
 
@@ -142,9 +147,11 @@ Observable success is:
 ## Decision Log
 
 - Decision: treat [docs/ddlint-design.md](docs/ddlint-design.md) as the
-  normative design document for this milestone. Rationale: the roadmap path is
-  stale, while `docs/ddlint-design.md` contains the actual `declare_lint!`
-  design text in section `3.2`. Date/Author: 2026-03-07 / Codex.
+  normative design document for this milestone and plan to repair stale roadmap
+  references during implementation. Rationale: the roadmap path is stale, while
+  `docs/ddlint-design.md` contains the actual `declare_lint!` design text in
+  section `3.2`. Fixing the roadmap in the same change removes an already-known
+  source of confusion for the next milestone. Date/Author: 2026-03-07 / Codex.
 
 - Decision: extend `Rule` with a first-class default-level API for this
   milestone. Rationale: the design text for `declare_lint!`, the initial rule
@@ -343,8 +350,9 @@ and default severity conceptually, but the final document must also explain:
 - that default level is now a first-class metadata concept available on
   `Rule`.
 
-Then mark only roadmap item `3.2.1` as done in
-[docs/roadmap.md](docs/roadmap.md). Leave `3.2.2` unchanged.
+Then update stale `docs/ddlint-design-and-road-map.md` references in
+[docs/roadmap.md](docs/roadmap.md) so they point at `docs/ddlint-design.md`.
+Mark only roadmap item `3.2.1` as done and leave `3.2.2` unchanged.
 
 Finish by running formatting, Markdown validation, Rust formatting checks,
 Clippy, and the full test suite. Do not consider the milestone complete until
