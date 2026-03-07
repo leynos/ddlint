@@ -10,6 +10,10 @@ code review. It is intentionally non-normative.
 ## Status and ownership
 
 - This document describes current implementation behaviour.
+- `docs/ddlint-design.md` is the design-level source for the target split-crate
+  architecture and public contracts.
+- This document is the worked implementation guide for current module mapping,
+  migration sequencing, and non-regression invariants.
 - If behaviour differs from the syntax spec, track that mismatch in
   `docs/parser-conformance-register.md` rather than duplicating decision text
   here.
@@ -51,7 +55,7 @@ migration, the current module layout should map to the future crates as follows:
 
 This mapping should be treated as a movement guide for existing modules rather
 than a licence to preserve current internal structure unchanged. If a module
-mixes syntax and semantics concerns today, split the responsibilities before or
+mixes syntax and semantic concerns today, split the responsibilities before or
 while moving it.
 
 ## Migration invariants

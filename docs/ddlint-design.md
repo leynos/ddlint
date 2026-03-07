@@ -414,6 +414,11 @@ reparsing.
 
 ### 2.5. Cross-crate contracts and migration invariants
 
+This document is the design-level source for the target crate boundaries and
+public contracts. `docs/parser-implementation-notes.md` is the worked
+implementation guide for mapping today's in-crate modules onto those targets
+and recording migration-time non-regression constraints.
+
 The split parser library succeeds only if the new public surfaces are treated
 as contracts rather than incidental module boundaries.
 
@@ -430,7 +435,7 @@ The core contracts are:
   projections, aggregations, recursion boundaries, and semantic facts such as
   keys, relation kinds, and stratification.
 - Determinism: semantic traversal, exported collections, and planner-handoff
-  serialization must have stable ordering suitable for dependency analysis,
+  serialisation must have stable ordering suitable for dependency analysis,
   canonical planning, and cache-key derivation.
 - Compatibility facade discipline: migration shims belong only in
   `ddlog-parser`, and every shim must carry a deprecation target release and a
