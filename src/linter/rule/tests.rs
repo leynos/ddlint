@@ -67,11 +67,16 @@ fn make_rule_config() -> RuleConfig {
 }
 
 #[test]
-fn metadata_is_available_through_trait_object() {
+fn trait_object_exposes_name_group_and_docs() {
     let rule: &dyn CstRule = &ExampleRule;
     assert_eq!(rule.name(), "example-rule");
     assert_eq!(rule.group(), "correctness");
     assert_eq!(rule.docs(), "Example rule documentation.");
+}
+
+#[test]
+fn trait_object_exposes_default_level_and_target_kinds() {
+    let rule: &dyn CstRule = &ExampleRule;
     assert_eq!(rule.default_level(), RuleLevel::Warn);
     assert_eq!(rule.target_kinds(), &[SyntaxKind::N_RULE]);
 }
@@ -83,10 +88,14 @@ fn explicit_rule_level_override_is_visible_through_trait_object() {
 }
 
 #[test]
-fn rule_level_strings_match_config_spelling() {
+fn rule_level_as_str_returns_language_spellings() {
     assert_eq!(RuleLevel::Allow.as_str(), "allow");
     assert_eq!(RuleLevel::Hint.as_str(), "hint");
     assert_eq!(RuleLevel::Warn.as_str(), "warn");
+}
+
+#[test]
+fn rule_level_error_as_str_and_display_agree() {
     assert_eq!(RuleLevel::Error.as_str(), "error");
     assert_eq!(RuleLevel::Warn.to_string(), "warn");
 }
@@ -107,13 +116,17 @@ fn lint_diagnostic_accessors_round_trip() {
 }
 
 #[test]
-fn rule_config_value_accessors_are_typed() {
+fn rule_config_value_correct_type_accessors_return_inner_value() {
     assert_eq!(RuleConfigValue::Bool(true).as_bool(), Some(true));
     assert_eq!(RuleConfigValue::Integer(3).as_integer(), Some(3));
     assert_eq!(
         RuleConfigValue::String("x".to_owned()).as_string(),
         Some("x")
     );
+}
+
+#[test]
+fn rule_config_value_wrong_type_accessors_return_none() {
     assert_eq!(RuleConfigValue::Bool(true).as_integer(), None);
     assert_eq!(RuleConfigValue::Integer(3).as_string(), None);
 }
@@ -140,7 +153,7 @@ fn rule_ctx_config_accessor_returns_full_config() {
 }
 
 #[test]
-fn rule_ctx_typed_config_accessors_return_correct_values() {
+fn rule_ctx_config_value_and_bool_accessors_return_correct_values() {
     let source = "input relation R(x: u32);";
     let parsed = parse(source);
     let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
@@ -150,6 +163,14 @@ fn rule_ctx_typed_config_accessors_return_correct_values() {
         Some(&RuleConfigValue::Bool(true))
     );
     assert_eq!(ctx.config_bool("enabled"), Some(true));
+}
+
+#[test]
+fn rule_ctx_int_and_string_config_accessors_return_correct_values() {
+    let source = "input relation R(x: u32);";
+    let parsed = parse(source);
+    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
+
     assert_eq!(ctx.config_int("max_depth"), Some(2));
     assert_eq!(ctx.config_string("style"), Some("strict"));
 }
