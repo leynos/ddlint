@@ -88,8 +88,8 @@ feature than the conformance-alignment task captured here.
 - Risk: narrowing the spec to the current helper-stage behaviour could hide a
   still-desired long-term parser rewrite. Severity: medium. Likelihood: medium.
   Mitigation: document the chosen boundary as a current-generation parser
-  contract and leave future parser-wide lowering to ADR follow-up work rather
-  than implying it already exists.
+  contract and leave future parser-wide lowering to Architecture Decision
+  Record (ADR) follow-up work rather than implying it already exists.
 
 - Risk: docs can drift again because aggregation behaviour is described in
   multiple places: the syntax spec, implementation notes, conformance register,
@@ -109,23 +109,22 @@ feature than the conformance-alignment task captured here.
 
 ## Progress
 
-- [x] (2026-03-07 00:00Z) Reviewed roadmap item `2.6.2`, conformance register
-  item 9, the syntax spec, implementation notes, archived parser plan, and the
-  current aggregation tests.
-- [x] (2026-03-07 00:00Z) Drafted this ExecPlan in
+- [x] Reviewed roadmap item `2.6.2`, conformance register item 9, the syntax
+  spec, implementation notes, archived parser plan, and the current aggregation
+  tests.
+- [x] Drafted this ExecPlan in
   `docs/execplans/2-6-2-decide-the-aggregation-extraction-boundary.md`.
-- [x] (2026-03-07 00:00Z) Freeze the aggregation boundary decision in the docs
-  and doc comments.
-- [x] (2026-03-07 00:00Z) Add unit tests proving that aggregation
-  classification belongs to `Rule::body_terms()` rather than `parse()`.
-- [x] (2026-03-07 00:00Z) Add behavioural tests proving the same contract
-  through the public parser API.
-- [x] (2026-03-07 00:00Z) Implement the minimal code and documentation updates
-  needed to make the contract explicit and non-contradictory.
-- [x] (2026-03-07 00:00Z) Mark conformance register item 9 as `implemented`.
-- [x] (2026-03-07 00:00Z) Mark roadmap item `2.6.2` done.
-- [x] (2026-03-07 00:00Z) Run `make fmt`, `make markdownlint`, `make nixie`,
-  `make check-fmt`, `make lint`, and `make test`.
+- [x] Froze the aggregation boundary decision in the docs and doc comments.
+- [x] Added unit tests proving that aggregation classification belongs to
+  `Rule::body_terms()` rather than `parse()`.
+- [x] Added behavioural tests proving the same contract through the public
+  parser API.
+- [x] Implemented the minimal code and documentation updates needed to make
+  the contract explicit and non-contradictory.
+- [x] Marked conformance register item 9 as `implemented`.
+- [x] Marked roadmap item `2.6.2` done.
+- [x] Ran `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
+  `make lint`, and `make test`.
 
 ## Surprises & Discoveries
 
@@ -163,18 +162,18 @@ feature than the conformance-alignment task captured here.
   rule-analysis helper boundary rather than moving it into the base parse
   pipeline. Rationale: this matches the implemented architecture, preserves CST
   losslessness, avoids inventing a new `Parsed` contract, and is proportionate
-  to a pre-ADR conformance decision. Date/Author: 2026-03-07 / assistant
+  to a pre-ADR conformance decision.
 
 - Decision: the design-doc update should include `docs/ddlint-design.md`, not
   just parser-specific docs. Rationale: the boundary question is architectural,
   because it defines what the parser pipeline promises to downstream rule
-  engines and future crate-split work. Date/Author: 2026-03-07 / assistant
+  engines and future crate-split work.
 
 - Decision: if implementation uncovers a real consumer that needs parse-stage
   aggregation nodes or parser-level aggregation diagnostics, stop instead of
   maintaining two parallel boundaries. Rationale: dual ownership would make the
   pipeline harder to reason about and would undermine the purpose of this
-  conformance-closure task. Date/Author: 2026-03-07 / assistant
+  conformance-closure task.
 
 ## Context and orientation
 
