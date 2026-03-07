@@ -31,6 +31,49 @@ The expression parser is a bespoke Pratt parser over the token stream. It does
 not use `chumsky::pratt`; operator binding powers are defined centrally in
 `src/parser/ast/precedence.rs`.
 
+## ADR-001 split-crate migration mapping
+
+The current implementation still lives inside the `ddlint` crate, but ADR-001
+defines the target extraction into dedicated parser crates. During that
+migration, the current module layout should map to the future crates as follows:
+
+- `ddlog-syntax`:
+  `src/tokenizer.rs`, `src/language.rs`, `src/parser/token_stream.rs`,
+  `src/parser/cst_builder/*`, `src/parser/span_scanners/*`, CST-oriented typed
+  wrappers, and parse-stage diagnostic machinery.
+- `ddlog-sema`:
+  owned semantic data extracted from today's AST helper surface, semantic
+  validation passes, dependency extraction logic, and planner-handoff export
+  helpers.
+- `ddlog-parser`:
+  the top-level parse orchestration surface, syntax-to-semantics coordination,
+  and any temporary compatibility shims needed while consumers migrate.
+
+This mapping should be treated as a movement guide for existing modules rather
+than a licence to preserve current internal structure unchanged. If a module
+mixes syntax and semantics concerns today, split the responsibilities before or
+while moving it.
+
+## Migration invariants
+
+The following invariants must hold throughout the crate split:
+
+- Lossless CST fidelity must remain byte-accurate, including trivia
+  preservation and existing span behaviour for parser-facing APIs.
+- Parse-stage diagnostics must remain available without instantiating the
+  semantic layer.
+- Semantic nodes must carry provenance back to syntax spans for declarations,
+  rule heads, body terms, aggregations, attributes, and adornments.
+- Compiler-facing workflows must stop depending on CST-string extraction and
+  reparsing once the semantic layer lands.
+- Planner-relevant semantic collections must expose deterministic ordering so
+  downstream dependency extraction and cache-key generation remain stable.
+- Compatibility shims must live only in `ddlog-parser`, and each shim needs a
+  deprecation target release plus a tracked removal issue.
+- Phase exits must use the validation scopes defined in
+  `docs/adr-001-parser-crate-split.md`: parser unit scope, integration scope,
+  and the `tests/fixtures/phase3/` corpus introduced for semantic extraction.
+
 ## Expression parser invariants
 
 ### Qualified calls and unresolved application
