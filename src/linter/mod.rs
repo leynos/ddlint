@@ -4,10 +4,11 @@
 //! rule-dispatch registry, and visitor-based parallel rule runner used by
 //! CST-driven lint rules.
 
+mod macros;
 mod rule;
 mod runner;
 mod store;
 
-pub use rule::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx};
+pub use rule::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx, RuleLevel};
 pub use runner::Runner;
 pub use store::CstRuleStore;

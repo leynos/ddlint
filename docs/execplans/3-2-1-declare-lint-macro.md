@@ -4,7 +4,7 @@ This ExecPlan is a living document. The sections `Constraints`, `Tolerances`,
 `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`, and
 `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -114,18 +114,21 @@ Observable success is:
   the existing linter engine implementation, and prior linter execplans.
 - [x] (2026-03-07 00:00Z) Write this ExecPlan to
   `docs/execplans/3-2-1-declare-lint-macro.md`.
-- [ ] Add first-class rule-level metadata in `src/linter/rule.rs`.
-- [ ] Add the public `declare_lint!` macro module and export path.
-- [ ] Add unit tests for macro metadata, doc extraction, target kinds, and
-  generated handlers.
-- [ ] Add behavioural tests proving store and runner compatibility for a
-  macro-generated rule.
-- [ ] Update `docs/ddlint-design.md` section `3.2` with the final macro
-  contract and any deviations from the original example.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
-  `make lint`, and `make test`.
-- [ ] Update stale `docs/ddlint-design-and-road-map.md` references in
-  `docs/roadmap.md` and mark item `3.2.1` as done.
+- [x] (2026-03-07T10:44Z) Add first-class rule-level metadata in
+  `src/linter/rule.rs`.
+- [x] (2026-03-07T10:44Z) Add the public `declare_lint!` macro module and
+  export path.
+- [x] (2026-03-07T10:44Z) Add unit tests for macro metadata, doc extraction,
+  target kinds, and generated handlers.
+- [x] (2026-03-07T10:44Z) Add behavioural tests proving store and runner
+  compatibility for a macro-generated rule.
+- [x] (2026-03-07T10:44Z) Update `docs/ddlint-design.md` section `3.2` with
+  the final macro contract and implemented syntax.
+- [x] (2026-03-07T10:44Z) Run `make fmt`, `make markdownlint`, `make nixie`,
+  `make check-fmt`, `make lint`, and `make test`.
+- [x] (2026-03-07T10:44Z) Update stale
+  `docs/ddlint-design-and-road-map.md` references in `docs/roadmap.md` and mark
+  item `3.2.1` as done.
 
 ## Surprises & Discoveries
 
@@ -143,6 +146,14 @@ Observable success is:
   methods. Impact: implementing the macro exactly as described in the design
   document requires an additive metadata extension instead of a pure macro-only
   change.
+
+- Observation: standard Rust doc comments become `#[doc = " ..."]` attributes
+  with a leading space on non-empty lines, and stable `macro_rules!` cannot
+  trim that whitespace while still returning `&'static str`. Evidence: the
+  initial exact-string unit test for `docs()` failed with leading spaces in
+  headings and paragraphs captured from the doc comments. Impact: the design
+  doc now states that `docs()` is sourced directly from doc comments, and tests
+  assert on meaningful content rather than byte-for-byte whitespace.
 
 ## Decision Log
 
@@ -177,6 +188,17 @@ Observable success is:
   path that works in integration tests and future downstream consumers without
   additional helper crates. Date/Author: 2026-03-07 / Codex.
 
+- Decision: keep the macro grammar explicit, with four supported shapes: no
+  handlers, node-only, token-only, or both handlers. Rationale: attempting a
+  more permissive optional-handler grammar caused local ambiguity in
+  `macro_rules!`. Explicit arms keep parse errors predictable and the public
+  syntax easy to document. Date/Author: 2026-03-07 / Codex.
+
+- Decision: capture `&self` as an identifier in handler signatures.
+  Rationale: macro hygiene prevents a handler body from referring to a literal
+  `self` unless that identifier is captured from the macro invocation and
+  reused in the generated method signature. Date/Author: 2026-03-07 / Codex.
+
 - Decision: keep `docs/roadmap.md` item `3.2.2` unchecked in this milestone.
   Rationale: the behavioural tests added here will prove compatibility with the
   existing store and runner, but the requested roadmap task is specifically
@@ -185,15 +207,27 @@ Observable success is:
 
 ## Outcomes & Retrospective
 
-This work has not been implemented yet. A successful outcome for this ExecPlan
-is a small, additive ergonomics layer over the existing linter core: rule
-authors stop writing repetitive metadata and dispatch boilerplate, while the
-store and runner continue to operate exactly as they do today.
+The milestone shipped as planned:
 
-The main lesson already visible at planning time is that the design document's
-"default severity" promise cannot be delivered honestly without extending the
-current metadata trait. The implementation should solve that directly rather
-than hiding the gap inside macro-only magic.
+- `RuleLevel` and `Rule::default_level()` now provide first-class rule-level
+  metadata without breaking existing handwritten rules.
+- `ddlint::declare_lint!` is implemented in `src/linter/macros.rs` and
+  generates a zero-state rule struct plus `Rule` and `CstRule` impls.
+- Unit coverage lives in `src/linter/macros.rs` and
+  `src/linter/rule/tests.rs`.
+- Behavioural coverage lives in `tests/linter_declare_lint_macro.rs` and
+  proves store and runner compatibility end-to-end.
+- `docs/ddlint-design.md` now documents the implemented macro syntax, and
+  `docs/roadmap.md` now points to `docs/ddlint-design.md` consistently while
+  marking `3.2.1` done.
+- All required gates passed:
+  `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`, `make lint`,
+  and `make test`.
+
+The most useful lesson was that severity metadata needed to be solved at the
+trait level, not hidden inside the macro. The other significant lesson was
+macro hygiene: capturing `&self` from the call site is necessary when the
+handler body wants to call `self.name()` naturally.
 
 ## Context and orientation
 
@@ -522,8 +556,7 @@ The generated rule type must satisfy:
 - `Send + Sync`
 - zero runtime state unless the caller later extends the pattern manually
 
-Revision note: Initial draft created on 2026-03-07 after reviewing the current
-linter engine, the design document, and prior `3.1.*` execplans. The draft
-locks in the additive `RuleLevel` approach, the explicit `name` field, and the
-crate-root macro export so implementation can proceed without re-opening those
-questions.
+Revision note: Completed implementation on 2026-03-07. The live plan now
+records the shipped `RuleLevel` API, the explicit-arm macro grammar, the
+captured-`&self` handler design, the direct `docs/roadmap.md` reference fix,
+and the fact that all required gates passed.

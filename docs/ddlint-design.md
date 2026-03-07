@@ -616,54 +616,55 @@ overall developer experience for linter contributors, the project will
 implement a declarative macro named `declare_lint!`. This approach is heavily
 inspired by the successful use of a similar macro in `rslint_core`.[^2]
 
-The `declare_lint!` macro will abstract away the repetitive parts of rule
-definition. A developer will provide the core information: the rule's
-documentation (written as standard Rust doc comments), a `PascalCase` name for
-the rule's `struct`, the group it belongs to, and its default severity level.
-The macro will then expand this concise definition into the full `struct`
-definition and the complete `impl Rule` block. It will parse the doc comments
-and automatically populate the `docs()` method, ensuring that the documentation
-lives right next to the code it describes and is never out of sync.
+The `declare_lint!` macro abstracts away the repetitive parts of rule
+definition. A developer provides the rule documentation (written as standard
+Rust doc comments), a `PascalCase` struct name, an explicit kebab-case rule
+name, the rule group, the built-in severity level, the target `SyntaxKind`
+values, and optional `check_node` and `check_token` handlers. The macro then
+expands this concise definition into a zero-state rule struct plus complete
+`impl Rule` and `impl CstRule` blocks.
+
+Rule severity is now a first-class metadata concept exposed through
+`Rule::default_level() -> RuleLevel`. The macro's
+`level: allow | hint | warn | error` input maps directly onto that enum, which
+keeps the metadata usable for future rule listing, explanation, and
+configuration surfaces.
 
 An example of how a developer would define a new rule using this macro is as
 follows:
 
 ```rust,no_run
+use ddlint::{SyntaxKind, declare_lint};
+use ddlint::linter::LintDiagnostic;
+
 declare_lint! {
     /// ## What it does
-    /// Checks for relations that are declared but are never used as input to another rule.
-    ///
-    /// ## Why is this bad?
-    /// An unused relation can indicate dead code that should be removed, or it may
-    /// point to a typo in a rule that was intended to consume this relation.
-    /// Removing it can reduce the complexity of the program.
-    ///
-    /// ## Example
-    ///
-    /// ```ddlog
-    /// // Bad
-    /// input relation Unused(x: u32)
-    /// relation Used(x: u32)
-    /// output relation Result(x: u32)
-    ///
-    /// Result(x) :- Used(x). // `Unused` is never read from
-    ///
-    /// // Good
-    /// input relation Used(x: u32)
-    /// output relation Result(x: u32)
-    ///
-    /// Result(x) :- Used(x).
-    /// ```
-    pub UnusedRelation,
-    group: "correctness",
-    // The default severity will also be specified here, e.g., level: "warn"
+    /// Flags every relation declaration.
+    pub RelationExample {
+        name: "relation-example",
+        group: "style",
+        level: warn,
+        target_kinds: [SyntaxKind::N_RELATION_DECL],
+        fn check_node(&self, node, _ctx, diagnostics) {
+            diagnostics.push(LintDiagnostic::new(
+                self.name(),
+                "relation declaration seen",
+                node.text_range(),
+            ));
+        }
+    }
 }
 ```
 
+The explicit `name` field is intentional. Stable declarative macros cannot
+reliably convert a `PascalCase` Rust type name into the linter's required
+kebab-case rule identifier, so the caller provides the canonical rule name
+directly.
+
 This macro dramatically lowers the barrier to entry for contributing new rules.
-It allows developers to focus on the interesting part—the analysis logic—rather
-than the ceremony of trait implementations. This encourages community
-involvement and accelerates the growth of the linter's rule set.
+It lets developers focus on the analysis logic rather than the ceremony of
+trait implementations. This encourages community involvement and accelerates
+the growth of the linter's rule set.
 
 ### 3.3. Initial lint rule catalog
 
