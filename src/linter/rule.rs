@@ -5,6 +5,7 @@
 //! data are introduced by follow-up roadmap items.
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::sync::Arc;
 
 use rowan::TextRange;
@@ -91,6 +92,38 @@ impl RuleConfigValue {
 
 /// Rule-specific configuration mapping.
 pub type RuleConfig = BTreeMap<String, RuleConfigValue>;
+
+/// Built-in severity level for a lint rule before configuration overrides.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleLevel {
+    /// The rule is disabled by default.
+    Allow,
+    /// The rule emits a low-priority suggestion.
+    Hint,
+    /// The rule emits a warning.
+    Warn,
+    /// The rule emits an error.
+    Error,
+}
+
+impl RuleLevel {
+    /// Return the canonical lower-case spelling used in docs and config.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Allow => "allow",
+            Self::Hint => "hint",
+            Self::Warn => "warn",
+            Self::Error => "error",
+        }
+    }
+}
+
+impl fmt::Display for RuleLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// Transient rule execution context.
 ///
@@ -191,6 +224,11 @@ pub trait Rule {
 
     /// Return human-readable rule documentation.
     fn docs(&self) -> &'static str;
+
+    /// Return the rule's built-in severity level.
+    fn default_level(&self) -> RuleLevel {
+        RuleLevel::Warn
+    }
 }
 
 /// CST-driven lint behaviour contract.
@@ -226,101 +264,4 @@ pub trait CstRule: Rule + Send + Sync {
 }
 
 #[cfg(test)]
-mod tests {
-    use rowan::TextSize;
-
-    use super::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx};
-    use crate::{SyntaxKind, parse};
-
-    struct ExampleRule;
-
-    impl Rule for ExampleRule {
-        fn name(&self) -> &'static str {
-            "example-rule"
-        }
-
-        fn group(&self) -> &'static str {
-            "correctness"
-        }
-
-        fn docs(&self) -> &'static str {
-            "Example rule documentation."
-        }
-    }
-
-    impl CstRule for ExampleRule {
-        fn target_kinds(&self) -> &'static [SyntaxKind] {
-            &[SyntaxKind::N_RULE]
-        }
-    }
-
-    fn assert_send_sync<T: Send + Sync>() {}
-
-    #[test]
-    fn metadata_is_available_through_trait_object() {
-        let rule: &dyn CstRule = &ExampleRule;
-        assert_eq!(rule.name(), "example-rule");
-        assert_eq!(rule.group(), "correctness");
-        assert_eq!(rule.docs(), "Example rule documentation.");
-        assert_eq!(rule.target_kinds(), &[SyntaxKind::N_RULE]);
-    }
-
-    #[test]
-    fn cst_rule_is_send_and_sync() {
-        assert_send_sync::<ExampleRule>();
-    }
-
-    #[test]
-    fn lint_diagnostic_accessors_round_trip() {
-        let span = rowan::TextRange::new(TextSize::from(1), TextSize::from(3));
-        let diagnostic = LintDiagnostic::new("example-rule", "message", span);
-
-        assert_eq!(diagnostic.rule_name(), "example-rule");
-        assert_eq!(diagnostic.message(), "message");
-        assert_eq!(diagnostic.span(), span);
-    }
-
-    #[test]
-    fn rule_config_value_accessors_are_typed() {
-        assert_eq!(RuleConfigValue::Bool(true).as_bool(), Some(true));
-        assert_eq!(RuleConfigValue::Integer(3).as_integer(), Some(3));
-        assert_eq!(
-            RuleConfigValue::String("x".to_owned()).as_string(),
-            Some("x")
-        );
-        assert_eq!(RuleConfigValue::Bool(true).as_integer(), None);
-        assert_eq!(RuleConfigValue::Integer(3).as_string(), None);
-    }
-
-    #[test]
-    fn rule_ctx_exposes_source_ast_and_config() {
-        let source = "input relation R(x: u32);";
-        let parsed = parse(source);
-        assert!(parsed.errors().is_empty());
-
-        let config = RuleConfig::from([
-            ("enabled".to_owned(), RuleConfigValue::Bool(true)),
-            ("max_depth".to_owned(), RuleConfigValue::Integer(2)),
-            (
-                "style".to_owned(),
-                RuleConfigValue::String("strict".to_owned()),
-            ),
-        ]);
-
-        let ctx = RuleCtx::from_parsed(source, &parsed, config.clone());
-
-        assert_eq!(ctx.source_text(), source);
-        assert_eq!(ctx.ast_root().relations().len(), 1);
-        assert_eq!(ctx.cst_root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
-        assert_eq!(ctx.config(), &config);
-        assert_eq!(
-            ctx.config_value("enabled"),
-            Some(&RuleConfigValue::Bool(true))
-        );
-        assert_eq!(ctx.config_bool("enabled"), Some(true));
-        assert_eq!(ctx.config_int("max_depth"), Some(2));
-        assert_eq!(ctx.config_string("style"), Some("strict"));
-        assert_eq!(ctx.config_bool("style"), None);
-        assert_eq!(ctx.config_value("missing"), None);
-    }
-}
+mod tests;
