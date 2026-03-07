@@ -374,6 +374,84 @@ investment in the core usability and value proposition of the entire linting
 tool. It enables the linter to function as a helpful "co-pilot" during
 development, rather than a rigid "gatekeeper" that only runs after the fact.
 
+### 2.4. Split parser crate architecture
+
+ADR-001 introduces a split parser library so the parser can serve both `ddlint`
+and compiler-facing consumers such as `telephone` without forcing either
+consumer through an ill-fitting API. The split keeps the CST-first architecture
+intact while making the public contracts explicit.
+
+The target crate boundaries are:
+
+- `ddlog-syntax`: the lossless syntax layer. This crate owns tokenization,
+  `SyntaxKind`, token-stream helpers, span scanners, CST construction, typed
+  CST wrappers, and parse-stage diagnostics tied directly to source fidelity.
+- `ddlog-sema`: the semantic layer. This crate owns the typed, owned program
+  model, semantic validators, dependency extraction entrypoints, and
+  compiler-facing semantic facts such as rule shapes, aggregations,
+  stratification metadata, and provenance.
+- `ddlog-parser`: the compatibility and orchestration layer. This crate owns
+  high-level parse entrypoints that coordinate syntax and semantic phases while
+  providing temporary migration shims for existing call sites.
+
+The dependency rule must remain acyclic and explicit:
+
+- `ddlog-syntax` must not depend on `ddlog-sema`, `ddlog-parser`, `ddlint`, or
+  `telephone`.
+- `ddlog-sema` may depend on `ddlog-syntax` for syntax-derived provenance and
+  source mapping types, but not on consumer crates.
+- `ddlog-parser` may depend on `ddlog-syntax` and `ddlog-sema`, but it must not
+  absorb consumer-specific lint or compiler policy.
+- `ddlint` should consume `ddlog-syntax` for CST-first lint and autofix work,
+  using `ddlog-parser` only where orchestration helpers materially reduce
+  migration cost.
+- `telephone` should consume `ddlog-sema` and `ddlog-parser`, not raw
+  `ddlog-syntax` internals, for compiler-facing workflows.
+
+This structure preserves the linter's need for trivia-preserving syntax while
+stopping compiler consumers from depending on CST-string extraction and
+reparsing.
+
+### 2.5. Cross-crate contracts and migration invariants
+
+This document is the design-level source for the target crate boundaries and
+public contracts. `docs/parser-implementation-notes.md` is the worked
+implementation guide for mapping today's in-crate modules onto those targets
+and recording migration-time non-regression constraints.
+
+The split parser library succeeds only if the new public surfaces are treated
+as contracts rather than incidental module boundaries.
+
+The core contracts are:
+
+- Stable diagnostics: all public diagnostics must expose `code`, `message`,
+  `span`, `severity`, and `stage`, where `stage` distinguishes parse and
+  semantic failures without leaking internal implementation types.
+- Provenance: semantic nodes must retain source mappings back to the lossless
+  syntax layer for rule heads, body terms, aggregations, attributes, and
+  adornments, so diagnostics and later rewrites remain explainable.
+- Semantic model completeness: `ddlog-sema` must expose typed structures for
+  constructs that downstream planners care about, including joins, filters,
+  projections, aggregations, recursion boundaries, and semantic facts such as
+  keys, relation kinds, and stratification.
+- Determinism: semantic traversal, exported collections, and planner-handoff
+  serialisation must have stable ordering suitable for dependency analysis,
+  canonical planning, and cache-key derivation.
+- Compatibility facade discipline: migration shims belong only in
+  `ddlog-parser`, and every shim must carry a deprecation target release and a
+  tracked removal issue.
+- Ownership and approval: `ddlog-syntax`, `ddlog-sema`, and `ddlog-parser`
+  each need explicit maintainers, and changes to shared contracts require joint
+  review as described in ADR-001.
+
+Before the split is considered complete, the documentation set must also
+include a planner-handoff note describing the exported semantic types,
+invariants, deterministic ordering rules, provenance expectations, and at least
+one worked example of lowering a parsed rule into planner-facing data.
+
+Detailed execution sequencing for this work lives in `docs/roadmap.md` items
+`2.7` through `2.10`.
+
 ## 3. The rule ecosystem: definition, configuration, and management
 
 The true power, and the resulting utility, of a linter are derived from its set
