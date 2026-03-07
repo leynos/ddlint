@@ -55,6 +55,17 @@ impl CstRule for ErrorLevelRule {
 
 fn assert_send_sync<T: Send + Sync>() {}
 
+fn make_rule_config() -> RuleConfig {
+    RuleConfig::from([
+        ("enabled".to_owned(), RuleConfigValue::Bool(true)),
+        ("max_depth".to_owned(), RuleConfigValue::Integer(2)),
+        (
+            "style".to_owned(),
+            RuleConfigValue::String("strict".to_owned()),
+        ),
+    ])
+}
+
 #[test]
 fn metadata_is_available_through_trait_object() {
     let rule: &dyn CstRule = &ExampleRule;
@@ -108,26 +119,32 @@ fn rule_config_value_accessors_are_typed() {
 }
 
 #[test]
-fn rule_ctx_exposes_source_ast_and_config() {
+fn rule_ctx_exposes_source_text_and_ast_roots() {
     let source = "input relation R(x: u32);";
     let parsed = parse(source);
-    assert!(parsed.errors().is_empty());
-
-    let config = RuleConfig::from([
-        ("enabled".to_owned(), RuleConfigValue::Bool(true)),
-        ("max_depth".to_owned(), RuleConfigValue::Integer(2)),
-        (
-            "style".to_owned(),
-            RuleConfigValue::String("strict".to_owned()),
-        ),
-    ]);
-
-    let ctx = RuleCtx::from_parsed(source, &parsed, config.clone());
+    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
 
     assert_eq!(ctx.source_text(), source);
     assert_eq!(ctx.ast_root().relations().len(), 1);
     assert_eq!(ctx.cst_root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
+}
+
+#[test]
+fn rule_ctx_config_accessor_returns_full_config() {
+    let source = "input relation R(x: u32);";
+    let parsed = parse(source);
+    let config = make_rule_config();
+    let ctx = RuleCtx::from_parsed(source, &parsed, config.clone());
+
     assert_eq!(ctx.config(), &config);
+}
+
+#[test]
+fn rule_ctx_typed_config_accessors_return_correct_values() {
+    let source = "input relation R(x: u32);";
+    let parsed = parse(source);
+    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
+
     assert_eq!(
         ctx.config_value("enabled"),
         Some(&RuleConfigValue::Bool(true))
@@ -135,6 +152,14 @@ fn rule_ctx_exposes_source_ast_and_config() {
     assert_eq!(ctx.config_bool("enabled"), Some(true));
     assert_eq!(ctx.config_int("max_depth"), Some(2));
     assert_eq!(ctx.config_string("style"), Some("strict"));
+}
+
+#[test]
+fn rule_ctx_config_accessors_return_none_for_type_mismatch_and_missing_keys() {
+    let source = "input relation R(x: u32);";
+    let parsed = parse(source);
+    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
+
     assert_eq!(ctx.config_bool("style"), None);
     assert_eq!(ctx.config_value("missing"), None);
 }

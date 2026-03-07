@@ -100,10 +100,9 @@ fn source() -> &'static str {
     include_str!("../examples/hello_join.dl")
 }
 
-#[rstest]
-fn macro_generated_node_rule_registers_and_runs(source: &str) {
+fn run_single_rule_expecting_name(source: &str, rule: Box<dyn CstRule>, expected_name: &str) {
     let mut store = CstRuleStore::new();
-    store.register(Box::new(MacroNodeRule));
+    store.register(rule);
 
     let parsed = parse(source);
     assert!(parsed.errors().is_empty());
@@ -112,30 +111,17 @@ fn macro_generated_node_rule_registers_and_runs(source: &str) {
     let diagnostics = runner.run();
 
     assert!(!diagnostics.is_empty());
-    assert!(
-        diagnostics
-            .iter()
-            .all(|d| d.rule_name() == "macro-node-rule")
-    );
+    assert!(diagnostics.iter().all(|d| d.rule_name() == expected_name));
+}
+
+#[rstest]
+fn macro_generated_node_rule_registers_and_runs(source: &str) {
+    run_single_rule_expecting_name(source, Box::new(MacroNodeRule), "macro-node-rule");
 }
 
 #[rstest]
 fn macro_generated_token_rule_runs_end_to_end(source: &str) {
-    let mut store = CstRuleStore::new();
-    store.register(Box::new(MacroTokenRule));
-
-    let parsed = parse(source);
-    assert!(parsed.errors().is_empty());
-
-    let runner = Runner::new(&store, source, &parsed, RuleConfig::new());
-    let diagnostics = runner.run();
-
-    assert!(!diagnostics.is_empty());
-    assert!(
-        diagnostics
-            .iter()
-            .all(|d| d.rule_name() == "macro-token-rule")
-    );
+    run_single_rule_expecting_name(source, Box::new(MacroTokenRule), "macro-token-rule");
 }
 
 #[rstest]
