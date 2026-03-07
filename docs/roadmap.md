@@ -204,7 +204,7 @@ expression parsing, control flow, and syntax-spec alignment.
 - [x] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
   tests, and spec language around the desugaring contract. See
   docs/parser-conformance-register.md item 8.
-- [ ] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
+- [x] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
   semantic stage), then align parser pipeline guarantees and docs. See
   docs/parser-conformance-register.md item 9.
 - [ ] 2.6.3. Decide collection literal lowering stage ownership (parser,

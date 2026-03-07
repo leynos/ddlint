@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -114,16 +114,17 @@ feature than the conformance-alignment task captured here.
   current aggregation tests.
 - [x] (2026-03-07 00:00Z) Drafted this ExecPlan in
   `docs/execplans/2-6-2-decide-the-aggregation-extraction-boundary.md`.
-- [ ] Freeze the aggregation boundary decision in the docs and doc comments.
-- [ ] Add red unit tests proving that aggregation classification belongs to
-  `Rule::body_terms()` rather than `parse()`.
-- [ ] Add red behavioural tests proving the same contract through the public
-  parser API.
-- [ ] Implement the minimal code and documentation updates needed to make the
-  contract explicit and non-contradictory.
-- [ ] Mark conformance register item 9 as `implemented`.
-- [ ] Mark roadmap item `2.6.2` done.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`,
+- [x] (2026-03-07 00:00Z) Freeze the aggregation boundary decision in the docs
+  and doc comments.
+- [x] (2026-03-07 00:00Z) Add unit tests proving that aggregation
+  classification belongs to `Rule::body_terms()` rather than `parse()`.
+- [x] (2026-03-07 00:00Z) Add behavioural tests proving the same contract
+  through the public parser API.
+- [x] (2026-03-07 00:00Z) Implement the minimal code and documentation updates
+  needed to make the contract explicit and non-contradictory.
+- [x] (2026-03-07 00:00Z) Mark conformance register item 9 as `implemented`.
+- [x] (2026-03-07 00:00Z) Mark roadmap item `2.6.2` done.
+- [x] (2026-03-07 00:00Z) Run `make fmt`, `make markdownlint`, `make nixie`,
   `make check-fmt`, `make lint`, and `make test`.
 
 ## Surprises & Discoveries
@@ -152,6 +153,9 @@ feature than the conformance-alignment task captured here.
 - The archived parser plan in `docs/archive/parser-plan.md` already describes
   aggregation extraction during `Rule::body_terms()` rule-body analysis. The
   live syntax spec drifted away from that implementation-level boundary.
+- The new tests are additive rather than red-first. They codify the current
+  observable contract instead of driving parser logic changes, because the
+  implementation already behaved this way before the docs were corrected.
 
 ## Decision Log
 
@@ -323,10 +327,41 @@ existing parser-level aggregation side effect that contradicts this plan:
 
 ## Outcomes & Retrospective
 
-This section is intentionally incomplete until implementation finishes. At
-completion it must summarize:
+The finalized boundary is now explicit and implemented: aggregation
+classification and validation belong to `Rule::body_terms()` and
+`Rule::flattened_body_terms()`, not to the base `parse()` pipeline.
 
-- the finalized boundary,
-- the exact docs and tests updated,
-- whether any code behaviour changed beyond documentation and tests, and
-- the final gate results.
+Docs updated:
+
+- `docs/differential-datalog-parser-syntax-spec-updated.md`
+- `docs/parser-implementation-notes.md`
+- `docs/ddlint-design.md`
+- `docs/parser-conformance-register.md`
+- `docs/roadmap.md`
+- this ExecPlan
+
+Code comments updated:
+
+- `src/parser/mod.rs`
+- `src/parser/cst_builder/mod.rs`
+- `src/parser/ast/rule.rs`
+
+Tests added or expanded:
+
+- `src/parser/tests/rules/aggregations.rs`
+- `tests/aggregation_boundary.rs`
+
+Behavioural change:
+
+- No parser logic changed. This milestone codified the already-implemented
+  helper-stage boundary in docs and tests so future work has an explicit,
+  repository-backed contract.
+
+Final gate results:
+
+- `make fmt` passed.
+- `make markdownlint` passed.
+- `make nixie` passed.
+- `make check-fmt` passed.
+- `make lint` passed.
+- `make test` passed.

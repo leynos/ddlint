@@ -32,10 +32,13 @@ ______________________________________________________________________
 
 A Differential Datalog (DDlog) program consists of imports, type definitions,
 functions, (extern) transformers, relation declarations, index declarations,
-rules, and applies. The parser constructs a `DatalogProgram` from these
-elements, performs a limited set of tree rewrites (e.g., `group_by` extraction,
-legacy `Aggregate` lowering, literal lowering to builder calls), enforces
-name‑uniqueness invariants, and records source provenance.
+rules, and applies. The current parser generation constructs a lossless
+Concrete Syntax Tree (CST) and typed accessors for these elements, performs a
+limited set of semantic helper transforms (for example top-level `for`
+desugaring into semantic rules and rule-head `&` lowering when heads are
+requested), enforces name‑uniqueness invariants, and records source provenance.
+Aggregation classification for `group_by` and legacy `Aggregate` belongs to
+rule-body semantic extraction, not to the base `parse()` pipeline.
 
 ### 1.1 Entry points and products
 
@@ -43,9 +46,13 @@ name‑uniqueness invariants, and records source provenance.
 - **Output:** a `DatalogProgram` comprising:
   - `imports`, `typedefs`, `functions` (grouped by name; overload by arity
     permitted), `transformers`, `relations`, `indexes`, `rules`, `applys`.
-- **Transformations performed pre‑Abstract Syntax Tree (AST):** `group_by` and
-  `Aggregate` lowering; map/vector literal lowering; `&` in rule heads →
-  `ref_new`.
+- **Base parse pipeline guarantees:** CST construction, top-level `for`
+  semantic-rule lowering, top-level name-uniqueness validation, and the raw
+  rule-body literals needed for later semantic extraction.
+- **Helper-stage semantic transforms:** `group_by` and `Aggregate`
+  classification when rule-body terms are requested, map/vector literal
+  lowering policy (see item 10 in the conformance register), and `&` in rule
+  heads → `ref_new`.
 
 #### 1.1.1 Expression‑only parsing
 
@@ -367,19 +374,22 @@ ______________________________________________________________________
 
 ### 6.1 `group_by` extraction
 
-- At most **one** `group_by(project, key)` call is permitted **per RHS
-  expression**.
+- At most **one** `group_by(project, key)` call is permitted **per rule body**.
 - Arity must be exactly **two**.
-- The parser extracts `group_by` into an explicit `RHSGroupBy` node bound to
-  the magic variable `__group`. The remainder of the expression is re‑emitted
-  as a condition/assignment referencing `__group`.
-- Multiple `group_by` occurrences, or the wrong arity, are parse‑time errors.
+- The base `parse()` pipeline preserves the original literal in the CST.
+- When rule-body semantic terms are requested, the parser classifies
+  `group_by(project, key)` as an aggregation term with canonical
+  `(project, key)` ordering.
+- Multiple `group_by` occurrences, or the wrong arity, are reported when
+  rule-body semantic terms are extracted.
 
 ### 6.2 Legacy `Aggregate(…)`
 
-- The legacy `Aggregate` form is still recognized and lowered into `RHSGroupBy`
-  - a follow‑up condition over `__group`.
-- It is **deprecated**; future grammar may remove it. Emit a warning in linters.
+- The legacy `Aggregate((key), project)` form is still recognized during
+  rule-body semantic extraction and normalized to the same canonical
+  aggregation representation as `group_by(project, key)`.
+- It is **deprecated**; future grammar may remove it. Linters may emit a
+  warning, but the parser currently preserves the surface syntax in the CST.
 
 ### 6.3 Head by‑reference (`&Rel{…}`) → `ref_new`
 
@@ -492,8 +502,8 @@ ______________________________________________________________________
 Implementations may encounter historical tokens from older DDlog parsers. This
 spec defines their treatment to aid migration:
 
-- `Aggregate(…)`: accepted and lowered to `RHSGroupBy`; emit a deprecation
-  diagnostic.
+- `Aggregate(…)`: accepted and normalized during rule-body semantic
+  extraction; linters may emit a deprecation diagnostic.
 - `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
   binds instead. If used as keywords, reject with a targeted message.
 - `typedef`: not supported; use `type` definitions. Emit an error with a fix
@@ -522,7 +532,8 @@ porting and testing.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.
 - **Atom:** `Atom { ref?, delay?, diff?, name, args, bracketForm? }`.
-- **RhsTerm:** `RHSAtom`, `RHSCond`, `RHSAssign`, `RHSGroupBy`.
+- **Rule-body semantic helper term:** `RuleBodyTerm::{Expression, Assignment,
+  Aggregation, ForLoop}`.
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.
@@ -556,8 +567,11 @@ Totals(u, total) :-
     total = __group.
 ```
 
-Only one `group_by` is allowed in the expression; the parser extracts it to
-`RHSGroupBy(project=sum(amt), key=u)` and introduces `__group`.
+Only one `group_by` is allowed in the rule body. In the current parser
+generation, `parse()` preserves the literal structure. Calling
+`Rule::body_terms()` classifies the second literal as an aggregation term with
+project `sum(amt)` and key `u`. The final assignment remains an ordinary
+assignment term; the parser does not synthesize `__group`.
 
 ### 11.3 Head by‑ref
 
@@ -650,9 +664,10 @@ ______________________________________________________________________
   reserved operators and the table causes hard‑to‑diagnose parse drift.
 - **Function resolution:** treat unqualified calls as variables until name
   resolution; only `module::func` is parsed as a function call token.
-- **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
-  parser (or immediately after), so later phases can assume a uniform
-  representation (`RHSGroupBy`).
+- **Aggregation boundary:** classify `group_by` and `Aggregate` in rule-body
+  semantic helpers immediately after CST parse if downstream code needs a
+  uniform aggregation representation. Do not assume that `Parsed::errors()` or
+  the base CST construction already performed that rewrite.
 - **Tabs and positions:** perform any tab normalization before lexing and
   preserve a mapping for accurate diagnostics.
 - **Compatibility policy:** legacy constructs accepted for compatibility must

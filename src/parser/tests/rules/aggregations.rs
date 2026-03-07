@@ -33,6 +33,23 @@ fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str
     assert_body_terms_error(src, literal, expected_error);
 }
 
+/// Parse a rule while asserting aggregation validation is deferred until
+/// `body_terms()` is requested.
+#[expect(clippy::expect_used, reason = "tests require a single parsed rule")]
+fn parse_rule_without_parse_stage_aggregation_errors(src: &str) -> crate::parser::ast::Rule {
+    let parsed = parse_ok(src);
+    assert!(
+        parsed.semantic_rules().is_empty(),
+        "rule-body aggregation terms must not create parse-time semantic rules"
+    );
+    parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing")
+}
+
 #[test]
 fn body_terms_detect_group_by_aggregation() {
     let src =
@@ -127,6 +144,23 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
     );
 }
 
+#[test]
+fn parse_defers_group_by_arity_validation_until_body_terms() {
+    let src = "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).";
+    let rule = parse_rule_without_parse_stage_aggregation_errors(src);
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    let has_expected_error = errors
+        .iter()
+        .any(|error| format!("{error:?}").contains("group_by expects exactly two arguments"));
+    assert!(
+        has_expected_error,
+        "expected group_by arity error from body_terms(), got {errors:?}"
+    );
+}
+
 /// Helper to assert that `body_terms()` reports the expected multiple
 /// aggregation error for a rule containing more than one aggregation.
 fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
@@ -152,6 +186,24 @@ fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
 )]
 fn body_terms_error_on_multiple_aggregations(#[case] src: &str, #[case] second_literal: &str) {
     assert_multiple_aggregation_error(src, second_literal);
+}
+
+#[test]
+fn parse_defers_duplicate_aggregation_validation_until_body_terms() {
+    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
+    let rule = parse_rule_without_parse_stage_aggregation_errors(src);
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    let has_expected_error = errors.iter().any(|error| {
+        format!("{error:?}")
+            .contains("at most one aggregation (group_by or Aggregate) is permitted per rule body")
+    });
+    assert!(
+        has_expected_error,
+        "expected duplicate aggregation error from body_terms(), got {errors:?}"
+    );
 }
 
 #[test]
