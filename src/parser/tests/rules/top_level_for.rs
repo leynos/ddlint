@@ -1,7 +1,7 @@
 //! Tests for top-level `for` desugaring into semantic rules.
 
 use super::super::helpers::{parse_err, parse_ok};
-use crate::parser::ast::SemanticRuleOrigin;
+use crate::parser::ast::{Expr, SemanticRuleOrigin};
 use crate::parser::top_level_for::UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT;
 use crate::test_util::{ErrorPattern, find_matching_error};
 use rstest::rstest;
@@ -28,8 +28,14 @@ use rstest::rstest;
     &["(call Process x)", "(call Process2 y)"],
     &[],
 )]
+// Intentionally omits `expected_heads`/`expected_body`; this harness still checks
+// `SemanticRuleOrigin::TopLevelFor` plus desugared rule counts for tuple-index heads.
 #[case("for (x in Items(x)) pair.0(x).", 1, 0, &[], &[])]
+// Intentionally omits `expected_heads`/`expected_body`; this harness still checks
+// `SemanticRuleOrigin::TopLevelFor` plus desugared rule counts for spaced tuple-index heads.
 #[case("for (x in Items(x)) pair. 0(x).", 1, 0, &[], &[])]
+// Intentionally omits `expected_heads`/`expected_body`; this harness still checks
+// `SemanticRuleOrigin::TopLevelFor` plus desugared rule counts for indented top-level `for`.
 #[case("    for (x in Items(x)) Process(x).", 1, 0, &[], &[])]
 #[case("R(x) :- for (item in Items(item)) Process(item).", 0, 1, &[], &[])]
 fn top_level_for_desugaring_cases(
@@ -70,11 +76,7 @@ fn top_level_for_desugaring_cases(
         let Some(rule) = parsed.semantic_rules().first() else {
             panic!("missing semantic rule for body assertion");
         };
-        let body = rule
-            .body()
-            .iter()
-            .map(crate::parser::ast::Expr::to_sexpr)
-            .collect::<Vec<_>>();
+        let body = rule.body().iter().map(Expr::to_sexpr).collect::<Vec<_>>();
         let expected = expected_body
             .iter()
             .map(|item| (*item).to_string())
@@ -92,11 +94,7 @@ fn top_level_for_with_guard_and_nested_loop_desugars_in_order() {
     let Some(rule) = parsed.semantic_rules().first() else {
         panic!("missing semantic rule");
     };
-    let body = rule
-        .body()
-        .iter()
-        .map(crate::parser::ast::Expr::to_sexpr)
-        .collect::<Vec<_>>();
+    let body = rule.body().iter().map(Expr::to_sexpr).collect::<Vec<_>>();
 
     assert_eq!(rule.head().to_sexpr(), "(call Pair a b)");
     assert_eq!(
