@@ -394,17 +394,37 @@ ______________________________________________________________________
   `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v`.
 - `{k: v, …}` → `let m = map_empty(); m.insert(k, v); …; m`.
 
-### 6.5 Top‑level `for` (unsupported)
+### 6.5 Top‑level `for` desugaring
 
-- Top‑level `for` statements are not supported in this parser generation.
-  The `convertStatement` desugaring algorithm from the reference implementation
-  is not fully specified, and implementing it without a complete specification
-  would risk semantic divergence.
-- Rule‑body `for` loops remain fully supported as `Expr::ForLoop` (see
-  section 5.10).
-- The scanner emits a diagnostic when `for` appears at a top‑level rule
-  position: "top-level \`for\` is not supported; use \`for\` inside rule bodies
-  instead".
+- A top-level statement in the form:
+
+  ```ddlog
+  for (pat in iterable if guard?) body.
+  ```
+
+  desugars into one semantic rule by collecting header terms left-to-right:
+
+  ```ddlog
+  body :- iterable, guard?.
+  ```
+
+- Nested top-level loops flatten in lexical order:
+
+  ```ddlog
+  for (a in A(a) if ready(a)) for (b in B(b)) Head(a, b).
+  ```
+
+  becomes:
+
+  ```ddlog
+  Head(a, b) :- A(a), ready(a), B(b).
+  ```
+
+- The terminal `body` must be atom-like (`Rel(args)` after parse-time call
+  classification). Unsupported terminal statement forms (for example `if`,
+  `match`, or sequencing) are rejected with a targeted diagnostic.
+- Rule-body `for` loops remain represented as `Expr::ForLoop` (section 5.10)
+  and are unaffected by top-level desugaring.
 
 ______________________________________________________________________
 

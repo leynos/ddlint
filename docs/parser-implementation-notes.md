@@ -89,11 +89,14 @@ conformance register.
 - Rule-body `for` constructs parse as `Expr::ForLoop`.
 - Binding uses the shared pattern parser.
 - Optional `if` guard is represented as `Option<Box<Expr>>`.
-
-Top-level `for` is unsupported in this parser generation. The rule scanner
-emits a diagnostic ("top-level \`for\` is not supported; use \`for\` inside
-rule bodies instead") when `K_FOR` appears at a top-level line-start position.
-This decision is recorded in the conformance register (item 8).
+- Top-level `for` statements are lowered into semantic rules exposed via
+  `Parsed::semantic_rules()`.
+- Lowering order is deterministic: iterable first, then optional guard, then
+  nested iterable/guard pairs, then the terminal atom-like body as the rule
+  head.
+- Unsupported terminal body statement forms emit a targeted diagnostic:
+  "top-level \`for\` body must end in an atom-like expression (for example
+  \`Rel(args)\`)".
 
 ## Rule-body integration and term extraction
 

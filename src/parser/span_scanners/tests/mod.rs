@@ -311,14 +311,15 @@ fn collect_rule_spans_respects_exclusions() {
 }
 
 #[test]
-fn rule_not_treated_as_line_start_after_inline_spaces() {
+fn rule_treated_as_line_start_at_bof_after_inline_spaces() {
     let src = "   R(x) :- A(x).";
     let tokens = tokenize(src);
     let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
     assert!(errors.is_empty());
-    assert!(
-        rule_spans.is_empty(),
-        "rule should not start after inline spaces with no boundary"
+    assert_eq!(
+        rule_spans.len(),
+        1,
+        "rule should start at BOF after indentation"
     );
 }
 

@@ -149,6 +149,7 @@ mod relation;
 mod root;
 pub(crate) mod rule;
 pub(crate) mod rule_head;
+mod semantic_rule;
 mod string_literal;
 mod transformer;
 mod type_def;
@@ -172,6 +173,7 @@ pub use rule::{
     RuleForLoop,
 };
 pub use rule_head::RuleHead;
+pub use semantic_rule::{SemanticRule, SemanticRuleOrigin};
 pub use string_literal::{StringKind, StringLiteral};
 pub use transformer::Transformer;
 pub use type_def::TypeDef;
