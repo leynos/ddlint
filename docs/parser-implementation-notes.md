@@ -31,6 +31,16 @@ The parser stack is split into three cooperating layers:
 - AST wrappers and expression parsing (`src/parser/ast/*`,
   `src/parser/expression/*`): build typed views and expression trees.
 
+Current pipeline guarantees are intentionally narrow:
+
+- `parse()` builds the CST-backed `Parsed` result, collects top-level `for`
+  semantic rules, and runs top-level name-uniqueness validation.
+- `parse()` does **not** classify rule-body aggregations or report duplicate or
+  wrong-arity aggregation diagnostics in `Parsed::errors()`.
+- Aggregation classification and validation happen when callers request
+  rule-body semantic terms through `Rule::body_terms()` or
+  `Rule::flattened_body_terms()`.
+
 The expression parser is a bespoke Pratt parser over the token stream. It does
 not use `chumsky::pratt`; operator binding powers are defined centrally in
 `src/parser/ast/precedence.rs`.
@@ -161,8 +171,20 @@ Implementation points:
 - `src/parser/span_scanners/rules.rs`
 - `src/parser/ast/rule.rs`
 
-Aggregation and lowering stage boundaries remain design-sensitive and are
-tracked in the conformance register.
+Aggregation and lowering stage boundaries are tracked in the conformance
+register. The aggregation boundary itself is now fixed as helper-stage in the
+current parser generation.
+
+The current aggregation boundary is helper-stage rather than parse-stage:
+
+- `Rule::body_terms()` recognizes `group_by(project, key)` and legacy
+  `Aggregate((key), project)` literals, normalizes legacy argument order, and
+  enforces the at-most-one-per-rule-body rule.
+- `Rule::flattened_body_terms()` reuses that same boundary after flattening
+  nested `for` loops.
+- `Parsed::errors()` remains reserved for scanner, CST, top-level `for`, and
+  parser-validator diagnostics; it does not include aggregation misuse unless a
+  caller explicitly requests rule-body semantic extraction.
 
 ## Shared declaration parsing utilities
 

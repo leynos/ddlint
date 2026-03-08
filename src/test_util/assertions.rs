@@ -54,6 +54,45 @@ pub fn assert_no_parse_errors<E: std::fmt::Debug>(errors: &[E]) {
     assert!(errors.is_empty(), "Parse errors: {errors:?}");
 }
 
+/// Assert that parse-time aggregation validation is deferred until
+/// `Rule::body_terms()` is requested, then return the first parsed rule.
+///
+/// # Examples
+///
+/// ```rust
+/// use ddlint::{parse, test_util::assert_first_rule_without_parse_stage_aggregation_errors};
+///
+/// let parsed = parse("Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).");
+/// let rule = assert_first_rule_without_parse_stage_aggregation_errors(&parsed);
+/// assert_eq!(rule.head().as_deref(), Some("Totals(u, total)"));
+/// ```
+///
+/// # Panics
+/// Panics if `parse()` reports rule-body aggregation misuse through
+/// `Parsed::errors()` or `Parsed::semantic_rules()`, or if no rule exists.
+#[track_caller]
+#[must_use]
+#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
+pub fn assert_first_rule_without_parse_stage_aggregation_errors(
+    parsed: &crate::Parsed,
+) -> crate::ast::Rule {
+    assert!(
+        parsed.errors().is_empty(),
+        "parse() should not surface aggregation misuse: {:?}",
+        parsed.errors()
+    );
+    assert!(
+        parsed.semantic_rules().is_empty(),
+        "rule-body aggregations must not produce parse-time semantic rules"
+    );
+    parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing")
+}
+
 /// Assert that the parser produced exactly one error matching
 /// `expected_pattern` and span.
 ///
@@ -91,6 +130,40 @@ pub fn assert_parse_error(
         "expected error to contain pattern '{pattern:?}', got '{rendered}'",
     );
     assert_eq!(error.span(), start..end);
+}
+
+/// Assert that at least one custom parser error message contains
+/// `expected_pattern`.
+///
+/// This is intended for multi-error assertions where callers care about the
+/// canonical custom error text rather than `Debug` rendering details.
+///
+/// # Examples
+///
+/// ```
+/// use chumsky::error::Simple;
+/// use ddlint::{SyntaxKind, test_util::assert_custom_parse_error_contains};
+///
+/// let errors = vec![Simple::custom(0..1, "target message")];
+/// assert_custom_parse_error_contains(&errors, "target message");
+/// ```
+///
+/// # Panics
+/// Panics if no custom error message contains `expected_pattern`.
+#[track_caller]
+pub fn assert_custom_parse_error_contains(
+    errors: &[Simple<SyntaxKind>],
+    expected_pattern: impl AsRef<str>,
+) {
+    let expected_pattern = normalise_tokens(expected_pattern.as_ref());
+    let has_expected_error = errors.iter().any(|error| match error.reason() {
+        SimpleReason::Custom(message) => normalise_tokens(message).contains(&expected_pattern),
+        _ => false,
+    });
+    assert!(
+        has_expected_error,
+        "expected custom error containing `{expected_pattern}`, got {errors:?}"
+    );
 }
 
 /// Find the first error in `errors` whose rendered text contains `pattern`.

@@ -4,7 +4,10 @@ use rstest::rstest;
 
 use super::super::helpers::parse_ok;
 use crate::parser::ast::{AggregationSource, Expr, RuleBodyTerm};
-use crate::test_util::{assert_parse_error, call, var};
+use crate::test_util::{
+    assert_custom_parse_error_contains, assert_first_rule_without_parse_stage_aggregation_errors,
+    assert_parse_error, call, var,
+};
 
 /// Assert that `body_terms()` reports an expected error for a literal found in `src`.
 fn assert_body_terms_error(src: &str, literal: &str, expected_error: &str) {
@@ -127,6 +130,18 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
     );
 }
 
+#[test]
+fn parse_defers_group_by_arity_validation_until_body_terms() {
+    let src = "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).";
+    let parsed = parse_ok(src);
+    let rule = assert_first_rule_without_parse_stage_aggregation_errors(&parsed);
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    assert_custom_parse_error_contains(&errors, "group_by expects exactly two arguments");
+}
+
 /// Helper to assert that `body_terms()` reports the expected multiple
 /// aggregation error for a rule containing more than one aggregation.
 fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
@@ -152,6 +167,21 @@ fn assert_multiple_aggregation_error(src: &str, second_literal: &str) {
 )]
 fn body_terms_error_on_multiple_aggregations(#[case] src: &str, #[case] second_literal: &str) {
     assert_multiple_aggregation_error(src, second_literal);
+}
+
+#[test]
+fn parse_defers_duplicate_aggregation_validation_until_body_terms() {
+    let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
+    let parsed = parse_ok(src);
+    let rule = assert_first_rule_without_parse_stage_aggregation_errors(&parsed);
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    assert_custom_parse_error_contains(
+        &errors,
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body",
+    );
 }
 
 #[test]

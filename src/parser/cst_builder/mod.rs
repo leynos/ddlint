@@ -49,7 +49,11 @@ impl Parsed {
         &self.root
     }
 
-    /// Access parse-time semantic rules (for example desugared top-level `for`).
+    /// Access parse-time semantic rules synthesized during parsing.
+    ///
+    /// This currently contains only desugared top-level `for` rules. Rule-body
+    /// aggregation classification is performed later via
+    /// `Rule::body_terms()`/`Rule::flattened_body_terms()`.
     #[must_use]
     pub fn semantic_rules(&self) -> &[super::ast::SemanticRule] {
         &self.semantic_rules
