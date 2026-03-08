@@ -124,8 +124,9 @@ Implementation points:
 - `src/parser/span_scanners/rules.rs`
 - `src/parser/ast/rule.rs`
 
-Aggregation and lowering stage boundaries remain design-sensitive and are
-tracked in the conformance register.
+Aggregation and lowering stage boundaries are tracked in the conformance
+register. The aggregation boundary itself is now fixed as helper-stage in the
+current parser generation.
 
 The current aggregation boundary is helper-stage rather than parse-stage:
 

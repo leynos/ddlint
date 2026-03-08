@@ -50,8 +50,9 @@ rule-body semantic extraction, not to the base `parse()` pipeline.
   semantic-rule lowering, top-level name-uniqueness validation, and the raw
   rule-body literals needed for later semantic extraction.
 - **Helper-stage semantic transforms:** `group_by` and `Aggregate`
-  classification when rule-body terms are requested, map/vector literal
-  lowering policy (see item 10 in the conformance register), and `&` in rule
+  classification when rule-body terms are requested, scheduled map/vector
+  literal lowering policy work (see `docs/parser-conformance-register.md` item
+  10 and `docs/roadmap.md` item `2.6.3` for current status), and `&` in rule
   heads → `ref_new`.
 
 #### 1.1.1 Expression‑only parsing
@@ -486,8 +487,10 @@ clear diagnostic that includes a span:
 - **Duplicate definition:** repeated name for
   type/relation/index/transformer/import, or function with the same
   `(name, arity)`.
-- **`group_by` misuse:** more than one `group_by` in an expression or wrong
-  arity (≠ 2).
+- **Aggregation misuse:** more than one `group_by(project, key)` or legacy
+  `Aggregate((key), project)` in a rule body, or wrong arity (≠ 2). These
+  diagnostics are emitted during rule-body semantic extraction, not during
+  expression-only parsing.
 - **String pattern interpolation:** an interpolated string in a pattern context.
 - **Numeric width errors:** width ≤ 0; integer value does not fit width;
   floating‑point width not `32` or `64`.
@@ -503,7 +506,8 @@ Implementations may encounter historical tokens from older DDlog parsers. This
 spec defines their treatment to aid migration:
 
 - `Aggregate(…)`: accepted and normalized during rule-body semantic
-  extraction; linters may emit a deprecation diagnostic.
+  extraction to the same canonical `(project, key)` aggregation contract used
+  for `group_by(project, key)`; linters may emit a deprecation diagnostic.
 - `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
   binds instead. If used as keywords, reject with a targeted message.
 - `typedef`: not supported; use `type` definitions. Emit an error with a fix
@@ -512,6 +516,18 @@ spec defines their treatment to aid migration:
   not in the grammar. Use sized integer types (`iN`/`uN`), and `f32`/`f64` for
   floating‑point.
 - `as`: not a keyword in the updated grammar; reject its use as a keyword.
+
+Rationale and resolution status for the aggregation boundary:
+
+- The current parser generation preserves rule-body literals in the CST during
+  `parse()` and defers aggregation classification plus validation to rule-body
+  semantic extraction (`Rule::body_terms()` and `Rule::flattened_body_terms()`).
+- As a result, canonical `(project, key)` ordering, the single-occurrence
+  rule, and arity checks for both `group_by` and legacy `Aggregate` are
+  enforced when semantic rule-body terms are requested, not by standalone
+  expression parsing.
+- Resolution status: implemented. See `docs/parser-conformance-register.md`
+  item 9 and `docs/roadmap.md` item `2.6.2`.
 
 ______________________________________________________________________
 

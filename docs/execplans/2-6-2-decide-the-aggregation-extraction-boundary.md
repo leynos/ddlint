@@ -241,8 +241,8 @@ through comments.
   - `parse(src).semantic_rules()` stays unchanged,
   - `rule.body_terms()` is the place where aggregation normalization and
     validation become visible.
-
-These tests must fail before the implementation/doc alignment and pass after.
+These tests should demonstrate the boundary contract and should fail if future
+behaviour drifts away from the aligned parser and documentation guarantees.
 
 ### Stage C: implement the minimal code and doc-comment changes
 

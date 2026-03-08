@@ -169,9 +169,11 @@ expression parsing, control flow, and syntax-spec alignment.
   to `ref_new`. See docs/differential-datalog-parser-syntax-spec-updated.md §7
   and docs/differential-datalog-parser-syntax-spec-updated.md §6.3.
 - [x] 2.5.3. Extract `group_by` and legacy `Aggregate` constructs during
-  parsing into normalized representation. See
-  docs/differential-datalog-parser-syntax-spec-updated.md §6.1 and
-  docs/differential-datalog-parser-syntax-spec-updated.md §6.2.
+  rule-body semantic extraction into normalized representation, while `parse()`
+  preserves the original CST literals. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.1,
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.2, and
+  docs/parser-conformance-register.md item 9.
 - [x] 2.5.4. Resolve top-level `for` contract and implementation status.
   Implement top-level `for` desugaring into semantic rules and document
   unsupported terminal statement forms with deterministic diagnostics. See
