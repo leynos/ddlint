@@ -142,10 +142,14 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
 
 ### 3.3 Collections
 
-- **Vector literals:** `[e1, e2, …]` desugar to a builder sequence
-  `vec_with_capacity(n); push(e)…`.
-- **Map literals:** `{k1: v1, k2: v2, …}` desugar to
-  `map_empty(); insert(k, v)…`.
+- **Vector literals:** `[e1, e2, …]` are parsed as collection literals today.
+  Builder-sequence lowering such as `vec_with_capacity(n); push(e)…` is
+  scheduled work; see `docs/parser-conformance-register.md` item 10 and
+  `docs/roadmap.md` item `2.6.3`.
+- **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
+  literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
+  likewise scheduled work; see `docs/parser-conformance-register.md` item 10
+  and `docs/roadmap.md` item `2.6.3`.
 
 ______________________________________________________________________
 
@@ -399,11 +403,16 @@ ______________________________________________________________________
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
 
-### 6.4 Literal lowering for vectors/maps
+### 6.4 Scheduled literal lowering for vectors/maps
 
-- `[a, b, c]` →
-  `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v`.
-- `{k: v, …}` → `let m = map_empty(); m.insert(k, v); …; m`.
+- Vector and map literals are preserved as `Expr::VecLit` and `Expr::MapLit`
+  in the current parser generation.
+- Lowering forms such as
+  `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v` and
+  `let m = map_empty(); m.insert(k, v); …; m` remain scheduled work rather than
+  current parser behaviour.
+- Current status and planning live in `docs/parser-conformance-register.md`
+  item 10 and `docs/roadmap.md` item `2.6.3`.
 
 ### 6.5 Top‑level `for` desugaring
 
@@ -489,8 +498,9 @@ clear diagnostic that includes a span:
   `(name, arity)`.
 - **Aggregation misuse:** more than one `group_by(project, key)` or legacy
   `Aggregate((key), project)` in a rule body, or wrong arity (≠ 2). These
-  diagnostics are emitted during rule-body semantic extraction, not during
-  expression-only parsing.
+  diagnostics are detected during rule-body semantic extraction after parsing
+  and therefore are not surfaced by the base `parse()` call or via
+  `Parsed::errors()`.
 - **String pattern interpolation:** an interpolated string in a pattern context.
 - **Numeric width errors:** width ≤ 0; integer value does not fit width;
   floating‑point width not `32` or `64`.
@@ -621,8 +631,8 @@ let f  = 3.14159'f64; // permitted widths: 32 or 64
 ### 11.6 Collections
 
 ```ddlog
-let v = [a, b, c];   // lowered to capacity+push sequence
-let m = {k1: v1, k2: v2}; // lowered to empty+insert sequence
+let v = [a, b, c];   // parsed today; lowering is scheduled
+let m = {k1: v1, k2: v2}; // parsed today; lowering is scheduled
 ```
 
 ### 11.7 Index
@@ -708,8 +718,8 @@ ______________________________________________________________________
 - Documented both relation declaration forms and roles/kinds.
 - Added explicit multi‑head LHS and location `@ Expr` semantics.
 - Introduced formal grammar for statements, patterns, and atoms.
-- Documented desugarings (`group_by`, legacy `Aggregate`, by‑ref head, literal
-  lowering, top‑level `for`).
+- Documented desugarings (`group_by`, legacy `Aggregate`, by‑ref head,
+  scheduled literal lowering, top‑level `for`).
 - Added numeric literal and string/interning details, including pattern
   restrictions.
 - Added name‑uniqueness and scoping rules; clarified function vs variable
