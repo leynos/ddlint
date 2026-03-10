@@ -199,11 +199,11 @@ Observable success is:
   `self` unless that identifier is captured from the macro invocation and
   reused in the generated method signature. Date/Author: 2026-03-07 / Codex.
 
-- Decision: keep `docs/roadmap.md` item `3.2.2` unchecked in this milestone.
-  Rationale: the behavioural tests added here will prove compatibility with the
-  existing store and runner, but the requested roadmap task is specifically
-  `3.2.1`. Marking only `3.2.1` done keeps the roadmap history faithful to the
-  user request. Date/Author: 2026-03-07 / Codex.
+- Decision: mark `docs/roadmap.md` item `3.2.2` done alongside `3.2.1`.
+  Rationale: the shipped behavioural coverage already proves that
+  macro-generated rules register in `CstRuleStore` and execute through
+  `Runner`, so leaving `3.2.2` unchecked would make the roadmap lag behind the
+  implemented behaviour. Date/Author: 2026-03-10 / Codex.
 
 ## Outcomes & Retrospective
 
@@ -219,7 +219,7 @@ The milestone shipped as planned:
   proves store and runner compatibility end-to-end.
 - `docs/ddlint-design.md` now documents the implemented macro syntax, and
   `docs/roadmap.md` now points to `docs/ddlint-design.md` consistently while
-  marking `3.2.1` done.
+  marking `3.2.1` and `3.2.2` done.
 - All required gates passed:
   `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`, `make lint`,
   and `make test`.
@@ -295,12 +295,7 @@ ddlint::declare_lint! {
         group: "correctness",
         level: warn,
         target_kinds: [SyntaxKind::N_RULE, SyntaxKind::T_IDENT],
-        fn check_node(
-            &self,
-            node: &rowan::SyntaxNode<ddlint::DdlogLanguage>,
-            ctx: &ddlint::linter::RuleCtx,
-            diagnostics: &mut Vec<ddlint::linter::LintDiagnostic>,
-        ) {
+        fn check_node(&self, node, ctx, diagnostics) {
             let _ = ctx;
             diagnostics.push(ddlint::linter::LintDiagnostic::new(
                 self.name(),
@@ -308,12 +303,7 @@ ddlint::declare_lint! {
                 node.text_range(),
             ));
         }
-        fn check_token(
-            &self,
-            token: &rowan::SyntaxToken<ddlint::DdlogLanguage>,
-            ctx: &ddlint::linter::RuleCtx,
-            diagnostics: &mut Vec<ddlint::linter::LintDiagnostic>,
-        ) {
+        fn check_token(&self, token, ctx, diagnostics) {
             let _ = ctx;
             diagnostics.push(ddlint::linter::LintDiagnostic::new(
                 self.name(),
@@ -386,7 +376,8 @@ and default severity conceptually, but the final document must also explain:
 
 Then update stale `docs/ddlint-design-and-road-map.md` references in
 [docs/roadmap.md](docs/roadmap.md) so they point at `docs/ddlint-design.md`.
-Mark only roadmap item `3.2.1` as done and leave `3.2.2` unchanged.
+Mark roadmap items `3.2.1` and `3.2.2` as done once the behavioural suite
+proves registration and runtime dispatch through the existing linter engine.
 
 Finish by running formatting, Markdown validation, Rust formatting checks,
 Clippy, and the full test suite. Do not consider the milestone complete until

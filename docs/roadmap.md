@@ -330,7 +330,7 @@ implementations.
 
 - [x] 3.2.1. Implement the `declare_lint!` macro to reduce boilerplate when
   defining rule metadata and behaviour. See docs/ddlint-design.md §3.2.
-- [ ] 3.2.2. Ensure macro output integrates with rule registration and runtime
+- [x] 3.2.2. Ensure macro output integrates with rule registration and runtime
   dispatch in `CstRuleStore`. Requires 3.1.3. See docs/ddlint-design.md §3.2.
 
 ### 3.3. Semantic analysis infrastructure

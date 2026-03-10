@@ -17,5 +17,6 @@ pub mod test_util;
 
 pub use language::{DdlogLanguage, SyntaxKind};
 pub use parser::{Parsed, ast, parse};
+pub use rowan::{SyntaxNode, SyntaxToken};
 pub use syntax_utils::parse_parenthesized_list;
 pub use tokenizer::{Span, tokenize_with_trivia, tokenize_without_trivia};

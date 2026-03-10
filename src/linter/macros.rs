@@ -23,19 +23,20 @@ macro_rules! declare_lint {
             $level,
             [$($kind),*],
             {
-                fn check_node(
-                    &$node_self,
-                    $node: &rowan::SyntaxNode<$crate::DdlogLanguage>,
-                    $node_ctx: &$crate::linter::RuleCtx,
-                    $node_diagnostics: &mut Vec<$crate::linter::LintDiagnostic>,
-                ) $node_body
-
-                fn check_token(
-                    &$token_self,
-                    $token: &rowan::SyntaxToken<$crate::DdlogLanguage>,
-                    $token_ctx: &$crate::linter::RuleCtx,
-                    $token_diagnostics: &mut Vec<$crate::linter::LintDiagnostic>,
-                ) $token_body
+                $crate::declare_lint!(@impl_node
+                    $node_self,
+                    $node,
+                    $node_ctx,
+                    $node_diagnostics,
+                    $node_body
+                );
+                $crate::declare_lint!(@impl_token
+                    $token_self,
+                    $token,
+                    $token_ctx,
+                    $token_diagnostics,
+                    $token_body
+                );
             }
         );
     };
@@ -58,12 +59,13 @@ macro_rules! declare_lint {
             $level,
             [$($kind),*],
             {
-                fn check_node(
-                    &$node_self,
-                    $node: &rowan::SyntaxNode<$crate::DdlogLanguage>,
-                    $node_ctx: &$crate::linter::RuleCtx,
-                    $node_diagnostics: &mut Vec<$crate::linter::LintDiagnostic>,
-                ) $node_body
+                $crate::declare_lint!(@impl_node
+                    $node_self,
+                    $node,
+                    $node_ctx,
+                    $node_diagnostics,
+                    $node_body
+                );
             }
         );
     };
@@ -86,12 +88,13 @@ macro_rules! declare_lint {
             $level,
             [$($kind),*],
             {
-                fn check_token(
-                    &$token_self,
-                    $token: &rowan::SyntaxToken<$crate::DdlogLanguage>,
-                    $token_ctx: &$crate::linter::RuleCtx,
-                    $token_diagnostics: &mut Vec<$crate::linter::LintDiagnostic>,
-                ) $token_body
+                $crate::declare_lint!(@impl_token
+                    $token_self,
+                    $token,
+                    $token_ctx,
+                    $token_diagnostics,
+                    $token_body
+                );
             }
         );
     };
@@ -160,6 +163,22 @@ macro_rules! declare_lint {
     (@docs $($doc:literal),+ $(,)?) => {
         concat!($($doc, "\n"),+)
     };
+    (@impl_node $self:ident, $node:ident, $ctx:ident, $diagnostics:ident, $body:block) => {
+        fn check_node(
+            &$self,
+            $node: &$crate::SyntaxNode<$crate::DdlogLanguage>,
+            $ctx: &$crate::linter::RuleCtx,
+            $diagnostics: &mut Vec<$crate::linter::LintDiagnostic>,
+        ) $body
+    };
+    (@impl_token $self:ident, $token:ident, $ctx:ident, $diagnostics:ident, $body:block) => {
+        fn check_token(
+            &$self,
+            $token: &$crate::SyntaxToken<$crate::DdlogLanguage>,
+            $ctx: &$crate::linter::RuleCtx,
+            $diagnostics: &mut Vec<$crate::linter::LintDiagnostic>,
+        ) $body
+    };
     (@level allow) => {
         $crate::linter::RuleLevel::Allow
     };
@@ -177,9 +196,10 @@ macro_rules! declare_lint {
 #[cfg(test)]
 mod tests {
     use rowan::NodeOrToken;
+    use rstest::{fixture, rstest};
 
     use crate::linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel};
-    use crate::{SyntaxKind, parse};
+    use crate::{Parsed, SyntaxKind, parse};
 
     crate::declare_lint! {
         /// ## What it does
@@ -229,20 +249,37 @@ mod tests {
         }
     }
 
-    fn run_rule_over_cst(source: &str, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
+    struct MacroRuleFixture {
+        source: &'static str,
+        parsed: Parsed,
+        ctx: RuleCtx,
+    }
+
+    #[fixture]
+    fn macro_rule_fixture() -> MacroRuleFixture {
+        let source = "input relation R(x: u32);";
         let parsed = parse(source);
         assert!(parsed.errors().is_empty());
         let ctx = RuleCtx::from_parsed(source, &parsed, RuleConfig::new());
+
+        MacroRuleFixture {
+            source,
+            parsed,
+            ctx,
+        }
+    }
+
+    fn run_rule_over_cst(fixture: &MacroRuleFixture, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
         let mut diagnostics = Vec::new();
 
-        for element in parsed.root().syntax().descendants_with_tokens() {
+        for element in fixture.parsed.root().syntax().descendants_with_tokens() {
             if rule.target_kinds().contains(&element.kind()) {
                 match &element {
                     NodeOrToken::Node(node) => {
-                        rule.check_node(node, &ctx, &mut diagnostics);
+                        rule.check_node(node, &fixture.ctx, &mut diagnostics);
                     }
                     NodeOrToken::Token(token) => {
-                        rule.check_token(token, &ctx, &mut diagnostics);
+                        rule.check_token(token, &fixture.ctx, &mut diagnostics);
                     }
                 }
             }
@@ -269,11 +306,10 @@ mod tests {
         assert_eq!(rule.target_kinds(), &[SyntaxKind::N_RELATION_DECL]);
     }
 
-    #[test]
-    fn macro_generated_handlers_emit_diagnostics() {
-        let source = "input relation R(x: u32);";
-        let node_hits = run_rule_over_cst(source, &DocumentedRule);
-        let token_hits = run_rule_over_cst(source, &TokenOnlyRule);
+    #[rstest]
+    fn macro_generated_handlers_emit_diagnostics(macro_rule_fixture: MacroRuleFixture) {
+        let node_hits = run_rule_over_cst(&macro_rule_fixture, &DocumentedRule);
+        let token_hits = run_rule_over_cst(&macro_rule_fixture, &TokenOnlyRule);
 
         assert_eq!(node_hits.len(), 1);
         assert_eq!(
@@ -288,9 +324,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn omitted_handlers_remain_no_op() {
-        let diagnostics = run_rule_over_cst("input relation R(x: u32);", &NoOpRule);
+    #[rstest]
+    fn omitted_handlers_remain_no_op(macro_rule_fixture: MacroRuleFixture) {
+        assert_eq!(macro_rule_fixture.source, "input relation R(x: u32);");
+        let diagnostics = run_rule_over_cst(&macro_rule_fixture, &NoOpRule);
         assert!(diagnostics.is_empty());
     }
 

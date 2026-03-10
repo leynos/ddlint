@@ -97,7 +97,7 @@ fn rule_level_as_str_returns_language_spellings() {
 #[test]
 fn rule_level_error_as_str_and_display_agree() {
     assert_eq!(RuleLevel::Error.as_str(), "error");
-    assert_eq!(RuleLevel::Warn.to_string(), "warn");
+    assert_eq!(RuleLevel::Error.to_string(), "error");
 }
 
 #[test]
