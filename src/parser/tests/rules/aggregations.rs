@@ -144,11 +144,11 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
 }
 
 #[rstest]
-#[case(
+#[case::missing_group_by_args(
     "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).",
     "group_by expects exactly two arguments"
 )]
-#[case(
+#[case::multiple_aggregations_in_body(
     "X(x) :- group_by(sum(x), k), group_by(count(x), k).",
     "at most one aggregation (group_by or Aggregate) is permitted per rule body"
 )]
