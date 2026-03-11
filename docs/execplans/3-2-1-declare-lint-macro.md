@@ -486,7 +486,7 @@ to read in a terminal. A representative final example should resemble:
 
 ```rust
 use ddlint::{SyntaxKind, declare_lint};
-use ddlint::linter::{LintDiagnostic, RuleCtx};
+use ddlint::linter::LintDiagnostic;
 
 declare_lint! {
     /// Flags every relation declaration.
@@ -495,12 +495,7 @@ declare_lint! {
         group: "style",
         level: warn,
         target_kinds: [SyntaxKind::N_RELATION_DECL],
-        fn check_node(
-            &self,
-            node: &rowan::SyntaxNode<ddlint::DdlogLanguage>,
-            _ctx: &RuleCtx,
-            diagnostics: &mut Vec<LintDiagnostic>,
-        ) {
+        fn check_node(&self, node, _ctx, diagnostics) {
             diagnostics.push(LintDiagnostic::new(
                 self.name(),
                 "relation declaration seen",

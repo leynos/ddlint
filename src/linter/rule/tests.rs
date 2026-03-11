@@ -1,6 +1,7 @@
 //! Unit tests for core lint rule traits and supporting types.
 
 use rowan::TextSize;
+use rstest::{fixture, rstest};
 
 use super::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx, RuleLevel};
 use crate::{SyntaxKind, parse};
@@ -64,6 +65,28 @@ fn make_rule_config() -> RuleConfig {
             RuleConfigValue::String("strict".to_owned()),
         ),
     ])
+}
+
+struct RuleCtxFixture {
+    source: &'static str,
+    parsed: crate::Parsed,
+    config: RuleConfig,
+    ctx: RuleCtx,
+}
+
+#[fixture]
+fn rule_ctx_fixture() -> RuleCtxFixture {
+    let source = "input relation R(x: u32);";
+    let parsed = parse(source);
+    let config = make_rule_config();
+    let ctx = RuleCtx::from_parsed(source, &parsed, config.clone());
+
+    RuleCtxFixture {
+        source,
+        parsed,
+        config,
+        ctx,
+    }
 }
 
 #[test]
@@ -131,56 +154,45 @@ fn rule_config_value_wrong_type_accessors_return_none() {
     assert_eq!(RuleConfigValue::Integer(3).as_string(), None);
 }
 
-#[test]
-fn rule_ctx_exposes_source_text_and_ast_roots() {
-    let source = "input relation R(x: u32);";
-    let parsed = parse(source);
-    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
-
-    assert_eq!(ctx.source_text(), source);
-    assert_eq!(ctx.ast_root().relations().len(), 1);
-    assert_eq!(ctx.cst_root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
-}
-
-#[test]
-fn rule_ctx_config_accessor_returns_full_config() {
-    let source = "input relation R(x: u32);";
-    let parsed = parse(source);
-    let config = make_rule_config();
-    let ctx = RuleCtx::from_parsed(source, &parsed, config.clone());
-
-    assert_eq!(ctx.config(), &config);
-}
-
-#[test]
-fn rule_ctx_config_value_and_bool_accessors_return_correct_values() {
-    let source = "input relation R(x: u32);";
-    let parsed = parse(source);
-    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
-
+#[rstest]
+fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) {
+    assert_eq!(rule_ctx_fixture.ctx.source_text(), rule_ctx_fixture.source);
+    assert_eq!(rule_ctx_fixture.ctx.ast_root().relations().len(), 1);
     assert_eq!(
-        ctx.config_value("enabled"),
+        rule_ctx_fixture.ctx.cst_root().kind(),
+        SyntaxKind::N_DATALOG_PROGRAM
+    );
+}
+
+#[rstest]
+fn rule_ctx_config_accessor_returns_full_config(rule_ctx_fixture: RuleCtxFixture) {
+    assert_eq!(rule_ctx_fixture.ctx.config(), &rule_ctx_fixture.config);
+    assert_eq!(rule_ctx_fixture.parsed.root().relations().len(), 1);
+}
+
+#[rstest]
+fn rule_ctx_config_value_and_bool_accessors_return_correct_values(
+    rule_ctx_fixture: RuleCtxFixture,
+) {
+    assert_eq!(
+        rule_ctx_fixture.ctx.config_value("enabled"),
         Some(&RuleConfigValue::Bool(true))
     );
-    assert_eq!(ctx.config_bool("enabled"), Some(true));
+    assert_eq!(rule_ctx_fixture.ctx.config_bool("enabled"), Some(true));
 }
 
-#[test]
-fn rule_ctx_int_and_string_config_accessors_return_correct_values() {
-    let source = "input relation R(x: u32);";
-    let parsed = parse(source);
-    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
-
-    assert_eq!(ctx.config_int("max_depth"), Some(2));
-    assert_eq!(ctx.config_string("style"), Some("strict"));
+#[rstest]
+fn rule_ctx_int_and_string_config_accessors_return_correct_values(
+    rule_ctx_fixture: RuleCtxFixture,
+) {
+    assert_eq!(rule_ctx_fixture.ctx.config_int("max_depth"), Some(2));
+    assert_eq!(rule_ctx_fixture.ctx.config_string("style"), Some("strict"));
 }
 
-#[test]
-fn rule_ctx_config_accessors_return_none_for_type_mismatch_and_missing_keys() {
-    let source = "input relation R(x: u32);";
-    let parsed = parse(source);
-    let ctx = RuleCtx::from_parsed(source, &parsed, make_rule_config());
-
-    assert_eq!(ctx.config_bool("style"), None);
-    assert_eq!(ctx.config_value("missing"), None);
+#[rstest]
+fn rule_ctx_config_accessors_return_none_for_type_mismatch_and_missing_keys(
+    rule_ctx_fixture: RuleCtxFixture,
+) {
+    assert_eq!(rule_ctx_fixture.ctx.config_bool("style"), None);
+    assert_eq!(rule_ctx_fixture.ctx.config_value("missing"), None);
 }
