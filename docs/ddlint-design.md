@@ -217,6 +217,14 @@ abstraction avoids manual index arithmetic and reduces boundary errors. During
 CST construction, the span cursor list uses a small, stack-backed buffer to
 avoid heap allocations in the common case.[^16]
 
+The current parser boundary deliberately separates CST construction from
+rule-body semantic extraction. `parse()` returns a CST-backed `Parsed` value,
+parse-time diagnostics, and parse-time semantic rules for top-level `for`
+desugaring. Rule-body aggregation handling (`group_by` and legacy `Aggregate`)
+happens later, when callers ask a `Rule` wrapper for semantic body terms.
+Downstream lint rules therefore must not assume that aggregation misuse already
+appears in `Parsed::errors()`.
+
 ### 2.1. Defining the DDlog `SyntaxKind`
 
 Following the established `rowan` pattern, the grammar of the DDlog language

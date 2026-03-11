@@ -32,10 +32,13 @@ ______________________________________________________________________
 
 A Differential Datalog (DDlog) program consists of imports, type definitions,
 functions, (extern) transformers, relation declarations, index declarations,
-rules, and applies. The parser constructs a `DatalogProgram` from these
-elements, performs a limited set of tree rewrites (e.g., `group_by` extraction,
-legacy `Aggregate` lowering, literal lowering to builder calls), enforces
-name‑uniqueness invariants, and records source provenance.
+rules, and applies. The current parser generation constructs a lossless
+Concrete Syntax Tree (CST) and typed accessors for these elements, performs a
+limited set of semantic helper transforms (for example top-level `for`
+desugaring into semantic rules and rule-head `&` lowering when heads are
+requested), enforces name‑uniqueness invariants, and records source provenance.
+Aggregation classification for `group_by` and legacy `Aggregate` belongs to
+rule-body semantic extraction, not to the base `parse()` pipeline.
 
 ### 1.1 Entry points and products
 
@@ -43,9 +46,14 @@ name‑uniqueness invariants, and records source provenance.
 - **Output:** a `DatalogProgram` comprising:
   - `imports`, `typedefs`, `functions` (grouped by name; overload by arity
     permitted), `transformers`, `relations`, `indexes`, `rules`, `applys`.
-- **Transformations performed pre‑Abstract Syntax Tree (AST):** `group_by` and
-  `Aggregate` lowering; map/vector literal lowering; `&` in rule heads →
-  `ref_new`.
+- **Base parse pipeline guarantees:** CST construction, top-level `for`
+  semantic-rule lowering, top-level name-uniqueness validation, and the raw
+  rule-body literals needed for later semantic extraction.
+- **Helper-stage semantic transforms:** `group_by` and `Aggregate`
+  classification when rule-body terms are requested, scheduled map/vector
+  literal lowering policy work (see `docs/parser-conformance-register.md` item
+  10 and `docs/roadmap.md` item `2.6.3` for current status), and `&` in rule
+  heads → `ref_new`.
 
 #### 1.1.1 Expression‑only parsing
 
@@ -134,10 +142,14 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
 
 ### 3.3 Collections
 
-- **Vector literals:** `[e1, e2, …]` desugar to a builder sequence
-  `vec_with_capacity(n); push(e)…`.
-- **Map literals:** `{k1: v1, k2: v2, …}` desugar to
-  `map_empty(); insert(k, v)…`.
+- **Vector literals:** `[e1, e2, …]` are parsed as collection literals today.
+  Builder-sequence lowering such as `vec_with_capacity(n); push(e)…` is
+  scheduled work; see `docs/parser-conformance-register.md` item 10 and
+  `docs/roadmap.md` item `2.6.3`.
+- **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
+  literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
+  likewise scheduled work; see `docs/parser-conformance-register.md` item 10
+  and `docs/roadmap.md` item `2.6.3`.
 
 ______________________________________________________________________
 
@@ -367,19 +379,22 @@ ______________________________________________________________________
 
 ### 6.1 `group_by` extraction
 
-- At most **one** `group_by(project, key)` call is permitted **per RHS
-  expression**.
+- At most **one** `group_by(project, key)` call is permitted **per rule body**.
 - Arity must be exactly **two**.
-- The parser extracts `group_by` into an explicit `RHSGroupBy` node bound to
-  the magic variable `__group`. The remainder of the expression is re‑emitted
-  as a condition/assignment referencing `__group`.
-- Multiple `group_by` occurrences, or the wrong arity, are parse‑time errors.
+- The base `parse()` pipeline preserves the original literal in the CST.
+- When rule-body semantic terms are requested, the parser classifies
+  `group_by(project, key)` as an aggregation term with canonical
+  `(project, key)` ordering.
+- Multiple `group_by` occurrences, or the wrong arity, are reported when
+  rule-body semantic terms are extracted.
 
 ### 6.2 Legacy `Aggregate(…)`
 
-- The legacy `Aggregate` form is still recognized and lowered into `RHSGroupBy`
-  - a follow‑up condition over `__group`.
-- It is **deprecated**; future grammar may remove it. Emit a warning in linters.
+- The legacy `Aggregate((key), project)` form is still recognized during
+  rule-body semantic extraction and normalized to the same canonical
+  aggregation representation as `group_by(project, key)`.
+- It is **deprecated**; future grammar may remove it. Linters may emit a
+  warning, but the parser currently preserves the surface syntax in the CST.
 
 ### 6.3 Head by‑reference (`&Rel{…}`) → `ref_new`
 
@@ -388,11 +403,16 @@ ______________________________________________________________________
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
 
-### 6.4 Literal lowering for vectors/maps
+### 6.4 Scheduled literal lowering for vectors/maps
 
-- `[a, b, c]` →
-  `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v`.
-- `{k: v, …}` → `let m = map_empty(); m.insert(k, v); …; m`.
+- Vector and map literals are preserved as `Expr::VecLit` and `Expr::MapLit`
+  in the current parser generation.
+- Lowering forms such as
+  `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v` and
+  `let m = map_empty(); m.insert(k, v); …; m` remain scheduled work rather than
+  current parser behaviour.
+- Current status and planning live in `docs/parser-conformance-register.md`
+  item 10 and `docs/roadmap.md` item `2.6.3`.
 
 ### 6.5 Top‑level `for` desugaring
 
@@ -476,8 +496,11 @@ clear diagnostic that includes a span:
 - **Duplicate definition:** repeated name for
   type/relation/index/transformer/import, or function with the same
   `(name, arity)`.
-- **`group_by` misuse:** more than one `group_by` in an expression or wrong
-  arity (≠ 2).
+- **Aggregation misuse:** more than one `group_by(project, key)` or legacy
+  `Aggregate((key), project)` in a rule body, or wrong arity (≠ 2). These
+  diagnostics are detected during rule-body semantic extraction after parsing
+  and therefore are not surfaced by the base `parse()` call or via
+  `Parsed::errors()`.
 - **String pattern interpolation:** an interpolated string in a pattern context.
 - **Numeric width errors:** width ≤ 0; integer value does not fit width;
   floating‑point width not `32` or `64`.
@@ -492,8 +515,9 @@ ______________________________________________________________________
 Implementations may encounter historical tokens from older DDlog parsers. This
 spec defines their treatment to aid migration:
 
-- `Aggregate(…)`: accepted and lowered to `RHSGroupBy`; emit a deprecation
-  diagnostic.
+- `Aggregate(…)`: accepted and normalized during rule-body semantic
+  extraction to the same canonical `(project, key)` aggregation contract used
+  for `group_by(project, key)`; linters may emit a deprecation diagnostic.
 - `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
   binds instead. If used as keywords, reject with a targeted message.
 - `typedef`: not supported; use `type` definitions. Emit an error with a fix
@@ -502,6 +526,18 @@ spec defines their treatment to aid migration:
   not in the grammar. Use sized integer types (`iN`/`uN`), and `f32`/`f64` for
   floating‑point.
 - `as`: not a keyword in the updated grammar; reject its use as a keyword.
+
+Rationale and resolution status for the aggregation boundary:
+
+- The current parser generation preserves rule-body literals in the CST during
+  `parse()` and defers aggregation classification plus validation to rule-body
+  semantic extraction (`Rule::body_terms()` and `Rule::flattened_body_terms()`).
+- As a result, canonical `(project, key)` ordering, the single-occurrence
+  rule, and arity checks for both `group_by` and legacy `Aggregate` are
+  enforced when semantic rule-body terms are requested, not by standalone
+  expression parsing.
+- Resolution status: implemented. See `docs/parser-conformance-register.md`
+  item 9 and `docs/roadmap.md` item `2.6.2`.
 
 ______________________________________________________________________
 
@@ -522,7 +558,8 @@ porting and testing.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.
 - **Atom:** `Atom { ref?, delay?, diff?, name, args, bracketForm? }`.
-- **RhsTerm:** `RHSAtom`, `RHSCond`, `RHSAssign`, `RHSGroupBy`.
+- **Rule-body semantic helper term:** `RuleBodyTerm::{Expression, Assignment,
+  Aggregation, ForLoop}`.
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.
@@ -556,8 +593,11 @@ Totals(u, total) :-
     total = __group.
 ```
 
-Only one `group_by` is allowed in the expression; the parser extracts it to
-`RHSGroupBy(project=sum(amt), key=u)` and introduces `__group`.
+Only one `group_by` is allowed in the rule body. In the current parser
+generation, `parse()` preserves the literal structure. Calling
+`Rule::body_terms()` classifies the second literal as an aggregation term with
+project `sum(amt)` and key `u`. The final assignment remains an ordinary
+assignment term; the parser does not synthesize `__group`.
 
 ### 11.3 Head by‑ref
 
@@ -591,8 +631,8 @@ let f  = 3.14159'f64; // permitted widths: 32 or 64
 ### 11.6 Collections
 
 ```ddlog
-let v = [a, b, c];   // lowered to capacity+push sequence
-let m = {k1: v1, k2: v2}; // lowered to empty+insert sequence
+let v = [a, b, c];   // parsed today; lowering is scheduled
+let m = {k1: v1, k2: v2}; // parsed today; lowering is scheduled
 ```
 
 ### 11.7 Index
@@ -650,9 +690,10 @@ ______________________________________________________________________
   reserved operators and the table causes hard‑to‑diagnose parse drift.
 - **Function resolution:** treat unqualified calls as variables until name
   resolution; only `module::func` is parsed as a function call token.
-- **Desugaring boundaries:** keep `group_by` and `Aggregate` lowering in the
-  parser (or immediately after), so later phases can assume a uniform
-  representation (`RHSGroupBy`).
+- **Aggregation boundary:** classify `group_by` and `Aggregate` in rule-body
+  semantic helpers immediately after CST parse if downstream code needs a
+  uniform aggregation representation. Do not assume that `Parsed::errors()` or
+  the base CST construction already performed that rewrite.
 - **Tabs and positions:** perform any tab normalization before lexing and
   preserve a mapping for accurate diagnostics.
 - **Compatibility policy:** legacy constructs accepted for compatibility must
@@ -677,8 +718,8 @@ ______________________________________________________________________
 - Documented both relation declaration forms and roles/kinds.
 - Added explicit multi‑head LHS and location `@ Expr` semantics.
 - Introduced formal grammar for statements, patterns, and atoms.
-- Documented desugarings (`group_by`, legacy `Aggregate`, by‑ref head, literal
-  lowering, top‑level `for`).
+- Documented desugarings (`group_by`, legacy `Aggregate`, by‑ref head,
+  scheduled literal lowering, top‑level `for`).
 - Added numeric literal and string/interning details, including pattern
   restrictions.
 - Added name‑uniqueness and scoping rules; clarified function vs variable

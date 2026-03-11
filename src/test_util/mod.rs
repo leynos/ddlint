@@ -9,8 +9,10 @@ mod expressions;
 mod literals;
 
 pub use assertions::{
-    assert_delimiter_error, assert_no_parse_errors, assert_panic_with_message, assert_parse_error,
-    assert_unclosed_delimiter_error, find_matching_error,
+    assert_custom_parse_error_contains, assert_delimiter_error,
+    assert_first_rule_without_parse_stage_aggregation_errors, assert_no_parse_errors,
+    assert_panic_with_message, assert_parse_error, assert_unclosed_delimiter_error,
+    find_matching_error,
 };
 pub use expressions::{
     bit_slice, break_expr, call, call_expr, closure, continue_expr, field, field_access, for_loop,

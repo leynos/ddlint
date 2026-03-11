@@ -100,6 +100,12 @@ impl Rule {
     /// pattern-matching assignments (FlatMap-style binds), returning
     /// [`RuleBodyTerm`] variants describing each literal.
     ///
+    /// This is the current aggregation extraction boundary. The base
+    /// [`parse`](crate::parse) pipeline preserves raw rule-body literals in the
+    /// CST and does not surface aggregation misuse through `Parsed::errors()`;
+    /// callers must request body terms explicitly to trigger aggregation
+    /// classification and validation.
+    ///
     /// At most one aggregation is permitted per rule body; multiple
     /// aggregations produce a diagnostic.
     ///

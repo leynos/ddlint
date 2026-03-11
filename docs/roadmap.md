@@ -170,9 +170,11 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
   to `ref_new`. See docs/differential-datalog-parser-syntax-spec-updated.md §7
   and docs/differential-datalog-parser-syntax-spec-updated.md §6.3.
 - [x] 2.5.3. Extract `group_by` and legacy `Aggregate` constructs during
-  parsing into normalized representation. See
-  docs/differential-datalog-parser-syntax-spec-updated.md §6.1 and
-  docs/differential-datalog-parser-syntax-spec-updated.md §6.2.
+  rule-body semantic extraction into normalized representation, while `parse()`
+  preserves the original CST literals. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.1,
+  docs/differential-datalog-parser-syntax-spec-updated.md §6.2, and
+  docs/parser-conformance-register.md item 9.
 - [x] 2.5.4. Resolve top-level `for` contract and implementation status.
   Implement top-level `for` desugaring into semantic rules and document
   unsupported terminal statement forms with deterministic diagnostics. See
@@ -205,7 +207,7 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
 - [x] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
   tests, and spec language around the desugaring contract. See
   docs/parser-conformance-register.md item 8.
-- [ ] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
+- [x] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
   semantic stage), then align parser pipeline guarantees and docs. See
   docs/parser-conformance-register.md item 9.
 - [ ] 2.6.3. Decide collection literal lowering stage ownership (parser,

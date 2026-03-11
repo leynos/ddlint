@@ -4,7 +4,10 @@ use rstest::rstest;
 
 use super::super::helpers::parse_ok;
 use crate::parser::ast::{AggregationSource, Expr, RuleBodyTerm};
-use crate::test_util::{assert_parse_error, call, var};
+use crate::test_util::{
+    assert_custom_parse_error_contains, assert_first_rule_without_parse_stage_aggregation_errors,
+    assert_parse_error, call, var,
+};
 
 /// Assert that `body_terms()` reports an expected error for a literal found in `src`.
 fn assert_body_terms_error(src: &str, literal: &str, expected_error: &str) {
@@ -31,6 +34,19 @@ fn assert_body_terms_error(src: &str, literal: &str, expected_error: &str) {
 /// aggregation literal found in `src`.
 fn assert_aggregation_arity_error(src: &str, literal: &str, expected_error: &str) {
     assert_body_terms_error(src, literal, expected_error);
+}
+
+/// Assert that `parse()` does not surface an aggregation error and that
+/// `body_terms()` defers validation, reporting a custom error containing
+/// `expected_error`.
+fn assert_deferred_body_terms_error(src: &str, expected_error: &str) {
+    let parsed = parse_ok(src);
+    let rule = assert_first_rule_without_parse_stage_aggregation_errors(&parsed);
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    assert_custom_parse_error_contains(&errors, expected_error);
 }
 
 #[test]
@@ -125,6 +141,22 @@ fn body_terms_error_on_legacy_aggregate_wrong_arity() {
         "Aggregate((user), sum(amt), extra_arg)",
         "Aggregate expects exactly two arguments",
     );
+}
+
+#[rstest]
+#[case::missing_group_by_args(
+    "Totals(u, total) :- Orders(u, amt), group_by(sum(amt)).",
+    "group_by expects exactly two arguments"
+)]
+#[case::multiple_aggregations_in_body(
+    "X(x) :- group_by(sum(x), k), group_by(count(x), k).",
+    "at most one aggregation (group_by or Aggregate) is permitted per rule body"
+)]
+fn parse_defers_aggregation_validation_until_body_terms(
+    #[case] src: &str,
+    #[case] expected_error: &str,
+) {
+    assert_deferred_body_terms_error(src, expected_error);
 }
 
 /// Helper to assert that `body_terms()` reports the expected multiple

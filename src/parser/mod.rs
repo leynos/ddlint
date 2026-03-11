@@ -36,9 +36,20 @@ use crate::Span;
 
 /// Parse the provided source string.
 ///
-/// The function tokenizes the source using [`tokenize_with_trivia`], then uses a minimal
-/// `chumsky` parser to wrap those tokens into a CST. Syntactic error recovery
-/// will insert `N_ERROR` nodes when grammar rules fail once they exist.
+/// The function tokenizes the source using [`tokenize_with_trivia`], collects
+/// top-level spans, builds a lossless CST-backed [`Parsed`] result, gathers
+/// top-level `for` semantic rules, and runs parser-level validators such as
+/// name-uniqueness checks.
+///
+/// Rule-body aggregation classification is intentionally not part of this base
+/// parse pipeline. Callers that need `group_by` or legacy `Aggregate`
+/// normalization should use
+/// [`Rule::body_terms()`](crate::parser::ast::Rule::body_terms) or
+/// [`Rule::flattened_body_terms()`](crate::parser::ast::Rule::flattened_body_terms)
+/// on a parsed rule.
+///
+/// Syntactic error recovery will insert `N_ERROR` nodes when grammar rules
+/// fail once they exist.
 ///
 /// # Examples
 ///

@@ -99,12 +99,15 @@ This register tracks parser behaviour against the syntax specification.
 ### 9. Aggregation extraction stage boundary
 
 - Topic: parse stage versus semantic stage for aggregation enforcement.
-- Current behaviour (code): aggregation classification is available via
-  `Rule::body_terms()`, but not enforced as a global parse pipeline contract
-  (`src/parser/ast/rule.rs`, `src/parser/mod.rs`).
-- Spec/target behaviour: section 6.1 describes parse-stage extraction with
-  validation semantics.
-- Decision status: `scheduled`.
+- Current behaviour (code): aggregation classification and validation are
+  available via `Rule::body_terms()` and `Rule::flattened_body_terms()`, while
+  `parse()` and `Parsed::errors()` do not enforce aggregation misuse as a
+  global parse pipeline contract (`src/parser/ast/rule.rs`,
+  `src/parser/mod.rs`).
+- Spec/target behaviour: sections 1, 6.1, 6.2, and 13 now describe
+  aggregation handling as rule-body semantic extraction layered on top of the
+  CST-backed parse result.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.2`.
 
 ### 10. Collection literal lowering stage boundary
