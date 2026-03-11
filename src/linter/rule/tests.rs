@@ -110,17 +110,14 @@ fn explicit_rule_level_override_is_visible_through_trait_object() {
     assert_eq!(rule.default_level(), RuleLevel::Error);
 }
 
-#[test]
-fn rule_level_as_str_returns_language_spellings() {
-    assert_eq!(RuleLevel::Allow.as_str(), "allow");
-    assert_eq!(RuleLevel::Hint.as_str(), "hint");
-    assert_eq!(RuleLevel::Warn.as_str(), "warn");
-}
-
-#[test]
-fn rule_level_error_as_str_and_display_agree() {
-    assert_eq!(RuleLevel::Error.as_str(), "error");
-    assert_eq!(RuleLevel::Error.to_string(), "error");
+#[rstest]
+#[case(RuleLevel::Allow, "allow")]
+#[case(RuleLevel::Hint, "hint")]
+#[case(RuleLevel::Warn, "warn")]
+#[case(RuleLevel::Error, "error")]
+fn rule_level_strings_match_display(#[case] level: RuleLevel, #[case] spelling: &str) {
+    assert_eq!(level.as_str(), spelling);
+    assert_eq!(level.to_string(), spelling);
 }
 
 #[test]

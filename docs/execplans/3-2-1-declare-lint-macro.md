@@ -243,12 +243,12 @@ The current linter engine lives in [src/linter](src/linter):
 - [src/linter/mod.rs](src/linter/mod.rs) wires those modules together and
   re-exports the current public linter API.
 
-The crate root is [src/lib.rs](src/lib.rs). No public linter macro is exported
-today. Existing macro usage in the repository is limited to private helper
-macros in parser and test utilities.
+At the start of this milestone, the crate root was [src/lib.rs](src/lib.rs),
+and no public linter macro was exported there. Existing macro usage in the
+repository was limited to private helper macros in parser and test utilities.
 
-Rule definitions in tests currently show the boilerplate this milestone is
-meant to remove:
+At the start of this milestone, rule definitions in tests showed the
+boilerplate this work was meant to remove:
 
 - [tests/linter_rule_store.rs](tests/linter_rule_store.rs) hand-writes several
   `Rule` and `CstRule` impls just to test dispatch.
