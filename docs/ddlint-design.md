@@ -477,26 +477,35 @@ implementing the two core rule traits.
 The `Rule` trait serves as the metadata provider. Every rule must implement it
 to provide essential, self-describing information that the linter engine uses
 for organization, configuration, and documentation. The required methods are
-`name()`, `group()`, and `docs()`.[^2] This ensures that every rule is
-programmatically identifiable, and its purpose is discoverable without needing
-to read its source code.
+`name()`, `group()`, `docs()`, and `default_level()`.[^2] This ensures that
+every rule is programmatically identifiable, its default severity is available
+for configuration and rule listing, and its purpose is discoverable without
+needing to read its source code.
 
 The `CstRule` trait contains the analytical logic. Its methods, such as
-`check_node(&self, node: &SyntaxNode, ctx: &RuleCtx)`, will be called by the
-runner during the CST traversal. Inside these methods, the rule will inspect
-the provided `SyntaxNode`, use the `RuleCtx` to access file-level information
-or configuration, and report any discovered issues by creating and returning
-`Diagnostic` objects. This design keeps the logic for each rule encapsulated
+`check_node(&self, node: &SyntaxNode, ctx: &RuleCtx, diagnostics: &mut Vec<LintDiagnostic>)`,
+ will be called by the runner during the CST traversal. Inside these methods,
+the rule will inspect the provided `SyntaxNode`, use the `RuleCtx` to access
+file-level information or configuration, and append any discovered issues to
+the diagnostics sink. This design keeps the logic for each rule encapsulated
 and testable in isolation.
 
 The current implementation for roadmap items `3.1.1` and `3.1.2` lives in
 `src/linter/rule.rs` and defines the following public contracts:
 
 ```rust,no_run
+pub enum RuleLevel {
+    Allow,
+    Hint,
+    Warn,
+    Error,
+}
+
 pub trait Rule {
     fn name(&self) -> &'static str;
     fn group(&self) -> &'static str;
     fn docs(&self) -> &'static str;
+    fn default_level(&self) -> RuleLevel { RuleLevel::Warn }
 }
 
 pub trait CstRule: Rule + Send + Sync {
@@ -624,54 +633,60 @@ overall developer experience for linter contributors, the project will
 implement a declarative macro named `declare_lint!`. This approach is heavily
 inspired by the successful use of a similar macro in `rslint_core`.[^2]
 
-The `declare_lint!` macro will abstract away the repetitive parts of rule
-definition. A developer will provide the core information: the rule's
-documentation (written as standard Rust doc comments), a `PascalCase` name for
-the rule's `struct`, the group it belongs to, and its default severity level.
-The macro will then expand this concise definition into the full `struct`
-definition and the complete `impl Rule` block. It will parse the doc comments
-and automatically populate the `docs()` method, ensuring that the documentation
-lives right next to the code it describes and is never out of sync.
+The `declare_lint!` macro abstracts away the repetitive parts of rule
+definition. A developer provides the rule documentation (written as standard
+Rust doc comments), a `PascalCase` struct name, an explicit kebab-case rule
+name, the rule group, the built-in severity level, the target `SyntaxKind`
+values, and optional `check_node` and `check_token` handlers. The macro then
+expands this concise definition into a zero-state rule struct plus complete
+`impl Rule` and `impl CstRule` blocks.
+
+Rule severity is now a first-class metadata concept exposed through
+`Rule::default_level() -> RuleLevel`. The macro's
+`level: allow | hint | warn | error` input maps directly onto that enum, which
+keeps the metadata usable for future rule listing, explanation, and
+configuration surfaces.
 
 An example of how a developer would define a new rule using this macro is as
 follows:
 
 ```rust,no_run
+use ddlint::{SyntaxKind, declare_lint};
+use ddlint::linter::LintDiagnostic;
+
 declare_lint! {
     /// ## What it does
-    /// Checks for relations that are declared but are never used as input to another rule.
-    ///
-    /// ## Why is this bad?
-    /// An unused relation can indicate dead code that should be removed, or it may
-    /// point to a typo in a rule that was intended to consume this relation.
-    /// Removing it can reduce the complexity of the program.
-    ///
-    /// ## Example
-    ///
-    /// ```ddlog
-    /// // Bad
-    /// input relation Unused(x: u32)
-    /// relation Used(x: u32)
-    /// output relation Result(x: u32)
-    ///
-    /// Result(x) :- Used(x). // `Unused` is never read from
-    ///
-    /// // Good
-    /// input relation Used(x: u32)
-    /// output relation Result(x: u32)
-    ///
-    /// Result(x) :- Used(x).
-    /// ```
-    pub UnusedRelation,
-    group: "correctness",
-    // The default severity will also be specified here, e.g., level: "warn"
+    /// Flags every relation declaration.
+    pub RelationExample {
+        name: "relation-example",
+        group: "style",
+        level: warn,
+        target_kinds: [SyntaxKind::N_RELATION_DECL],
+        fn check_node(&self, node, _ctx, diagnostics) {
+            diagnostics.push(LintDiagnostic::new(
+                self.name(),
+                "relation declaration seen",
+                node.text_range(),
+            ));
+        }
+    }
 }
 ```
 
+The explicit `name` field is intentional. Stable declarative macros cannot
+reliably convert a `PascalCase` Rust type name into the linter's required
+kebab-case rule identifier, so the caller provides the canonical rule name
+directly.
+
+The handler syntax is also deliberate: the macro accepts identifier names for
+the node or token, context, and diagnostics variables, then supplies the
+concrete types in the generated method signature. This keeps invocations short
+while still producing fully typed `impl CstRule` methods.
+
 This macro dramatically lowers the barrier to entry for contributing new rules.
-It allows developers to focus on the interesting part—the analysis logic—rather
-than the ceremony of trait implementations. This encourages community
-involvement and accelerates the growth of the linter's rule set.
+It lets developers focus on the analysis logic rather than the ceremony of
+trait implementations. This encourages community involvement and accelerates
+the growth of the linter's rule set.
 
 ### 3.3. Initial lint rule catalog
 
@@ -774,13 +789,13 @@ A clearly defined schema is essential for user documentation and for enabling
 features like IDE autocompletion. The `ddlint.toml` file will be structured to
 be simple and extensible. The following table specifies the initial schema.
 
-| Key                       | Type             | Default                                            | Description                                                                                                                                                         |
-| ------------------------- | ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| extends                   | String           | (none)                                             | A path to a base configuration file. Settings from the current file will override settings from the extended file.                                                  |
-| ignore_patterns           | Array of Strings | [".git/", "build/", "target/"]                     | A list of glob patterns that exclude specific files and directories from linting.                                                                                   |
-| [rules]                   | Table            | (empty)                                            | This section is the primary location for configuring individual rule severities and options.                                                                        |
-| [rules].`<rule-name>`     | String           | (rule default)                                     | Sets the severity for a rule. Valid values are "allow" (disables the rule), "warn", or "error". An error will cause the linter to exit with a non-zero status code. |
-| [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The level is set alongside rule-specific configuration keys.                                                                     |
+| Key                       | Type             | Default                                            | Description                                                                                                                                                                 |
+| ------------------------- | ---------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| extends                   | String           | (none)                                             | A path to a base configuration file. Settings from the current file will override settings from the extended file.                                                          |
+| ignore_patterns           | Array of Strings | [".git/", "build/", "target/"]                     | A list of glob patterns that exclude specific files and directories from linting.                                                                                           |
+| [rules]                   | Table            | (empty)                                            | This section is the primary location for configuring individual rule severities and options.                                                                                |
+| [rules].`<rule-name>`     | String           | (rule default)                                     | Sets the severity for a rule. Valid values are "allow" (disables the rule), "hint", "warn", or "error". An error will cause the linter to exit with a non-zero status code. |
+| [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The `level` key accepts the same `RuleLevel` strings as the top-level rule entry, alongside rule-specific configuration keys.            |
 
 This schema provides a clear and powerful way for teams to tailor the linter's
 behaviour to project-specific needs, from disabling entire classes of rules to
