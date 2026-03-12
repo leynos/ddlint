@@ -67,6 +67,7 @@ fn make_rule_config() -> RuleConfig {
     ])
 }
 
+#[derive(Debug)]
 struct RuleCtxFixture {
     source: &'static str,
     config: RuleConfig,

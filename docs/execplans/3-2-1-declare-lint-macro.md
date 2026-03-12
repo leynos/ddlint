@@ -385,7 +385,7 @@ all gates pass.
 
 ## Concrete steps
 
-Work from the repository root: `/home/user/project`.
+Work from the repository root.
 
 1. Add the new unit tests before the macro implementation and run a focused red
    loop:
@@ -454,7 +454,7 @@ The feature is done when all of the following are true:
 - A macro-generated rule can be registered in `CstRuleStore` and run through
   `Runner`, producing deterministic diagnostics in behavioural tests.
 - `docs/ddlint-design.md` matches the implemented syntax and
-  `docs/roadmap.md` marks `3.2.1` done.
+  `docs/roadmap.md` marks `3.2.1` and `3.2.2` done.
 
 Quality criteria:
 
