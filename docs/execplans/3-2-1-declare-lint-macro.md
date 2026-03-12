@@ -33,7 +33,7 @@ Observable success is:
 - `docs/ddlint-design.md` section `3.2` documents the final macro syntax and
   any design adjustments taken during implementation.
 - `docs/roadmap.md` replaces stale `docs/ddlint-design-and-road-map.md`
-  references with `docs/ddlint-design.md` where applicable and marks `3.2.1`
+  references with `docs/ddlint-design.md` where applicable, and marks `3.2.1`
   done once all quality gates pass.
 - `make check-fmt`, `make lint`, and `make test` all succeed at the end of the
   feature.

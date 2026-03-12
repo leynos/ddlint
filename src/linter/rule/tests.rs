@@ -69,7 +69,6 @@ fn make_rule_config() -> RuleConfig {
 
 struct RuleCtxFixture {
     source: &'static str,
-    parsed: crate::Parsed,
     config: RuleConfig,
     ctx: RuleCtx,
 }
@@ -83,7 +82,6 @@ fn rule_ctx_fixture() -> RuleCtxFixture {
 
     RuleCtxFixture {
         source,
-        parsed,
         config,
         ctx,
     }
@@ -164,7 +162,6 @@ fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) 
 #[rstest]
 fn rule_ctx_config_accessor_returns_full_config(rule_ctx_fixture: RuleCtxFixture) {
     assert_eq!(rule_ctx_fixture.ctx.config(), &rule_ctx_fixture.config);
-    assert_eq!(rule_ctx_fixture.parsed.root().relations().len(), 1);
 }
 
 #[rstest]
