@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use rowan::TextRange;
 
+use crate::sema::{self, SemanticModel};
 use crate::{DdlogLanguage, SyntaxKind};
 
 /// A lightweight lint diagnostic emitted by a rule.
@@ -134,20 +135,39 @@ impl fmt::Display for RuleLevel {
 pub struct RuleCtx {
     source_text: Arc<str>,
     ast_root: crate::parser::ast::Root,
+    semantic_model: Arc<SemanticModel>,
     config: RuleConfig,
 }
 
 impl RuleCtx {
     /// Create a new rule context from source text, AST root, and configuration.
+    ///
+    /// This convenience constructor builds semantic analysis from the AST root
+    /// alone. Callers that have a `Parsed` value should prefer
+    /// [`Self::from_parsed`], and callers that already computed semantic
+    /// analysis should prefer [`Self::with_semantic_model`].
     #[must_use]
     pub fn new(
         source_text: impl Into<Arc<str>>,
         ast_root: crate::parser::ast::Root,
         config: RuleConfig,
     ) -> Self {
+        let semantic_model = Arc::new(sema::build_from_root(&ast_root));
+        Self::with_semantic_model(source_text, ast_root, semantic_model, config)
+    }
+
+    /// Create a new rule context using a precomputed semantic model.
+    #[must_use]
+    pub fn with_semantic_model(
+        source_text: impl Into<Arc<str>>,
+        ast_root: crate::parser::ast::Root,
+        semantic_model: Arc<SemanticModel>,
+        config: RuleConfig,
+    ) -> Self {
         Self {
             source_text: source_text.into(),
             ast_root,
+            semantic_model,
             config,
         }
     }
@@ -162,7 +182,8 @@ impl RuleCtx {
         parsed: &crate::Parsed,
         config: RuleConfig,
     ) -> Self {
-        Self::new(source_text, parsed.root().clone(), config)
+        let semantic_model = Arc::new(sema::build(parsed));
+        Self::with_semantic_model(source_text, parsed.root().clone(), semantic_model, config)
     }
 
     /// Return the full source text associated with the lint run.
@@ -181,6 +202,12 @@ impl RuleCtx {
     #[must_use]
     pub fn cst_root(&self) -> &rowan::SyntaxNode<DdlogLanguage> {
         self.ast_root.syntax()
+    }
+
+    /// Return the semantic model for this lint run.
+    #[must_use]
+    pub fn semantic_model(&self) -> &SemanticModel {
+        &self.semantic_model
     }
 
     /// Return the full per-rule configuration map.

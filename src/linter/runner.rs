@@ -17,6 +17,7 @@ use crate::Parsed;
 use crate::linter::rule::{CstRule, LintDiagnostic, RuleConfig, RuleCtx};
 use crate::linter::store::CstRuleStore;
 use crate::parser::ast::Root;
+use crate::sema::SemanticModel;
 
 /// Visitor-based parallel rule runner.
 ///
@@ -53,6 +54,7 @@ pub struct Runner<'a> {
     store: &'a CstRuleStore,
     green: GreenNode,
     source_text: Arc<str>,
+    semantic_model: Arc<SemanticModel>,
     config: RuleConfig,
 }
 
@@ -73,6 +75,7 @@ impl<'a> Runner<'a> {
             store,
             green: parsed.green().clone(),
             source_text: source_text.into(),
+            semantic_model: Arc::new(crate::sema::build(parsed)),
             config,
         }
     }
@@ -92,7 +95,13 @@ impl<'a> Runner<'a> {
             .all_rules()
             .par_iter()
             .flat_map_iter(|rule| {
-                run_single_rule(rule.as_ref(), &self.green, &self.source_text, &self.config)
+                run_single_rule(
+                    rule.as_ref(),
+                    &self.green,
+                    &self.source_text,
+                    &self.semantic_model,
+                    &self.config,
+                )
             })
             .collect();
 
@@ -109,6 +118,7 @@ fn run_single_rule(
     rule: &dyn CstRule,
     green: &GreenNode,
     source_text: &Arc<str>,
+    semantic_model: &Arc<SemanticModel>,
     config: &RuleConfig,
 ) -> Vec<LintDiagnostic> {
     let target_kinds = rule.target_kinds();
@@ -117,7 +127,12 @@ fn run_single_rule(
     }
 
     let root = Root::from_green(green.clone());
-    let ctx = RuleCtx::new(Arc::clone(source_text), root.clone(), config.clone());
+    let ctx = RuleCtx::with_semantic_model(
+        Arc::clone(source_text),
+        root.clone(),
+        Arc::clone(semantic_model),
+        config.clone(),
+    );
     let mut diagnostics = Vec::new();
 
     for element in root.syntax().descendants_with_tokens() {
