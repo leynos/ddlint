@@ -158,6 +158,8 @@ fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) 
         rule_ctx_fixture.ctx.cst_root().kind(),
         SyntaxKind::N_DATALOG_PROGRAM
     );
+    assert_eq!(rule_ctx_fixture.ctx.semantic_model().program_scope().0, 0);
+    assert_eq!(rule_ctx_fixture.ctx.semantic_model().symbols().len(), 1);
 }
 
 #[rstest]

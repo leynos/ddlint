@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -168,10 +168,12 @@ into small files, for example:
 - `src/sema/mod.rs`: public exports and the top-level build entrypoint;
 - `src/sema/model.rs`: `SemanticModel`, identifiers, declaration and use-site
   records, and query helpers;
-- `src/sema/scopes.rs`: scope creation, parent links, and ordered visibility
-  rules;
-- `src/sema/build.rs`: traversal from `Root`, `Rule`, and `SemanticRule` into
-  the semantic model; and
+- `src/sema/build.rs`: public semantic-analysis entrypoints;
+- `src/sema/builder.rs`: builder state, declaration collection, and scope
+  creation;
+- `src/sema/resolve.rs`: name-resolution and binding-collection helpers;
+- `src/sema/traverse.rs`: rule and body-term traversal; and
+- `src/sema/variables.rs`: expression walking for variable-use collection;
 - `src/sema/tests/*.rs`: unit coverage split by declaration collection,
   rule-local binding order, and resolution behaviour.
 
@@ -402,14 +404,19 @@ Expected end state:
   is not about symbol tables or scope resolution.
 - [x] (2026-03-13 00:00Z) Draft this ExecPlan for
   `docs/execplans/3-3-1-symbol-table-and-scope-resolution.md`.
-- [ ] Write failing unit tests for semantic-model construction and resolution.
-- [ ] Implement `src/sema/` model and builder modules.
-- [ ] Integrate semantic context into `RuleCtx` and `Runner`.
-- [ ] Add behavioural tests covering parsed snippets and runner integration.
-- [ ] Update `docs/ddlint-design.md` and `docs/parser-implementation-notes.md`.
-- [ ] Mark `docs/roadmap.md` item `3.3.1` done.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
-  `make lint`, and `make test`.
+- [x] (2026-03-13 00:00Z) Write unit tests for semantic-model construction and
+  ordered resolution behaviour in `src/sema/tests.rs`.
+- [x] (2026-03-13 00:00Z) Implement `src/sema/` model, builder, traversal,
+  resolution, and variable-walk modules.
+- [x] (2026-03-13 00:00Z) Integrate semantic context into `RuleCtx` and
+  `Runner`.
+- [x] (2026-03-13 00:00Z) Add behavioural tests in
+  `tests/semantic_scope_resolution.rs` and extend `RuleCtx` unit coverage.
+- [x] (2026-03-13 00:00Z) Update `docs/ddlint-design.md` and
+  `docs/parser-implementation-notes.md`.
+- [x] (2026-03-13 00:00Z) Mark `docs/roadmap.md` item `3.3.1` done.
+- [x] (2026-03-13 00:00Z) Run `make fmt`, `make markdownlint`, `make nixie`,
+  `make check-fmt`, `make lint`, and `make test`.
 
 ## Surprises & Discoveries
 
@@ -428,6 +435,12 @@ Expected end state:
   `for` desugaring. Impact: semantic analysis must include them or document a
   deliberate exclusion, otherwise scope facts will diverge between syntactic
   rules and desugared rules.
+
+- Observation: owned `Expr` and `Pattern` nodes do not currently preserve exact
+  identifier-token spans. Impact: the first semantic-model pass keeps precise
+  declaration spans for top-level items, while rule-local bindings and uses
+  currently point at the enclosing rule or literal span rather than the exact
+  identifier token span.
 
 ## Decision Log
 
@@ -452,13 +465,54 @@ Expected end state:
   depend on that ordering, so a scope system without ordered visibility would
   be misleadingly incomplete. Date/Author: 2026-03-13 / Codex.
 
+- Decision: split the semantic implementation across
+  `src/sema/{build,builder,resolve,traverse,variables}.rs`. Rationale: the
+  repository forbids Rust files longer than 400 lines, and the semantic pass
+  needs separate spaces for public entrypoints, builder state, resolution
+  logic, and expression walking to stay readable. Date/Author: 2026-03-13 /
+  Codex.
+
+- Decision: keep rule-local binding and use provenance at the enclosing
+  literal or rule span for now instead of reconstructing identifier-token spans
+  from owned AST expressions and patterns. Rationale: the current owned `Expr`
+  and `Pattern` values do not retain exact identifier-token spans, and
+  inventing a partial token-recovery layer here would add complexity without
+  improving the later lint-rule APIs materially. Date/Author: 2026-03-13 /
+  Codex.
+
 ## Outcomes & Retrospective
 
-This section is intentionally incomplete until implementation finishes. At
-completion it must summarise:
-
-- what semantic model and APIs shipped;
-- which scope boundaries are covered;
-- what behavioural guarantees were proven by tests;
-- what documentation changed; and
-- what follow-on work remains for `3.3.2` through `3.3.4`.
+- Shipped an owned semantic-analysis module at `src/sema/` with stable
+  `ScopeId` and `SymbolId` handles, explicit `Scope` / `Symbol` / `UseSite`
+  records, and public entrypoints `sema::build`, `sema::build_from_root`, and
+  `sema::build_from_parts`.
+- Covered scope boundaries are the program scope, one scope per AST rule, one
+  scope per parse-time `SemanticRule`, and nested `for`-loop scopes. Ordered
+  visibility is enforced for rule-head bindings, assignment-pattern bindings,
+  and `for`-pattern bindings.
+- `RuleCtx` now carries `Arc<SemanticModel>`, and `Runner` builds the semantic
+  model once per run before sharing it with rule execution. Existing rule APIs
+  remained additive.
+- Unit coverage in `src/sema/tests.rs` now proves declaration collection,
+  head-binding visibility, assignment ordering, wildcard handling, `for`-loop
+  scope isolation, and top-level `for` semantic-rule inclusion. Behavioural
+  coverage in `tests/semantic_scope_resolution.rs` proves end-to-end
+  resolution, unresolved-name retention, and runner-to-lint semantic-context
+  delivery.
+- Documentation updates landed in `docs/ddlint-design.md`,
+  `docs/parser-implementation-notes.md`, `docs/roadmap.md`, and this ExecPlan.
+  The roadmap/design cross-reference drift was corrected by adding the new
+  semantic-analysis section and repointing roadmap items `3.3.1` through
+  `3.3.4` at it.
+- Validation passed with:
+  - `set -o pipefail; make fmt 2>&1 | tee /tmp/3-3-1-make-fmt-final.log`
+  - `set -o pipefail; make markdownlint 2>&1 | tee /tmp/3-3-1-make-markdownlint-final.log`
+  - `set -o pipefail; make nixie 2>&1 | tee /tmp/3-3-1-make-nixie-final.log`
+  - `set -o pipefail; make check-fmt 2>&1 | tee /tmp/3-3-1-make-check-fmt-final.log`
+  - `set -o pipefail; make lint 2>&1 | tee /tmp/3-3-1-make-lint-final.log`
+  - `set -o pipefail; make test 2>&1 | tee /tmp/3-3-1-make-test-final.log`
+- Follow-on work for `3.3.2` through `3.3.4` should build on this model
+  rather than re-walking CST nodes directly: relation-unused analysis can
+  consume program declarations plus relation uses, variable-unused analysis can
+  consume rule-local bindings plus variable uses, and shadowing analysis can
+  consume the ordered visibility metadata already recorded here.
