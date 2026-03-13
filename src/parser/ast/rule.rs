@@ -223,7 +223,9 @@ impl RuleBodyExpression {
         self.syntax.text().to_string()
     }
 
-    fn span(&self) -> Span {
+    /// Source span covering this body expression.
+    #[must_use]
+    pub fn span(&self) -> Span {
         text_range_to_span(self.syntax.text_range())
     }
 

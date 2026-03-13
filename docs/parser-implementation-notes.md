@@ -58,7 +58,8 @@ migration, the current module layout should map to the future crates as follows:
 - `ddlog-sema`:
   owned semantic data extracted from today's AST helper surface, semantic
   validation passes, dependency extraction logic, and planner-handoff export
-  helpers.
+  helpers. The current in-crate precursor is `src/sema/*`, which now owns the
+  linter-facing symbol table, scope graph, and name-resolution passes.
 - `ddlog-parser`:
   the top-level parse orchestration surface, syntax-to-semantics coordination,
   and any temporary compatibility shims needed while consumers migrate.
@@ -185,6 +186,30 @@ The current aggregation boundary is helper-stage rather than parse-stage:
 - `Parsed::errors()` remains reserved for scanner, CST, top-level `for`, and
   parser-validator diagnostics; it does not include aggregation misuse unless a
   caller explicitly requests rule-body semantic extraction.
+
+## Current semantic-analysis invariants
+
+The initial semantic-analysis infrastructure now lives in `src/sema/*` and acts
+as the in-crate precursor to the future `ddlog-sema` split.
+
+Current guarantees are intentionally narrow:
+
+- Semantic analysis produces an owned `SemanticModel` with no `rowan`
+  references, so it is `Send + Sync` and can be shared through `RuleCtx`.
+- `Runner` computes that model once per lint run and reuses it for every rule
+  invocation.
+- The model records program scope, per-rule scopes, and nested `for`-loop body
+  scopes.
+- Top-level relation, function, and type declarations are recorded in source
+  order.
+- Rule-head bindings are visible from the start of their rule scope.
+- Assignment-pattern bindings become visible only after the literal that
+  introduces them.
+- `for`-loop pattern bindings are limited to the child scope for the loop body.
+- Parse-time `SemanticRule` values from top-level `for` desugaring participate
+  in semantic analysis alongside AST-backed rules.
+- Name resolution records `Resolved`, `Unresolved`, and `Ignored` outcomes
+  rather than emitting diagnostics directly.
 
 ## Shared declaration parsing utilities
 

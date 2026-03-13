@@ -338,13 +338,13 @@ implementations.
 ### 3.3. Semantic analysis infrastructure
 
 - [ ] 3.3.1. Implement symbol-table and scope-resolution passes.
-  See docs/ddlint-design.md §2.3.
+  See docs/ddlint-design.md §3.2.1.
 - [ ] 3.3.2. Record declarations for relations, functions, and types.
-  Requires 3.3.1. See docs/ddlint-design.md §2.3.
+  Requires 3.3.1. See docs/ddlint-design.md §3.2.1.
 - [ ] 3.3.3. Record per-rule scope bindings for head variables and
-  literal-derived variables. Requires 3.3.1. See docs/ddlint-design.md §2.3.
+  literal-derived variables. Requires 3.3.1. See docs/ddlint-design.md §3.2.1.
 - [ ] 3.3.4. Record usage sites for variables and relations.
-  Requires 3.3.1. See docs/ddlint-design.md §2.3.
+  Requires 3.3.1. See docs/ddlint-design.md §3.2.1.
 
 ## 4. Lint rule implementation
 

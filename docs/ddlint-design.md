@@ -688,6 +688,49 @@ It lets developers focus on the analysis logic rather than the ceremony of
 trait implementations. This encourages community involvement and accelerates
 the growth of the linter's rule set.
 
+### 3.2.1. Semantic model for symbol tables and scope resolution
+
+The linter's CST traversal is not enough on its own for rules such as
+`unused-relation`, `unused-variable`, or `shadowed-variable`. Those rules need
+an owned semantic view of declarations, bindings, and uses that is stable
+across worker threads and independent of `rowan`'s `!Send` syntax handles.
+
+The implementation therefore builds a shared `SemanticModel` once per lint run
+and passes it to rules through `RuleCtx`. The runner computes the model up
+front, wraps it in `Arc`, and reuses that immutable value across all rule
+executions.
+
+The semantic model records:
+
+- top-level declarations for relations, functions, and types;
+- rule-local bindings introduced by rule heads, assignment patterns, and
+  `for`-loop patterns;
+- explicit scope records with parent links; and
+- relation and variable use sites together with a final resolution result.
+
+Resolution is deliberately tri-state:
+
+- `Resolved(symbol)` means the use mapped to one concrete symbol.
+- `Unresolved` means no visible symbol matched the use.
+- `Ignored` is reserved for names that should not participate in normal unused
+  or shadowing checks, such as `_`.
+
+The first implementation stage supports three scope shapes:
+
+- the program scope;
+- one scope per syntactic `Rule` or parse-time `SemanticRule`; and
+- nested child scopes for `for`-loop bodies.
+
+Rule-body ordering is part of the semantic contract. Head bindings are visible
+from the start of a rule scope. Assignment bindings become visible only after
+their introducing literal. `for`-loop bindings are visible only inside the loop
+body scope and do not escape to later top-level literals.
+
+This pass consumes both AST-backed rules and parse-time `SemanticRule` values
+from top-level `for` desugaring so the semantic view matches the parser's
+existing rule surface. Provenance is retained through source spans on
+declarations and on the enclosing literal or rule site for rule-local facts.
+
 ### 3.3. Initial lint rule catalog
 
 To provide clear scope for the initial implementation phases and to deliver
