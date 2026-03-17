@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -126,16 +126,23 @@ larger architectural change than the conformance-alignment task captured here.
   literal tests, and neighbouring ExecPlans.
 - [x] (2026-03-11) Drafted this ExecPlan in
   `docs/execplans/2-6-3-decide-collection-literal-lowering-stage-ownership.md`.
-- [ ] Freeze the collection-literal ownership decision in docs and doc
-  comments.
-- [ ] Add unit tests proving `parse_expression()` preserves raw collection
-  literal nodes.
-- [ ] Add behavioural tests proving `parse()` does not lower collection
-  literals and does not emit collection-specific semantic rules.
-- [ ] Mark conformance register item 10 as `implemented`.
-- [ ] Mark roadmap item `2.6.3` done.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
-  `make lint`, and `make test`.
+- [x] (2026-03-17) Froze the collection-literal ownership decision in
+  `docs/parser-conformance-register.md`,
+  `docs/differential-datalog-parser-syntax-spec-updated.md`,
+  `docs/parser-implementation-notes.md`, and `docs/ddlint-design.md`.
+- [x] (2026-03-17) Updated `Expr::VecLit` and `Expr::MapLit` doc comments in
+  `src/parser/ast/expr.rs` to describe preserved raw AST nodes.
+- [x] (2026-03-17) Updated `parse()` and `Parsed::semantic_rules()` doc
+  comments to clarify collection literal boundary.
+- [x] (2026-03-17) Added unit tests in `src/parser/tests/collections.rs`
+  proving `parse_expression()` preserves raw collection literal nodes.
+- [x] (2026-03-17) Added behavioural tests in
+  `tests/collection_literal_boundary.rs` proving `parse()` does not lower
+  collection literals and does not emit collection-specific semantic rules.
+- [x] (2026-03-17) Marked conformance register item 10 as `implemented`.
+- [x] (2026-03-17) Marked roadmap item `2.6.3` done.
+- [x] (2026-03-17) Ran `make fmt`, `make markdownlint`, `make nixie`,
+  `make check-fmt`, `make lint`, and `make test` with all gates passing.
 
 ## Surprises & Discoveries
 
@@ -313,11 +320,53 @@ test cases, and formatter checks that report no remaining diffs.
 
 ## Outcomes & Retrospective
 
-Not yet executed. When implementation completes, replace this section with:
+**Final decision:** Collection literal lowering (`Expr::VecLit` and
+`Expr::MapLit` to builder-call sequences) is assigned to a later lowering
+layer rather than the parser or current rule-analysis helpers, aligning all
+documentation and tests with the already-implemented raw-AST preservation
+contract.
 
-- the final ownership decision in one sentence,
-- the files changed,
-- the exact tests added,
-- the quality gates run and their outcomes,
-- any lessons about parser-versus-lowering boundaries that should influence
-  later ADR-001 work.
+**Files changed:**
+
+- Documentation: `docs/parser-conformance-register.md` (item 10 marked
+  `implemented`), `docs/differential-datalog-parser-syntax-spec-updated.md`
+  (section 6.4 rewritten), `docs/parser-implementation-notes.md` (collection
+  literal boundary note added), `docs/ddlint-design.md` (parser-boundary
+  section updated), `docs/roadmap.md` (item 2.6.3 marked done).
+- Code doc comments: `src/parser/ast/expr.rs` (`Expr::VecLit` and
+  `Expr::MapLit` doc comments corrected), `src/parser/mod.rs` (`parse()` doc
+  comment updated), `src/parser/cst_builder/mod.rs` (`semantic_rules()` doc
+  comment updated).
+- Unit tests: `src/parser/tests/collections.rs` (added
+  `preserves_raw_vector_literal_nodes` and `preserves_raw_map_literal_nodes`
+  tests with nested cases).
+- Behavioural tests: `tests/collection_literal_boundary.rs` (new file with 4
+  tests: `parse_preserves_vector_literal_in_rule_body`,
+  `parse_preserves_map_literal_in_rule_body`,
+  `parse_does_not_synthesize_semantic_rules_for_collection_literals`,
+  `parse_preserves_nested_collection_literals_in_rule_body`).
+
+**Quality gates:** All repository gates passed with exit code `0`:
+
+- `make fmt`: markdown formatting and code formatting passed.
+- `make markdownlint`: 0 errors.
+- `make nixie`: all diagrams validated successfully.
+- `make check-fmt`: no formatting diffs.
+- `make lint`: clippy passed with `-D warnings`.
+- `make test`: 622 total tests passed (618 unit, 4 new behavioural tests for
+  collection literal boundary).
+
+**Lessons for ADR-001:**
+
+- The parse-versus-helper-versus-lowering stage distinction needs explicit
+  ownership callouts in both design docs and parser implementation notes.
+- When conformance items drift, the stale contract usually lives in code doc
+  comments rather than the syntax spec or implementation behaviour.
+- Boundary tests benefit from both unit tests (proving
+  `parse_expression()` raw-node preservation) and behavioural tests (proving
+  `parse()` and `Parsed::semantic_rules()` do not synthesize lowering).
+- The current two-tier parser architecture (base `parse()` + optional helper
+  stages such as `Rule::body_terms()` and `Parsed::semantic_rules()`)
+  successfully isolates stage boundaries, and collection literal lowering fits
+  cleanly as a future third stage rather than forcing it into either existing
+  tier.

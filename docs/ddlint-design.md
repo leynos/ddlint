@@ -222,8 +222,13 @@ rule-body semantic extraction. `parse()` returns a CST-backed `Parsed` value,
 parse-time diagnostics, and parse-time semantic rules for top-level `for`
 desugaring. Rule-body aggregation handling (`group_by` and legacy `Aggregate`)
 happens later, when callers ask a `Rule` wrapper for semantic body terms.
-Downstream lint rules therefore must not assume that aggregation misuse already
-appears in `Parsed::errors()`.
+Collection literal lowering, like aggregation handling, is not part of the base
+`parse()` pipeline; `Expr::VecLit` and `Expr::MapLit` are preserved as raw AST
+nodes, and any future builder-call desugaring should live in the semantic/
+lowering layer expected by ADR-001 rather than the syntax-layer parser.
+Downstream lint rules therefore must not assume that aggregation misuse or
+collection literal builder sequences already appear in `Parsed::errors()` or
+the parse-time AST.
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 

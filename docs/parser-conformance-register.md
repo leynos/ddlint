@@ -113,10 +113,15 @@ This register tracks parser behaviour against the syntax specification.
 ### 10. Collection literal lowering stage boundary
 
 - Topic: when vec/map literal lowering occurs.
-- Current behaviour (code): parser emits raw `Expr::VecLit` and `Expr::MapLit`
-  nodes (`src/parser/expression/data_structures.rs`).
-- Spec/target behaviour: section 6.4 describes early lowering.
-- Decision status: `scheduled`.
+- Current behaviour (code): `parse()` and `parse_expression()` preserve vector
+  and map literals as raw `Expr::VecLit` and `Expr::MapLit` nodes in the CST
+  (`src/parser/expression/data_structures.rs`, `src/parser/ast/expr.rs`).
+  `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
+  does not lower collection literals.
+- Spec/target behaviour: section 6.4 describes collection literal lowering as
+  scheduled work owned by later lowering stages rather than the parser or
+  current rule-analysis helpers.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.3`.
 
 ### 11. Index declaration grammar

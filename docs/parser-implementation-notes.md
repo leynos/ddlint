@@ -186,6 +186,18 @@ The current aggregation boundary is helper-stage rather than parse-stage:
   parser-validator diagnostics; it does not include aggregation misuse unless a
   caller explicitly requests rule-body semantic extraction.
 
+Similarly, collection literal lowering is not part of the base `parse()`
+pipeline:
+
+- `parse_expression()` and `parse()` preserve `Expr::VecLit` and `Expr::MapLit`
+  as raw AST nodes.
+- `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
+  does not synthesize builder-call sequences for collection literals.
+- Unlike aggregation classification, collection literal lowering is not
+  currently implemented as a helper-stage semantic pass either. It is scheduled
+  work for a future lowering layer rather than a current parser-generation
+  feature.
+
 ## Shared declaration parsing utilities
 
 Declaration parsers for functions, relations, and transformers reuse helpers in
