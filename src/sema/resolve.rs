@@ -9,12 +9,11 @@ use super::builder::SemanticModelBuilder;
 impl SemanticModelBuilder {
     pub(crate) fn resolve_name(
         &self,
-        start_scope: ScopeId,
+        context: super::variables::VariableUseContext<'_>,
         use_kind: UseKind,
         name: &str,
-        rule_order_limit: usize,
     ) -> Resolution {
-        let mut current_scope = Some(start_scope);
+        let mut current_scope = Some(context.current_scope());
 
         while let Some(scope_id) = current_scope {
             for (symbol_index, symbol) in self.symbols.iter().enumerate().rev() {
@@ -24,7 +23,7 @@ impl SemanticModelBuilder {
                 if !is_compatible(use_kind, symbol.kind()) {
                     continue;
                 }
-                if !self.symbol_visible(scope_id, symbol, rule_order_limit) {
+                if !self.symbol_visible(scope_id, symbol, context.rule_order_limit()) {
                     continue;
                 }
                 return Resolution::Resolved(crate::sema::SymbolId(symbol_index));
@@ -102,60 +101,48 @@ fn collect_head_bindings(expr: &Expr, names: &mut Vec<String>) {
     match expr {
         Expr::Variable(name) => push_binding_name(names, name),
         Expr::Apply { args, .. } | Expr::Call { args, .. } => {
-            for arg in args {
-                collect_head_bindings(arg, names);
-            }
+            collect_head_bindings_many(args, names);
         }
         Expr::MethodCall { recv, args, .. } => {
             collect_head_bindings(recv, names);
-            for arg in args {
-                collect_head_bindings(arg, names);
-            }
+            collect_head_bindings_many(args, names);
         }
         Expr::FieldAccess { expr, .. }
         | Expr::TupleIndex { expr, .. }
         | Expr::Group(expr)
         | Expr::AtomDiff { expr }
         | Expr::AtomDelay { expr, .. }
-        | Expr::Unary { expr, .. } => collect_head_bindings(expr, names),
+        | Expr::Unary { expr, .. }
+        | Expr::Return { value: expr } => collect_head_bindings(expr, names),
         Expr::BitSlice { expr, hi, lo } => {
-            for nested in [expr.as_ref(), hi.as_ref(), lo.as_ref()] {
-                collect_head_bindings(nested, names);
-            }
+            collect_head_bindings_many([expr.as_ref(), hi.as_ref(), lo.as_ref()], names);
         }
         Expr::Struct { fields, .. } => {
-            for (_, value) in fields {
-                collect_head_bindings(value, names);
-            }
+            collect_head_bindings_many(fields.iter().map(|(_, v)| v), names);
         }
         Expr::Tuple(items) | Expr::VecLit(items) => {
-            for item in items {
-                collect_head_bindings(item, names);
-            }
+            collect_head_bindings_many(items, names);
         }
         Expr::IfElse {
             condition,
             then_branch,
             else_branch,
         } => {
-            for nested in [
-                condition.as_ref(),
-                then_branch.as_ref(),
-                else_branch.as_ref(),
-            ] {
-                collect_head_bindings(nested, names);
-            }
+            collect_head_bindings_many(
+                [
+                    condition.as_ref(),
+                    then_branch.as_ref(),
+                    else_branch.as_ref(),
+                ],
+                names,
+            );
         }
         Expr::Binary { lhs, rhs, .. } => {
-            for nested in [lhs.as_ref(), rhs.as_ref()] {
-                collect_head_bindings(nested, names);
-            }
+            collect_head_bindings_many([lhs.as_ref(), rhs.as_ref()], names);
         }
-        Expr::Return { value } => collect_head_bindings(value, names),
         Expr::MapLit(entries) => {
             for (key, value) in entries {
-                collect_head_bindings(key, names);
-                collect_head_bindings(value, names);
+                collect_head_bindings_many([key, value], names);
             }
         }
         Expr::Literal(_)
@@ -164,6 +151,15 @@ fn collect_head_bindings(expr: &Expr, names: &mut Vec<String>) {
         | Expr::Match { .. }
         | Expr::Break
         | Expr::Continue => {}
+    }
+}
+
+fn collect_head_bindings_many<'a>(
+    exprs: impl IntoIterator<Item = &'a Expr>,
+    names: &mut Vec<String>,
+) {
+    for expr in exprs {
+        collect_head_bindings(expr, names);
     }
 }
 

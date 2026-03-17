@@ -16,16 +16,31 @@ fn parse_ok(source: &str) -> crate::Parsed {
     parsed
 }
 
+fn filter_named_by_kind<'a, T, K: PartialEq>(
+    items: &'a [T],
+    name: &str,
+    kind: &K,
+    name_fn: impl Fn(&T) -> &str,
+    kind_fn: impl Fn(&T) -> K,
+) -> Vec<&'a T> {
+    items
+        .iter()
+        .filter(|item| name_fn(item) == name && &kind_fn(item) == kind)
+        .collect()
+}
+
 fn uses_named<'a>(
     model: &'a super::SemanticModel,
     name: &str,
     kind: UseKind,
 ) -> Vec<&'a super::UseSite> {
-    model
-        .uses()
-        .iter()
-        .filter(|use_site| use_site.name() == name && use_site.kind() == kind)
-        .collect()
+    filter_named_by_kind(
+        model.uses(),
+        name,
+        &kind,
+        |u| u.name(),
+        super::model::UseSite::kind,
+    )
 }
 
 fn symbols_named<'a>(
@@ -33,11 +48,13 @@ fn symbols_named<'a>(
     name: &str,
     kind: DeclarationKind,
 ) -> Vec<&'a super::Symbol> {
-    model
-        .symbols()
-        .iter()
-        .filter(|symbol| symbol.name() == name && symbol.kind() == kind)
-        .collect()
+    filter_named_by_kind(
+        model.symbols(),
+        name,
+        &kind,
+        |s| s.name(),
+        super::model::Symbol::kind,
+    )
 }
 
 #[test]

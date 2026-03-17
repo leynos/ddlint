@@ -7,6 +7,13 @@ use crate::sema::model::{Resolution, ScopeId, UseKind, UseSite};
 use super::builder::SemanticModelBuilder;
 
 #[derive(Clone, Copy)]
+pub(super) struct ForLoopExprs<'a> {
+    pub(super) iterable: &'a Expr,
+    pub(super) guard: Option<&'a Expr>,
+    pub(super) body: &'a Expr,
+}
+
+#[derive(Clone, Copy)]
 pub(super) struct VariableUseContext<'a> {
     current_scope: ScopeId,
     literal_index: usize,
@@ -28,6 +35,22 @@ impl<'a> VariableUseContext<'a> {
             rule_order_limit,
         }
     }
+
+    pub(super) fn current_scope(self) -> ScopeId {
+        self.current_scope
+    }
+
+    pub(super) fn literal_index(self) -> usize {
+        self.literal_index
+    }
+
+    pub(super) fn span(self) -> &'a Span {
+        self.span
+    }
+
+    pub(super) fn rule_order_limit(self) -> usize {
+        self.rule_order_limit
+    }
 }
 
 impl SemanticModelBuilder {
@@ -38,7 +61,9 @@ impl SemanticModelBuilder {
             Expr::Apply { args, .. } | Expr::Call { args, .. } => {
                 self.walk_variable_use_list(args.iter().collect(), context);
             }
-            Expr::MethodCall { recv, args, .. } => self.walk_method_call_uses(recv, args, context),
+            Expr::MethodCall { recv, args, .. } => {
+                self.walk_leading_and_rest(recv, args.iter(), context);
+            }
             Expr::FieldAccess { expr, .. }
             | Expr::TupleIndex { expr, .. }
             | Expr::Group(expr)
@@ -81,13 +106,16 @@ impl SemanticModelBuilder {
                 guard,
                 body,
                 ..
-            } => self.walk_for_loop_uses(iterable, guard.as_deref(), body, context),
+            } => self.walk_for_loop_uses(
+                ForLoopExprs {
+                    iterable,
+                    guard: guard.as_deref(),
+                    body,
+                },
+                context,
+            ),
             Expr::Match { scrutinee, arms } => {
-                self.walk_match_uses(
-                    scrutinee,
-                    arms.iter().map(|arm| &arm.body).collect(),
-                    context,
-                );
+                self.walk_leading_and_rest(scrutinee, arms.iter().map(|arm| &arm.body), context);
             }
             Expr::MapLit(entries) => self.walk_map_entries_uses(entries, context),
         }
@@ -103,42 +131,23 @@ impl SemanticModelBuilder {
         }
     }
 
-    fn walk_method_call_uses(
+    fn walk_leading_and_rest<'e>(
         &mut self,
-        recv: &Expr,
-        args: &[Expr],
+        leading: &'e Expr,
+        rest: impl IntoIterator<Item = &'e Expr>,
         context: VariableUseContext<'_>,
     ) {
-        let mut expressions = Vec::with_capacity(args.len() + 1);
-        expressions.push(recv);
-        expressions.extend(args.iter());
+        let mut expressions = vec![leading];
+        expressions.extend(rest);
         self.walk_variable_use_list(expressions, context);
     }
 
-    fn walk_for_loop_uses(
-        &mut self,
-        iterable: &Expr,
-        guard: Option<&Expr>,
-        body: &Expr,
-        context: VariableUseContext<'_>,
-    ) {
-        self.walk_one_variable_use(iterable, context);
-        if let Some(guard) = guard {
+    fn walk_for_loop_uses(&mut self, exprs: ForLoopExprs<'_>, context: VariableUseContext<'_>) {
+        self.walk_one_variable_use(exprs.iterable, context);
+        if let Some(guard) = exprs.guard {
             self.walk_one_variable_use(guard, context);
         }
-        self.walk_one_variable_use(body, context);
-    }
-
-    fn walk_match_uses(
-        &mut self,
-        scrutinee: &Expr,
-        arm_bodies: Vec<&Expr>,
-        context: VariableUseContext<'_>,
-    ) {
-        let mut expressions = Vec::with_capacity(arm_bodies.len() + 1);
-        expressions.push(scrutinee);
-        expressions.extend(arm_bodies);
-        self.walk_variable_use_list(expressions, context);
+        self.walk_one_variable_use(exprs.body, context);
     }
 
     fn walk_map_entries_uses(&mut self, entries: &[(Expr, Expr)], context: VariableUseContext<'_>) {
@@ -153,19 +162,14 @@ impl SemanticModelBuilder {
         let resolution = if name == "_" {
             Resolution::Ignored
         } else {
-            self.resolve_name(
-                context.current_scope,
-                UseKind::Variable,
-                name,
-                context.rule_order_limit,
-            )
+            self.resolve_name(context, UseKind::Variable, name)
         };
         self.uses.push(UseSite {
             name: name.to_string(),
             kind: UseKind::Variable,
-            scope: context.current_scope,
-            span: context.span.clone(),
-            source_order: context.literal_index,
+            scope: context.current_scope(),
+            span: context.span().clone(),
+            source_order: context.literal_index(),
             resolution,
         });
     }

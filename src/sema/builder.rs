@@ -23,6 +23,13 @@ pub(crate) struct SymbolSpec {
     pub(crate) visible_from_rule_order: usize,
 }
 
+pub(crate) struct ScopeSpec {
+    pub(crate) kind: ScopeKind,
+    pub(crate) parent: Option<ScopeId>,
+    pub(crate) origin: ScopeOrigin,
+    pub(crate) span: Span,
+}
+
 pub(crate) struct SemanticModelBuilder {
     pub(crate) scopes: Vec<Scope>,
     pub(crate) symbols: Vec<Symbol>,
@@ -119,12 +126,12 @@ impl SemanticModelBuilder {
     pub(crate) fn collect_ast_rules(&mut self, root: &ast::Root) {
         for (rule_index, rule) in root.rules().into_iter().enumerate() {
             let rule_span = text_range_to_span(rule.syntax.text_range());
-            let rule_scope = self.new_scope(
-                ScopeKind::Rule,
-                Some(self.program_scope),
-                ScopeOrigin::AstRule { index: rule_index },
-                rule_span.clone(),
-            );
+            let rule_scope = self.new_scope(ScopeSpec {
+                kind: ScopeKind::Rule,
+                parent: Some(self.program_scope),
+                origin: ScopeOrigin::AstRule { index: rule_index },
+                span: rule_span.clone(),
+            });
 
             self.collect_rule_heads(rule_scope, &rule, &rule_span, SymbolOrigin::RuleHead);
 
@@ -149,48 +156,46 @@ impl SemanticModelBuilder {
     pub(crate) fn collect_semantic_rules(&mut self, semantic_rules: &[SemanticRule]) {
         for (rule_index, rule) in semantic_rules.iter().enumerate() {
             let rule_span = rule.source_span();
-            let rule_scope = self.new_scope(
-                ScopeKind::Rule,
-                Some(self.program_scope),
-                ScopeOrigin::SemanticRule {
+            let rule_scope = self.new_scope(ScopeSpec {
+                kind: ScopeKind::Rule,
+                parent: Some(self.program_scope),
+                origin: ScopeOrigin::SemanticRule {
                     index: rule_index,
                     origin: rule.origin(),
                 },
-                rule_span.clone(),
-            );
+                span: rule_span.clone(),
+            });
 
             self.collect_head_expr(
-                rule_scope,
                 rule.head(),
-                &rule_span,
-                SymbolOrigin::SemanticRuleHead,
+                super::traverse::RuleHeadContext {
+                    scope: rule_scope,
+                    span: &rule_span,
+                    origin: SymbolOrigin::SemanticRuleHead,
+                },
             );
 
             for (literal_index, expr) in rule.body().iter().enumerate() {
                 self.collect_expression_term(
-                    rule_scope,
-                    literal_index,
                     expr,
-                    &rule_span,
-                    literal_index,
+                    super::variables::VariableUseContext::new(
+                        rule_scope,
+                        literal_index,
+                        &rule_span,
+                        literal_index,
+                    ),
                 );
             }
         }
     }
 
-    pub(crate) fn new_scope(
-        &mut self,
-        kind: ScopeKind,
-        parent: Option<ScopeId>,
-        origin: ScopeOrigin,
-        span: Span,
-    ) -> ScopeId {
+    pub(crate) fn new_scope(&mut self, spec: ScopeSpec) -> ScopeId {
         let scope_id = ScopeId(self.scopes.len());
         self.scopes.push(Scope {
-            kind,
-            parent,
-            origin,
-            span,
+            kind: spec.kind,
+            parent: spec.parent,
+            origin: spec.origin,
+            span: spec.span,
         });
         scope_id
     }
