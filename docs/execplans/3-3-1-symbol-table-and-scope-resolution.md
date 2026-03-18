@@ -189,6 +189,131 @@ The model should use stable numeric identifiers rather than syntax-node handles:
 "Ignored" is important for names that are intentionally not linted as normal
 bindings, such as `_`.
 
+The following class diagram shows the structure of the semantic model and the
+relationships between its core types:
+
+```mermaid
+classDiagram
+  class SemanticModel {
+    +Vec~Scope~ scopes
+    +Vec~Symbol~ symbols
+    +Vec~UseSite~ uses
+    +ScopeId program_scope_id
+    +fn scope(ScopeId) Scope
+    +fn symbol(SymbolId) Symbol
+    +fn uses_for_symbol(SymbolId) Vec~UseSite~
+    +fn resolve_use(UseSiteId) Resolution
+  }
+
+  class Scope {
+    +ScopeId id
+    +Option~ScopeId~ parent
+    +Vec~SymbolId~ declarations
+    +ScopeKind kind
+    +usize source_order_index
+  }
+
+  class Symbol {
+    +SymbolId id
+    +String name
+    +DeclarationKind kind
+    +ScopeId defining_scope
+    +Span span
+    +usize source_order_index
+    +Origin origin
+  }
+
+  class UseSite {
+    +UseSiteId id
+    +String name
+    +UseKind kind
+    +ScopeId scope
+    +Span span
+    +usize literal_index
+    +Resolution resolution
+  }
+
+  class ScopeId {
+    +usize value
+  }
+
+  class SymbolId {
+    +usize value
+  }
+
+  class UseSiteId {
+    +usize value
+  }
+
+  class Span {
+    +usize start
+    +usize end
+  }
+
+  class DeclarationKind {
+    <<enumeration>>
+    Relation
+    Function
+    Type
+    RuleBinding
+  }
+
+  class UseKind {
+    <<enumeration>>
+    RelationUse
+    VariableUse
+  }
+
+  class Resolution {
+    <<enumeration>>
+    Resolved
+    Unresolved
+    Ignored
+  }
+
+  class Origin {
+    <<enumeration>>
+    TopLevelDeclaration
+    RuleHead
+    AssignmentPattern
+    ForPattern
+  }
+
+  class ScopeKind {
+    <<enumeration>>
+    Program
+    Rule
+    ForLoop
+  }
+
+  SemanticModel --> Scope : contains
+  SemanticModel --> Symbol : contains
+  SemanticModel --> UseSite : contains
+
+  Scope --> Symbol : declares
+  UseSite --> Resolution : has
+  Symbol --> DeclarationKind : kind
+  UseSite --> UseKind : kind
+  Symbol --> Origin : origin
+  Scope --> ScopeKind : scope_kind
+
+  Scope --> Scope : parent
+  Symbol --> Scope : defining_scope
+  UseSite --> Scope : scope
+
+  ScopeId --> Scope : indexes
+  SymbolId --> Symbol : indexes
+  UseSiteId --> UseSite : indexes
+```
+
+**Figure 1:** Semantic model class diagram. The `SemanticModel` contains
+collections of scopes, symbols, and use sites indexed by opaque identifiers.
+Scopes form a tree through parent references, symbols record declarations with
+their source spans and origins, and use sites capture name references with
+their resolution status. This structure enables efficient name resolution and
+supports queries for unused bindings, shadowing analysis, and symbol
+provenance.
+
 Each symbol record should capture enough provenance for later rules:
 
 - canonical name text;
