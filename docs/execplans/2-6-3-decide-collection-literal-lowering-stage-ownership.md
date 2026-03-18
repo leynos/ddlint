@@ -340,10 +340,10 @@ contract.
 - Unit tests: `src/parser/tests/collections.rs` (added
   `preserves_raw_vector_literal_nodes` and `preserves_raw_map_literal_nodes`
   tests with nested cases).
-- Behavioural tests: `tests/collection_literal_boundary.rs` (new file with 4
-  tests: `parse_preserves_vector_literal_in_rule_body`,
-  `parse_preserves_map_literal_in_rule_body`,
-  `parse_does_not_synthesize_semantic_rules_for_collection_literals`,
+- Behavioural tests: `tests/collection_literal_boundary.rs` (new file with
+  `parse_preserves_collection_literal_in_rule_body` parameterized over vector
+  and map literal cases,
+  `parse_does_not_synthesize_semantic_rules_for_collection_literals`, and
   `parse_preserves_nested_collection_literals_in_rule_body`).
 
 **Quality gates:** All repository gates passed with exit code `0`:
