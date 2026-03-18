@@ -54,13 +54,9 @@ impl SemanticModelBuilder {
 
     pub(crate) fn collect_rule_term(
         &mut self,
-        current_scope: ScopeId,
-        literal_index: usize,
+        context: VariableUseContext<'_>,
         term: &RuleBodyTerm,
-        span: &Span,
-        rule_order_limit: usize,
     ) {
-        let context = VariableUseContext::new(current_scope, literal_index, span, rule_order_limit);
         match term {
             RuleBodyTerm::Expression(expr) => self.collect_expression_term(expr, context),
             RuleBodyTerm::Assignment(assign) => self.collect_assignment_term(assign, context),
@@ -138,11 +134,13 @@ impl SemanticModelBuilder {
 
         for nested_term in &for_loop.body_terms {
             self.collect_rule_term(
-                child_scope,
-                context.literal_index(),
+                VariableUseContext::new(
+                    child_scope,
+                    context.literal_index(),
+                    context.span(),
+                    context.rule_order_limit(),
+                ),
                 nested_term,
-                context.span(),
-                context.rule_order_limit(),
             );
         }
     }

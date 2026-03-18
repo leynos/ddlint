@@ -154,7 +154,15 @@ impl SemanticModelBuilder {
                         .get(literal_index)
                         .cloned()
                         .unwrap_or_else(|| rule_span.clone());
-                    self.collect_rule_term(rule_scope, literal_index, &term, &span, literal_index);
+                    self.collect_rule_term(
+                        super::variables::VariableUseContext::new(
+                            rule_scope,
+                            literal_index,
+                            &span,
+                            literal_index,
+                        ),
+                        &term,
+                    );
                 }
             }
         }
