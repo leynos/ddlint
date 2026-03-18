@@ -40,8 +40,8 @@ Concretely:
 - No new collection-literal rewrite helper is introduced in the current parser
   generation.
 - Future lowering, if and when it is implemented, should live in the later
-  semantic/lowering layer that ADR-001 is preparing for, not in the syntax
-  crate boundary.
+  semantic/lowering layer that Architecture Decision Record (ADR-001) is
+  preparing for, not in the syntax crate boundary.
 
 This is the smallest decision that matches repository reality, preserves the
 lossless parser contract, and avoids inventing a second partial semantic stage
@@ -321,8 +321,8 @@ test cases, and formatter checks that report no remaining diffs.
 ## Outcomes & Retrospective
 
 **Final decision:** Collection literal lowering (`Expr::VecLit` and
-`Expr::MapLit` to builder-call sequences) is assigned to a later lowering
-layer rather than the parser or current rule-analysis helpers, aligning all
+`Expr::MapLit` to builder-call sequences) is assigned to a later lowering layer
+rather than the parser or current rule-analysis helpers, aligning all
 documentation and tests with the already-implemented raw-AST preservation
 contract.
 

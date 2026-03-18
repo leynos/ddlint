@@ -5,52 +5,24 @@
 //! builder-call sequences, and that `Parsed::semantic_rules()` does not
 //! synthesize collection-specific semantic rules.
 
-#![expect(clippy::expect_used, reason = "test assertions use expect for clarity")]
+#![allow(clippy::expect_used, reason = "test assertions use expect for clarity")]
 
 use ddlint::parse;
 use ddlint::parser::ast::Expr;
 use ddlint::test_util::assert_no_parse_errors;
+use rstest::rstest;
 
-/// Verify that a rule body containing a vector literal parses without errors,
-/// yields exactly one rule, and the first body expression is `Expr::VecLit`.
-#[test]
-fn parse_preserves_vector_literal_in_rule_body() {
-    let parsed = parse("Out(x) :- In(x), [1, 2].");
-
-    // Parse should succeed with no errors.
-    assert_no_parse_errors(parsed.errors());
-
-    // Should yield exactly one CST rule.
-    let rules = parsed.root().rules();
-    assert_eq!(rules.len(), 1, "expected exactly one rule");
-
-    let rule = rules.first().expect("expected at least one rule");
-
-    // The rule should parse its body expressions successfully.
-    let body_exprs = rule
-        .body_expressions()
-        .unwrap_or_else(|errs| panic!("expected body_expressions to succeed, got {errs:?}"));
-
-    // The first body expression is the atom `In(x)`, the second is `[1, 2]`.
-    assert_eq!(body_exprs.len(), 2, "expected two body expressions");
-
-    // The second body expression should be `Expr::VecLit`, not a builder-call.
-    let vec_expr = body_exprs.get(1).expect("expected second body expression");
-    assert!(
-        matches!(vec_expr, Expr::VecLit(_)),
-        "expected Expr::VecLit for rule body vector literal, got {vec_expr:?}"
-    );
-
-    if let Expr::VecLit(elements) = vec_expr {
-        assert_eq!(elements.len(), 2, "expected two elements in vector literal");
-    }
-}
-
-/// Verify that a rule body containing a map literal parses without errors,
-/// yields exactly one rule, and the first body expression is `Expr::MapLit`.
-#[test]
-fn parse_preserves_map_literal_in_rule_body() {
-    let parsed = parse("Out(x) :- In(x), {a: 1}.");
+/// Verify that a rule body containing a collection literal parses without errors,
+/// yields exactly one rule, and the second body expression is the expected variant.
+#[rstest]
+#[case("Out(x) :- In(x), [1, 2].", "VecLit", 2)]
+#[case("Out(x) :- In(x), {a: 1}.", "MapLit", 1)]
+fn parse_preserves_collection_literal_in_rule_body(
+    #[case] input: &str,
+    #[case] expected_variant: &str,
+    #[case] expected_count: usize,
+) {
+    let parsed = parse(input);
 
     // Parse should succeed with no errors.
     assert_no_parse_errors(parsed.errors());
@@ -66,18 +38,40 @@ fn parse_preserves_map_literal_in_rule_body() {
         .body_expressions()
         .unwrap_or_else(|errs| panic!("expected body_expressions to succeed, got {errs:?}"));
 
-    // The first body expression is the atom `In(x)`, the second is `{a: 1}`.
+    // The first body expression is the atom `In(x)`, the second is the collection literal.
     assert_eq!(body_exprs.len(), 2, "expected two body expressions");
 
-    // The second body expression should be `Expr::MapLit`, not a builder-call.
-    let map_expr = body_exprs.get(1).expect("expected second body expression");
-    assert!(
-        matches!(map_expr, Expr::MapLit(_)),
-        "expected Expr::MapLit for rule body map literal, got {map_expr:?}"
-    );
+    // The second body expression should be the expected collection literal variant.
+    let collection_expr = body_exprs.get(1).expect("expected second body expression");
 
-    if let Expr::MapLit(entries) = map_expr {
-        assert_eq!(entries.len(), 1, "expected one entry in map literal");
+    match expected_variant {
+        "VecLit" => {
+            assert!(
+                matches!(collection_expr, Expr::VecLit(_)),
+                "expected Expr::VecLit for rule body vector literal, got {collection_expr:?}"
+            );
+            if let Expr::VecLit(elements) = collection_expr {
+                assert_eq!(
+                    elements.len(),
+                    expected_count,
+                    "expected {expected_count} elements in vector literal"
+                );
+            }
+        }
+        "MapLit" => {
+            assert!(
+                matches!(collection_expr, Expr::MapLit(_)),
+                "expected Expr::MapLit for rule body map literal, got {collection_expr:?}"
+            );
+            if let Expr::MapLit(entries) = collection_expr {
+                assert_eq!(
+                    entries.len(),
+                    expected_count,
+                    "expected {expected_count} entries in map literal"
+                );
+            }
+        }
+        _ => panic!("unexpected variant: {expected_variant}"),
     }
 }
 
@@ -119,6 +113,14 @@ fn parse_preserves_nested_collection_literals_in_rule_body() {
     // Parse should succeed with no errors.
     assert_no_parse_errors(parsed.errors());
 
+    // `Parsed::semantic_rules()` should remain empty because collection
+    // literals in rule bodies must not trigger parse-time semantic lowering.
+    assert!(
+        parsed.semantic_rules().is_empty(),
+        "collection literals must not produce parse-time semantic rules, got {:?}",
+        parsed.semantic_rules()
+    );
+
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1, "expected exactly one rule");
 
@@ -129,9 +131,10 @@ fn parse_preserves_nested_collection_literals_in_rule_body() {
 
     // Body: In(x), [[1], {a: {b: 2}}]
     // The second body expression is the nested vector literal.
-    assert!(
-        body_exprs.len() >= 2,
-        "expected at least two body terms, got {}",
+    assert_eq!(
+        body_exprs.len(),
+        2,
+        "expected exactly two body terms, got {}",
         body_exprs.len()
     );
 

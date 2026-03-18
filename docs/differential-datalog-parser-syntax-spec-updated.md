@@ -50,10 +50,12 @@ rule-body semantic extraction, not to the base `parse()` pipeline.
   semantic-rule lowering, top-level name-uniqueness validation, and the raw
   rule-body literals needed for later semantic extraction.
 - **Helper-stage semantic transforms:** `group_by` and `Aggregate`
-  classification when rule-body terms are requested, scheduled map/vector
-  literal lowering policy work (see `docs/parser-conformance-register.md` item
-  10 and `docs/roadmap.md` item `2.6.3` for current status), and `&` in rule
-  heads → `ref_new`.
+  classification when rule-body terms are requested, and `&` in rule heads →
+  `ref_new`. Collection literal lowering (`Expr::VecLit` and `Expr::MapLit` to
+  builder sequences) is planned for the later semantic/lowering layer expected
+  by ADR-001, not the helper stage (see section 6.4,
+  `docs/parser-conformance-register.md` item 10, and `docs/roadmap.md` item
+  `2.6.3`).
 
 #### 1.1.1 Expression‑only parsing
 
