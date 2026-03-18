@@ -133,7 +133,14 @@ impl SemanticModelBuilder {
                 span: rule_span.clone(),
             });
 
-            self.collect_rule_heads(rule_scope, &rule, &rule_span, SymbolOrigin::RuleHead);
+            self.collect_rule_heads(
+                super::traverse::RuleHeadContext {
+                    scope: rule_scope,
+                    span: &rule_span,
+                    origin: SymbolOrigin::RuleHead,
+                },
+                &rule,
+            );
 
             if let Ok(terms) = rule.body_terms() {
                 let spans: Vec<Span> = rule

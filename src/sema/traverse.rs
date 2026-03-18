@@ -19,27 +19,14 @@ pub(super) struct RuleHeadContext<'a> {
 }
 
 impl SemanticModelBuilder {
-    pub(crate) fn collect_rule_heads(
-        &mut self,
-        rule_scope: ScopeId,
-        rule: &ast::Rule,
-        rule_span: &Span,
-        origin: SymbolOrigin,
-    ) {
+    pub(crate) fn collect_rule_heads(&mut self, ctx: RuleHeadContext<'_>, rule: &ast::Rule) {
         if let Ok(heads) = rule.heads() {
             for head in heads {
-                self.collect_head_expr(
-                    &head.atom,
-                    RuleHeadContext {
-                        scope: rule_scope,
-                        span: rule_span,
-                        origin,
-                    },
-                );
+                self.collect_head_expr(&head.atom, ctx);
                 if let Some(location) = head.location.as_ref() {
                     self.walk_variable_uses(
                         location,
-                        VariableUseContext::new(rule_scope, 0, rule_span, 0),
+                        VariableUseContext::new(ctx.scope, 0, ctx.span, 0),
                     );
                 }
             }
