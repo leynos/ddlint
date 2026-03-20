@@ -220,6 +220,37 @@ fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
 }
 
 // ============================================================================
+// Stage boundary tests: prove parse_expression preserves raw nodes
+// ============================================================================
+
+/// Verify that vector literals are preserved as `Expr::VecLit` rather than
+/// lowered to builder-call sequences.
+#[rstest]
+#[case::empty_vec("[]", vec_lit(vec![]))]
+#[case::single_item("[1]", vec_lit(vec![lit_num("1")]))]
+#[case::multiple_items("[1, 2, 3]", vec_lit(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
+#[case::nested_vec("[[1, 2], [3]]", vec_lit(vec![vec_lit(vec![lit_num("1"), lit_num("2")]), vec_lit(vec![lit_num("3")])]))]
+fn preserves_raw_vector_literal_nodes(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+/// Verify that map literals are preserved as `Expr::MapLit` rather than
+/// lowered to builder-call sequences.
+#[rstest]
+#[case::empty_map("{}", map_lit(vec![]))]
+#[case::single_entry("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case::multiple_entries("{a: 1, b: 2}", map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]))]
+#[case::nested_map("{a: {b: 1}}", map_lit(vec![map_entry(var("a"), map_lit(vec![map_entry(var("b"), lit_num("1"))]))]))]
+#[case::nested_key("{{x: 1}: {y: 2}}", map_lit(vec![map_entry(map_lit(vec![map_entry(var("x"), lit_num("1"))]), map_lit(vec![map_entry(var("y"), lit_num("2"))]))]))]
+fn preserves_raw_map_literal_nodes(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
+// ============================================================================
 // Error cases
 // ============================================================================
 

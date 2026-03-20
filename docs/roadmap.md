@@ -207,7 +207,7 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
 - [x] 2.6.2. Decide the aggregation extraction boundary (parse stage versus
   semantic stage), then align parser pipeline guarantees and docs. See
   docs/parser-conformance-register.md item 9.
-- [ ] 2.6.3. Decide collection literal lowering stage ownership (parser,
+- [x] 2.6.3. Decide collection literal lowering stage ownership (parser,
   semantic pass, or later lowering), then align docs and tests. See
   docs/parser-conformance-register.md item 10.
 - [ ] 2.6.4. Align index declaration grammar between scanner implementation and

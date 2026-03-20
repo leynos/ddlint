@@ -41,12 +41,14 @@ use crate::Span;
 /// top-level `for` semantic rules, and runs parser-level validators such as
 /// name-uniqueness checks.
 ///
-/// Rule-body aggregation classification is intentionally not part of this base
-/// parse pipeline. Callers that need `group_by` or legacy `Aggregate`
-/// normalization should use
+/// Rule-body aggregation classification and collection literal lowering are
+/// intentionally not part of this base parse pipeline. Callers that need
+/// `group_by` or legacy `Aggregate` normalization should use
 /// [`Rule::body_terms()`](crate::parser::ast::Rule::body_terms) or
 /// [`Rule::flattened_body_terms()`](crate::parser::ast::Rule::flattened_body_terms)
-/// on a parsed rule.
+/// on a parsed rule. Collection literals (`Expr::VecLit` and `Expr::MapLit`)
+/// remain as raw AST nodes; any future builder-call desugaring belongs to
+/// later lowering stages, not the parser.
 ///
 /// Syntactic error recovery will insert `N_ERROR` nodes when grammar rules
 /// fail once they exist.

@@ -50,10 +50,12 @@ rule-body semantic extraction, not to the base `parse()` pipeline.
   semantic-rule lowering, top-level name-uniqueness validation, and the raw
   rule-body literals needed for later semantic extraction.
 - **Helper-stage semantic transforms:** `group_by` and `Aggregate`
-  classification when rule-body terms are requested, scheduled map/vector
-  literal lowering policy work (see `docs/parser-conformance-register.md` item
-  10 and `docs/roadmap.md` item `2.6.3` for current status), and `&` in rule
-  heads → `ref_new`.
+  classification when rule-body terms are requested, and `&` in rule heads →
+  `ref_new`. Collection literal lowering (`Expr::VecLit` and `Expr::MapLit` to
+  builder sequences) is planned for the later semantic/lowering layer expected
+  by ADR-001, not the helper stage (see section 6.4,
+  `docs/parser-conformance-register.md` item 10, and `docs/roadmap.md` item
+  `2.6.3`).
 
 #### 1.1.1 Expression‑only parsing
 
@@ -403,16 +405,23 @@ ______________________________________________________________________
 - In a **rule body** or expression context, `&expr` remains a standard
   **by‑reference** expression node.
 
-### 6.4 Scheduled literal lowering for vectors/maps
+### 6.4 Collection literal lowering ownership
 
-- Vector and map literals are preserved as `Expr::VecLit` and `Expr::MapLit`
-  in the current parser generation.
-- Lowering forms such as
+- Vector and map literals `[e1, e2, ...]` and `{k: v, ...}` are preserved as
+  raw `Expr::VecLit` and `Expr::MapLit` nodes in the current parser generation.
+- `parse()` and `parse_expression()` do not lower collection literals into
+  builder-call sequences.
+- `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
+  does not synthesize builder-call lowering for collection literals.
+- If collection literal lowering is implemented in the future, it should live
+  in the later semantic/lowering layer expected by ADR-001 rather than in the
+  syntax-layer parser boundary.
+- Builder-sequence forms such as
   `let v = vec_with_capacity(3); v.push(a); v.push(b); v.push(c); v` and
-  `let m = map_empty(); m.insert(k, v); …; m` remain scheduled work rather than
-  current parser behaviour.
-- Current status and planning live in `docs/parser-conformance-register.md`
-  item 10 and `docs/roadmap.md` item `2.6.3`.
+  `let m = map_empty(); m.insert(k, v); …; m` represent a future lowering
+  responsibility, not current parser behaviour.
+- See `docs/parser-conformance-register.md` item 10 and `docs/roadmap.md`
+  item `2.6.3` for decision closure and implementation status.
 
 ### 6.5 Top‑level `for` desugaring
 

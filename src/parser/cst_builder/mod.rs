@@ -53,7 +53,9 @@ impl Parsed {
     ///
     /// This currently contains only desugared top-level `for` rules. Rule-body
     /// aggregation classification is performed later via
-    /// `Rule::body_terms()`/`Rule::flattened_body_terms()`.
+    /// `Rule::body_terms()`/`Rule::flattened_body_terms()`. Collection literal
+    /// lowering is not implemented as a parse-time or current-generation
+    /// semantic helper; it is scheduled work for later lowering layers.
     #[must_use]
     pub fn semantic_rules(&self) -> &[super::ast::SemanticRule] {
         &self.semantic_rules
