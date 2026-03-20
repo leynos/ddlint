@@ -8,7 +8,13 @@ use crate::parser::ast::{
 use crate::{Span, SyntaxKind};
 
 /// Diagnostic for top-level `for` statements whose bodies cannot lower.
-pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT: &str = concat!(
+pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR_BODY: &str = concat!(
+    "top-level `for` body contains unsupported control flow before the head ",
+    "(for example `if`, `match`, `break`, `continue`, `return`, or sequencing)"
+);
+
+/// Diagnostic for top-level `for` statements whose lowered heads are not atom-like.
+pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR_HEAD: &str = concat!(
     "top-level `for` body must end in an atom-like expression ",
     "(for example `Rel(args)`)"
 );
@@ -23,14 +29,14 @@ pub(crate) fn lower_top_level_for(
     let Some(head) = collect_lowered_terms(expression, &mut patterns, &mut body) else {
         errors.push(Simple::custom(
             statement_span.clone(),
-            UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT,
+            UNSUPPORTED_TOP_LEVEL_FOR_BODY,
         ));
         return None;
     };
     if !is_supported_head_expression(&head) {
         errors.push(Simple::custom(
             statement_span.clone(),
-            UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT,
+            UNSUPPORTED_TOP_LEVEL_FOR_HEAD,
         ));
         return None;
     }

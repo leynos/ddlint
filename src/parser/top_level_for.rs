@@ -15,7 +15,7 @@ mod lowering;
 pub(crate) use lowering::lower_top_level_for;
 
 #[cfg(test)]
-pub(crate) use lowering::UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT;
+pub(crate) use lowering::{UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD};
 
 const UNTERMINATED_TOP_LEVEL_FOR: &str =
     "unterminated top-level `for` statement; expected trailing `.`";

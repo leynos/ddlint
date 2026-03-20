@@ -151,10 +151,6 @@ fn rule_config_value_wrong_type_accessors_return_none() {
 }
 
 #[rstest]
-#[expect(
-    clippy::expect_used,
-    reason = "tests should fail with descriptive invalid-id messages"
-)]
 fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) {
     let semantic_model = rule_ctx_fixture.ctx.semantic_model();
     let program_scope = semantic_model.program_scope();
@@ -165,13 +161,11 @@ fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) 
         rule_ctx_fixture.ctx.cst_root().kind(),
         SyntaxKind::N_DATALOG_PROGRAM
     );
-    assert_eq!(
-        semantic_model
-            .scope(program_scope)
-            .expect("program scope id should resolve")
-            .kind(),
-        ScopeKind::Program
-    );
+    assert!(semantic_model.scope(program_scope).is_some());
+    let Some(program_scope_ref) = semantic_model.scope(program_scope) else {
+        panic!("program scope id should resolve");
+    };
+    assert_eq!(program_scope_ref.kind(), ScopeKind::Program);
     assert!(!semantic_model.symbols().is_empty());
 }
 

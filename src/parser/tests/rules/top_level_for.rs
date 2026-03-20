@@ -2,7 +2,9 @@
 
 use super::super::helpers::{parse_err, parse_ok};
 use crate::parser::ast::{Expr, SemanticRuleOrigin};
-use crate::parser::top_level_for::UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT;
+use crate::parser::top_level_for::{
+    UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD,
+};
 use crate::test_util::{ErrorPattern, find_matching_error};
 use rstest::rstest;
 
@@ -117,7 +119,7 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
         1,
         "expected exactly one diagnostic for unsupported top-level `for`, got: {errors:?}"
     );
-    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT);
+    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR_BODY);
     let Some(index) = find_matching_error(errors, &pattern) else {
         panic!("expected top-level for lowering diagnostic, got: {errors:?}");
     };
@@ -136,6 +138,25 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
         index == 0,
         "expected unsupported-body diagnostic to be first, got index {index}"
     );
+    assert!(parsed.semantic_rules().is_empty());
+    assert!(parsed.root().rules().is_empty());
+}
+
+#[test]
+fn unsupported_top_level_for_head_reports_head_specific_diagnostic() {
+    let src = "for (x in Items(x)) x.";
+    let parsed = parse_err(src);
+    let errors = parsed.errors();
+    assert_eq!(
+        errors.len(),
+        1,
+        "expected exactly one diagnostic for unsupported top-level `for`, got: {errors:?}"
+    );
+    let pattern = ErrorPattern::from(UNSUPPORTED_TOP_LEVEL_FOR_HEAD);
+    let Some(index) = find_matching_error(errors, &pattern) else {
+        panic!("expected top-level for head diagnostic, got: {errors:?}");
+    };
+    assert_eq!(index, 0);
     assert!(parsed.semantic_rules().is_empty());
     assert!(parsed.root().rules().is_empty());
 }
