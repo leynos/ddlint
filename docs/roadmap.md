@@ -337,14 +337,17 @@ implementations.
 
 ### 3.3. Semantic analysis infrastructure
 
-- [ ] 3.3.1. Implement symbol-table and scope-resolution passes.
-  See docs/ddlint-design.md §2.3.
-- [ ] 3.3.2. Record declarations for relations, functions, and types.
-  Requires 3.3.1. See docs/ddlint-design.md §2.3.
-- [ ] 3.3.3. Record per-rule scope bindings for head variables and
-  literal-derived variables. Requires 3.3.1. See docs/ddlint-design.md §2.3.
-- [ ] 3.3.4. Record usage sites for variables and relations.
-  Requires 3.3.1. See docs/ddlint-design.md §2.3.
+- [x] 3.3.1. Implement symbol-table and scope-resolution passes.
+  Done: `src/sema/` now builds owned scopes, symbols, and resolved use sites.
+- [x] 3.3.2. Record declarations for relations, functions, and types.
+  Done: program-scope declaration collection records top-level items in source
+  order.
+- [x] 3.3.3. Record per-rule scope bindings for head variables and
+  literal-derived variables. Done: rule heads, assignment patterns, and
+  `for`-pattern bindings now participate in ordered scope visibility.
+- [x] 3.3.4. Record usage sites for variables and relations.
+  Done: relation and variable uses are recorded for AST rules and parse-time
+  semantic rules, ready for phase 4 lint queries.
 
 ## 4. Lint rule implementation
 

@@ -9,8 +9,10 @@ use ddlint::test_util::{ErrorPattern, find_matching_error};
 use rstest::{fixture, rstest};
 
 /// Diagnostic substring shared across tests to avoid duplication.
-const UNSUPPORTED_FOR_BODY_PATTERN: &str =
+const UNSUPPORTED_FOR_HEAD_PATTERN: &str =
     "top-level `for` body must end in an atom-like expression";
+const UNSUPPORTED_FOR_BODY_PATTERN: &str =
+    "top-level `for` body contains unsupported control flow before the head";
 const UNTERMINATED_FOR_PATTERN: &str =
     "unterminated top-level `for` statement; expected trailing `.`";
 
@@ -61,7 +63,7 @@ fn parse_case(#[default("")] src: &str) -> ddlint::Parsed {
     0,
     0,
     0,
-    Some(UNSUPPORTED_FOR_BODY_PATTERN),
+    Some(UNSUPPORTED_FOR_HEAD_PATTERN),
     None,
     None
 )]
@@ -188,7 +190,7 @@ fn unterminated_top_level_for_reports_error() {
 fn unsupported_top_level_for_non_atom_head_reports_diagnostic() {
     assert_invalid_top_level_for(
         "for (x in Items(x)) x + 1.",
-        UNSUPPORTED_FOR_BODY_PATTERN,
+        UNSUPPORTED_FOR_HEAD_PATTERN,
         "unsupported top-level `for` head",
     );
 }

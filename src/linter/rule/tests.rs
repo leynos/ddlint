@@ -4,7 +4,7 @@ use rowan::TextSize;
 use rstest::{fixture, rstest};
 
 use super::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx, RuleLevel};
-use crate::{SyntaxKind, parse};
+use crate::{SyntaxKind, parse, sema::ScopeKind};
 
 struct ExampleRule;
 
@@ -152,12 +152,20 @@ fn rule_config_value_wrong_type_accessors_return_none() {
 
 #[rstest]
 fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) {
+    let semantic_model = rule_ctx_fixture.ctx.semantic_model();
+    let program_scope = semantic_model.program_scope();
+
     assert_eq!(rule_ctx_fixture.ctx.source_text(), rule_ctx_fixture.source);
     assert_eq!(rule_ctx_fixture.ctx.ast_root().relations().len(), 1);
     assert_eq!(
         rule_ctx_fixture.ctx.cst_root().kind(),
         SyntaxKind::N_DATALOG_PROGRAM
     );
+    let Some(program_scope_ref) = semantic_model.scope(program_scope) else {
+        panic!("program scope id should resolve");
+    };
+    assert_eq!(program_scope_ref.kind(), ScopeKind::Program);
+    assert!(!semantic_model.symbols().is_empty());
 }
 
 #[rstest]

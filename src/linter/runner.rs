@@ -17,6 +17,7 @@ use crate::Parsed;
 use crate::linter::rule::{CstRule, LintDiagnostic, RuleConfig, RuleCtx};
 use crate::linter::store::CstRuleStore;
 use crate::parser::ast::Root;
+use crate::sema::SemanticModel;
 
 /// Visitor-based parallel rule runner.
 ///
@@ -53,6 +54,7 @@ pub struct Runner<'a> {
     store: &'a CstRuleStore,
     green: GreenNode,
     source_text: Arc<str>,
+    semantic_model: Arc<SemanticModel>,
     config: RuleConfig,
 }
 
@@ -73,6 +75,7 @@ impl<'a> Runner<'a> {
             store,
             green: parsed.green().clone(),
             source_text: source_text.into(),
+            semantic_model: Arc::new(crate::sema::build(parsed)),
             config,
         }
     }
@@ -91,49 +94,47 @@ impl<'a> Runner<'a> {
             .store
             .all_rules()
             .par_iter()
-            .flat_map_iter(|rule| {
-                run_single_rule(rule.as_ref(), &self.green, &self.source_text, &self.config)
-            })
+            .flat_map_iter(|rule| self.run_single_rule(rule.as_ref()))
             .collect();
 
         sort_diagnostics(&mut diagnostics);
         diagnostics
     }
-}
 
-/// Execute a single rule against the CST rooted at `green`.
-///
-/// Each invocation constructs a thread-local red tree from the shared green
-/// node, enabling safe use from rayon worker threads.
-fn run_single_rule(
-    rule: &dyn CstRule,
-    green: &GreenNode,
-    source_text: &Arc<str>,
-    config: &RuleConfig,
-) -> Vec<LintDiagnostic> {
-    let target_kinds = rule.target_kinds();
-    if target_kinds.is_empty() {
-        return Vec::new();
-    }
+    /// Execute a single rule against the CST rooted at `green`.
+    ///
+    /// Each invocation constructs a thread-local red tree from the shared green
+    /// node, enabling safe use from rayon worker threads.
+    fn run_single_rule(&self, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
+        let target_kinds = rule.target_kinds();
+        if target_kinds.is_empty() {
+            return Vec::new();
+        }
 
-    let root = Root::from_green(green.clone());
-    let ctx = RuleCtx::new(Arc::clone(source_text), root.clone(), config.clone());
-    let mut diagnostics = Vec::new();
+        let root = Root::from_green(self.green.clone());
+        let ctx = RuleCtx::with_semantic_model(
+            Arc::clone(&self.source_text),
+            root.clone(),
+            Arc::clone(&self.semantic_model),
+            self.config.clone(),
+        );
+        let mut diagnostics = Vec::new();
 
-    for element in root.syntax().descendants_with_tokens() {
-        if target_kinds.contains(&element.kind()) {
-            match &element {
-                NodeOrToken::Node(node) => {
-                    rule.check_node(node, &ctx, &mut diagnostics);
-                }
-                NodeOrToken::Token(token) => {
-                    rule.check_token(token, &ctx, &mut diagnostics);
+        for element in root.syntax().descendants_with_tokens() {
+            if target_kinds.contains(&element.kind()) {
+                match &element {
+                    NodeOrToken::Node(node) => {
+                        rule.check_node(node, &ctx, &mut diagnostics);
+                    }
+                    NodeOrToken::Token(token) => {
+                        rule.check_token(token, &ctx, &mut diagnostics);
+                    }
                 }
             }
         }
-    }
 
-    diagnostics
+        diagnostics
+    }
 }
 
 /// Sort diagnostics deterministically by span position then rule name.
