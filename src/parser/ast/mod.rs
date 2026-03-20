@@ -173,7 +173,7 @@ pub use rule::{
     RuleForLoop,
 };
 pub use rule_head::RuleHead;
-pub use semantic_rule::{SemanticRule, SemanticRuleOrigin};
+pub use semantic_rule::{SemanticRule, SemanticRuleOrigin, SemanticRuleSpec};
 pub use string_literal::{StringKind, StringLiteral};
 pub use transformer::Transformer;
 pub use type_def::TypeDef;

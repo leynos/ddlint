@@ -16,6 +16,16 @@ pub enum SemanticRuleOrigin {
     TopLevelFor,
 }
 
+/// Parameters for constructing a desugared semantic rule.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SemanticRuleSpec {
+    pub origin: SemanticRuleOrigin,
+    pub source_span: Span,
+    pub patterns: Vec<Pattern>,
+    pub head: Expr,
+    pub body: Vec<Expr>,
+}
+
 /// Desugared semantic rule.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SemanticRule {
@@ -29,19 +39,13 @@ pub struct SemanticRule {
 impl SemanticRule {
     /// Construct a semantic rule.
     #[must_use]
-    pub fn new(
-        origin: SemanticRuleOrigin,
-        source_span: Span,
-        patterns: Vec<Pattern>,
-        head: Expr,
-        body: Vec<Expr>,
-    ) -> Self {
+    pub fn new(spec: SemanticRuleSpec) -> Self {
         Self {
-            origin,
-            source_span,
-            patterns,
-            head,
-            body,
+            origin: spec.origin,
+            source_span: spec.source_span,
+            patterns: spec.patterns,
+            head: spec.head,
+            body: spec.body,
         }
     }
 

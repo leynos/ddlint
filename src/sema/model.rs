@@ -268,36 +268,22 @@ impl SemanticModel {
     }
 
     /// Return one scope by opaque identifier.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `id` does not refer to a recorded semantic scope.
     #[must_use]
-    pub fn scope(&self, id: ScopeId) -> &Scope {
-        self.scopes.get(id.0).map_or_else(
-            || panic!("invalid semantic scope id: {}", id.0),
-            |scope| scope,
-        )
+    pub fn scope(&self, id: ScopeId) -> Option<&Scope> {
+        self.scopes.get(id.0)
     }
 
     /// Return one symbol by opaque identifier.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `id` does not refer to a recorded semantic symbol.
     #[must_use]
-    pub fn symbol(&self, id: SymbolId) -> &Symbol {
-        self.symbols.get(id.0).map_or_else(
-            || panic!("invalid semantic symbol id: {}", id.0),
-            |symbol| symbol,
-        )
+    pub fn symbol(&self, id: SymbolId) -> Option<&Symbol> {
+        self.symbols.get(id.0)
     }
 
     /// Return the resolved symbol for a use site when resolution succeeded.
     #[must_use]
     pub fn resolved_symbol(&self, use_site: &UseSite) -> Option<&Symbol> {
         match use_site.resolution() {
-            Resolution::Resolved(symbol_id) => Some(self.symbol(symbol_id)),
+            Resolution::Resolved(symbol_id) => self.symbol(symbol_id),
             Resolution::Unresolved | Resolution::Ignored => None,
         }
     }

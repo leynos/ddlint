@@ -2,7 +2,9 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{BinaryOp, Expr, Pattern, SemanticRule, SemanticRuleOrigin};
+use crate::parser::ast::{
+    BinaryOp, Expr, Pattern, SemanticRule, SemanticRuleOrigin, SemanticRuleSpec,
+};
 use crate::{Span, SyntaxKind};
 
 /// Diagnostic for top-level `for` statements whose bodies cannot lower.
@@ -33,13 +35,13 @@ pub(crate) fn lower_top_level_for(
         return None;
     }
 
-    Some(SemanticRule::new(
-        SemanticRuleOrigin::TopLevelFor,
-        statement_span,
+    Some(SemanticRule::new(SemanticRuleSpec {
+        origin: SemanticRuleOrigin::TopLevelFor,
+        source_span: statement_span,
         patterns,
         head,
         body,
-    ))
+    }))
 }
 
 fn collect_lowered_terms(
