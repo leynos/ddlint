@@ -64,10 +64,31 @@ fn relation_invalid(#[case] prog: RelationProgram) {
 }
 
 #[rstest]
-#[case(IndexProgram::IndexSingleColumn, IndexSpec::new("Idx_User_username", "User").column(USERNAME))]
-#[case(IndexProgram::IndexMultiColumn, IndexSpec::new("Idx_Session_user_time", "UserSession").column(USER_ID).column("start_time"))]
-#[case(IndexProgram::IndexNestedFunction, IndexSpec::new("Idx_lower_username", "User").column("lower(username)"))]
-#[case(IndexProgram::IndexWhitespaceVariations, IndexSpec::new("Idx_User_ws", "User").column(USERNAME))]
+#[case(
+    IndexProgram::IndexSingleColumn,
+    IndexSpec::new("Idx_User_username")
+        .field(USERNAME, "string")
+        .on_target("User[username]")
+)]
+#[case(
+    IndexProgram::IndexMultiColumn,
+    IndexSpec::new("Idx_Session_user_time")
+        .field(USER_ID, "u32")
+        .field("start_time", "u64")
+        .on_target("UserSession[user_id,start_time]")
+)]
+#[case(
+    IndexProgram::IndexBracketTarget,
+    IndexSpec::new("Idx_lower_username")
+        .field(USERNAME, "string")
+        .on_target("User[lower(username)]")
+)]
+#[case(
+    IndexProgram::IndexWhitespaceVariations,
+    IndexSpec::new("Idx_User_ws")
+        .field(USERNAME, "string")
+        .on_target("User[username]")
+)]
 fn index_parsing(#[case] prog: IndexProgram, #[case] spec: IndexSpec) {
     let parsed = parse_ok(prog.source());
     assert_eq!(parsed.root().indexes().len(), 1, "expected exactly one index");
@@ -77,7 +98,7 @@ fn index_parsing(#[case] prog: IndexProgram, #[case] spec: IndexSpec) {
 
 #[rstest]
 #[case(IndexProgram::IndexInvalidMissingOn)]
-#[case(IndexProgram::IndexUnbalancedParentheses)]
+#[case(IndexProgram::IndexLegacyShorthand)]
 fn index_errors(#[case] prog: IndexProgram) {
     let parsed = parse_err(prog.source());
     assert!(parsed.root().indexes().is_empty());

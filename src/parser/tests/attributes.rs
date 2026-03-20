@@ -24,7 +24,7 @@ fn attribute_on_permitted_item_no_error(#[case] src: &str) {
 }
 
 #[rstest]
-#[case("#[cold]\nindex I on R(x)", "attribute")]
+#[case("#[cold]\nindex I(x: u32) on R[x]", "attribute")]
 #[case("#[cold]\napply T(R) -> (S)", "attribute")]
 #[case("#[cold]\nimport foo", "attribute")]
 #[case("#[cold]\nextern transformer t(x: A): B", "attribute")]

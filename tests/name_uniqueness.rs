@@ -14,8 +14,8 @@ fn mixed_program_no_duplicates() {
         "typedef B = string\n",
         "input relation R(x: u32)\n",
         "output relation S(y: string)\n",
-        "index IR on R(x)\n",
-        "index IS on S(y)\n",
+        "index IR(x: u32) on R[x]\n",
+        "index IS(y: string) on S[y]\n",
         "extern transformer t1(a: A): B\n",
         "import foo\n",
         "import bar\n",
@@ -33,7 +33,11 @@ fn mixed_program_no_duplicates() {
     "duplicate",
     "R"
 )]
-#[case("index I on R(x)\nindex I on S(y)", "duplicate", "I")]
+#[case(
+    "index I(x: u32) on R[x]\nindex I(y: string) on S[y]",
+    "duplicate",
+    "I"
+)]
 #[case(
     "extern transformer t(a: A): B\nextern transformer t(c: C): D",
     "duplicate",
@@ -62,8 +66,8 @@ fn multiple_duplicate_categories_all_reported() {
     let src = concat!(
         "typedef A = u32\n",
         "typedef A = string\n",
-        "index I on R(x)\n",
-        "index I on S(y)\n",
+        "index I(x: u32) on R[x]\n",
+        "index I(y: string) on S[y]\n",
         "import foo\n",
         "import foo\n",
     );

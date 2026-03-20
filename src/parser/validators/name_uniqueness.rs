@@ -169,7 +169,7 @@ mod tests {
             "typedef A = u32\n",
             "typedef B = string\n",
             "input relation R(x: u32)\n",
-            "index I on R(x)\n",
+            "index I(x: u32) on R[x]\n",
         );
         let parsed = parse(src);
         let errors = super::validate_name_uniqueness(parsed.root());
@@ -182,7 +182,10 @@ mod tests {
         "input relation R(x: u32)\noutput relation R(y: string)\n",
         "duplicate relation name 'R'"
     )]
-    #[case("index I on R(x)\nindex I on S(y)\n", "duplicate index name 'I'")]
+    #[case(
+        "index I(x: u32) on R[x]\nindex I(y: string) on S[y]\n",
+        "duplicate index name 'I'"
+    )]
     #[case(
         "extern transformer t(x: A): B\nextern transformer t(y: C): D\n",
         "duplicate transformer name 't'"

@@ -127,11 +127,15 @@ This register tracks parser behaviour against the syntax specification.
 ### 11. Index declaration grammar
 
 - Topic: index grammar shape.
-- Current behaviour (code): parser expects `index Name on Relation(columns)`
-  form (`src/parser/span_scanners/indexes.rs`).
-- Spec/target behaviour: section 5.6 currently describes typed index field list
-  and `on Atom` form.
-- Decision status: `scheduled`.
+- Current behaviour (code): parser accepts
+  `index Name(field: Type, ...) on Atom`, exposes typed fields via
+  `Index::fields()`, and exposes the normalized `on` target via
+  `Index::on_target()` (`src/parser/span_scanners/indexes.rs`,
+  `src/parser/ast/index.rs`).
+- Spec/target behaviour: matches section 5.6. The legacy shorthand
+  `index Name on Relation(columns)` is rejected with a deterministic diagnostic
+  requiring the typed field list before `on`.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.4`.
 
 ### 12. Transformer declaration grammar

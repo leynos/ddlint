@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -142,14 +142,22 @@ evidence. Do not silently narrow the grammar.
   fixtures.
 - [x] (2026-03-20) Drafted this ExecPlan in
   `docs/execplans/2-6-4-align-index-declaration-grammar.md`.
-- [ ] Add failing unit tests for the canonical index grammar and the rejected
-  legacy shorthand.
-- [ ] Implement scanner and AST-wrapper changes for the new grammar.
-- [ ] Update behavioural tests and validation fixtures to the canonical form.
-- [ ] Update active documentation and conformance records.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`,
+- [x] (2026-03-20) Converted parser unit fixtures and specs to the canonical
+  index grammar and added legacy-shorthand rejection coverage.
+- [x] (2026-03-20) Implemented scanner changes in
+  `src/parser/span_scanners/indexes.rs` and reshaped the `Index` wrapper in
+  `src/parser/ast/index.rs` around `fields()` and `on_target()`.
+- [x] (2026-03-20) Updated behavioural tests and validation fixtures in
+  `tests/index_declaration_grammar.rs`, `tests/name_uniqueness.rs`,
+  `src/parser/tests/attributes.rs`,
+  `src/parser/span_scanners/tests/attribute_tests.rs`,
+  `src/parser/tests/cst_integration.rs`, and related helpers.
+- [x] (2026-03-20) Updated active documentation and conformance records in
+  `docs/parser-conformance-register.md`, `docs/parser-implementation-notes.md`,
+  `docs/ddlint-design.md`, and `docs/roadmap.md`.
+- [x] (2026-03-20) Ran `make fmt`, `make markdownlint`, `make nixie`,
   `make check-fmt`, `make lint`, and `make test`.
-- [ ] Mark roadmap item `2.6.4` done after all checks pass.
+- [x] (2026-03-20) Marked roadmap item `2.6.4` done after all checks passed.
 
 ## Surprises & Discoveries
 
@@ -168,6 +176,11 @@ evidence. Do not silently narrow the grammar.
 
 - Archive analysis already identified this as an open contract decision. This
   is not a newly discovered requirement; it is an overdue alignment task.
+
+- `Index::on_target()` is easiest to keep deterministic if it returns
+  normalized target text with trivia removed rather than preserving formatting
+  inside the target. This keeps whitespace-variation tests stable without
+  inventing a dedicated typed atom wrapper in this milestone.
 
 ## Decision Log
 
@@ -191,16 +204,23 @@ evidence. Do not silently narrow the grammar.
   before then, clear alignment is more valuable than preserving helpers that
   encode the wrong syntax.
 
+- Decision: expose the `on` target as normalized text through
+  `Index::on_target()` instead of adding a new typed atom wrapper. Rationale:
+  this roadmap item is about scanner and syntax-surface alignment; returning a
+  normalized CST-derived string keeps the contract explicit and bounded without
+  expanding into a broader semantic model change.
+
 ## Context and orientation
 
 The relevant code and documentation live in a small set of files:
 
-- `src/parser/span_scanners/indexes.rs` currently recognises
-  `index Name on Relation(columns)` and records index spans.
+- `src/parser/span_scanners/indexes.rs` now recognises the canonical
+  `index Name(field: Type, ...) on Atom` form, plus a targeted legacy-shorthand
+  rejection diagnostic.
 - `src/parser/lexer_helpers.rs` already exposes reusable helpers such as
   `ident()`, `inline_ws()`, and `atom()`.
-- `src/parser/ast/index.rs` provides the current index AST wrapper and is the
-  most likely place where the public-facing shape must change.
+- `src/parser/ast/index.rs` now exposes the grammar-aligned `Index` wrapper
+  surface.
 - `src/parser/tests/indexes.rs`, `src/parser/tests/programs.rs`,
   `src/parser/tests/specs.rs`, and `src/parser/tests/parser.rs` define the
   current parser-facing test contract.
@@ -330,11 +350,54 @@ Observable success criteria:
 
 ## Outcomes & Retrospective
 
-This section should be completed when implementation finishes. It must record:
+The final accepted grammar is the spec-form
+`index Name(field: Type, ...) on Atom`. The legacy shorthand
+`index Name on Relation(columns)` is now rejected with the deterministic custom
+diagnostic
+`index declarations require a typed field list '(name: Type, ...)' before 'on'`.
 
-- the final accepted grammar,
-- whether legacy shorthand was rejected or retained,
-- which `Index` accessors now define the observable parser contract,
-- the exact test files added or updated,
-- the final gate results, and
-- any follow-up work intentionally deferred to later roadmap items.
+The observable parser contract for indexes is now:
+
+- `Index::name()`
+- `Index::fields()`
+- `Index::on_target()`
+
+`Index::on_target()` returns normalized target text with trivia removed. This
+was sufficient for this milestone and avoided introducing a new typed atom
+wrapper before ADR-001 planning.
+
+Tests added or updated:
+
+- `src/parser/tests/indexes.rs`
+- `src/parser/tests/programs.rs`
+- `src/parser/tests/specs.rs`
+- `src/parser/tests/parser.rs`
+- `src/parser/tests/attributes.rs`
+- `src/parser/tests/cst_integration.rs`
+- `src/parser/cst_builder/tree.rs`
+- `src/parser/span_scanners/tests/mod.rs`
+- `src/parser/span_scanners/tests/attribute_tests.rs`
+- `src/parser/validators/name_uniqueness.rs`
+- `tests/index_declaration_grammar.rs`
+- `tests/name_uniqueness.rs`
+
+Documentation updated:
+
+- `docs/parser-conformance-register.md`
+- `docs/parser-implementation-notes.md`
+- `docs/ddlint-design.md`
+- `docs/roadmap.md`
+
+Validation completed successfully:
+
+- `set -o pipefail; make fmt 2>&1 | tee /tmp/2-6-4-final-make-fmt.log`
+- `set -o pipefail; make markdownlint 2>&1 | tee /tmp/2-6-4-final-make-markdownlint.log`
+- `set -o pipefail; make nixie 2>&1 | tee /tmp/2-6-4-final-make-nixie.log`
+- `set -o pipefail; make check-fmt 2>&1 | tee /tmp/2-6-4-final-make-check-fmt.log`
+- `set -o pipefail; make lint 2>&1 | tee /tmp/2-6-4-final-make-lint.log`
+- `set -o pipefail; make test 2>&1 | tee /tmp/2-6-4-final-make-test.log`
+
+Deferred follow-up: this milestone did not introduce a richer typed index
+target wrapper or expand delimiter-recovery coverage for every malformed target
+shape. Those remain reasonable future refinements if a later parser surface
+needs them.

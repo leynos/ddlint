@@ -228,7 +228,12 @@ nodes, and any future builder-call desugaring should live in the semantic/
 lowering layer expected by ADR-001 rather than the syntax-layer parser.
 Downstream lint rules therefore must not assume that aggregation misuse or
 collection literal builder sequences already appear in `Parsed::errors()` or
-the parse-time AST.
+the parse-time AST. Index declarations follow the same principle of freezing
+the syntax-layer contract before crate extraction: the parser now accepts only
+the canonical spec-form `index Name(field: Type, ...) on Atom`, rejects the
+older shorthand `index Name on Relation(columns)` with a targeted diagnostic,
+and exposes the typed field list plus normalized `on` target directly from the
+CST-backed `Index` wrapper.
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 

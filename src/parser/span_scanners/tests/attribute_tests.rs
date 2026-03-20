@@ -28,7 +28,7 @@ fn collect_attribute_spans_valid_on_permitted_item(
 #[case("#[cold]\nimport foo\n")]
 #[case("#[cold]\nextern transformer t(x: A): B\n")]
 #[case("#[cold]\nextern typedef T = u32\n")]
-#[case("#[cold]\nindex I on R(x)\n")]
+#[case("#[cold]\nindex I(x: u32) on R[x]\n")]
 fn collect_attribute_spans_rejected_on_forbidden_item(#[case] src: &str) {
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);

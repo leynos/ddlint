@@ -185,7 +185,8 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
   See docs/differential-datalog-parser-syntax-spec-updated.md §8 and
   docs/differential-datalog-parser-syntax-spec-updated.md §9.
   - [x] 2.5.6.1. `#[cold]\ntypedef T = u32` parses without errors, while
-    `#[cold]\nindex I on R(x)` yields exactly one attribute-placement error.
+    `#[cold]\nindex I(x: u32) on R[x]` yields exactly one attribute-placement
+    error.
     See docs/differential-datalog-parser-syntax-spec-updated.md §9.
   - [x] 2.5.6.2. Duplicate top-level typedef names yield exactly one duplicate
     error that includes the duplicated identifier.
@@ -210,7 +211,7 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
 - [x] 2.6.3. Decide collection literal lowering stage ownership (parser,
   semantic pass, or later lowering), then align docs and tests. See
   docs/parser-conformance-register.md item 10.
-- [ ] 2.6.4. Align index declaration grammar between scanner implementation and
+- [x] 2.6.4. Align index declaration grammar between scanner implementation and
   syntax specification. See docs/parser-conformance-register.md item 11.
 - [ ] 2.6.5. Align transformer declaration grammar, including output signature
   requirements. See docs/parser-conformance-register.md item 12.
