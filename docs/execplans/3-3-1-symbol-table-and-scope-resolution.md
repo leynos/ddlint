@@ -174,8 +174,10 @@ into small files, for example:
 - `src/sema/resolve.rs`: name-resolution and binding-collection helpers;
 - `src/sema/traverse.rs`: rule and body-term traversal; and
 - `src/sema/variables.rs`: expression walking for variable-use collection;
-- `src/sema/tests/*.rs`: unit coverage split by declaration collection,
-  rule-local binding order, and resolution behaviour.
+- `src/sema/tests.rs`: unit coverage for declaration collection, rule-local
+  binding order, and resolution behaviour. If the file later needs splitting,
+  use focused siblings for those three targets and update this plan to the
+  shipped paths.
 
 The model should use stable numeric identifiers rather than syntax-node handles:
 

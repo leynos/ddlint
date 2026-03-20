@@ -69,60 +69,54 @@ impl SemanticModelBuilder {
 
     pub(crate) fn collect_program_declarations(&mut self, root: &ast::Root) {
         let mut order = 0usize;
+        let mut declare_from_child =
+            |name: Option<String>,
+             kind: DeclarationKind,
+             origin: SymbolOrigin,
+             child: &SyntaxNode<crate::DdlogLanguage>| {
+                if let Some(name) = name {
+                    self.declare_symbol(SymbolSpec {
+                        name,
+                        kind,
+                        origin,
+                        scope: self.program_scope,
+                        span: text_range_to_span(child.text_range()),
+                        source_order: order,
+                        visible_from_rule_order: 0,
+                    });
+                    order += 1;
+                }
+            };
 
         for child in root.syntax().children() {
             match child.kind() {
-                SyntaxKind::N_RELATION_DECL => {
-                    let relation = ast::Relation {
+                SyntaxKind::N_RELATION_DECL => declare_from_child(
+                    ast::Relation {
                         syntax: child.clone(),
-                    };
-                    if let Some(name) = relation.name() {
-                        self.declare_symbol(SymbolSpec {
-                            name,
-                            kind: DeclarationKind::Relation,
-                            origin: SymbolOrigin::RelationDeclaration,
-                            scope: self.program_scope,
-                            span: text_range_to_span(child.text_range()),
-                            source_order: order,
-                            visible_from_rule_order: 0,
-                        });
-                        order += 1;
                     }
-                }
-                SyntaxKind::N_FUNCTION => {
-                    let function = ast::Function {
+                    .name(),
+                    DeclarationKind::Relation,
+                    SymbolOrigin::RelationDeclaration,
+                    &child,
+                ),
+                SyntaxKind::N_FUNCTION => declare_from_child(
+                    ast::Function {
                         syntax: child.clone(),
-                    };
-                    if let Some(name) = function.name() {
-                        self.declare_symbol(SymbolSpec {
-                            name,
-                            kind: DeclarationKind::Function,
-                            origin: SymbolOrigin::FunctionDeclaration,
-                            scope: self.program_scope,
-                            span: text_range_to_span(child.text_range()),
-                            source_order: order,
-                            visible_from_rule_order: 0,
-                        });
-                        order += 1;
                     }
-                }
-                SyntaxKind::N_TYPE_DEF => {
-                    let type_def = ast::TypeDef {
+                    .name(),
+                    DeclarationKind::Function,
+                    SymbolOrigin::FunctionDeclaration,
+                    &child,
+                ),
+                SyntaxKind::N_TYPE_DEF => declare_from_child(
+                    ast::TypeDef {
                         syntax: child.clone(),
-                    };
-                    if let Some(name) = type_def.name() {
-                        self.declare_symbol(SymbolSpec {
-                            name,
-                            kind: DeclarationKind::Type,
-                            origin: SymbolOrigin::TypeDeclaration,
-                            scope: self.program_scope,
-                            span: text_range_to_span(child.text_range()),
-                            source_order: order,
-                            visible_from_rule_order: 0,
-                        });
-                        order += 1;
                     }
-                }
+                    .name(),
+                    DeclarationKind::Type,
+                    SymbolOrigin::TypeDeclaration,
+                    &child,
+                ),
                 _ => {}
             }
         }

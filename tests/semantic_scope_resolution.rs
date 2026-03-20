@@ -103,6 +103,10 @@ impl CstRule for SemanticAwareRule {
         ctx: &ddlint::linter::RuleCtx,
         diagnostics: &mut Vec<LintDiagnostic>,
     ) {
+        // This intentionally scans `SemanticModel::uses()` for every
+        // `UseKind::Variable` with `Resolution::Unresolved` to prove that
+        // `RuleCtx::semantic_model()` exposes the full shared model, not just
+        // node-local facts. Production rules should usually scope more tightly.
         let unresolved_variable_uses = ctx
             .semantic_model()
             .uses()
