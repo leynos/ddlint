@@ -1,17 +1,20 @@
 //! Internal semantic-model builder state and high-level collection passes.
 
+use std::collections::HashMap;
+
 use rowan::SyntaxNode;
 
 use crate::Span;
 use crate::SyntaxKind;
 use crate::parser::ast;
 use crate::parser::ast::SemanticRule;
+use crate::parser::ast::rule::text_range_to_span;
 use crate::sema::model::{
     DeclarationKind, Scope, ScopeId, ScopeKind, ScopeOrigin, SemanticModel, Symbol, SymbolId,
     SymbolOrigin,
 };
 
-use super::resolve::text_range_to_span;
+use super::resolve::collect_pattern_binding_names;
 
 pub(crate) struct SymbolSpec {
     pub(crate) name: String,
@@ -33,6 +36,7 @@ pub(crate) struct ScopeSpec {
 pub(crate) struct SemanticModelBuilder {
     pub(crate) scopes: Vec<Scope>,
     pub(crate) symbols: Vec<Symbol>,
+    pub(crate) symbols_by_scope_and_name: HashMap<ScopeId, HashMap<String, Vec<usize>>>,
     pub(crate) uses: Vec<crate::sema::UseSite>,
     pub(crate) program_scope: ScopeId,
 }
@@ -48,6 +52,7 @@ impl SemanticModelBuilder {
                 span: text_range_to_span(root.text_range()),
             }],
             symbols: Vec::new(),
+            symbols_by_scope_and_name: HashMap::new(),
             uses: Vec::new(),
             program_scope,
         }
@@ -190,6 +195,20 @@ impl SemanticModelBuilder {
                 },
             );
 
+            for pattern in rule.patterns() {
+                for binding_name in collect_pattern_binding_names(pattern) {
+                    self.declare_symbol(SymbolSpec {
+                        name: binding_name,
+                        kind: DeclarationKind::RuleBinding,
+                        origin: SymbolOrigin::ForPattern,
+                        scope: rule_scope,
+                        span: rule_span.clone(),
+                        source_order: self.symbols.len(),
+                        visible_from_rule_order: 0,
+                    });
+                }
+            }
+
             for (literal_index, expr) in rule.body().iter().enumerate() {
                 self.collect_expression_term(
                     expr,
@@ -217,6 +236,12 @@ impl SemanticModelBuilder {
 
     pub(crate) fn declare_symbol(&mut self, spec: SymbolSpec) -> SymbolId {
         let symbol_id = SymbolId(self.symbols.len());
+        self.symbols_by_scope_and_name
+            .entry(spec.scope)
+            .or_default()
+            .entry(spec.name.clone())
+            .or_default()
+            .push(symbol_id.0);
         self.symbols.push(Symbol {
             name: spec.name,
             kind: spec.kind,

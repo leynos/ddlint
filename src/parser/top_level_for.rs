@@ -230,7 +230,8 @@ fn lower_top_level_for(
     errors: &mut Vec<Simple<SyntaxKind>>,
 ) -> Option<SemanticRule> {
     let mut body = Vec::new();
-    let Some(head) = collect_lowered_terms(expression, &mut body) else {
+    let mut patterns = Vec::new();
+    let Some(head) = collect_lowered_terms(expression, &mut patterns, &mut body) else {
         errors.push(Simple::custom(
             statement_span.clone(),
             UNSUPPORTED_TOP_LEVEL_FOR_STATEMENT,
@@ -248,24 +249,30 @@ fn lower_top_level_for(
     Some(SemanticRule::new(
         SemanticRuleOrigin::TopLevelFor,
         statement_span,
+        patterns,
         head,
         body,
     ))
 }
 
-fn collect_lowered_terms(expression: Expr, body_terms: &mut Vec<Expr>) -> Option<Expr> {
+fn collect_lowered_terms(
+    expression: Expr,
+    patterns: &mut Vec<crate::parser::ast::Pattern>,
+    body_terms: &mut Vec<Expr>,
+) -> Option<Expr> {
     match expression {
         Expr::ForLoop {
+            pattern,
             iterable,
             guard,
             body,
-            ..
         } => {
+            patterns.push(pattern);
             body_terms.push(*iterable);
             if let Some(guard_expr) = guard {
                 body_terms.push(*guard_expr);
             }
-            collect_lowered_terms(*body, body_terms)
+            collect_lowered_terms(*body, patterns, body_terms)
         }
         Expr::IfElse { .. }
         | Expr::Match { .. }

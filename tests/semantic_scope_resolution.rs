@@ -3,6 +3,7 @@
 use ddlint::linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, Runner};
 use ddlint::sema::{self, DeclarationKind, Resolution, UseKind};
 use ddlint::{SyntaxKind, parse};
+use rstest::{fixture, rstest};
 
 fn parse_ok(source: &str) -> ddlint::Parsed {
     let parsed = parse(source);
@@ -26,10 +27,18 @@ fn uses_named<'a>(
         .collect()
 }
 
-#[test]
-fn semantic_model_records_declarations_and_resolved_uses_end_to_end() {
-    let parsed = parse_ok("input relation Source(x: u32)\nOutput(x) :- Source(x).");
-    let model = sema::build(&parsed);
+#[fixture]
+fn semantic_model(#[default("")] source: &str) -> ddlint::sema::SemanticModel {
+    let parsed = parse_ok(source);
+    sema::build(&parsed)
+}
+
+#[rstest]
+fn semantic_model_records_declarations_and_resolved_uses_end_to_end(
+    #[with("input relation Source(x: u32)\nOutput(x) :- Source(x).")]
+    semantic_model: ddlint::sema::SemanticModel,
+) {
+    let model = semantic_model;
 
     let source_declarations: Vec<_> = model
         .symbols()
@@ -53,10 +62,11 @@ fn semantic_model_records_declarations_and_resolved_uses_end_to_end() {
     );
 }
 
-#[test]
-fn semantic_model_keeps_unresolved_names_without_crashing() {
-    let parsed = parse_ok("Output(x) :- Source(x), Missing(y).");
-    let model = sema::build(&parsed);
+#[rstest]
+fn semantic_model_keeps_unresolved_names_without_crashing(
+    #[with("Output(x) :- Source(x), Missing(y).")] semantic_model: ddlint::sema::SemanticModel,
+) {
+    let model = semantic_model;
     let missing_y = uses_named(&model, "y", UseKind::Variable);
 
     assert_eq!(missing_y.len(), 1);

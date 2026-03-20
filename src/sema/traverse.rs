@@ -132,11 +132,11 @@ impl SemanticModelBuilder {
             });
         }
 
-        for nested_term in &for_loop.body_terms {
+        for (term_offset, nested_term) in for_loop.body_terms.iter().enumerate() {
             self.collect_rule_term(
                 VariableUseContext::new(
                     child_scope,
-                    context.literal_index(),
+                    context.literal_index() + term_offset,
                     context.span(),
                     context.rule_order_limit(),
                 ),

@@ -732,7 +732,7 @@ their introducing literal. `for`-loop bindings are visible only inside the loop
 body scope and do not escape to later top-level literals.
 
 This pass consumes both AST-backed rules and parse-time `SemanticRule` values
-from top-level `for` desugaring so the semantic view matches the parser's
+from top-level `for` desugaring, so the semantic view matches the parser's
 existing rule surface. Provenance is retained through source spans on
 declarations and on the enclosing literal or rule site for rule-local facts.
 

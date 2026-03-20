@@ -7,7 +7,7 @@
 
 use crate::Span;
 
-use super::Expr;
+use super::{Expr, Pattern};
 
 /// Origin of a semantic rule emitted by the parser.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,6 +21,7 @@ pub enum SemanticRuleOrigin {
 pub struct SemanticRule {
     origin: SemanticRuleOrigin,
     source_span: Span,
+    patterns: Vec<Pattern>,
     head: Expr,
     body: Vec<Expr>,
 }
@@ -28,10 +29,17 @@ pub struct SemanticRule {
 impl SemanticRule {
     /// Construct a semantic rule.
     #[must_use]
-    pub fn new(origin: SemanticRuleOrigin, source_span: Span, head: Expr, body: Vec<Expr>) -> Self {
+    pub fn new(
+        origin: SemanticRuleOrigin,
+        source_span: Span,
+        patterns: Vec<Pattern>,
+        head: Expr,
+        body: Vec<Expr>,
+    ) -> Self {
         Self {
             origin,
             source_span,
+            patterns,
             head,
             body,
         }
@@ -47,6 +55,12 @@ impl SemanticRule {
     #[must_use]
     pub fn source_span(&self) -> Span {
         self.source_span.clone()
+    }
+
+    /// Lowered `for`-loop patterns that bind names for this rule.
+    #[must_use]
+    pub fn patterns(&self) -> &[Pattern] {
+        &self.patterns
     }
 
     /// Rule head expression.

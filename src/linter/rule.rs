@@ -143,9 +143,10 @@ impl RuleCtx {
     /// Create a new rule context from source text, AST root, and configuration.
     ///
     /// This convenience constructor builds semantic analysis from the AST root
-    /// alone. Callers that have a `Parsed` value should prefer
-    /// [`Self::from_parsed`], and callers that already computed semantic
-    /// analysis should prefer [`Self::with_semantic_model`].
+    /// alone, so callers should avoid it in hot paths. Callers that have a
+    /// `Parsed` value should prefer [`Self::from_parsed`], and callers that
+    /// already computed semantic analysis should prefer
+    /// [`Self::with_semantic_model`].
     #[must_use]
     pub fn new(
         source_text: impl Into<Arc<str>>,

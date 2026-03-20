@@ -1,6 +1,5 @@
 //! Resolution helpers for semantic symbol and scope analysis.
 
-use crate::Span;
 use crate::parser::ast::{Expr, Pattern};
 use crate::sema::model::{DeclarationKind, Resolution, ScopeId, ScopeKind, Symbol, UseKind};
 
@@ -13,29 +12,35 @@ impl SemanticModelBuilder {
         use_kind: UseKind,
         name: &str,
     ) -> Resolution {
+        if name == "_" {
+            return Resolution::Ignored;
+        }
+
         let mut current_scope = Some(context.current_scope());
 
         while let Some(scope_id) = current_scope {
-            for (symbol_index, symbol) in self.symbols.iter().enumerate().rev() {
-                if symbol.scope() != scope_id || symbol.name() != name {
-                    continue;
+            if let Some(symbol_indices) = self
+                .symbols_by_scope_and_name
+                .get(&scope_id)
+                .and_then(|symbols_by_name| symbols_by_name.get(name))
+            {
+                for symbol_index in symbol_indices.iter().rev().copied() {
+                    let Some(symbol) = self.symbols.get(symbol_index) else {
+                        continue;
+                    };
+                    if !is_compatible(use_kind, symbol.kind()) {
+                        continue;
+                    }
+                    if !self.symbol_visible(scope_id, symbol, context.rule_order_limit()) {
+                        continue;
+                    }
+                    return Resolution::Resolved(crate::sema::SymbolId(symbol_index));
                 }
-                if !is_compatible(use_kind, symbol.kind()) {
-                    continue;
-                }
-                if !self.symbol_visible(scope_id, symbol, context.rule_order_limit()) {
-                    continue;
-                }
-                return Resolution::Resolved(crate::sema::SymbolId(symbol_index));
             }
             current_scope = self.parent_scope(scope_id);
         }
 
-        if name == "_" {
-            Resolution::Ignored
-        } else {
-            Resolution::Unresolved
-        }
+        Resolution::Unresolved
     }
 
     fn symbol_visible(&self, scope_id: ScopeId, symbol: &Symbol, rule_order_limit: usize) -> bool {
@@ -83,12 +88,6 @@ pub(super) fn collect_pattern_binding_names(pattern: &Pattern) -> Vec<String> {
     names
 }
 
-pub(super) fn text_range_to_span(range: rowan::TextRange) -> Span {
-    let start: usize = range.start().into();
-    let end: usize = range.end().into();
-    start..end
-}
-
 fn is_compatible(use_kind: UseKind, declaration_kind: DeclarationKind) -> bool {
     matches!(
         (use_kind, declaration_kind),
@@ -100,6 +99,35 @@ fn is_compatible(use_kind: UseKind, declaration_kind: DeclarationKind) -> bool {
 fn collect_head_bindings(expr: &Expr, names: &mut Vec<String>) {
     match expr {
         Expr::Variable(name) => push_binding_name(names, name),
+        Expr::Apply { .. } | Expr::Call { .. } | Expr::MethodCall { .. } => {
+            collect_call_like_bindings(expr, names);
+        }
+        Expr::FieldAccess { .. }
+        | Expr::TupleIndex { .. }
+        | Expr::Group(_)
+        | Expr::AtomDiff { .. }
+        | Expr::AtomDelay { .. }
+        | Expr::Unary { .. }
+        | Expr::Return { .. }
+        | Expr::BitSlice { .. }
+        | Expr::Tuple(_)
+        | Expr::VecLit(_)
+        | Expr::Struct { .. }
+        | Expr::MapLit(_) => collect_container_like_bindings(expr, names),
+        Expr::IfElse { .. } | Expr::Binary { .. } => {
+            collect_control_flow_like_bindings(expr, names);
+        }
+        Expr::Literal(_)
+        | Expr::Closure { .. }
+        | Expr::ForLoop { .. }
+        | Expr::Match { .. }
+        | Expr::Break
+        | Expr::Continue => {}
+    }
+}
+
+fn collect_call_like_bindings(expr: &Expr, names: &mut Vec<String>) {
+    match expr {
         Expr::Apply { args, .. } | Expr::Call { args, .. } => {
             collect_head_bindings_many(args, names);
         }
@@ -107,6 +135,12 @@ fn collect_head_bindings(expr: &Expr, names: &mut Vec<String>) {
             collect_head_bindings(recv, names);
             collect_head_bindings_many(args, names);
         }
+        _ => unreachable!("call-like helper must receive a call-like expression"),
+    }
+}
+
+fn collect_container_like_bindings(expr: &Expr, names: &mut Vec<String>) {
+    match expr {
         Expr::FieldAccess { expr, .. }
         | Expr::TupleIndex { expr, .. }
         | Expr::Group(expr)
@@ -118,39 +152,36 @@ fn collect_head_bindings(expr: &Expr, names: &mut Vec<String>) {
             collect_head_bindings_many([expr.as_ref(), hi.as_ref(), lo.as_ref()], names);
         }
         Expr::Struct { fields, .. } => {
-            collect_head_bindings_many(fields.iter().map(|(_, v)| v), names);
+            collect_head_bindings_many(fields.iter().map(|(_, value)| value), names);
         }
-        Expr::Tuple(items) | Expr::VecLit(items) => {
-            collect_head_bindings_many(items, names);
-        }
-        Expr::IfElse {
-            condition,
-            then_branch,
-            else_branch,
-        } => {
-            collect_head_bindings_many(
-                [
-                    condition.as_ref(),
-                    then_branch.as_ref(),
-                    else_branch.as_ref(),
-                ],
-                names,
-            );
-        }
-        Expr::Binary { lhs, rhs, .. } => {
-            collect_head_bindings_many([lhs.as_ref(), rhs.as_ref()], names);
-        }
+        Expr::Tuple(items) | Expr::VecLit(items) => collect_head_bindings_many(items, names),
         Expr::MapLit(entries) => {
             for (key, value) in entries {
                 collect_head_bindings_many([key, value], names);
             }
         }
-        Expr::Literal(_)
-        | Expr::Closure { .. }
-        | Expr::ForLoop { .. }
-        | Expr::Match { .. }
-        | Expr::Break
-        | Expr::Continue => {}
+        _ => unreachable!("container-like helper must receive a container-like expression"),
+    }
+}
+
+fn collect_control_flow_like_bindings(expr: &Expr, names: &mut Vec<String>) {
+    match expr {
+        Expr::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => collect_head_bindings_many(
+            [
+                condition.as_ref(),
+                then_branch.as_ref(),
+                else_branch.as_ref(),
+            ],
+            names,
+        ),
+        Expr::Binary { lhs, rhs, .. } => {
+            collect_head_bindings_many([lhs.as_ref(), rhs.as_ref()], names);
+        }
+        _ => unreachable!("control-flow helper must receive a control-flow expression"),
     }
 }
 

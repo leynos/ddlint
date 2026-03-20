@@ -52,9 +52,9 @@ The current parser and linter surfaces are intentionally CST-first and light on
 owned semantic state:
 
 - `src/parser/mod.rs` parses source into `Parsed`.
-- `src/parser/cst_builder/mod.rs` stores the `GreenNode`, typed AST `Root`,
-  parse-time `SemanticRule` values from top-level `for` desugaring, and parser
-  errors.
+- `src/parser/cst_builder/mod.rs` stores the `GreenNode`, typed abstract syntax
+  tree (AST) `Root`, parse-time `SemanticRule` values from top-level `for`
+  desugaring, and parser errors.
 - `src/parser/ast/root.rs` exposes top-level wrappers such as `relations()`,
   `functions()`, `type_defs()`, and `rules()`.
 - `src/parser/ast/rule.rs` exposes helper-stage semantic extraction through
@@ -311,8 +311,7 @@ collections of scopes, symbols, and use sites indexed by opaque identifiers.
 Scopes form a tree through parent references, symbols record declarations with
 their source spans and origins, and use sites capture name references with
 their resolution status. This structure enables efficient name resolution and
-supports queries for unused bindings, shadowing analysis, and symbol
-provenance.
+supports queries for unused bindings, shadowing analysis, and symbol provenance.
 
 Each symbol record should capture enough provenance for later rules:
 
@@ -383,9 +382,10 @@ Expose semantic analysis through additive APIs:
 1. Export `pub mod sema;` from `src/lib.rs`.
 2. Add a semantic-model accessor to `RuleCtx`, for example
    `semantic_model(&self) -> &SemanticModel`.
-3. Change `RuleCtx::new` and `RuleCtx::from_parsed` to accept an
-   `Arc<SemanticModel>`.
-4. Update `Runner::new` to build `Arc<SemanticModel>` once from the provided
+3. Provide `RuleCtx::with_semantic_model(...)` for callers that want to inject
+   an `Arc<SemanticModel>`, while keeping `RuleCtx::new` and
+   `RuleCtx::from_parsed` as additive convenience constructors.
+4. Update `Runner::new` to build one `Arc<SemanticModel>` from the provided
    `Parsed` value and reuse it for every worker-thread context.
 5. Keep a direct semantic builder entrypoint available to tests and future
    non-runner consumers.
