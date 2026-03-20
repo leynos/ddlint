@@ -161,7 +161,6 @@ fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) 
         rule_ctx_fixture.ctx.cst_root().kind(),
         SyntaxKind::N_DATALOG_PROGRAM
     );
-    assert!(semantic_model.scope(program_scope).is_some());
     let Some(program_scope_ref) = semantic_model.scope(program_scope) else {
         panic!("program scope id should resolve");
     };

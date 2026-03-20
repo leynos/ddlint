@@ -1,4 +1,22 @@
 //! Lowering helpers for top-level `for` statements.
+//!
+//! "Lowering" here means translating the parser's high-level top-level `for`
+//! surface syntax into the desugared [`SemanticRule`] form consumed by later
+//! semantic analysis and linting. The helpers in this module flatten nested
+//! top-level loops into a canonical head-plus-body representation, preserve the
+//! original source span for diagnostics, and collect the loop patterns that
+//! introduce bindings for the lowered rule scope.
+//!
+//! Consumers should expect two main invariants from this module:
+//! - successful lowering yields a `SemanticRule` whose body terms are emitted
+//!   in evaluation order and whose head is atom-like;
+//! - unsupported control-flow constructs in the lowered body, or a non
+//!   atom-like head, are rejected with targeted diagnostics instead of
+//!   producing a partial rule.
+//!
+//! This module therefore owns the parser-side binding and scope hand-off for
+//! top-level `for` desugaring. Related helpers for interpreting those patterns
+//! and bindings live in the semantic model builder.
 
 use chumsky::error::Simple;
 
