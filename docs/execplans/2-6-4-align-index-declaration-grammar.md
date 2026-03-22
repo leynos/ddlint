@@ -10,8 +10,8 @@ Status: COMPLETE
 ## Purpose / big picture
 
 Roadmap item `2.6.4` is open because the parser and the syntax specification
-describe different index declarations. The current scanner and AST tests accept
-`index Name on Relation(columns)`, while
+describe different index declarations. The current scanner and Abstract Syntax
+Tree (AST) tests accept `index Name on Relation(columns)`, while
 `docs/differential-datalog-parser-syntax-spec-updated.md` section `5.6` defines
 `index Name(field: Type, ...) on Atom`, and the conformance register tracks
 that mismatch in item `11`.
@@ -50,11 +50,11 @@ Boundaries for this milestone:
 
 - Keep the repository's current top-level statement terminator behaviour.
   Do not widen this task into a global semicolon-policy change just because the
-  EBNF examples show `;`.
+  Extended Backus-Naur Form (EBNF) examples show `;`.
 - Prefer a CST-backed index wrapper that exposes the new grammar directly,
   even if that means reshaping `src/parser/ast/index.rs`. Stable parser APIs do
   not land until roadmap phase `2.8`, so carrying misleading legacy helpers now
-  would make ADR-001 harder, not easier.
+  would make Architecture Decision Record (ADR) 001 harder, not easier.
 - Reuse existing scanner helpers where possible. `src/parser/lexer_helpers.rs`
   already provides `atom()`, so this work should extend the index scanner
   around that helper instead of inventing a second ad hoc token walker.
@@ -214,7 +214,7 @@ evidence. Do not silently narrow the grammar.
 
 The relevant code and documentation live in a small set of files:
 
-- `src/parser/span_scanners/indexes.rs` now recognises the canonical
+- `src/parser/span_scanners/indexes.rs` now recognizes the canonical
   `index Name(field: Type, ...) on Atom` form, plus a targeted legacy-shorthand
   rejection diagnostic.
 - `src/parser/lexer_helpers.rs` already exposes reusable helpers such as

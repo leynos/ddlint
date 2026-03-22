@@ -68,7 +68,7 @@ fn parses_indexes(
 ) {
     let idx = parse_index(src);
     assert_eq!(idx.name().as_deref(), Some(name));
-    assert_eq!(idx.fields(), fields);
+    assert_eq!(idx.fields(), Ok(fields));
     assert_eq!(idx.on_target().as_deref(), Some(on_target));
 }
 
@@ -109,7 +109,7 @@ fn index_declaration_whitespace_variations(#[case] src: &str) {
     assert_eq!(idx.name().as_deref(), Some("Idx_User_ws"));
     assert_eq!(
         idx.fields(),
-        vec![(String::from("username"), String::from("string"))]
+        Ok(vec![(String::from("username"), String::from("string"))])
     );
     assert_eq!(idx.on_target().as_deref(), Some("User[username]"));
 }

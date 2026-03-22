@@ -17,10 +17,10 @@ fn canonical_index_declaration_parses() {
     assert_eq!(index.name().as_deref(), Some("OrdersByUser"));
     assert_eq!(
         index.fields(),
-        vec![
+        Ok(vec![
             ("user".to_string(), "UserId".to_string()),
             ("ts".to_string(), "Timestamp".to_string()),
-        ]
+        ])
     );
     assert_eq!(index.on_target().as_deref(), Some("Orders[user,ts]"));
 }
@@ -31,6 +31,26 @@ fn legacy_index_shorthand_is_rejected() {
     assert_custom_parse_error_contains(
         parsed.errors(),
         "index declarations require a typed field list `(name: Type, ...)` before `on`",
+    );
+    assert!(parsed.root().indexes().is_empty());
+}
+
+#[test]
+fn empty_index_field_list_is_rejected() {
+    let parsed = parse("index OrdersByUser() on Orders[user]");
+    assert_custom_parse_error_contains(
+        parsed.errors(),
+        "index declarations require one or more typed fields in the form `name: Type`",
+    );
+    assert!(parsed.root().indexes().is_empty());
+}
+
+#[test]
+fn malformed_index_field_list_is_rejected() {
+    let parsed = parse("index OrdersByUser(user) on Orders[user]");
+    assert_custom_parse_error_contains(
+        parsed.errors(),
+        "index declarations require one or more typed fields in the form `name: Type`",
     );
     assert!(parsed.root().indexes().is_empty());
 }

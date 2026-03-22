@@ -85,7 +85,7 @@ impl<'a> IndexSpec<'a> {
         assert_entity!(
             i,
             self,
-            i.fields() => pair_vec(&self.fields),
+            i.fields() => Ok(pair_vec(&self.fields)),
             i.on_target() => self.on_target.map(str::to_string)
         );
     }
