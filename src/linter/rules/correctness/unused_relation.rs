@@ -1,0 +1,120 @@
+//! `unused-relation` warns about declared relations that are never read from.
+
+use rowan::TextRange;
+
+use crate::linter::{LintDiagnostic, Rule};
+use crate::{SyntaxKind, declare_lint};
+
+/// Convert a `rowan` range into the crate's byte-span type.
+fn text_range_to_span(range: TextRange) -> crate::Span {
+    usize::from(range.start())..usize::from(range.end())
+}
+
+declare_lint! {
+    /// Detects relations that are declared but never read from.
+    pub UnusedRelationRule {
+        name: "unused-relation",
+        group: "correctness",
+        level: warn,
+        target_kinds: [SyntaxKind::N_RELATION_DECL],
+        fn check_node(&self, node, ctx, diagnostics) {
+            let declaration_range = node.text_range();
+            let declaration_span = text_range_to_span(declaration_range);
+            let Some(symbol_id) = ctx
+                .semantic_model()
+                .relation_symbol_at_span(&declaration_span)
+            else {
+                return;
+            };
+            let Some(symbol) = ctx.semantic_model().symbol(symbol_id) else {
+                return;
+            };
+
+            if ctx.semantic_model().has_resolved_relation_read(symbol_id) {
+                return;
+            }
+
+            diagnostics.push(LintDiagnostic::new(
+                self.name(),
+                format!("relation `{}` is declared but never read from", symbol.name()),
+                declaration_range,
+            ));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use crate::linter::rules::correctness::UnusedRelationRule;
+    use crate::linter::{CstRuleStore, RuleConfig, Runner};
+    use crate::parse;
+
+    fn run_rule(source: &str) -> Vec<crate::linter::LintDiagnostic> {
+        let parsed = parse(source);
+        assert!(
+            parsed.errors().is_empty(),
+            "unused-relation test source should parse cleanly: {:?}",
+            parsed.errors()
+        );
+        let mut store = CstRuleStore::new();
+        store.register(Box::new(UnusedRelationRule));
+        Runner::new(&store, source, &parsed, RuleConfig::new()).run()
+    }
+
+    #[rstest]
+    fn warns_for_declared_relation_with_no_reads() {
+        let diagnostics = run_rule(concat!(
+            "input relation Source(x: u32)\n",
+            "relation Sink(x: u32)\n",
+            "Sink(x) :- Source(x).\n",
+        ));
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics
+                .first()
+                .map(crate::linter::LintDiagnostic::rule_name),
+            Some("unused-relation")
+        );
+        assert_eq!(
+            diagnostics
+                .first()
+                .map(crate::linter::LintDiagnostic::message),
+            Some("relation `Sink` is declared but never read from")
+        );
+    }
+
+    #[rstest]
+    fn does_not_warn_for_relation_with_resolved_read() {
+        let diagnostics = run_rule(concat!(
+            "input relation Source(x: u32)\n",
+            "relation Used(x: u32)\n",
+            "relation Sink(x: u32)\n",
+            "Used(x) :- Source(x).\n",
+            "Sink(x) :- Used(x).\n",
+        ));
+
+        assert!(
+            diagnostics.iter().all(|diagnostic| diagnostic.message()
+                != "relation `Used` is declared but never read from"),
+            "Used should not be reported once it is read from a rule body",
+        );
+    }
+
+    #[rstest]
+    fn ignores_unresolved_relation_uses_when_checking_reads() {
+        let diagnostics = run_rule(concat!(
+            "relation Declared(x: u32)\n",
+            "relation Sink(x: u32)\n",
+            "Sink(x) :- Missing(x).\n",
+        ));
+
+        let messages: Vec<_> = diagnostics
+            .iter()
+            .map(crate::linter::LintDiagnostic::message)
+            .collect();
+        assert!(messages.contains(&"relation `Declared` is declared but never read from"));
+    }
+}

@@ -202,6 +202,8 @@ Current guarantees are intentionally narrow:
   scopes.
 - Top-level relation, function, and type declarations are recorded in source
   order.
+- Relation use sites record provenance that distinguishes rule-head writes from
+  rule-body reads and `for` iterable/guard reads.
 - Rule-head bindings are visible from the start of their rule scope.
 - Assignment-pattern bindings become visible only after the literal that
   introduces them.

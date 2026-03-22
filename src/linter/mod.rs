@@ -6,6 +6,7 @@
 
 mod macros;
 mod rule;
+pub mod rules;
 mod runner;
 mod store;
 

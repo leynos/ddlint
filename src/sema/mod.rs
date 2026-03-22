@@ -14,7 +14,7 @@ mod variables;
 pub use build::{build, build_from_parts, build_from_root};
 pub use model::{
     DeclarationKind, Resolution, Scope, ScopeId, ScopeKind, ScopeOrigin, SemanticModel, Symbol,
-    SymbolId, SymbolOrigin, UseKind, UseSite,
+    SymbolId, SymbolOrigin, UseKind, UseOrigin, UseSite,
 };
 
 #[cfg(test)]

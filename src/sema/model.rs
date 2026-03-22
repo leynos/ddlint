@@ -82,6 +82,32 @@ pub enum UseKind {
     Variable,
 }
 
+/// Provenance for one recorded use site.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UseOrigin {
+    /// Relation use from a rule head, which writes to the relation.
+    RelationHead,
+    /// Relation use from a normal rule-body atom or semantic-rule body atom.
+    RelationBody,
+    /// Relation use from a `for` iterable expression.
+    ForIterable,
+    /// Relation use from a `for` guard expression.
+    ForGuard,
+    /// Variable use recorded while traversing expressions.
+    Variable,
+}
+
+impl UseOrigin {
+    /// Return `true` when this origin is a read-like relation position.
+    #[must_use]
+    pub fn is_relation_read(self) -> bool {
+        matches!(
+            self,
+            Self::RelationBody | Self::ForIterable | Self::ForGuard
+        )
+    }
+}
+
 /// Final name-resolution result for one use site.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Resolution {
@@ -189,6 +215,7 @@ impl Symbol {
 pub struct UseSite {
     pub(crate) name: String,
     pub(crate) kind: UseKind,
+    pub(crate) origin: UseOrigin,
     pub(crate) scope: ScopeId,
     pub(crate) span: Span,
     pub(crate) source_order: usize,
@@ -206,6 +233,12 @@ impl UseSite {
     #[must_use]
     pub fn kind(&self) -> UseKind {
         self.kind
+    }
+
+    /// Provenance for this use site.
+    #[must_use]
+    pub fn origin(&self) -> UseOrigin {
+        self.origin
     }
 
     /// Scope in which the use occurred.
@@ -261,6 +294,15 @@ impl SemanticModel {
         &self.symbols
     }
 
+    /// Return every recorded relation declaration together with its symbol id.
+    pub fn relation_symbols(&self) -> impl Iterator<Item = (SymbolId, &Symbol)> + '_ {
+        self.symbols
+            .iter()
+            .enumerate()
+            .filter(|(_, symbol)| symbol.kind() == DeclarationKind::Relation)
+            .map(|(index, symbol)| (SymbolId(index), symbol))
+    }
+
     /// Return every recorded use site in stable build order.
     #[must_use]
     pub fn uses(&self) -> &[UseSite] {
@@ -277,6 +319,24 @@ impl SemanticModel {
     #[must_use]
     pub fn symbol(&self, id: SymbolId) -> Option<&Symbol> {
         self.symbols.get(id.0)
+    }
+
+    /// Return the relation symbol declared at the given span, if any.
+    #[must_use]
+    pub fn relation_symbol_at_span(&self, span: &Span) -> Option<SymbolId> {
+        self.relation_symbols()
+            .find(|(_, symbol)| symbol.span() == span)
+            .map(|(symbol_id, _)| symbol_id)
+    }
+
+    /// Return `true` when the relation has at least one resolved read-like use.
+    #[must_use]
+    pub fn has_resolved_relation_read(&self, symbol_id: SymbolId) -> bool {
+        self.uses.iter().any(|use_site| {
+            use_site.kind() == UseKind::Relation
+                && use_site.origin().is_relation_read()
+                && use_site.resolution() == Resolution::Resolved(symbol_id)
+        })
     }
 
     /// Return the resolved symbol for a use site when resolution succeeded.

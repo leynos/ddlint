@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: Implemented
 
 ## Purpose / big picture
 
@@ -34,9 +34,8 @@ about. Observable success is:
 
 ## Approval gate
 
-This document is a draft only. Do not begin implementation until the user
-explicitly approves this ExecPlan or requests a revised version and then
-approves the revision.
+Approved by the user on 2026-03-22 when they requested implementation of this
+ExecPlan.
 
 ## Context and orientation
 
@@ -343,9 +342,16 @@ is warned because it is only written in the head.
   not yet distinguish reads from writes.
 - [x] (2026-03-21 00:20Z) Wrote this draft ExecPlan to
   `docs/execplans/4-1-1-implement-unused-relation-diagnostics.md`.
-- [ ] Await user approval before implementation.
-- [ ] Implement semantic provenance, rule module, tests, and documentation.
-- [ ] Run full quality gates and mark roadmap item `4.1.1` done.
+- [x] (2026-03-22 00:05Z) User approved implementation by requesting execution
+  of this plan.
+- [x] (2026-03-22 00:40Z) Implemented semantic use-site provenance,
+  relation-read query helpers, the exported `unused-relation` rule module, and
+  unit plus behavioural coverage.
+- [x] (2026-03-22 00:50Z) Updated `docs/ddlint-design.md`,
+  `docs/parser-implementation-notes.md`, and `docs/roadmap.md` to reflect the
+  shipped contract.
+- [x] (2026-03-22 01:25Z) Ran `make fmt`, `make markdownlint`, `make nixie`,
+  `make check-fmt`, `make lint`, and `CI=1 make test`; all passed.
 
 ## Surprises & Discoveries
 
@@ -364,12 +370,36 @@ is warned because it is only written in the head.
   a small `src/linter/rules/` module tree, but should not broaden into a full
   default ruleset or CLI registry.
 
+- Observation: top-level `for` desugaring currently records iterable relation
+  reads as semantic-rule body reads rather than a dedicated `ForIterable`
+  origin. Impact: the durable rule contract is still satisfied because those
+  uses remain read-like, but tests should assert read-versus-write semantics
+  rather than overfitting to the current lowering detail.
+
 ## Outcomes & Retrospective
 
-Not started. Update this section after implementation with:
-
-- the final rule module paths;
-- the shipped semantic provenance shape;
-- test files and what they verify;
-- documentation and roadmap updates; and
-- the exact gate commands that passed.
+- Final rule modules:
+  `src/linter/rules/mod.rs`, `src/linter/rules/correctness/mod.rs`, and
+  `src/linter/rules/correctness/unused_relation.rs`.
+- Shipped semantic provenance shape: `UseSite` now carries `UseOrigin` with
+  `RelationHead`, `RelationBody`, `ForIterable`, `ForGuard`, and `Variable`.
+  `SemanticModel` now exposes `relation_symbols()`,
+  `relation_symbol_at_span()`, and `has_resolved_relation_read()`.
+- Test coverage:
+  `src/sema/tests.rs` covers relation use origins and helper queries;
+  `tests/semantic_scope_resolution.rs` covers end-to-end semantic provenance;
+  `src/linter/rules/correctness/unused_relation.rs` contains focused rule unit
+  tests; and `tests/unused_relation_rule.rs` covers end-to-end diagnostics and
+  deterministic ordering through `Runner`.
+- Documentation updates:
+  `docs/ddlint-design.md` now documents relation read-versus-write provenance
+  and the exact `unused-relation` contract;
+  `docs/parser-implementation-notes.md` records relation-use provenance as a
+  current semantic invariant; and `docs/roadmap.md` marks item `4.1.1` done.
+- Passed gate commands:
+  `set -o pipefail; make fmt 2>&1 | tee /tmp/4-1-1-final-make-fmt.log`
+  `set -o pipefail; make markdownlint 2>&1 | tee /tmp/4-1-1-make-markdownlint.log`
+   `set -o pipefail; make nixie 2>&1 | tee /tmp/4-1-1-make-nixie.log`
+  `set -o pipefail; make check-fmt 2>&1 | tee /tmp/4-1-1-final-check-fmt.log`
+  `set -o pipefail; make lint 2>&1 | tee /tmp/4-1-1-final-lint.log`
+  `set -o pipefail; CI=1 make test 2>&1 | tee /tmp/4-1-1-final-test.log`

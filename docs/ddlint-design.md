@@ -711,7 +711,18 @@ The semantic model records:
 - rule-local bindings introduced by rule heads, assignment patterns, and
   `for`-loop patterns;
 - explicit scope records with parent links; and
-- relation and variable use sites together with a final resolution result.
+- relation and variable use sites together with a final resolution result and
+  use-site provenance.
+
+Relation use-site provenance is part of the contract for correctness rules:
+
+- rule-head relation atoms are recorded as write sites;
+- rule-body atoms are recorded as read sites; and
+- `for` iterable and guard relation atoms are recorded as read sites.
+
+This distinction is what allows `unused-relation` to warn on head-only sink
+relations while still treating resolved body, iterable, and guard references as
+genuine reads.
 
 Resolution is deliberately tri-state:
 
@@ -743,16 +754,16 @@ immediate value to users, the following catalog of rules is proposed. This list
 prioritizes correctness checks, followed by performance hints, and stylistic
 suggestions, establishing a solid foundation of essential lints.
 
-| Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                        |
-| ---------------------- | ----------- | ------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| unused-relation        | correctness | warn          | No          | Detects relations that are defined but never read from.                                                                            |
-| unused-variable        | correctness | warn          | No          | Detects variables bound in a rule head that are not used in the body.                                                              |
-| shadowed-variable      | correctness | warn          | No          | Detects when a variable binding in a literal shadows one from a preceding literal in the same rule body.                           |
-| recursive-negation     | correctness | error         | No          | Detects rules with recursion through negation, which leads to unsafe, non-monotonic programs.                                      |
-| inefficient-join-order | performance | hint          | No          | Evaluates rule bodies and suggests reordering atoms for a more efficient join plan, e.g., placing more restrictive literals first. |
-| superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                    |
-| consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).          |
-| no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                  |
+| Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                                   |
+| ---------------------- | ----------- | ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| unused-relation        | correctness | warn          | No          | Detects declared relations with no resolved read-like uses in rule bodies, `for` iterables, or `for` guards; rule heads count only as writes. |
+| unused-variable        | correctness | warn          | No          | Detects variables bound in a rule head that are not used in the body.                                                                         |
+| shadowed-variable      | correctness | warn          | No          | Detects when a variable binding in a literal shadows one from a preceding literal in the same rule body.                                      |
+| recursive-negation     | correctness | error         | No          | Detects rules with recursion through negation, which leads to unsafe, non-monotonic programs.                                                 |
+| inefficient-join-order | performance | hint          | No          | Evaluates rule bodies and suggests reordering atoms for a more efficient join plan, e.g., placing more restrictive literals first.            |
+| superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                               |
+| consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).                     |
+| no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                             |
 
 This table serves as a concrete work breakdown for the engineering team and
 clearly communicates the linter's initial capabilities and priorities to early
