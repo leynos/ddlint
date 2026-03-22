@@ -4,7 +4,7 @@ use crate::Span;
 use crate::parser::ast;
 use crate::parser::ast::{Expr, RuleBodyTerm};
 use crate::sema::model::{
-    DeclarationKind, ScopeId, ScopeKind, ScopeOrigin, SymbolOrigin, UseKind, UseSite,
+    DeclarationKind, ScopeId, ScopeKind, ScopeOrigin, SymbolOrigin, UseKind, UseOrigin, UseSite,
 };
 
 use super::builder::{ScopeSpec, SemanticModelBuilder, SymbolSpec};
@@ -36,7 +36,7 @@ impl SemanticModelBuilder {
     pub(crate) fn collect_head_expr(&mut self, expr: &Expr, ctx: RuleHeadContext<'_>) {
         self.record_top_level_relation_use(
             VariableUseContext::new(ctx.scope, 0, ctx.span, 0),
-            UseKind::Relation,
+            UseOrigin::RelationHead,
             expr,
         );
         for binding_name in collect_head_binding_names(expr) {
@@ -68,7 +68,11 @@ impl SemanticModelBuilder {
     }
 
     pub(crate) fn collect_expression_term(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
-        self.record_top_level_relation_use(context, UseKind::Relation, expr);
+        self.record_top_level_relation_use(
+            context,
+            UseOrigin::RelationBody,
+            expr,
+        );
         self.walk_variable_uses(expr, context);
     }
 
@@ -105,10 +109,18 @@ impl SemanticModelBuilder {
         for_loop: &ast::RuleForLoop,
         context: VariableUseContext<'_>,
     ) {
-        self.record_top_level_relation_use(context, UseKind::Relation, &for_loop.iterable);
+        self.record_top_level_relation_use(
+            context,
+            UseOrigin::ForIterable,
+            &for_loop.iterable,
+        );
         self.walk_variable_uses(&for_loop.iterable, context);
         if let Some(guard) = for_loop.guard.as_ref() {
-            self.record_top_level_relation_use(context, UseKind::Relation, guard);
+            self.record_top_level_relation_use(
+                context,
+                UseOrigin::ForGuard,
+                guard,
+            );
             self.walk_variable_uses(guard, context);
         }
 
@@ -148,16 +160,17 @@ impl SemanticModelBuilder {
     fn record_top_level_relation_use(
         &mut self,
         context: VariableUseContext<'_>,
-        use_kind: UseKind,
+        origin: UseOrigin,
         expr: &Expr,
     ) {
         let Some(name) = relation_name(expr) else {
             return;
         };
-        let resolution = self.resolve_name(context, use_kind, name);
+        let resolution = self.resolve_name(context, UseKind::Relation, name);
         self.uses.push(UseSite {
             name: name.to_string(),
-            kind: use_kind,
+            kind: UseKind::Relation,
+            origin,
             scope: context.current_scope(),
             span: context.span().clone(),
             source_order: context.literal_index(),
