@@ -68,11 +68,7 @@ impl SemanticModelBuilder {
     }
 
     pub(crate) fn collect_expression_term(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
-        self.record_top_level_relation_use(
-            context,
-            UseOrigin::RelationBody,
-            expr,
-        );
+        self.record_top_level_relation_use(context, UseOrigin::RelationBody, expr);
         self.walk_variable_uses(expr, context);
     }
 
@@ -109,18 +105,10 @@ impl SemanticModelBuilder {
         for_loop: &ast::RuleForLoop,
         context: VariableUseContext<'_>,
     ) {
-        self.record_top_level_relation_use(
-            context,
-            UseOrigin::ForIterable,
-            &for_loop.iterable,
-        );
+        self.record_top_level_relation_use(context, UseOrigin::ForIterable, &for_loop.iterable);
         self.walk_variable_uses(&for_loop.iterable, context);
         if let Some(guard) = for_loop.guard.as_ref() {
-            self.record_top_level_relation_use(
-                context,
-                UseOrigin::ForGuard,
-                guard,
-            );
+            self.record_top_level_relation_use(context, UseOrigin::ForGuard, guard);
             self.walk_variable_uses(guard, context);
         }
 
