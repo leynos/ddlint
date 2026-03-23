@@ -139,12 +139,23 @@ fn parse_index_fields(
     }
 }
 
+#[derive(Default)]
+struct TypeDepths {
+    paren: usize,
+    bracket: usize,
+    brace: usize,
+    angle: usize,
+}
+
+impl TypeDepths {
+    fn at_top_level(&self) -> bool {
+        self.paren == 0 && self.bracket == 0 && self.brace == 0 && self.angle == 0
+    }
+}
+
 fn parse_type_expr(tokens: &[(SyntaxKind, Span)], src: &str, cursor: &mut usize) -> ScanResult<()> {
     let mut consumed = false;
-    let mut paren_depth = 0usize;
-    let mut bracket_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut angle_depth = 0usize;
+    let mut depths = TypeDepths::default();
 
     while let Some((kind, _span)) = tokens.get(*cursor) {
         if is_trivia(*kind) {
@@ -152,20 +163,12 @@ fn parse_type_expr(tokens: &[(SyntaxKind, Span)], src: &str, cursor: &mut usize)
             continue;
         }
 
-        let at_top_level =
-            paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 && angle_depth == 0;
-        if at_top_level && matches!(kind, SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN) {
+        if depths.at_top_level() && matches!(kind, SyntaxKind::T_COMMA | SyntaxKind::T_RPAREN) {
             break;
         }
 
         consumed = true;
-        adjust_type_depths(
-            *kind,
-            &mut paren_depth,
-            &mut bracket_depth,
-            &mut brace_depth,
-            &mut angle_depth,
-        );
+        adjust_type_depths(*kind, &mut depths);
         *cursor += 1;
     }
 
@@ -365,24 +368,18 @@ fn is_trivia(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 
-fn adjust_type_depths(
-    kind: SyntaxKind,
-    paren_depth: &mut usize,
-    bracket_depth: &mut usize,
-    brace_depth: &mut usize,
-    angle_depth: &mut usize,
-) {
+fn adjust_type_depths(kind: SyntaxKind, depths: &mut TypeDepths) {
     match kind {
-        SyntaxKind::T_LPAREN => *paren_depth += 1,
-        SyntaxKind::T_RPAREN => *paren_depth = paren_depth.saturating_sub(1),
-        SyntaxKind::T_LBRACKET => *bracket_depth += 1,
-        SyntaxKind::T_RBRACKET => *bracket_depth = bracket_depth.saturating_sub(1),
-        SyntaxKind::T_LBRACE => *brace_depth += 1,
-        SyntaxKind::T_RBRACE => *brace_depth = brace_depth.saturating_sub(1),
-        SyntaxKind::T_LT => *angle_depth += 1,
-        SyntaxKind::T_GT => *angle_depth = angle_depth.saturating_sub(1),
-        SyntaxKind::T_SHL => *angle_depth += 2,
-        SyntaxKind::T_SHR => *angle_depth = angle_depth.saturating_sub(2),
+        SyntaxKind::T_LPAREN => depths.paren += 1,
+        SyntaxKind::T_RPAREN => depths.paren = depths.paren.saturating_sub(1),
+        SyntaxKind::T_LBRACKET => depths.bracket += 1,
+        SyntaxKind::T_RBRACKET => depths.bracket = depths.bracket.saturating_sub(1),
+        SyntaxKind::T_LBRACE => depths.brace += 1,
+        SyntaxKind::T_RBRACE => depths.brace = depths.brace.saturating_sub(1),
+        SyntaxKind::T_LT => depths.angle += 1,
+        SyntaxKind::T_GT => depths.angle = depths.angle.saturating_sub(1),
+        SyntaxKind::T_SHL => depths.angle += 2,
+        SyntaxKind::T_SHR => depths.angle = depths.angle.saturating_sub(2),
         _ => {}
     }
 }

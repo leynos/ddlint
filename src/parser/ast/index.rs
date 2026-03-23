@@ -158,19 +158,21 @@ fn balanced_suffix_len(
     close: SyntaxKind,
 ) -> usize {
     let mut depth = 0usize;
-    for (index, element) in elements.iter().enumerate() {
-        match token_kind(Some(element)) {
-            Some(kind) if kind == open => depth += 1,
+    elements
+        .iter()
+        .enumerate()
+        .find_map(|(index, element)| match token_kind(Some(element)) {
+            Some(kind) if kind == open => {
+                depth += 1;
+                None
+            }
             Some(kind) if kind == close => {
                 depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    return index + 1;
-                }
+                (depth == 0).then_some(index + 1)
             }
-            _ => {}
-        }
-    }
-    elements.len()
+            _ => None,
+        })
+        .unwrap_or(elements.len())
 }
 
 fn token_kind(element: Option<&rowan::SyntaxElement<DdlogLanguage>>) -> Option<SyntaxKind> {
