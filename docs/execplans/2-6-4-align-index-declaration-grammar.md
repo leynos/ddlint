@@ -97,7 +97,7 @@ evidence. Do not silently narrow the grammar.
   atom grammar by hand, stop and escalate.
 - Compatibility: if non-test workspace code depends on
   `Index::relation()` / `Index::columns()` semantics beyond the parser test
-  suite, stop and document those callers before changing the API.
+  suite, stop, and document those callers before changing the API.
 - Validation: if `make check-fmt`, `make lint`, or `make test` still fails
   after three focused fix rounds, stop and escalate with the specific failing
   targets.
