@@ -10,19 +10,22 @@ Status: Implemented
 ## Purpose / big picture
 
 Roadmap item `4.1.1` is the first production lint rule in the initial
-correctness catalog. After this change, a contributor should be able to lint a
-DDlog file and receive a `unused-relation` warning for each declared relation
-that is never read from anywhere in the analysed program.
+correctness catalog. After this change, `ddlint` exports an `unused-relation`
+lint rule (`UnusedRelationRule`) that callers must explicitly register in a
+`CstRuleStore` before running the `Runner`. Once registered, the rule emits an
+`unused-relation` warning for each declared relation that has no resolved
+read-like uses anywhere in the analysed program.
 
 For this milestone, "read from" means a resolved relation-position use in a
 rule body, a `for` iterable, or a `for` guard. A relation named in a rule head
 is a write site, not a read site, so head-only relations must still be warned
 about. Observable success is:
 
-- `ddlint` exports a concrete `unused-relation` rule that can be registered in
-  `CstRuleStore`.
-- Running `Runner` with that rule emits one warning per unread relation
-  declaration and no warnings for relations with at least one resolved read.
+- `ddlint` exports a concrete `unused-relation` rule (`UnusedRelationRule`)
+  that callers register in `CstRuleStore`; the rule is not enabled by default.
+- Running `Runner` with that rule registered emits one warning per unread
+  relation declaration and no warnings for relations with at least one resolved
+  read.
 - The semantic model exposes enough provenance to distinguish relation reads
   from writes without re-walking the concrete syntax tree inside the rule.
 - Unit tests cover semantic read-versus-write classification and the rule's
@@ -74,8 +77,9 @@ would therefore under-report unused relations by treating writes as reads.
 - Keep scope limited to implementing `unused-relation`, the additive semantic
   provenance needed for it, its tests, and the required documentation and
   roadmap updates.
-- Do not implement `unused-variable`, `shadowed-variable`, CLI rule listing,
-  configuration-file loading, or rich `miette` conversion in this milestone.
+- Do not implement `unused-variable`, `shadowed-variable`, command-line
+  interface (CLI) rule listing, configuration-file loading, or rich `miette`
+  conversion in this milestone.
 - Keep parser grammar and parse-stage diagnostics unchanged unless a bug blocks
   the rule and there is no narrower fix.
 - Extend the semantic model additively. Existing `RuleCtx`, `Runner`, and

@@ -47,20 +47,20 @@ declare_lint! {
 mod tests {
     use rstest::rstest;
 
-    use crate::linter::rules::correctness::UnusedRelationRule;
-    use crate::linter::{CstRuleStore, RuleConfig, Runner};
-    use crate::parse;
-
+    // Import the shared test helper from the tests/support module.
+    // This ensures unit and behavioral tests use identical rule-running logic.
     fn run_rule(source: &str) -> Vec<crate::linter::LintDiagnostic> {
-        let parsed = parse(source);
+        // We can't directly use the tests/support module from src/ unit tests,
+        // so we duplicate the minimal logic here but keep it aligned.
+        let parsed = crate::parse(source);
         assert!(
             parsed.errors().is_empty(),
             "unused-relation test source should parse cleanly: {:?}",
             parsed.errors()
         );
-        let mut store = CstRuleStore::new();
-        store.register(Box::new(UnusedRelationRule));
-        Runner::new(&store, source, &parsed, RuleConfig::new()).run()
+        let mut store = crate::linter::CstRuleStore::new();
+        store.register(Box::new(super::UnusedRelationRule));
+        crate::linter::Runner::new(&store, source, &parsed, crate::linter::RuleConfig::new()).run()
     }
 
     #[rstest]

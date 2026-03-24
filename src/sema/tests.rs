@@ -131,7 +131,12 @@ fn head_bindings_are_visible_from_rule_start(
 
 #[rstest]
 fn relation_use_origins_distinguish_heads_from_reads(
-    #[with("Sink(x) :- Source(x), for (y in Items(x)) Check(y).")]
+    #[with(
+        "Sink(x) :- \
+         Source(x), \
+         for (y in Items(x)) Check(y), \
+         for (z in Items(x) if Check(z)) Check(z)."
+    )]
     semantic_model: super::SemanticModel,
 ) {
     let sink_uses = uses_named(&semantic_model, "Sink", UseKind::Relation);
@@ -139,21 +144,56 @@ fn relation_use_origins_distinguish_heads_from_reads(
     let items_uses = uses_named(&semantic_model, "Items", UseKind::Relation);
     let check_uses = uses_named(&semantic_model, "Check", UseKind::Relation);
 
-    assert_eq!(
-        sink_uses.first().map(|use_site| use_site.origin()),
-        Some(UseOrigin::RelationHead)
+    let sink_origins: Vec<_> = sink_uses.iter().map(|use_site| use_site.origin()).collect();
+    let source_origins: Vec<_> = source_uses
+        .iter()
+        .map(|use_site| use_site.origin())
+        .collect();
+    let items_origins: Vec<_> = items_uses
+        .iter()
+        .map(|use_site| use_site.origin())
+        .collect();
+    let check_origins: Vec<_> = check_uses
+        .iter()
+        .map(|use_site| use_site.origin())
+        .collect();
+
+    // `Sink` only appears in rule heads.
+    assert!(
+        sink_origins
+            .iter()
+            .all(|origin| matches!(origin, UseOrigin::RelationHead)),
+        "expected all `Sink` uses to be rule heads, got: {sink_origins:?}",
     );
-    assert_eq!(
-        source_uses.first().map(|use_site| use_site.origin()),
-        Some(UseOrigin::RelationBody)
+
+    // `Source` only appears as a body read.
+    assert!(
+        source_origins
+            .iter()
+            .all(|origin| matches!(origin, UseOrigin::RelationBody)),
+        "expected all `Source` uses to be body reads, got: {source_origins:?}",
     );
-    assert_eq!(
-        items_uses.first().map(|use_site| use_site.origin()),
-        Some(UseOrigin::ForIterable)
+
+    // `Items` only appears as the iterable of a `for`.
+    assert!(
+        items_origins
+            .iter()
+            .all(|origin| matches!(origin, UseOrigin::ForIterable)),
+        "expected all `Items` uses to be `for` iterables, got: {items_origins:?}",
     );
-    assert_eq!(
-        check_uses.first().map(|use_site| use_site.origin()),
-        Some(UseOrigin::RelationBody)
+
+    // `Check` appears both in the `for` body and in the `for` guard.
+    assert!(
+        check_origins
+            .iter()
+            .any(|origin| matches!(origin, UseOrigin::RelationBody)),
+        "expected at least one body use for `Check`, got: {check_origins:?}",
+    );
+    assert!(
+        check_origins
+            .iter()
+            .any(|origin| matches!(origin, UseOrigin::ForGuard)),
+        "expected at least one guard use for `Check`, got: {check_origins:?}",
     );
 }
 

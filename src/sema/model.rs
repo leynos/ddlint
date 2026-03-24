@@ -3,6 +3,8 @@
 //! The semantic model stores only owned data and opaque identifiers so it can
 //! be shared safely across linter worker threads.
 
+use std::collections::{HashMap, HashSet};
+
 use crate::Span;
 use crate::parser::ast::SemanticRuleOrigin;
 
@@ -273,6 +275,10 @@ pub struct SemanticModel {
     pub(crate) scopes: Vec<Scope>,
     pub(crate) symbols: Vec<Symbol>,
     pub(crate) uses: Vec<UseSite>,
+    /// Precomputed index mapping relation declaration spans to symbol IDs.
+    pub(crate) span_to_relation_symbol: HashMap<Span, SymbolId>,
+    /// Precomputed set of symbol IDs that have at least one resolved read-like use.
+    pub(crate) symbols_with_reads: HashSet<SymbolId>,
 }
 
 impl SemanticModel {
@@ -324,19 +330,13 @@ impl SemanticModel {
     /// Return the relation symbol declared at the given span, if any.
     #[must_use]
     pub fn relation_symbol_at_span(&self, span: &Span) -> Option<SymbolId> {
-        self.relation_symbols()
-            .find(|(_, symbol)| symbol.span() == span)
-            .map(|(symbol_id, _)| symbol_id)
+        self.span_to_relation_symbol.get(span).copied()
     }
 
     /// Return `true` when the relation has at least one resolved read-like use.
     #[must_use]
     pub fn has_resolved_relation_read(&self, symbol_id: SymbolId) -> bool {
-        self.uses.iter().any(|use_site| {
-            use_site.kind() == UseKind::Relation
-                && use_site.origin().is_relation_read()
-                && use_site.resolution() == Resolution::Resolved(symbol_id)
-        })
+        self.symbols_with_reads.contains(&symbol_id)
     }
 
     /// Return the resolved symbol for a use site when resolution succeeded.

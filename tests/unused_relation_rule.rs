@@ -1,21 +1,12 @@
 //! Behavioural tests for the shipped `unused-relation` lint rule.
 
-use ddlint::linter::rules::correctness::UnusedRelationRule;
-use ddlint::linter::{CstRuleStore, RuleConfig, Runner};
-use ddlint::parse;
 use rstest::rstest;
 
-fn run_rule(source: &str) -> Vec<ddlint::linter::LintDiagnostic> {
-    let parsed = parse(source);
-    assert!(
-        parsed.errors().is_empty(),
-        "unused-relation behavioural source should parse cleanly: {:?}",
-        parsed.errors()
-    );
+mod support;
+use support::run_unused_relation_rule;
 
-    let mut store = CstRuleStore::new();
-    store.register(Box::new(UnusedRelationRule));
-    Runner::new(&store, source, &parsed, RuleConfig::new()).run()
+fn run_rule(source: &str) -> Vec<ddlint::linter::LintDiagnostic> {
+    run_unused_relation_rule(source)
 }
 
 #[rstest]
@@ -67,6 +58,26 @@ fn run_rule(source: &str) -> Vec<ddlint::linter::LintDiagnostic> {
         "relation `Alpha` is declared but never read from",
         "relation `Middle` is declared but never read from",
     ],
+)]
+#[case(
+    concat!(
+        "input relation Source(x: u32)\n",
+        "relation ForRead(x: u32)\n",
+        "relation Sink(x: u32)\n",
+        "ForRead(x) :- Source(x).\n",
+        "Sink(x) :- for (y in ForRead(x)) Inner(y).\n",
+    ),
+    vec!["relation `Sink` is declared but never read from"],
+)]
+#[case(
+    concat!(
+        "input relation Source(x: u32)\n",
+        "relation GuardRead(x: u32)\n",
+        "relation Sink(x: u32)\n",
+        "GuardRead(x) :- Source(x).\n",
+        "Sink(x) :- for (y in Source(x) if GuardRead(y)) Inner(y).\n",
+    ),
+    vec!["relation `Sink` is declared but never read from"],
 )]
 fn unused_relation_rule_matches_expected_messages(
     #[case] source: &str,

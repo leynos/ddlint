@@ -754,6 +754,8 @@ immediate value to users, the following catalog of rules is proposed. This list
 prioritizes correctness checks, followed by performance hints, and stylistic
 suggestions, establishing a solid foundation of essential lints.
 
+Table: DDLint rule catalogue and metadata.
+
 | Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                                   |
 | ---------------------- | ----------- | ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | unused-relation        | correctness | warn          | No          | Detects declared relations with no resolved read-like uses in rule bodies, `for` iterables, or `for` guards; rule heads count only as writes. |

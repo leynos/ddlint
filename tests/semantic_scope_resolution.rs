@@ -84,6 +84,10 @@ fn semantic_model_keeps_relation_reads_distinct_from_head_writes(
         Some(UseOrigin::RelationHead)
     );
     assert!(
+        !source_uses.is_empty(),
+        "expected at least one Source use recorded",
+    );
+    assert!(
         source_uses
             .iter()
             .all(|use_site| use_site.origin().is_relation_read()),

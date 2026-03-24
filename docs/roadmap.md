@@ -357,7 +357,8 @@ catalog.
 ### 4.1. Correctness rules
 
 - [x] 4.1.1. Implement `unused-relation` diagnostics for declared relations with
-  no usage sites. Requires 3.3.2 and 3.3.4. See docs/ddlint-design.md §3.3.
+  no resolved read-like uses (rule-head writes do not count as reads). Requires
+  3.3.2 and 3.3.4. See docs/ddlint-design.md §3.3.
 - [ ] 4.1.2. Implement `unused-variable` diagnostics for variables defined but
   not used within a rule, treating `_` as explicit ignore. Requires 3.3.3 and
   3.3.4. See docs/ddlint-design.md §3.3.
