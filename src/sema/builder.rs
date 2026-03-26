@@ -58,6 +58,10 @@ impl SemanticModelBuilder {
         }
     }
 
+    fn is_relation_read_use(use_site: &crate::sema::UseSite) -> bool {
+        use_site.kind() == UseKind::Relation && use_site.origin().is_relation_read()
+    }
+
     pub(crate) fn finish(self) -> SemanticModel {
         // Precompute span-to-relation-symbol index
         let span_to_relation_symbol: HashMap<Span, SymbolId> = self
@@ -72,7 +76,7 @@ impl SemanticModelBuilder {
         let symbols_with_reads: HashSet<SymbolId> = self
             .uses
             .iter()
-            .filter(|u| u.kind() == UseKind::Relation && u.origin().is_relation_read())
+            .filter(|u| Self::is_relation_read_use(u))
             .filter_map(|u| match u.resolution() {
                 Resolution::Resolved(symbol_id) => Some(symbol_id),
                 _ => None,
