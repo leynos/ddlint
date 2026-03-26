@@ -11,7 +11,7 @@ fn parse_builds_cst_for_all_top_level_categories() {
         "import foo::bar\n",
         "typedef UserId = u64\n",
         "input relation User(id: UserId, name: string) primary key (id)\n",
-        "index Idx_User_name on User(name)\n",
+        "index Idx_User_name(name: string) on User[name]\n",
         "function greet(name: string): string {\n",
         "}\n",
         "extern transformer normalise(input: User): Normalized\n",

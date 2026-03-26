@@ -238,6 +238,11 @@ Important invariants:
   cases.
 - Optional return type parsing (`parse_type_after_colon`) reuses the same type
   expression logic and trivia skipping.
+- Index declarations now use the canonical spec-form grammar
+  `index Name(field: Type, ...) on Atom`. The span scanner rejects the legacy
+  shorthand `index Name on Relation(columns)` with a targeted diagnostic, and
+  the `Index` wrapper exposes `fields()` plus normalized `on_target()` access
+  instead of relation/column helpers tied to the old shorthand.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.

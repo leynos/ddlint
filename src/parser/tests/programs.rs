@@ -61,27 +61,29 @@ pub enum IndexProgram {
     IndexSingleColumn,
     IndexMultiColumn,
     IndexInvalidMissingOn,
-    IndexNestedFunction,
-    IndexUnbalancedParentheses,
+    IndexBracketTarget,
+    IndexLegacyShorthand,
     IndexWhitespaceVariations,
 }
 
 impl IndexProgram {
     pub fn source(self) -> &'static str {
         match self {
-            Self::IndexSingleColumn => "index Idx_User_username on User(username)",
+            Self::IndexSingleColumn => {
+                "index Idx_User_username(username: string) on User[username]"
+            }
             Self::IndexMultiColumn => {
-                "index Idx_Session_user_time on UserSession(user_id, start_time)"
+                "index Idx_Session_user_time(user_id: u32, start_time: u64) on UserSession[user_id, start_time]"
             }
-            Self::IndexInvalidMissingOn => "index Idx_Invalid User(username)",
-            Self::IndexNestedFunction => {
-                "index Idx_lower_username on User(lower(username))"
+            Self::IndexInvalidMissingOn => {
+                "index Idx_Invalid(username: string) User[username]"
             }
-            Self::IndexUnbalancedParentheses => {
-                "index Idx_Unbalanced on User(lower(username)"
+            Self::IndexBracketTarget => {
+                "index Idx_lower_username(username: string) on User[lower(username)]"
             }
+            Self::IndexLegacyShorthand => "index Idx_Legacy on User(username)",
             Self::IndexWhitespaceVariations => {
-                "  index  Idx_User_ws \t on\n  User (\n    username  )  "
+                "  index  Idx_User_ws (\n    username: string\n  ) \t on\n  User [\n    username  ]  "
             }
         }
     }
@@ -199,4 +201,3 @@ impl TransformerProgram {
         }
     }
 }
-

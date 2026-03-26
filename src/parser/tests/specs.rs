@@ -62,23 +62,31 @@ impl<'a> RelationSpec<'a> {
 
 pub struct IndexSpec<'a> {
     name: &'a str,
-    relation: &'a str,
-    columns: Vec<&'a str>,
+    fields: Vec<(&'a str, &'a str)>,
+    on_target: Option<&'a str>,
 }
 impl<'a> IndexSpec<'a> {
-    pub fn new(name: &'a str, relation: &'a str) -> Self {
-        Self { name, relation, columns: vec![] }
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            name,
+            fields: vec![],
+            on_target: None,
+        }
     }
-    pub fn column(mut self, col: &'a str) -> Self {
-        self.columns.push(col);
+    pub fn field(mut self, name: &'a str, ty: &'a str) -> Self {
+        self.fields.push((name, ty));
+        self
+    }
+    pub fn on_target(mut self, on_target: &'a str) -> Self {
+        self.on_target = Some(on_target);
         self
     }
     pub fn assert(self, i: &Index) {
         assert_entity!(
             i,
             self,
-            i.relation() => Some(self.relation.into()),
-            i.columns() => str_vec(&self.columns)
+            i.fields() => Ok(pair_vec(&self.fields)),
+            i.on_target() => self.on_target.map(str::to_string)
         );
     }
 }
@@ -142,4 +150,3 @@ impl<'a> TransformerSpec<'a> {
         );
     }
 }
-
