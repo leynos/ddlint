@@ -187,19 +187,18 @@ The `UseOrigin::is_relation_read()` method returns `true` for `RelationBody`,
 without inspecting syntax nodes: "does this relation declaration have any
 resolved read-like uses?"
 
-Add semantic helper methods that keep rule code simple. The final names may
-change, but the rule should be able to call helpers equivalent to:
+Add semantic helper methods that keep rule code simple. The shipped API
+provides:
 
 ```rust
-model.relation_symbols()
-model.relation_reads()
-model.has_resolved_relation_read(symbol_id)
+model.relation_symbols()  // Iterator over (SymbolId, &Symbol) for relations
+model.relation_symbol_at_span(span)  // Lookup symbol by span
+model.has_resolved_relation_read(symbol_id)  // Check if symbol has reads
 ```
 
-If lookup by span is needed to associate an `N_RELATION_DECL` node with its
-relation symbol, prefer a small helper such as
-`SemanticModel::relation_symbol_at_span(span)` over ad hoc filtering inside the
-rule.
+These helpers allow the rule to iterate over relation declarations and check
+whether each has resolved read-like uses, without inspecting syntax nodes or
+filtering the full symbol table.
 
 Implement the rule itself with `declare_lint!`. It should target
 `SyntaxKind::N_RELATION_DECL`, use metadata `name: "unused-relation"`,
