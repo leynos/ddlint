@@ -58,10 +58,10 @@ build on:
 - `src/linter/macros.rs` provides `declare_lint!`, which should be used for
   the new rule unless a documented blocker appears.
 
-There is no shipped rule-catalog module yet. Current behavioural tests register
-ad hoc rules directly in `CstRuleStore`. This milestone therefore needs to add
-the first exported production rule module and corresponding tests, but it does
-not need to invent a full CLI-configured default ruleset.
+There is no shipped rule-catalogue module yet. Current behavioural tests
+register ad hoc rules directly in `CstRuleStore`. This milestone therefore
+needs to add the first exported production rule module and corresponding tests,
+but it does not need to invent a full CLI-configured default ruleset.
 
 The key design gap is semantic provenance. `docs/ddlint-design.md` says
 `unused-relation` detects relations "defined but never read from", yet the

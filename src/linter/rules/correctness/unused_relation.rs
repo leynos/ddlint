@@ -9,15 +9,9 @@
 //! This rule uses `SemanticModel::has_resolved_relation_read()` to check
 //! whether a relation has at least one resolved read-like use.
 
-use rowan::TextRange;
-
 use crate::linter::{LintDiagnostic, Rule};
+use crate::parser::ast::rule::text_range_to_span;
 use crate::{SyntaxKind, declare_lint};
-
-/// Convert a `rowan` range into the crate's byte-span type.
-fn text_range_to_span(range: TextRange) -> crate::Span {
-    usize::from(range.start())..usize::from(range.end())
-}
 
 declare_lint! {
     /// Detects relations declared but with no resolved read-like uses.
