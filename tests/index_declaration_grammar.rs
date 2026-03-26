@@ -3,19 +3,17 @@
 //! Verifies that the public `ddlint::parse` entrypoint accepts the canonical
 //! spec-form index declaration and rejects the legacy shorthand.
 
-#![expect(clippy::expect_used, reason = "tests assert exact behaviour")]
-
 use ddlint::parse;
 use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
 
 #[test]
-fn canonical_index_declaration_parses() {
+fn canonical_index_declaration_parses() -> Result<(), Box<dyn std::error::Error>> {
     let parsed = parse("index OrdersByUser(user: UserId, ts: Timestamp) on Orders[user, ts]");
     assert_no_parse_errors(parsed.errors());
 
     let indexes = parsed.root().indexes();
     assert_eq!(indexes.len(), 1, "expected one parsed index");
-    let index = indexes.first().expect("index missing");
+    let index = indexes.first().ok_or("index missing")?;
     assert_eq!(index.name().as_deref(), Some("OrdersByUser"));
     assert_eq!(
         index.fields(),
@@ -25,6 +23,7 @@ fn canonical_index_declaration_parses() {
         ])
     );
     assert_eq!(index.on_target().as_deref(), Some("Orders[user,ts]"));
+    Ok(())
 }
 
 #[test]
