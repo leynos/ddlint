@@ -40,6 +40,10 @@ fn canonical_index_declaration_parses() -> Result<(), Box<dyn std::error::Error>
     "index OrdersByUser(user) on Orders[user]",
     "index declarations require one or more typed fields in the form `name: Type`"
 )]
+#[case(
+    "index OrdersByUser(user: UUID,) on Orders[user]",
+    "index declarations require one or more typed fields in the form `name: Type`"
+)]
 fn invalid_index_declarations_are_rejected(
     #[case] input: &str,
     #[case] expected_error: &str,
