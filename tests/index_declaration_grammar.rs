@@ -13,7 +13,8 @@ fn canonical_index_declaration_parses() {
 
     let indexes = parsed.root().indexes();
     assert_eq!(indexes.len(), 1, "expected one parsed index");
-    let index = indexes.first().unwrap_or_else(|| panic!("index missing"));
+    #[expect(clippy::expect_used, reason = "test requires exactly one index")]
+    let index = indexes.first().expect("index missing");
     assert_eq!(index.name().as_deref(), Some("OrdersByUser"));
     assert_eq!(
         index.fields(),
