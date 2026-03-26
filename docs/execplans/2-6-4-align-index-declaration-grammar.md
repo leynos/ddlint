@@ -51,10 +51,11 @@ Boundaries for this milestone:
 - Keep the repository's current top-level statement terminator behaviour.
   Do not widen this task into a global semicolon-policy change just because the
   Extended Backus-Naur Form (EBNF) examples show `;`.
-- Prefer a CST-backed index wrapper that exposes the new grammar directly,
-  even if that means reshaping `src/parser/ast/index.rs`. Stable parser APIs do
-  not land until roadmap phase `2.8`, so carrying misleading legacy helpers now
-  would make Architecture Decision Record (ADR) 001 harder, not easier.
+- Prefer a Concrete Syntax Tree (CST)-backed index wrapper that exposes the new
+  grammar directly, even if that means reshaping `src/parser/ast/index.rs`.
+  Stable parser APIs do not land until roadmap phase `2.8`, so carrying
+  misleading legacy helpers now would make Architecture Decision Record (ADR)
+  001 harder, not easier.
 - Reuse existing scanner helpers where possible. `src/parser/lexer_helpers.rs`
   already provides `atom()`, so this work should extend the index scanner
   around that helper instead of inventing a second ad hoc token walker.
@@ -159,7 +160,7 @@ evidence. Do not silently narrow the grammar.
   `make check-fmt`, `make lint`, and `make test`.
 - [x] (2026-03-20) Marked roadmap item `2.6.4` done after all checks passed.
 
-## Surprises & Discoveries
+## Surprises & discoveries
 
 - `src/parser/lexer_helpers.rs` already contains an `atom()` parser that
   accepts scoped names plus parenthesized, bracketed, or braced argument
@@ -348,7 +349,7 @@ Observable success criteria:
   canonical index fixtures.
 - Docs, conformance register, and roadmap all describe the same grammar.
 
-## Outcomes & Retrospective
+## Outcomes & retrospective
 
 The final accepted grammar is the spec-form
 `index Name(field: Type, ...) on Atom`. The legacy shorthand
