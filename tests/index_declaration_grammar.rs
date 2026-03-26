@@ -5,6 +5,7 @@
 
 use ddlint::parse;
 use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
+use rstest::rstest;
 
 #[test]
 fn canonical_index_declaration_parses() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,32 +27,24 @@ fn canonical_index_declaration_parses() -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-#[test]
-fn legacy_index_shorthand_is_rejected() {
-    let parsed = parse("index OrdersByUser on Orders(user, ts)");
-    assert_custom_parse_error_contains(
-        parsed.errors(),
-        "index declarations require a typed field list `(name: Type, ...)` before `on`",
-    );
-    assert!(parsed.root().indexes().is_empty());
-}
-
-#[test]
-fn empty_index_field_list_is_rejected() {
-    let parsed = parse("index OrdersByUser() on Orders[user]");
-    assert_custom_parse_error_contains(
-        parsed.errors(),
-        "index declarations require one or more typed fields in the form `name: Type`",
-    );
-    assert!(parsed.root().indexes().is_empty());
-}
-
-#[test]
-fn malformed_index_field_list_is_rejected() {
-    let parsed = parse("index OrdersByUser(user) on Orders[user]");
-    assert_custom_parse_error_contains(
-        parsed.errors(),
-        "index declarations require one or more typed fields in the form `name: Type`",
-    );
+#[rstest]
+#[case(
+    "index OrdersByUser on Orders(user, ts)",
+    "index declarations require a typed field list `(name: Type, ...)` before `on`"
+)]
+#[case(
+    "index OrdersByUser() on Orders[user]",
+    "index declarations require one or more typed fields in the form `name: Type`"
+)]
+#[case(
+    "index OrdersByUser(user) on Orders[user]",
+    "index declarations require one or more typed fields in the form `name: Type`"
+)]
+fn invalid_index_declarations_are_rejected(
+    #[case] input: &str,
+    #[case] expected_error: &str,
+) {
+    let parsed = parse(input);
+    assert_custom_parse_error_contains(parsed.errors(), expected_error);
     assert!(parsed.root().indexes().is_empty());
 }
