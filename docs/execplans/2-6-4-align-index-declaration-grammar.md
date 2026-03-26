@@ -183,7 +183,7 @@ evidence. Do not silently narrow the grammar.
   inside the target. This keeps whitespace-variation tests stable without
   inventing a dedicated typed atom wrapper in this milestone.
 
-## Decision Log
+## Decision log
 
 - Decision: recommend aligning code to the syntax spec, not rewriting the spec
   to preserve the shorthand `index Name on Relation(columns)`. Rationale: the
