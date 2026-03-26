@@ -3,6 +3,8 @@
 //! The semantic model stores only owned data and opaque identifiers so it can
 //! be shared safely across linter worker threads.
 
+use std::collections::{HashMap, HashSet};
+
 use crate::Span;
 use crate::parser::ast::SemanticRuleOrigin;
 
@@ -80,6 +82,32 @@ pub enum UseKind {
     Relation,
     /// Use of a rule-local variable.
     Variable,
+}
+
+/// Provenance for one recorded use site.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UseOrigin {
+    /// Relation use from a rule head, which writes to the relation.
+    RelationHead,
+    /// Relation use from a normal rule-body atom or semantic-rule body atom.
+    RelationBody,
+    /// Relation use from a `for` iterable expression.
+    ForIterable,
+    /// Relation use from a `for` guard expression.
+    ForGuard,
+    /// Variable use recorded while traversing expressions.
+    Variable,
+}
+
+impl UseOrigin {
+    /// Return `true` when this origin is a read-like relation position.
+    #[must_use]
+    pub fn is_relation_read(self) -> bool {
+        matches!(
+            self,
+            Self::RelationBody | Self::ForIterable | Self::ForGuard
+        )
+    }
 }
 
 /// Final name-resolution result for one use site.
@@ -189,6 +217,7 @@ impl Symbol {
 pub struct UseSite {
     pub(crate) name: String,
     pub(crate) kind: UseKind,
+    pub(crate) origin: UseOrigin,
     pub(crate) scope: ScopeId,
     pub(crate) span: Span,
     pub(crate) source_order: usize,
@@ -206,6 +235,12 @@ impl UseSite {
     #[must_use]
     pub fn kind(&self) -> UseKind {
         self.kind
+    }
+
+    /// Provenance for this use site.
+    #[must_use]
+    pub fn origin(&self) -> UseOrigin {
+        self.origin
     }
 
     /// Scope in which the use occurred.
@@ -240,6 +275,10 @@ pub struct SemanticModel {
     pub(crate) scopes: Vec<Scope>,
     pub(crate) symbols: Vec<Symbol>,
     pub(crate) uses: Vec<UseSite>,
+    /// Precomputed index mapping relation declaration spans to symbol IDs.
+    pub(crate) span_to_relation_symbol: HashMap<Span, SymbolId>,
+    /// Precomputed set of symbol IDs that have at least one resolved read-like use.
+    pub(crate) symbols_with_reads: HashSet<SymbolId>,
 }
 
 impl SemanticModel {
@@ -261,6 +300,15 @@ impl SemanticModel {
         &self.symbols
     }
 
+    /// Return every recorded relation declaration together with its symbol id.
+    pub fn relation_symbols(&self) -> impl Iterator<Item = (SymbolId, &Symbol)> + '_ {
+        self.symbols
+            .iter()
+            .enumerate()
+            .filter(|(_, symbol)| symbol.kind() == DeclarationKind::Relation)
+            .map(|(index, symbol)| (SymbolId(index), symbol))
+    }
+
     /// Return every recorded use site in stable build order.
     #[must_use]
     pub fn uses(&self) -> &[UseSite] {
@@ -277,6 +325,18 @@ impl SemanticModel {
     #[must_use]
     pub fn symbol(&self, id: SymbolId) -> Option<&Symbol> {
         self.symbols.get(id.0)
+    }
+
+    /// Return the relation symbol declared at the given span, if any.
+    #[must_use]
+    pub fn relation_symbol_at_span(&self, span: &Span) -> Option<SymbolId> {
+        self.span_to_relation_symbol.get(span).copied()
+    }
+
+    /// Return `true` when the relation has at least one resolved read-like use.
+    #[must_use]
+    pub fn has_resolved_relation_read(&self, symbol_id: SymbolId) -> bool {
+        self.symbols_with_reads.contains(&symbol_id)
     }
 
     /// Return the resolved symbol for a use site when resolution succeeded.

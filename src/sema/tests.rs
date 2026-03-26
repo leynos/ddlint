@@ -4,7 +4,8 @@ use crate::parse;
 use rstest::{fixture, rstest};
 
 use super::{
-    DeclarationKind, Resolution, ScopeKind, SymbolOrigin, UseKind, build, build_from_root,
+    DeclarationKind, Resolution, ScopeKind, SymbolOrigin, UseKind, UseOrigin, build,
+    build_from_root,
 };
 
 fn parse_ok(source: &str) -> crate::Parsed {
@@ -56,6 +57,12 @@ fn symbols_named<'a>(
         |s| s.name(),
         super::model::Symbol::kind,
     )
+}
+
+fn relation_symbol_id(model: &super::SemanticModel, name: &str) -> Option<crate::sema::SymbolId> {
+    model
+        .relation_symbols()
+        .find_map(|(symbol_id, symbol)| (symbol.name() == name).then_some(symbol_id))
 }
 
 #[fixture]
@@ -119,6 +126,83 @@ fn head_bindings_are_visible_from_rule_start(
             .iter()
             .any(|use_site| matches!(use_site.resolution(), Resolution::Resolved(_))),
         "body use of x should resolve to the head binding",
+    );
+}
+
+#[rstest]
+fn relation_use_origins_distinguish_heads_from_reads(
+    #[with(concat!(
+        "Sink(x) :- ",
+        "Source(x), ",
+        "for (y in Items(x)) Check(y), ",
+        "for (z in Items(x) if Check(z)) Check(z)."
+    ))]
+    semantic_model: super::SemanticModel,
+) {
+    let sink_uses = uses_named(&semantic_model, "Sink", UseKind::Relation);
+    let source_uses = uses_named(&semantic_model, "Source", UseKind::Relation);
+    let items_uses = uses_named(&semantic_model, "Items", UseKind::Relation);
+    let check_uses = uses_named(&semantic_model, "Check", UseKind::Relation);
+
+    let sink_origins: Vec<_> = sink_uses.iter().map(|use_site| use_site.origin()).collect();
+    let source_origins: Vec<_> = source_uses
+        .iter()
+        .map(|use_site| use_site.origin())
+        .collect();
+    let items_origins: Vec<_> = items_uses
+        .iter()
+        .map(|use_site| use_site.origin())
+        .collect();
+    let check_origins: Vec<_> = check_uses
+        .iter()
+        .map(|use_site| use_site.origin())
+        .collect();
+
+    // `Sink` only appears in rule heads.
+    assert!(!sink_origins.is_empty(), "expected at least one `Sink` use");
+    assert!(
+        sink_origins
+            .iter()
+            .all(|origin| matches!(origin, UseOrigin::RelationHead)),
+        "expected all `Sink` uses to be rule heads, got: {sink_origins:?}",
+    );
+
+    // `Source` only appears as a body read.
+    assert!(
+        !source_origins.is_empty(),
+        "expected at least one `Source` use"
+    );
+    assert!(
+        source_origins
+            .iter()
+            .all(|origin| matches!(origin, UseOrigin::RelationBody)),
+        "expected all `Source` uses to be body reads, got: {source_origins:?}",
+    );
+
+    // `Items` only appears as the iterable of a `for`.
+    assert!(
+        !items_origins.is_empty(),
+        "expected at least one `Items` use"
+    );
+    assert!(
+        items_origins
+            .iter()
+            .all(|origin| matches!(origin, UseOrigin::ForIterable)),
+        "expected all `Items` uses to be `for` iterables, got: {items_origins:?}",
+    );
+
+    // `Check` appears both in the `for` body and in the `for` guard.
+    assert!(
+        check_origins
+            .iter()
+            .any(|origin| matches!(origin, UseOrigin::RelationBody)),
+        "expected at least one body use for `Check`, got: {check_origins:?}",
+    );
+    assert!(
+        check_origins
+            .iter()
+            .any(|origin| matches!(origin, UseOrigin::ForGuard)),
+        "expected at least one guard use for `Check`, got: {check_origins:?}",
     );
 }
 
@@ -197,6 +281,8 @@ fn for_loop_bindings_do_not_escape_loop_scope(
 fn top_level_for_semantic_rules_participate_in_analysis(
     #[with("for (x in Source(x)) Output(0).")] semantic_model: super::SemanticModel,
 ) {
+    let output_uses = uses_named(&semantic_model, "Output", UseKind::Relation);
+    let source_uses = uses_named(&semantic_model, "Source", UseKind::Relation);
     let x_uses = uses_named(&semantic_model, "x", UseKind::Variable);
 
     assert!(
@@ -207,8 +293,18 @@ fn top_level_for_semantic_rules_participate_in_analysis(
         "semantic rule should produce a rule scope",
     );
     assert!(
-        !uses_named(&semantic_model, "Output", UseKind::Relation).is_empty(),
+        !output_uses.is_empty(),
         "semantic rule head should record relation use",
+    );
+    assert_eq!(
+        output_uses.first().map(|use_site| use_site.origin()),
+        Some(UseOrigin::RelationHead)
+    );
+    assert_eq!(
+        source_uses
+            .first()
+            .map(|use_site| use_site.origin().is_relation_read()),
+        Some(true)
     );
     assert!(
         x_uses
@@ -252,4 +348,42 @@ fn relation_use_prefers_relation_over_function_with_same_name(
         assert_eq!(resolved_symbol.kind(), DeclarationKind::Relation);
         assert_eq!(resolved_symbol, foo_relation);
     }
+}
+
+#[rstest]
+#[expect(
+    clippy::expect_used,
+    reason = "tests should fail with concise lookup messages"
+)]
+fn relation_read_helpers_ignore_head_only_and_unresolved_uses(
+    #[with(concat!(
+        "input relation Source(x: u32)\n",
+        "relation Sink(x: u32)\n",
+        "relation HeadOnly(x: u32)\n",
+        "relation NeverRead(x: u32)\n",
+        "Sink(x) :- Source(x), Missing(x).\n",
+        "HeadOnly(x) :- Source(x).\n",
+    ))]
+    semantic_model: super::SemanticModel,
+) {
+    let source_id = relation_symbol_id(&semantic_model, "Source").expect("missing Source");
+    let sink_id = relation_symbol_id(&semantic_model, "Sink").expect("missing Sink");
+    let head_only_id = relation_symbol_id(&semantic_model, "HeadOnly").expect("missing HeadOnly");
+    let never_read_id =
+        relation_symbol_id(&semantic_model, "NeverRead").expect("missing NeverRead");
+
+    assert!(semantic_model.has_resolved_relation_read(source_id));
+    assert!(!semantic_model.has_resolved_relation_read(sink_id));
+    assert!(!semantic_model.has_resolved_relation_read(head_only_id));
+    assert!(!semantic_model.has_resolved_relation_read(never_read_id));
+
+    let source_span = semantic_model
+        .symbol(source_id)
+        .expect("missing Source symbol")
+        .span()
+        .clone();
+    assert_eq!(
+        semantic_model.relation_symbol_at_span(&source_span),
+        Some(source_id)
+    );
 }

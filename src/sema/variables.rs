@@ -2,7 +2,7 @@
 
 use crate::Span;
 use crate::parser::ast::Expr;
-use crate::sema::model::{ScopeId, UseKind, UseSite};
+use crate::sema::model::{ScopeId, UseKind, UseOrigin, UseSite};
 
 use super::builder::SemanticModelBuilder;
 
@@ -202,6 +202,7 @@ impl SemanticModelBuilder {
         self.uses.push(UseSite {
             name: name.to_string(),
             kind: UseKind::Variable,
+            origin: UseOrigin::Variable,
             scope: context.current_scope(),
             span: context.span().clone(),
             source_order: context.literal_index(),

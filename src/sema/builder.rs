@@ -1,6 +1,6 @@
 //! Internal semantic-model builder state and high-level collection passes.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rowan::SyntaxNode;
 
@@ -10,8 +10,8 @@ use crate::parser::ast;
 use crate::parser::ast::SemanticRule;
 use crate::parser::ast::rule::text_range_to_span;
 use crate::sema::model::{
-    DeclarationKind, Scope, ScopeId, ScopeKind, ScopeOrigin, SemanticModel, Symbol, SymbolId,
-    SymbolOrigin,
+    DeclarationKind, Resolution, Scope, ScopeId, ScopeKind, ScopeOrigin, SemanticModel, Symbol,
+    SymbolId, SymbolOrigin, UseKind,
 };
 
 use super::resolve::collect_pattern_binding_names;
@@ -58,12 +58,38 @@ impl SemanticModelBuilder {
         }
     }
 
+    fn is_relation_read_use(use_site: &crate::sema::UseSite) -> bool {
+        use_site.kind() == UseKind::Relation && use_site.origin().is_relation_read()
+    }
+
     pub(crate) fn finish(self) -> SemanticModel {
+        // Precompute span-to-relation-symbol index
+        let span_to_relation_symbol: HashMap<Span, SymbolId> = self
+            .symbols
+            .iter()
+            .enumerate()
+            .filter(|(_, symbol)| symbol.kind() == DeclarationKind::Relation)
+            .map(|(index, symbol)| (symbol.span().clone(), SymbolId(index)))
+            .collect();
+
+        // Precompute symbols-with-reads set
+        let symbols_with_reads: HashSet<SymbolId> = self
+            .uses
+            .iter()
+            .filter(|u| Self::is_relation_read_use(u))
+            .filter_map(|u| match u.resolution() {
+                Resolution::Resolved(symbol_id) => Some(symbol_id),
+                _ => None,
+            })
+            .collect();
+
         SemanticModel {
             program_scope: self.program_scope,
             scopes: self.scopes,
             symbols: self.symbols,
             uses: self.uses,
+            span_to_relation_symbol,
+            symbols_with_reads,
         }
     }
 

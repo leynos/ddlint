@@ -1,7 +1,7 @@
 //! Behavioural tests for semantic symbol tables and scope resolution.
 
 use ddlint::linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, Runner};
-use ddlint::sema::{self, DeclarationKind, Resolution, UseKind};
+use ddlint::sema::{self, DeclarationKind, Resolution, UseKind, UseOrigin};
 use ddlint::{SyntaxKind, parse};
 use rstest::{fixture, rstest};
 
@@ -50,6 +50,10 @@ fn semantic_model_records_declarations_and_resolved_uses_end_to_end(
 
     assert_eq!(source_declarations.len(), 1);
     assert_eq!(source_uses.len(), 1);
+    assert_eq!(
+        source_uses.first().map(|use_site| use_site.origin()),
+        Some(UseOrigin::RelationBody)
+    );
     assert!(matches!(
         source_uses.first().map(|use_site| use_site.resolution()),
         Some(Resolution::Resolved(_))
@@ -59,6 +63,35 @@ fn semantic_model_records_declarations_and_resolved_uses_end_to_end(
             .iter()
             .any(|use_site| matches!(use_site.resolution(), Resolution::Resolved(_))),
         "body variable use should resolve through the semantic model",
+    );
+}
+
+#[rstest]
+fn semantic_model_keeps_relation_reads_distinct_from_head_writes(
+    #[with("for (x in Source(x)) Output(x).\nHeadOnly(x) :- Source(x).")]
+    semantic_model: ddlint::sema::SemanticModel,
+) {
+    let output_uses = uses_named(&semantic_model, "Output", UseKind::Relation);
+    let head_only_uses = uses_named(&semantic_model, "HeadOnly", UseKind::Relation);
+    let source_uses = uses_named(&semantic_model, "Source", UseKind::Relation);
+
+    assert_eq!(
+        output_uses.first().map(|use_site| use_site.origin()),
+        Some(UseOrigin::RelationHead)
+    );
+    assert_eq!(
+        head_only_uses.first().map(|use_site| use_site.origin()),
+        Some(UseOrigin::RelationHead)
+    );
+    assert!(
+        !source_uses.is_empty(),
+        "expected at least one Source use recorded",
+    );
+    assert!(
+        source_uses
+            .iter()
+            .all(|use_site| use_site.origin().is_relation_read()),
+        "Source should only appear in read-like relation positions",
     );
 }
 
