@@ -61,7 +61,8 @@ build on:
 There is no shipped rule-catalogue module yet. Current behavioural tests
 register ad hoc rules directly in `CstRuleStore`. This milestone therefore
 needs to add the first exported production rule module and corresponding tests,
-but it does not need to invent a full CLI-configured default ruleset.
+but it does not need to invent a full Command-Line Interface (CLI)-configured
+default ruleset.
 
 The key design gap is semantic provenance. `docs/ddlint-design.md` says
 `unused-relation` detects relations "defined but never read from", yet the
@@ -152,8 +153,8 @@ would therefore under-report unused relations by treating writes as reads.
 - Decision: expose the first production rule as a normal exported rule type
   that tests register explicitly in `CstRuleStore`, rather than inventing a
   global default ruleset now. Rationale: the current repository has no shipped
-  rule-catalog registration surface, and adding one would broaden scope beyond
-  `4.1.1`. Date/Author: 2026-03-21 / Codex.
+  rule-catalogue registration surface, and adding one would broaden scope
+  beyond `4.1.1`. Date/Author: 2026-03-21 / Codex.
 
 ## Proposed design
 
@@ -377,11 +378,13 @@ is warned because it is only written in the head.
   a small `src/linter/rules/` module tree, but should not broaden into a full
   default ruleset or CLI registry.
 
-- Observation: top-level `for` desugaring currently records iterable relation
-  reads as semantic-rule body reads rather than a dedicated `ForIterable`
-  origin. Impact: the durable rule contract is still satisfied because those
-  uses remain read-like, but tests should assert read-versus-write semantics
-  rather than overfitting to the current lowering detail.
+- Observation: early experiments with top-level `for` desugaring recorded
+  iterable relation reads as semantic-rule body reads rather than a dedicated
+  `ForIterable` origin. The shipped contract treats those uses as read-like,
+  and tests should assert read-versus-write semantics per the durable rule
+  contract rather than overfitting to any particular desugaring detail.
+  Historical note: the `ForIterable` origin variant was introduced to
+  distinguish iterable positions from rule-body positions.
 
 ## Outcomes & retrospective
 
@@ -404,9 +407,12 @@ is warned because it is only written in the head.
   `docs/parser-implementation-notes.md` records relation-use provenance as a
   current semantic invariant; and `docs/roadmap.md` marks item `4.1.1` done.
 - Passed gate commands:
-  `set -o pipefail; make fmt 2>&1 | tee /tmp/4-1-1-final-make-fmt.log`
-  `set -o pipefail; make markdownlint 2>&1 | tee /tmp/4-1-1-make-markdownlint.log`
-   `set -o pipefail; make nixie 2>&1 | tee /tmp/4-1-1-make-nixie.log`
-  `set -o pipefail; make check-fmt 2>&1 | tee /tmp/4-1-1-final-check-fmt.log`
-  `set -o pipefail; make lint 2>&1 | tee /tmp/4-1-1-final-lint.log`
-  `set -o pipefail; CI=1 make test 2>&1 | tee /tmp/4-1-1-final-test.log`
+
+  ```bash
+  set -o pipefail; make fmt 2>&1 | tee /tmp/4-1-1-final-make-fmt.log
+  set -o pipefail; make markdownlint 2>&1 | tee /tmp/4-1-1-make-markdownlint.log
+  set -o pipefail; make nixie 2>&1 | tee /tmp/4-1-1-make-nixie.log
+  set -o pipefail; make check-fmt 2>&1 | tee /tmp/4-1-1-final-check-fmt.log
+  set -o pipefail; make lint 2>&1 | tee /tmp/4-1-1-final-lint.log
+  set -o pipefail; CI=1 make test 2>&1 | tee /tmp/4-1-1-final-test.log
+  ```
