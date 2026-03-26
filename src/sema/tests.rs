@@ -131,12 +131,12 @@ fn head_bindings_are_visible_from_rule_start(
 
 #[rstest]
 fn relation_use_origins_distinguish_heads_from_reads(
-    #[with(
-        "Sink(x) :- \
-         Source(x), \
-         for (y in Items(x)) Check(y), \
-         for (z in Items(x) if Check(z)) Check(z)."
-    )]
+    #[with(concat!(
+        "Sink(x) :- ",
+        "Source(x), ",
+        "for (y in Items(x)) Check(y), ",
+        "for (z in Items(x) if Check(z)) Check(z)."
+    ))]
     semantic_model: super::SemanticModel,
 ) {
     let sink_uses = uses_named(&semantic_model, "Sink", UseKind::Relation);
@@ -159,6 +159,7 @@ fn relation_use_origins_distinguish_heads_from_reads(
         .collect();
 
     // `Sink` only appears in rule heads.
+    assert!(!sink_origins.is_empty(), "expected at least one `Sink` use");
     assert!(
         sink_origins
             .iter()
@@ -168,6 +169,10 @@ fn relation_use_origins_distinguish_heads_from_reads(
 
     // `Source` only appears as a body read.
     assert!(
+        !source_origins.is_empty(),
+        "expected at least one `Source` use"
+    );
+    assert!(
         source_origins
             .iter()
             .all(|origin| matches!(origin, UseOrigin::RelationBody)),
@@ -175,6 +180,10 @@ fn relation_use_origins_distinguish_heads_from_reads(
     );
 
     // `Items` only appears as the iterable of a `for`.
+    assert!(
+        !items_origins.is_empty(),
+        "expected at least one `Items` use"
+    );
     assert!(
         items_origins
             .iter()

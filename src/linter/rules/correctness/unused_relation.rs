@@ -1,4 +1,13 @@
-//! `unused-relation` warns about declared relations that are never read from.
+//! `unused-relation` warns about declared relations with no resolved read-like uses.
+//!
+//! A relation counts as read when it appears in a rule body, `for` iterable, or
+//! `for` guard position and that use resolves to the declaration. Rule-head
+//! writes and unresolved relation uses do not count as reads, so head-only
+//! relations and relations referenced only in broken rules still trigger
+//! warnings.
+//!
+//! This rule uses `SemanticModel::has_resolved_relation_read()` to check
+//! whether a relation has at least one resolved read-like use.
 
 use rowan::TextRange;
 
@@ -11,7 +20,11 @@ fn text_range_to_span(range: TextRange) -> crate::Span {
 }
 
 declare_lint! {
-    /// Detects relations that are declared but never read from.
+    /// Detects relations declared but with no resolved read-like uses.
+    ///
+    /// A relation is considered read when it appears in a rule body, `for`
+    /// iterable, or `for` guard and that use resolves to the declaration.
+    /// Rule-head writes and unresolved uses do not count.
     pub UnusedRelationRule {
         name: "unused-relation",
         group: "correctness",

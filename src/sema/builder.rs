@@ -58,6 +58,17 @@ impl SemanticModelBuilder {
         }
     }
 
+    /// Extract a resolved relation read from a use site, if it is one.
+    fn resolve_relation_read(use_site: &crate::sema::UseSite) -> Option<SymbolId> {
+        if use_site.kind() == UseKind::Relation
+            && use_site.origin().is_relation_read()
+            && let Resolution::Resolved(symbol_id) = use_site.resolution()
+        {
+            return Some(symbol_id);
+        }
+        None
+    }
+
     pub(crate) fn finish(self) -> SemanticModel {
         // Precompute span-to-relation-symbol index
         let span_to_relation_symbol: HashMap<Span, SymbolId> = self
@@ -69,15 +80,11 @@ impl SemanticModelBuilder {
             .collect();
 
         // Precompute symbols-with-reads set
-        let mut symbols_with_reads: HashSet<SymbolId> = HashSet::new();
-        for use_site in &self.uses {
-            if use_site.kind() == UseKind::Relation
-                && use_site.origin().is_relation_read()
-                && let Resolution::Resolved(symbol_id) = use_site.resolution()
-            {
-                symbols_with_reads.insert(symbol_id);
-            }
-        }
+        let symbols_with_reads: HashSet<SymbolId> = self
+            .uses
+            .iter()
+            .filter_map(Self::resolve_relation_read)
+            .collect();
 
         SemanticModel {
             program_scope: self.program_scope,

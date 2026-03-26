@@ -10,7 +10,7 @@ Status: Implemented
 ## Purpose / big picture
 
 Roadmap item `4.1.1` is the first production lint rule in the initial
-correctness catalog. After this change, `ddlint` exports an `unused-relation`
+correctness catalogue. After this change, `ddlint` exports an `unused-relation`
 lint rule (`UnusedRelationRule`) that callers must explicitly register in a
 `CstRuleStore` before running the `Runner`. Once registered, the rule emits an
 `unused-relation` warning for each declared relation that has no resolved
@@ -119,7 +119,7 @@ would therefore under-report unused relations by treating writes as reads.
   provenance and write failing tests before adding the rule.
 
 - Risk: the roadmap wording says "declared relations with no usage sites",
-  while the design catalog says "never read from". Severity: medium.
+  while the design catalogue says "never read from". Severity: medium.
   Likelihood: medium. Mitigation: document and implement the narrower
   read-based rule semantics, because that is the more precise statement and
   avoids counting rule-head writes as reads.
@@ -136,7 +136,7 @@ would therefore under-report unused relations by treating writes as reads.
   semantic query helpers that make the rule implementation direct and testable,
   but avoid introducing a broader precomputed lint-cache layer.
 
-## Decision Log
+## Decision log
 
 - Decision: treat rule-head relation atoms as write sites, not read sites, for
   `unused-relation`. Rationale: `docs/ddlint-design.md` defines the rule as
@@ -168,20 +168,23 @@ layout is:
 Export the new module from `src/linter/mod.rs` so integration tests and later
 CLI wiring can import the rule cleanly.
 
-Extend the semantic model with additive relation-use provenance. The smallest
-useful shape is a new enum such as `UseOrigin` or `RelationUseOrigin` stored on
-every `UseSite`. The enum should at least distinguish:
+Extend the semantic model with additive relation-use provenance. The shipped
+implementation uses a `UseOrigin` enum stored on every `UseSite` with the
+following variants:
 
-- rule head writes from AST-backed rules;
-- rule body reads from AST-backed rules;
-- `for` iterable reads;
-- `for` guard reads;
-- semantic-rule head writes from top-level `for` desugaring; and
-- semantic-rule body reads from top-level `for` desugaring.
+- `UseOrigin::RelationHead` — relation use from a rule head (write site);
+- `UseOrigin::RelationBody` — relation use from a rule-body atom or
+  semantic-rule body atom (read site);
+- `UseOrigin::ForIterable` — relation use from a `for` iterable expression
+  (read site);
+- `UseOrigin::ForGuard` — relation use from a `for` guard expression (read
+  site); and
+- `UseOrigin::Variable` — variable use recorded while traversing expressions.
 
-The exact enum names can change during implementation, but the model must allow
-the rule to answer one clear question without inspecting syntax nodes: "does
-this relation declaration have any resolved read-like uses?"
+The `UseOrigin::is_relation_read()` method returns `true` for `RelationBody`,
+`ForIterable`, and `ForGuard`, allowing the rule to answer one clear question
+without inspecting syntax nodes: "does this relation declaration have any
+resolved read-like uses?"
 
 Add semantic helper methods that keep rule code simple. The final names may
 change, but the rule should be able to call helpers equivalent to:
@@ -215,7 +218,7 @@ facts are incomplete because of parse recovery.
 
 ## Implementation plan
 
-### Milestone 1: Add semantic use provenance
+### Milestone 1: add semantic use provenance
 
 Update `src/sema/model.rs`, `src/sema/traverse.rs`, and any supporting helpers
 so relation uses carry enough provenance to distinguish reads from writes. Keep
@@ -230,7 +233,7 @@ contract. At minimum, add coverage proving:
 - the same relation name in a rule body is recorded as a read; and
 - top-level `for` semantic rules preserve the same distinction.
 
-### Milestone 2: Add semantic query helpers for the rule
+### Milestone 2: add semantic query helpers for the rule
 
 Add focused helper methods on `SemanticModel` that answer the questions
 `unused-relation` actually needs. Keep them additive and deterministic. The
@@ -244,7 +247,7 @@ least these cases:
 - a relation mentioned only in rule heads returns false; and
 - an unresolved relation-position use does not count as a read.
 
-### Milestone 3: Implement the production rule module
+### Milestone 3: implement the production rule module
 
 Create the production rule module under `src/linter/rules/correctness/` and
 export it through `src/linter/mod.rs`. Use `declare_lint!` for metadata and
@@ -263,7 +266,7 @@ rule. If they become reusable across multiple correctness rules, move them to a
 small sibling helper module only after the first rule works and the need is
 real.
 
-### Milestone 4: Add rule-focused tests
+### Milestone 4: add rule-focused tests
 
 Add unit tests close to the rule module and behavioural tests under `tests/`
 that run the real parser and runner. Use `rstest` fixtures and parameterized
@@ -285,10 +288,10 @@ Use a dedicated behavioural test file, for example
 `tests/unused_relation_rule.rs`, rather than burying these cases inside the
 generic runner tests.
 
-### Milestone 5: Update docs and roadmap
+### Milestone 5: update docs and roadmap
 
 Update `docs/ddlint-design.md` in the semantic-model section and the initial
-lint catalog section so the implemented read-versus-write distinction is
+lint catalogue section so the implemented read-versus-write distinction is
 explicit. If the semantic-model contract section already describes relation
 uses too loosely, tighten that wording there rather than spreading the rule
 semantics across multiple unrelated docs.
@@ -357,7 +360,7 @@ is warned because it is only written in the head.
 - [x] (2026-03-22 01:25Z) Ran `make fmt`, `make markdownlint`, `make nixie`,
   `make check-fmt`, `make lint`, and `CI=1 make test`; all passed.
 
-## Surprises & Discoveries
+## Surprises & discoveries
 
 - Observation: roadmap prerequisites `3.3.2` and `3.3.4` are already complete,
   and the semantic model does record relation declarations and relation uses.
@@ -366,7 +369,7 @@ is warned because it is only written in the head.
 
 - Observation: `src/sema/traverse.rs` currently records relation uses from rule
   heads via `collect_head_expr`, so the semantic model does not yet encode the
-  "read from" language used by the rule catalog. Impact: `unused-relation`
+  "read from" language used by the rule catalogue. Impact: `unused-relation`
   cannot be implemented correctly without extending `UseSite`.
 
 - Observation: the current linter module exports engine primitives only; there
@@ -380,7 +383,7 @@ is warned because it is only written in the head.
   uses remain read-like, but tests should assert read-versus-write semantics
   rather than overfitting to the current lowering detail.
 
-## Outcomes & Retrospective
+## Outcomes & retrospective
 
 - Final rule modules:
   `src/linter/rules/mod.rs`, `src/linter/rules/correctness/mod.rs`, and
