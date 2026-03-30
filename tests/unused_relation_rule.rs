@@ -2,6 +2,7 @@
 
 use rstest::rstest;
 
+#[path = "support/unused_relation.rs"]
 mod support;
 use support::run_unused_relation_rule;
 

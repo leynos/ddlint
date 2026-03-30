@@ -1,0 +1,121 @@
+//! `unused-variable` warns about rule-local bindings with no resolved uses.
+//!
+//! The rule operates over semantic `RuleBinding` symbols rather than raw CST
+//! name matching so shadowing, unresolved names, and wildcard ignores follow
+//! the semantic model's existing contracts. Diagnostics currently use the
+//! binding symbol's stored span, which points at the enclosing rule or literal
+//! rather than the exact identifier token.
+
+use rowan::TextRange;
+
+use crate::linter::{LintDiagnostic, Rule};
+use crate::{SyntaxKind, declare_lint};
+
+declare_lint! {
+    /// Detects rule-local bindings that are defined but never used.
+    ///
+    /// This includes bindings introduced by rule heads, assignment patterns,
+    /// and `for`-loop patterns. The wildcard name `_` is an explicit ignore
+    /// and is not recorded as a warning-eligible binding.
+    pub UnusedVariableRule {
+        name: "unused-variable",
+        group: "correctness",
+        level: warn,
+        target_kinds: [SyntaxKind::N_DATALOG_PROGRAM],
+        fn check_node(&self, node, ctx, diagnostics) {
+            if node != ctx.cst_root() {
+                return;
+            }
+
+            for (symbol_id, symbol) in ctx.semantic_model().rule_binding_symbols() {
+                if ctx.semantic_model().has_resolved_variable_use(symbol_id) {
+                    continue;
+                }
+
+                diagnostics.push(LintDiagnostic::new(
+                    self.name(),
+                    format!(
+                        "variable `{}` is defined but never used in this rule",
+                        symbol.name()
+                    ),
+                    span_to_text_range(symbol.span()),
+                ));
+            }
+        }
+    }
+}
+
+fn span_to_text_range(span: &crate::Span) -> TextRange {
+    TextRange::new(
+        span_offset_to_text_size(span.start),
+        span_offset_to_text_size(span.end),
+    )
+}
+
+fn span_offset_to_text_size(offset: usize) -> rowan::TextSize {
+    u32::try_from(offset).map_or_else(
+        |_| unreachable!("semantic spans originate from rowan text ranges"),
+        rowan::TextSize::from,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    fn run_rule(source: &str) -> Vec<crate::linter::LintDiagnostic> {
+        let parsed = crate::parse(source);
+        assert!(
+            parsed.errors().is_empty(),
+            "unused-variable test source should parse cleanly: {:?}",
+            parsed.errors()
+        );
+        let mut store = crate::linter::CstRuleStore::new();
+        store.register(Box::new(super::UnusedVariableRule));
+        crate::linter::Runner::new(&store, source, &parsed, crate::linter::RuleConfig::new()).run()
+    }
+
+    #[rstest]
+    fn warns_for_unused_head_binding() {
+        let diagnostics = run_rule("Output(head_x) :- Source(_).");
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics
+                .first()
+                .map(crate::linter::LintDiagnostic::rule_name),
+            Some("unused-variable")
+        );
+        assert_eq!(
+            diagnostics
+                .first()
+                .map(crate::linter::LintDiagnostic::message),
+            Some("variable `head_x` is defined but never used in this rule")
+        );
+    }
+
+    #[rstest]
+    fn does_not_warn_for_binding_with_resolved_use() {
+        let diagnostics = run_rule(
+            "Output(head_x) :- Source(head_x), var assigned_x = Seed(head_x), Use(assigned_x).",
+        );
+
+        assert!(
+            diagnostics.is_empty(),
+            "resolved variable uses should suppress the warning",
+        );
+    }
+
+    #[rstest]
+    fn ignores_wildcards_and_unresolved_names() {
+        let diagnostics = run_rule("Output(head_x) :- Missing(other_y).");
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics
+                .first()
+                .map(crate::linter::LintDiagnostic::message),
+            Some("variable `head_x` is defined but never used in this rule")
+        );
+    }
+}

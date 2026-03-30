@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: COMPLETED
 
 ## Purpose / big picture
 
@@ -189,6 +189,11 @@ and documenting the decision in the design doc.
 - Observation: rule-local binding spans are currently coarse by design.
   Impact: the first release should ship correct diagnostics with coarse spans
   rather than silently broadening this milestone into token-span recovery.
+
+- Observation: parse-time semantic rules from top-level `for` lowering still
+  count variable uses that appear in the iterable expression. Impact: the
+  behavioural top-level `for` coverage needs a genuinely unused loop binding
+  such as `for (x in Source(_)) Output(0).`, not `for (x in Source(x)) ...`.
 
 ## Decision Log
 
@@ -387,20 +392,43 @@ and verify with `CI=1 make test` while continuing to treat the normal
   `unused-relation` rule, and neighbouring ExecPlans.
 - [x] (2026-03-27T00:00Z) Drafted this ExecPlan in
   `docs/execplans/4-1-2-implement-unused-variable-diagnostics.md`.
-- [ ] Await user approval or requested revisions.
-- [ ] Implement semantic helper additions for rule-binding usage queries.
-- [ ] Implement `UnusedVariableRule` and export it.
-- [ ] Add unit and behavioural tests.
-- [ ] Update `docs/ddlint-design.md` and `docs/roadmap.md`.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
-  `make lint`, and `make test`.
+- [x] (2026-03-30T00:00Z) Received user approval to proceed with
+  implementation.
+- [x] (2026-03-30T00:00Z) Added semantic helper additions for rule-binding
+  usage queries.
+- [x] (2026-03-30T00:00Z) Implemented `UnusedVariableRule`, exported it, and
+  wired it through the shipped correctness-rule surface.
+- [x] (2026-03-30T00:00Z) Added semantic helper tests, rule unit tests, and
+  behavioural runner coverage, including a top-level `for` semantic-rule case.
+- [x] (2026-03-30T00:00Z) Updated `docs/ddlint-design.md` and
+  `docs/roadmap.md` to match the shipped rule contract.
+- [x] (2026-03-30T00:00Z) Ran `make fmt`, `make markdownlint`, `make nixie`,
+  `make check-fmt`, `make lint`, and `make test`.
 
 ## Outcomes & Retrospective
 
-Not started. This section must be updated after implementation completes with:
-
-- what shipped;
-- whether the broader rule-binding semantics remained intact;
-- any deviations from the planned query surface;
-- the final test and gate results; and
-- follow-up work, if any, such as later exact identifier-span improvements.
+- Shipped `UnusedVariableRule` under
+  `src/linter/rules/correctness/unused_variable.rs` with whole-program dispatch
+  from `SyntaxKind::N_DATALOG_PROGRAM`.
+- Added `SemanticModel::rule_binding_symbols()` and
+  `SemanticModel::has_resolved_variable_use()` backed by a precomputed set of
+  resolved variable-use symbol IDs in the semantic builder.
+- The broader rule-binding semantics remained intact: warnings now cover rule
+  heads, assignment patterns, and `for`-pattern bindings, while `_` remains an
+  explicit ignore.
+- No deviation from the planned query surface was required beyond a small
+  internal helper that converts stored `Span` values back into `TextRange`
+  diagnostics.
+- Behavioural coverage now proves end-to-end warnings for unused head,
+  assignment, `for`-loop, and top-level `for` semantic-rule bindings, plus the
+  shadowing-shaped case where only the genuinely unused binding warns.
+- Final validation results:
+  - `set -o pipefail; make fmt 2>&1 | tee /tmp/4-1-2-make-fmt.log`
+  - `set -o pipefail; make markdownlint 2>&1 | tee /tmp/4-1-2-make-markdownlint.log`
+  - `set -o pipefail; make nixie 2>&1 | tee /tmp/4-1-2-make-nixie.log`
+  - `set -o pipefail; make check-fmt 2>&1 | tee /tmp/4-1-2-make-check-fmt.log`
+  - `set -o pipefail; make lint 2>&1 | tee /tmp/4-1-2-make-lint.log`
+  - `set -o pipefail; make test 2>&1 | tee /tmp/4-1-2-make-test.log`
+- Follow-up work remains the same as planned: if later milestones need more
+  precise ranges, exact identifier-token span recovery should happen as a
+  separate semantic-model improvement rather than inside this rule.

@@ -1,4 +1,4 @@
-//! Shared test utilities for behavioural tests.
+//! Shared runner setup for `unused-relation` behavioural tests.
 
 use ddlint::linter::rules::correctness::UnusedRelationRule;
 use ddlint::linter::{CstRuleStore, RuleConfig, Runner};
