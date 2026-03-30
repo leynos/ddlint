@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT
+Status: IMPLEMENTED
 
 ## Purpose / big picture
 
@@ -157,14 +157,18 @@ policy decision, not an isolated grammar-alignment fix.
   `Transformer::outputs()`.
 - [x] (2026-03-27) Drafted this ExecPlan in
   `docs/execplans/2-6-5-align-transformer-declaration-grammar.md`.
-- [ ] Update red tests to encode the chosen grammar and deterministic failure
-  messages.
-- [ ] Implement any required parser diagnostic changes in
-  `src/parser/span_scanners/transformers.rs` and related helpers.
-- [ ] Align active documentation and conformance records.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`,
-  `make check-fmt`, `make lint`, and `make test`.
-- [ ] Mark roadmap item `2.6.5` done after all checks pass.
+- [x] (2026-03-30) Updated parser unit and behavioural tests to require the
+  transformer-specific missing-output diagnostic for both missing-colon and
+  empty-output forms.
+- [x] (2026-03-30) Implemented transformer-local extern scan recovery so
+  missing or empty output signatures emit one deterministic custom diagnostic
+  instead of a generic `Unexpected` parser failure.
+- [x] (2026-03-30) Aligned the syntax spec, parser implementation notes,
+  conformance register, and roadmap with the mandatory output-signature grammar.
+- [x] (2026-03-30) Ran `make fmt`, `make markdownlint`, `make nixie`,
+  `make check-fmt`, `make lint`, and `CI=1 make test`.
+- [x] (2026-03-30) Confirmed the gate results and kept roadmap item `2.6.5`
+  marked done.
 
 ## Surprises & Discoveries
 
@@ -219,11 +223,13 @@ policy decision, not an isolated grammar-alignment fix.
 
 ## Outcomes & Retrospective
 
-This ExecPlan has been drafted, but implementation has not started. The
-expected outcome is a single documented transformer grammar with targeted
-diagnostics for missing output signatures, backed by unit and behavioural
-tests. The roadmap checkbox must remain open until that implementation lands
-and all validation commands succeed.
+Implementation landed with full validation. The parser, unit tests, behavioural
+tests, syntax spec, conformance register, parser implementation notes, roadmap,
+and this ExecPlan now agree on the transformer contract:
+`extern transformer name(params...): output(, output)*`, with a deterministic
+diagnostic when the output signature is missing or empty. Validation passed via
+`make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`, `make lint`,
+and `CI=1 make test`.
 
 ## Context and orientation
 

@@ -245,6 +245,12 @@ Important invariants:
   shorthand `index Name on Relation(columns)` with a targeted diagnostic, and
   the `Index` wrapper exposes `fields()` plus normalized `on_target()` access
   instead of relation/column helpers tied to the old shorthand.
+- Transformer declarations require
+  `extern transformer name(params...): output(, output)*`.
+- The span scanner keeps non-`extern` rejection separate from the
+  output-signature check and emits the targeted diagnostic
+  `transformer declarations require ':' followed by at least one output identifier`
+   when the colon or first output identifier is missing.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.

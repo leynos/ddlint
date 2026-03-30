@@ -6,6 +6,9 @@ use super::helpers::parse_transformer;
 use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
 use rstest::{fixture, rstest};
 
+const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
+    "transformer declarations require ':' followed by at least one output identifier";
+
 #[fixture]
 fn transformer_single_io() -> &'static str {
     "extern transformer normalize(input: UnnormalizedData): NormalizedData"
@@ -18,7 +21,7 @@ fn transformer_multi_io() -> &'static str {
 
 #[fixture]
 fn transformer_invalid() -> &'static str {
-    "extern transformer incomplete_transformer(input: SomeData):"
+    "extern transformer incomplete_transformer(input: SomeData)"
 }
 
 #[fixture]
@@ -81,8 +84,18 @@ fn parses_transformers(
 }
 
 #[rstest]
-#[case::no_outputs(transformer_no_outputs(), ErrorPattern::from("Unexpected"), 0, 48)]
-#[case::invalid_decl(transformer_invalid(), ErrorPattern::from("Unexpected"), 0, 59)]
+#[case::missing_colon(
+    transformer_invalid(),
+    ErrorPattern::from(MISSING_OUTPUT_SIGNATURE_ERROR),
+    0,
+    58
+)]
+#[case::no_outputs(
+    transformer_no_outputs(),
+    ErrorPattern::from(MISSING_OUTPUT_SIGNATURE_ERROR),
+    0,
+    48
+)]
 fn transformer_error_cases(
     #[case] src: &str,
     #[case] pattern: ErrorPattern,

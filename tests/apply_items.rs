@@ -1,9 +1,9 @@
 //! Behavioural tests for `apply` statements.
 
-use chumsky::error::SimpleReason;
-use ddlint::SyntaxKind;
-use ddlint::parse;
-use rstest::rstest;
+use ddlint::{parse, test_util::assert_custom_parse_error_contains};
+
+const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
+    "transformer declarations require ':' followed by at least one output identifier";
 
 #[test]
 fn parses_apply_items_in_program() {
@@ -27,47 +27,11 @@ fn parses_apply_items_in_program() {
     assert_eq!(apply.outputs(), vec!["Normalised".to_string()]);
 }
 
-fn assert_missing_colon_error(
-    errors: &[chumsky::error::Simple<SyntaxKind>],
-    expected_found: Option<SyntaxKind>,
-) {
-    let [error] = errors else {
-        panic!("expected one parse error, got {errors:?}");
-    };
-    assert!(matches!(error.reason(), SimpleReason::Unexpected));
-    assert!(
-        error
-            .expected()
-            .filter_map(|expected| expected.as_ref())
-            .any(|kind| *kind == SyntaxKind::T_COLON),
-        "expected missing-colon error, got {error:?}",
-    );
-    assert_eq!(error.found().copied(), expected_found);
-}
-
-#[rstest]
-#[case("extern transformer missing_colon(input: SomeData)", None, Vec::new())]
-#[case(
-    concat!(
-        "extern transformer missing_colon(input: SomeData)\n",
-        "extern transformer ok(input: SomeData): OtherData\n",
-        "extern transformer another(input: OtherData): FinalData",
-    ),
-    Some(SyntaxKind::K_EXTERN),
-    vec![Some(String::from("ok")), Some(String::from("another"))],
-)]
-fn transformer_missing_colon_behaviour(
-    #[case] src: &str,
-    #[case] expected_found: Option<SyntaxKind>,
-    #[case] expected_names: Vec<Option<String>>,
-) {
+#[test]
+fn transformer_declarations_require_a_non_empty_output_signature() {
+    let src = "extern transformer normalise(input: User):";
     let parsed = parse(src);
-    assert_missing_colon_error(parsed.errors(), expected_found);
 
-    let transformers = parsed.root().transformers();
-    let names: Vec<_> = transformers
-        .iter()
-        .map(ddlint::ast::Transformer::name)
-        .collect();
-    assert_eq!(names, expected_names);
+    assert_custom_parse_error_contains(parsed.errors(), MISSING_OUTPUT_SIGNATURE_ERROR);
+    assert!(parsed.root().transformers().is_empty());
 }

@@ -181,7 +181,7 @@ impl TransformerProgram {
                 "extern transformer correlate(users: User, sessions: UserSession): UserActivity, SessionAlerts"
             }
             Self::TransformerInvalid => {
-                "extern transformer incomplete_transformer(input: SomeData):"
+                "extern transformer incomplete_transformer(input: SomeData)"
             }
             Self::TransformerNoInputs => {
                 "extern transformer no_inputs(): OutputType"
