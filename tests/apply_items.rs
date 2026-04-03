@@ -1,9 +1,9 @@
 //! Behavioural tests for `apply` statements.
 
-use ddlint::{parse, test_util::assert_custom_parse_error_contains};
-
-const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
-    "transformer declarations require ':' followed by at least one output identifier";
+use ddlint::{
+    parse,
+    test_util::{MISSING_OUTPUT_SIGNATURE_ERROR, assert_custom_parse_error_contains},
+};
 
 #[test]
 fn parses_apply_items_in_program() {
@@ -30,6 +30,15 @@ fn parses_apply_items_in_program() {
 #[test]
 fn transformer_declarations_require_a_non_empty_output_signature() {
     let src = "extern transformer normalise(input: User):";
+    let parsed = parse(src);
+
+    assert_custom_parse_error_contains(parsed.errors(), MISSING_OUTPUT_SIGNATURE_ERROR);
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[test]
+fn legacy_missing_colon_transformer_reports_missing_output_signature_and_no_transformers() {
+    let src = "extern transformer normalise(input: User)";
     let parsed = parse(src);
 
     assert_custom_parse_error_contains(parsed.errors(), MISSING_OUTPUT_SIGNATURE_ERROR);

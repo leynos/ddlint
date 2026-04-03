@@ -166,7 +166,7 @@ policy decision, not an isolated grammar-alignment fix.
 - [x] (2026-03-30) Aligned the syntax spec, parser implementation notes,
   conformance register, and roadmap with the mandatory output-signature grammar.
 - [x] (2026-03-30) Ran `make fmt`, `make markdownlint`, `make nixie`,
-  `make check-fmt`, `make lint`, and `CI=1 make test`.
+  `make check-fmt`, `make lint`, and `Continuous Integration (CI)=1 make test`.
 - [x] (2026-03-30) Confirmed the gate results and kept roadmap item `2.6.5`
   marked done.
 
@@ -294,7 +294,7 @@ and recoverably.
   `non-extern transformer`, `missing ':'`, and
   `':' present but no output identifiers`.
 - Keep the span recovery behaviour that skips malformed declarations cleanly so
-  downstream CST construction remains stable.
+  downstream Concrete Syntax Tree (CST) construction remains stable.
 - Preserve successful parsing of existing valid fixtures, including multiple
   outputs and zero inputs.
 - If needed, add a small helper near the scanner or in
@@ -327,8 +327,8 @@ grammar contract.
 Add or update behavioural tests in `tests/` so the public `parse()` entrypoint
 proves the decision, not just the internal unit suites.
 
-- Add a dedicated `tests/transformer_declaration_grammar.rs` file unless an
-  existing behavioural test file is a clearly better home.
+- Add the behavioural coverage to `tests/apply_items.rs`, which is already the
+  canonical parser-boundary home for transformer-plus-`apply` behaviour.
 - Include at least one success case proving that a programme containing a valid
   transformer declaration yields one transformer with the expected outputs.
 - Include at least one failure case proving that a declaration with no output
@@ -378,7 +378,7 @@ After implementation and documentation updates:
      `src/parser/ast/parse_utils/outputs.rs` if it no longer matches the frozen
      contract.
 
-5. Add behavioural tests in `tests/transformer_declaration_grammar.rs`.
+5. Add behavioural tests in `tests/apply_items.rs`.
 
    - One success case.
    - One output-signature failure case.

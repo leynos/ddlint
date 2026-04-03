@@ -1,18 +1,18 @@
 //! Scanner for transformer declarations.
 //!
-//! Parses transformer definitions, delegating shared extern handling to the
-//! utilities module.
+//! This scanner owns transformer-specific recovery, including the targeted
+//! missing-output diagnostic for malformed `extern transformer` declarations.
+//! It imports only [`State`] from the shared scanner utilities.
 
 use chumsky::prelude::*;
 
+use crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
 use crate::parser::lexer_helpers::{balanced_block, ident, inline_ws};
 use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
 const NON_EXTERN_TRANSFORMER_ERROR: &str = "transformer declarations must be extern";
-const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
-    "transformer declarations require ':' followed by at least one output identifier";
 
 fn transformer_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
     let ws = inline_ws().repeated();
@@ -35,6 +35,12 @@ fn transformer_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind
         .map_with_span(|_, sp: Span| sp)
 }
 
+/// Collect transformer declaration spans and related parse errors.
+///
+/// `tokens` is the tokenized source stream, and `src` is the backing source
+/// text used for span slicing. The returned tuple contains the collected
+/// transformer spans plus any `Simple<SyntaxKind>` diagnostics raised while
+/// scanning malformed declarations.
 pub(crate) fn collect_transformer_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -56,11 +62,7 @@ pub(crate) fn collect_transformer_spans(
 }
 
 fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
-    let is_transformer_decl = st
-        .stream
-        .peek_after_ws_inline()
-        .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TRANSFORMER);
-    if !is_transformer_decl {
+    if !is_extern_transformer_start(st) {
         st.skip_line();
         return;
     }
@@ -68,7 +70,7 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
     let ws = inline_ws().repeated();
     let start = span.start;
     let parser = just(SyntaxKind::K_EXTERN)
-        .padded_by(ws.clone())
+        .padded_by(ws)
         .ignore_then(transformer_decl())
         .map(move |sp: Span| start..sp.end);
     let (res, errs) = st.parse_span(parser, start);
@@ -79,9 +81,8 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         return;
     }
 
-    let error_span = start..st.stream.line_end(st.stream.cursor());
     st.skip_line();
-    if has_missing_output_signature(st, start, error_span.end) {
+    if let Some(error_span) = missing_output_signature_span(st, start) {
         st.extra
             .push(Simple::custom(error_span, MISSING_OUTPUT_SIGNATURE_ERROR));
     } else {
@@ -111,66 +112,72 @@ fn push_non_extern_transformer_error(
     extra.push(Simple::custom(span, NON_EXTERN_TRANSFORMER_ERROR));
 }
 
-fn has_missing_output_signature(st: &State<'_>, start: usize, line_end: usize) -> bool {
-    let tokens = st.stream.tokens();
-    let src = st.stream.src();
-    let Some(mut idx) = tokens.iter().position(|(_, span)| span.start == start) else {
-        return false;
-    };
-
-    if !matches_token(tokens, idx, SyntaxKind::K_EXTERN) {
-        return false;
-    }
-    idx += 1;
-    idx = skip_inline_trivia(tokens, src, idx, line_end);
-
-    if !matches_token(tokens, idx, SyntaxKind::K_TRANSFORMER) {
-        return false;
-    }
-    idx += 1;
-    idx = skip_inline_trivia(tokens, src, idx, line_end);
-
-    if !matches_token(tokens, idx, SyntaxKind::T_IDENT) {
-        return false;
-    }
-    idx += 1;
-    idx = skip_inline_trivia(tokens, src, idx, line_end);
-
-    let Some(next_idx) = skip_balanced_parens(tokens, idx, line_end) else {
-        return false;
-    };
-    idx = skip_inline_trivia(tokens, src, next_idx, line_end);
-
-    if !matches_token(tokens, idx, SyntaxKind::T_COLON) {
-        return true;
-    }
-    idx += 1;
-    idx = skip_inline_trivia(tokens, src, idx, line_end);
-
-    !matches_token(tokens, idx, SyntaxKind::T_IDENT)
+fn is_extern_transformer_start(st: &State<'_>) -> bool {
+    st.stream
+        .peek_after_ws_inline()
+        .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TRANSFORMER)
 }
 
-fn skip_balanced_parens(
-    tokens: &[(SyntaxKind, Span)],
-    start: usize,
-    line_end: usize,
-) -> Option<usize> {
+fn missing_output_signature_span(st: &State<'_>, start: usize) -> Option<Span> {
+    let tokens = st.stream.tokens();
+    let src = st.stream.src();
+    let mut idx = tokens.iter().position(|(_, span)| span.start == start)?;
+
+    if !matches_token(tokens, idx, SyntaxKind::K_EXTERN) {
+        return None;
+    }
+    idx += 1;
+    idx = skip_trivia(tokens, idx);
+
+    if !matches_token(tokens, idx, SyntaxKind::K_TRANSFORMER) {
+        return None;
+    }
+    idx += 1;
+    idx = skip_trivia(tokens, idx);
+
+    if !matches_token(tokens, idx, SyntaxKind::T_IDENT) {
+        return None;
+    }
+    idx += 1;
+    idx = skip_trivia(tokens, idx);
+
+    // The recovery scan mirrors the declaration prefix exactly:
+    // `extern transformer <ident>(...)`.
+    //
+    // It intentionally tolerates multiline trivia because the parser accepts
+    // newline-separated parameter lists. If the parameter list itself is
+    // malformed, we fall back to the original parser errors instead of
+    // reclassifying the failure as "missing output signature".
+    let (next_idx, decl_end) = skip_balanced_parens(tokens, idx)?;
+    idx = skip_trivia(tokens, next_idx);
+
+    if !matches_token(tokens, idx, SyntaxKind::T_COLON) {
+        return Some(start..declaration_error_end(src, tokens, idx, decl_end));
+    }
+    let colon_end = tokens.get(idx).map_or(decl_end, |(_, span)| span.end);
+    idx += 1;
+    idx = skip_trivia(tokens, idx);
+
+    if matches_token(tokens, idx, SyntaxKind::T_IDENT) {
+        None
+    } else {
+        Some(start..declaration_error_end(src, tokens, idx, colon_end))
+    }
+}
+
+fn skip_balanced_parens(tokens: &[(SyntaxKind, Span)], start: usize) -> Option<(usize, usize)> {
     if !matches_token(tokens, start, SyntaxKind::T_LPAREN) {
         return None;
     }
 
     let mut depth = 0usize;
     for (idx, (kind, span)) in tokens.iter().enumerate().skip(start) {
-        if span.start >= line_end {
-            return None;
-        }
-
         match kind {
             SyntaxKind::T_LPAREN => depth += 1,
             SyntaxKind::T_RPAREN => {
                 depth = depth.checked_sub(1)?;
                 if depth == 0 {
-                    return Some(idx + 1);
+                    return Some((idx + 1, span.end));
                 }
             }
             _ => {}
@@ -180,24 +187,38 @@ fn skip_balanced_parens(
     None
 }
 
-fn skip_inline_trivia(
-    tokens: &[(SyntaxKind, Span)],
+fn declaration_error_end(
     src: &str,
-    mut idx: usize,
-    line_end: usize,
+    tokens: &[(SyntaxKind, Span)],
+    idx: usize,
+    fallback_end: usize,
 ) -> usize {
+    tokens.get(idx).map_or(fallback_end, |(_, span)| {
+        span.end.max(line_end_at(src, span.end))
+    })
+}
+
+fn line_end_at(src: &str, start: usize) -> usize {
+    src.as_bytes()
+        .iter()
+        .enumerate()
+        .skip(start)
+        .find_map(|(idx, byte)| (*byte == b'\n').then_some(idx + 1))
+        .unwrap_or(src.len())
+}
+
+fn skip_trivia(tokens: &[(SyntaxKind, Span)], mut idx: usize) -> usize {
     while let Some((kind, span)) = tokens.get(idx) {
-        if span.start >= line_end
-            || !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-            || src
-                .get(span.clone())
-                .is_some_and(|text| text.contains('\n'))
-        {
+        if should_stop_skipping_trivia(*kind, span) {
             break;
         }
         idx += 1;
     }
     idx
+}
+
+fn should_stop_skipping_trivia(kind: SyntaxKind, _span: &Span) -> bool {
+    !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 
 fn matches_token(tokens: &[(SyntaxKind, Span)], idx: usize, expected: SyntaxKind) -> bool {

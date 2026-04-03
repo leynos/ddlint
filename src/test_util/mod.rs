@@ -14,6 +14,8 @@ pub use assertions::{
     assert_panic_with_message, assert_parse_error, assert_unclosed_delimiter_error,
     find_matching_error,
 };
+pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
+    crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
 pub use expressions::{
     bit_slice, break_expr, call, call_expr, closure, continue_expr, field, field_access, for_loop,
     if_expr, map_entry, map_lit, match_arm, match_expr, method_call, pat, qualified_call,

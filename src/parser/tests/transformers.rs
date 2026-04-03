@@ -3,11 +3,10 @@
 //! Validates extern transformer syntax and edge cases.
 
 use super::helpers::parse_transformer;
-use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
+use crate::test_util::{
+    ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR, assert_no_parse_errors, assert_parse_error,
+};
 use rstest::{fixture, rstest};
-
-const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
-    "transformer declarations require ':' followed by at least one output identifier";
 
 #[fixture]
 fn transformer_single_io() -> &'static str {
@@ -25,6 +24,11 @@ fn transformer_invalid() -> &'static str {
 }
 
 #[fixture]
+fn transformer_invalid_inputs() -> &'static str {
+    "extern transformer malformed(input: SomeData"
+}
+
+#[fixture]
 fn transformer_no_inputs() -> &'static str {
     "extern transformer no_inputs(): OutputType"
 }
@@ -32,6 +36,11 @@ fn transformer_no_inputs() -> &'static str {
 #[fixture]
 fn transformer_no_outputs() -> &'static str {
     "extern transformer no_outputs(input: InputType):"
+}
+
+#[fixture]
+fn transformer_multiline_no_outputs() -> &'static str {
+    "extern transformer multiline(\n    input: InputType\n):"
 }
 
 #[fixture]
@@ -84,6 +93,7 @@ fn parses_transformers(
 }
 
 #[rstest]
+#[case::malformed_inputs(transformer_invalid_inputs(), ErrorPattern::from("Unexpected"), 0, 44)]
 #[case::missing_colon(
     transformer_invalid(),
     ErrorPattern::from(MISSING_OUTPUT_SIGNATURE_ERROR),
@@ -105,6 +115,18 @@ fn transformer_error_cases(
     let parsed = crate::parse(src);
     let errors = parsed.errors();
     assert_parse_error(errors, pattern, start, end);
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+fn multiline_transformer_without_outputs_reports_targeted_error(
+    transformer_multiline_no_outputs: &str,
+) {
+    let parsed = crate::parse(transformer_multiline_no_outputs);
+    crate::test_util::assert_custom_parse_error_contains(
+        parsed.errors(),
+        MISSING_OUTPUT_SIGNATURE_ERROR,
+    );
     assert!(parsed.root().transformers().is_empty());
 }
 

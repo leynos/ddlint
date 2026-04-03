@@ -13,6 +13,7 @@ mod lexer_helpers;
 
 mod token_stream;
 
+pub(crate) mod error_messages;
 pub(crate) mod span_utils;
 
 mod span_collector;
