@@ -48,9 +48,7 @@ Observable success is:
 
 ## Approval gate
 
-This document is a draft plan only. Do not begin implementation until the user
-explicitly approves this ExecPlan or requests revisions and then approves the
-revised version.
+This ExecPlan has been completed and closed; no further action required.
 
 ## Context and orientation
 

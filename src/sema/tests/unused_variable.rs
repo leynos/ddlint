@@ -2,7 +2,7 @@
 
 use rstest::rstest;
 
-use super::{DeclarationKind, build, parse_ok, symbols_named};
+use super::{DeclarationKind, SymbolOrigin, build, parse_ok, symbols_named};
 use crate::sema::SymbolId;
 
 fn rule_binding_symbol_id(model: &super::super::SemanticModel, name: &str) -> SymbolId {
@@ -46,6 +46,8 @@ fn rule_binding_symbol_id(model: &super::super::SemanticModel, name: &str) -> Sy
     "item_y",
     false
 )]
+// `item_y` is referenced after the `for` body, where the loop binding is no
+// longer visible, so the use stays unresolved.
 #[case(
     "Output(result) :- Source(result), for (item_y in Items(result)) Inner(result), After(item_y).",
     "item_y",
@@ -77,4 +79,17 @@ fn wildcard_positions_do_not_create_warning_eligible_bindings() {
             .all(|(_, symbol)| symbol.name() != "_"),
         "wildcard positions should not be recorded as rule bindings",
     );
+}
+
+#[rstest]
+fn synthetic_semantic_rule_head_bindings_are_not_warning_eligible() {
+    let parsed = parse_ok("for (item_y in Source(item_y)) Output(item_y).");
+    let semantic_model = build(&parsed);
+    let item_y_binding_origins: Vec<_> = semantic_model
+        .rule_binding_symbols()
+        .filter(|(_, symbol)| symbol.name() == "item_y")
+        .map(|(_, symbol)| symbol.origin())
+        .collect();
+
+    assert_eq!(item_y_binding_origins, vec![SymbolOrigin::ForPattern]);
 }

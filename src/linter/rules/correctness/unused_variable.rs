@@ -6,8 +6,6 @@
 //! binding symbol's stored span, which points at the enclosing rule or literal
 //! rather than the exact identifier token.
 
-use rowan::TextRange;
-
 use crate::linter::{LintDiagnostic, Rule};
 use crate::{SyntaxKind, declare_lint};
 
@@ -32,31 +30,21 @@ declare_lint! {
                     continue;
                 }
 
+                let Some(range) = crate::linter::span_utils::span_to_text_range(symbol.span()) else {
+                    continue;
+                };
+
                 diagnostics.push(LintDiagnostic::new(
                     self.name(),
                     format!(
                         "variable `{}` is defined but never used in this rule",
                         symbol.name()
                     ),
-                    span_to_text_range(symbol.span()),
+                    range,
                 ));
             }
         }
     }
-}
-
-fn span_to_text_range(span: &crate::Span) -> TextRange {
-    TextRange::new(
-        span_offset_to_text_size(span.start),
-        span_offset_to_text_size(span.end),
-    )
-}
-
-fn span_offset_to_text_size(offset: usize) -> rowan::TextSize {
-    u32::try_from(offset).map_or_else(
-        |_| unreachable!("semantic spans originate from rowan text ranges"),
-        rowan::TextSize::from,
-    )
 }
 
 #[cfg(test)]
