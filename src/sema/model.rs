@@ -110,6 +110,17 @@ impl UseOrigin {
     }
 }
 
+impl SymbolOrigin {
+    /// Return `true` when this binding is user-authored and warning-eligible.
+    #[must_use]
+    pub fn is_warning_eligible_rule_binding(self) -> bool {
+        matches!(
+            self,
+            Self::RuleHead | Self::AssignmentPattern | Self::ForPattern
+        )
+    }
+}
+
 /// Final name-resolution result for one use site.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Resolution {
@@ -279,6 +290,8 @@ pub struct SemanticModel {
     pub(crate) span_to_relation_symbol: HashMap<Span, SymbolId>,
     /// Precomputed set of symbol IDs that have at least one resolved read-like use.
     pub(crate) symbols_with_reads: HashSet<SymbolId>,
+    /// Precomputed set of rule-binding symbol IDs with resolved variable uses.
+    pub(crate) symbols_with_variable_uses: HashSet<SymbolId>,
 }
 
 impl SemanticModel {
@@ -306,6 +319,18 @@ impl SemanticModel {
             .iter()
             .enumerate()
             .filter(|(_, symbol)| symbol.kind() == DeclarationKind::Relation)
+            .map(|(index, symbol)| (SymbolId(index), symbol))
+    }
+
+    /// Return every warning-eligible rule-local binding together with its symbol id.
+    pub fn rule_binding_symbols(&self) -> impl Iterator<Item = (SymbolId, &Symbol)> + '_ {
+        self.symbols
+            .iter()
+            .enumerate()
+            .filter(|(_, symbol)| {
+                symbol.kind() == DeclarationKind::RuleBinding
+                    && symbol.origin().is_warning_eligible_rule_binding()
+            })
             .map(|(index, symbol)| (SymbolId(index), symbol))
     }
 
@@ -337,6 +362,20 @@ impl SemanticModel {
     #[must_use]
     pub fn has_resolved_relation_read(&self, symbol_id: SymbolId) -> bool {
         self.symbols_with_reads.contains(&symbol_id)
+    }
+
+    /// Return `true` when the rule-local binding has at least one resolved use.
+    #[must_use]
+    pub fn has_resolved_variable_use(&self, symbol_id: SymbolId) -> bool {
+        debug_assert!(
+            matches!(
+                self.symbol(symbol_id),
+                Some(symbol) if symbol.kind() == DeclarationKind::RuleBinding
+            ),
+            "has_resolved_variable_use called with non rule-local binding: {symbol_id:?}"
+        );
+
+        self.symbols_with_variable_uses.contains(&symbol_id)
     }
 
     /// Return the resolved symbol for a use site when resolution succeeded.

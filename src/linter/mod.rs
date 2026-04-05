@@ -8,6 +8,7 @@ mod macros;
 mod rule;
 pub mod rules;
 mod runner;
+mod span_utils;
 mod store;
 
 pub use rule::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx, RuleLevel};

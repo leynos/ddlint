@@ -62,6 +62,30 @@ impl SemanticModelBuilder {
         use_site.kind() == UseKind::Relation && use_site.origin().is_relation_read()
     }
 
+    fn is_resolved_variable_use(use_site: &crate::sema::UseSite) -> bool {
+        use_site.kind() == UseKind::Variable
+            && matches!(use_site.resolution(), Resolution::Resolved(_))
+    }
+
+    fn resolved_symbol_id(use_site: &crate::sema::UseSite) -> Option<SymbolId> {
+        match use_site.resolution() {
+            Resolution::Resolved(symbol_id) => Some(symbol_id),
+            Resolution::Unresolved | Resolution::Ignored => None,
+        }
+    }
+
+    fn resolved_variable_symbol_id(use_site: &crate::sema::UseSite) -> SymbolId {
+        debug_assert!(
+            Self::is_resolved_variable_use(use_site),
+            "resolved_variable_symbol_id requires a resolved variable use"
+        );
+
+        let Resolution::Resolved(symbol_id) = use_site.resolution() else {
+            unreachable!("resolved variable uses must carry resolved symbol ids");
+        };
+        symbol_id
+    }
+
     pub(crate) fn finish(self) -> SemanticModel {
         // Precompute span-to-relation-symbol index
         let span_to_relation_symbol: HashMap<Span, SymbolId> = self
@@ -77,10 +101,14 @@ impl SemanticModelBuilder {
             .uses
             .iter()
             .filter(|u| Self::is_relation_read_use(u))
-            .filter_map(|u| match u.resolution() {
-                Resolution::Resolved(symbol_id) => Some(symbol_id),
-                _ => None,
-            })
+            .filter_map(Self::resolved_symbol_id)
+            .collect();
+
+        let symbols_with_variable_uses: HashSet<SymbolId> = self
+            .uses
+            .iter()
+            .filter(|u| Self::is_resolved_variable_use(u))
+            .map(Self::resolved_variable_symbol_id)
             .collect();
 
         SemanticModel {
@@ -90,6 +118,7 @@ impl SemanticModelBuilder {
             uses: self.uses,
             span_to_relation_symbol,
             symbols_with_reads,
+            symbols_with_variable_uses,
         }
     }
 
