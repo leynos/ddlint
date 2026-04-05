@@ -236,7 +236,7 @@ and `CI=1 make test`.
 
 The relevant code and documents are concentrated in a small set of files:
 
-- `src/parser/span_scanners/transformers.rs` recognises top-level transformer
+- `src/parser/span_scanners/transformers.rs` recognizes top-level transformer
   declarations and already enforces the `extern` requirement plus the current
   colon-output grammar.
 - `src/parser/ast/transformer.rs` exposes `Transformer::name()`,

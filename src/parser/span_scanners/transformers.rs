@@ -74,9 +74,9 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         .ignore_then(transformer_decl())
         .map(move |sp: Span| start..sp.end);
     let (res, errs) = st.parse_span(parser, start);
-    if let Some(ref declaration_span) = res {
+    if let Some(declaration_span) = res {
         st.stream.skip_until(declaration_span.end);
-        st.spans.push(declaration_span.clone());
+        st.spans.push(declaration_span);
         st.extra.extend(errs);
         return;
     }
@@ -193,9 +193,9 @@ fn declaration_error_end(
     idx: usize,
     fallback_end: usize,
 ) -> usize {
-    tokens.get(idx).map_or(fallback_end, |(_, span)| {
-        span.end.max(line_end_at(src, span.end))
-    })
+    tokens
+        .get(idx)
+        .map_or(fallback_end, |(_, span)| line_end_at(src, span.end))
 }
 
 fn line_end_at(src: &str, start: usize) -> usize {
