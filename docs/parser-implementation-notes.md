@@ -250,7 +250,7 @@ Important invariants:
 - The span scanner keeps non-`extern` rejection separate from the
   output-signature check and emits the targeted diagnostic
   `transformer declarations require ':' followed by at least one output identifier`
-  when the colon or first output identifier is missing.
+   when the colon or first output identifier is missing.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.

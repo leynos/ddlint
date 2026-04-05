@@ -75,6 +75,18 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         .map(move |sp: Span| start..sp.end);
     let (res, errs) = st.parse_span(parser, start);
     if let Some(declaration_span) = res {
+        // Validate transformer name is lowercase
+        if let Some(name_span) = extract_transformer_name_span(st, start) {
+            let src = st.stream.src();
+            if let Some(name) = src.get(name_span.clone())
+                && !is_lowercase_ident(name)
+            {
+                st.extra.push(Simple::custom(
+                    name_span,
+                    "transformer names must start with a lowercase letter or underscore",
+                ));
+            }
+        }
         st.stream.skip_until(declaration_span.end);
         st.spans.push(declaration_span);
         st.extra.extend(errs);
@@ -138,6 +150,12 @@ fn missing_output_signature_span(st: &State<'_>, start: usize) -> Option<Span> {
     if !matches_token(tokens, idx, SyntaxKind::T_IDENT) {
         return None;
     }
+    // Validate that the transformer name is lowercase
+    let name_span = tokens.get(idx)?.1.clone();
+    let name = src.get(name_span.clone())?;
+    if !is_lowercase_ident(name) {
+        return None;
+    }
     idx += 1;
     idx = skip_trivia(tokens, idx);
 
@@ -189,13 +207,11 @@ fn skip_balanced_parens(tokens: &[(SyntaxKind, Span)], start: usize) -> Option<(
 
 fn declaration_error_end(
     src: &str,
-    tokens: &[(SyntaxKind, Span)],
-    idx: usize,
+    _tokens: &[(SyntaxKind, Span)],
+    _idx: usize,
     fallback_end: usize,
 ) -> usize {
-    tokens
-        .get(idx)
-        .map_or(fallback_end, |(_, span)| line_end_at(src, span.end))
+    line_end_at(src, fallback_end)
 }
 
 fn line_end_at(src: &str, start: usize) -> usize {
@@ -219,6 +235,39 @@ fn skip_trivia(tokens: &[(SyntaxKind, Span)], mut idx: usize) -> usize {
 
 fn should_stop_skipping_trivia(kind: SyntaxKind) -> bool {
     !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
+}
+
+fn is_lowercase_ident(ident: &str) -> bool {
+    ident
+        .chars()
+        .next()
+        .is_some_and(|ch| ch == '_' || ch.is_ascii_lowercase())
+}
+
+fn extract_transformer_name_span(st: &State<'_>, start: usize) -> Option<Span> {
+    let tokens = st.stream.tokens();
+    let mut idx = tokens.iter().position(|(_, span)| span.start == start)?;
+
+    // Skip 'extern'
+    if !matches_token(tokens, idx, SyntaxKind::K_EXTERN) {
+        return None;
+    }
+    idx += 1;
+    idx = skip_trivia(tokens, idx);
+
+    // Skip 'transformer'
+    if !matches_token(tokens, idx, SyntaxKind::K_TRANSFORMER) {
+        return None;
+    }
+    idx += 1;
+    idx = skip_trivia(tokens, idx);
+
+    // Return the name identifier span
+    if matches_token(tokens, idx, SyntaxKind::T_IDENT) {
+        tokens.get(idx).map(|(_, span)| span.clone())
+    } else {
+        None
+    }
 }
 
 fn matches_token(tokens: &[(SyntaxKind, Span)], idx: usize, expected: SyntaxKind) -> bool {

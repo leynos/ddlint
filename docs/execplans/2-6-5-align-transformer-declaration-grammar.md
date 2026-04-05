@@ -255,13 +255,14 @@ The relevant code and documents are concentrated in a small set of files:
   `docs/parser-conformance-register.md`, `docs/parser-implementation-notes.md`,
   and `docs/ddlint-design.md` carry the active written contract.
 
-The concrete mismatch today is:
+At the start of this work, the concrete mismatch was:
 
 - Spec: `extern transformer UcName(params?);`
 - Code/tests: `extern transformer ident(params?): output(, output)*`
 
-The implementation should resolve that mismatch in code, tests, and docs in one
-atomic change.
+The implementation resolved that mismatch in code, tests, and docs atomically,
+establishing the current contract:
+`extern transformer name(params...): output(, output)*`.
 
 ## Plan of work
 
@@ -403,7 +404,7 @@ set -o pipefail; make markdownlint 2>&1 | tee /tmp/2-6-5-make-markdownlint.log
 set -o pipefail; make nixie 2>&1 | tee /tmp/2-6-5-make-nixie.log
 set -o pipefail; make check-fmt 2>&1 | tee /tmp/2-6-5-make-check-fmt.log
 set -o pipefail; make lint 2>&1 | tee /tmp/2-6-5-make-lint.log
-set -o pipefail; make test 2>&1 | tee /tmp/2-6-5-make-test.log
+set -o pipefail; CI=1 make test 2>&1 | tee /tmp/2-6-5-make-test.log
 ```
 
 Successful completion means all six commands exit with status `0`, the new
