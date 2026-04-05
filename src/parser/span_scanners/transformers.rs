@@ -208,8 +208,8 @@ fn line_end_at(src: &str, start: usize) -> usize {
 }
 
 fn skip_trivia(tokens: &[(SyntaxKind, Span)], mut idx: usize) -> usize {
-    while let Some((kind, span)) = tokens.get(idx) {
-        if should_stop_skipping_trivia(*kind, span) {
+    while let Some((kind, _span)) = tokens.get(idx) {
+        if should_stop_skipping_trivia(*kind) {
             break;
         }
         idx += 1;
@@ -217,7 +217,7 @@ fn skip_trivia(tokens: &[(SyntaxKind, Span)], mut idx: usize) -> usize {
     idx
 }
 
-fn should_stop_skipping_trivia(kind: SyntaxKind, _span: &Span) -> bool {
+fn should_stop_skipping_trivia(kind: SyntaxKind) -> bool {
     !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 

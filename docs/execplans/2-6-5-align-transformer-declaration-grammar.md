@@ -166,7 +166,8 @@ policy decision, not an isolated grammar-alignment fix.
 - [x] (2026-03-30) Aligned the syntax spec, parser implementation notes,
   conformance register, and roadmap with the mandatory output-signature grammar.
 - [x] (2026-03-30) Ran `make fmt`, `make markdownlint`, `make nixie`,
-  `make check-fmt`, `make lint`, and `Continuous Integration (CI)=1 make test`.
+  `make check-fmt`, `make lint`, and Continuous Integration (CI)
+  `CI=1 make test`.
 - [x] (2026-03-30) Confirmed the gate results and kept roadmap item `2.6.5`
   marked done.
 
@@ -380,9 +381,9 @@ After implementation and documentation updates:
 
 5. Add behavioural tests in `tests/apply_items.rs`.
 
-   - One success case.
-   - One output-signature failure case.
-   - One success case combined with `apply`.
+   - A simple success case.
+   - An output-signature failure example.
+   - A success case demonstrating use with `apply`.
 
 6. Update active documentation.
 
