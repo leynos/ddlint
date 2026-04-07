@@ -246,7 +246,10 @@ Important invariants:
   the `Index` wrapper exposes `fields()` plus normalized `on_target()` access
   instead of relation/column helpers tied to the old shorthand.
 - Transformer declarations require
-  `extern transformer name(params...): output(, output)*`.
+  `extern transformer <lowercase-name>(params...): output(, output)*`.
+  Transformer identifiers must be lowercase (start with a lowercase letter or
+  underscore); the span scanner in `src/parser/span_scanners/transformers.rs`
+  rejects capitalized names (e.g., `Foo`) as invalid.
 - The span scanner keeps non-`extern` rejection separate from the
   output-signature check and emits the targeted diagnostic
   `transformer declarations require ':' followed by at least one output identifier`

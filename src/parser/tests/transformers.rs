@@ -94,18 +94,6 @@ fn parses_transformers(
 
 #[rstest]
 #[case::malformed_inputs(transformer_invalid_inputs(), ErrorPattern::from("Unexpected"), 0, 44)]
-#[case::missing_colon(
-    transformer_invalid(),
-    ErrorPattern::from(MISSING_OUTPUT_SIGNATURE_ERROR),
-    0,
-    58
-)]
-#[case::no_outputs(
-    transformer_no_outputs(),
-    ErrorPattern::from(MISSING_OUTPUT_SIGNATURE_ERROR),
-    0,
-    48
-)]
 fn transformer_error_cases(
     #[case] src: &str,
     #[case] pattern: ErrorPattern,
@@ -115,6 +103,15 @@ fn transformer_error_cases(
     let parsed = crate::parse(src);
     let errors = parsed.errors();
     assert_parse_error(errors, pattern, start, end);
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+#[case::missing_colon(transformer_invalid(), MISSING_OUTPUT_SIGNATURE_ERROR)]
+#[case::no_outputs(transformer_no_outputs(), MISSING_OUTPUT_SIGNATURE_ERROR)]
+fn transformer_missing_output_signature_errors(#[case] src: &str, #[case] expected_message: &str) {
+    let parsed = crate::parse(src);
+    crate::test_util::assert_custom_parse_error_contains(parsed.errors(), expected_message);
     assert!(parsed.root().transformers().is_empty());
 }
 

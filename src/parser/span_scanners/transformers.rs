@@ -94,12 +94,28 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
     }
 
     st.skip_line();
-    if let Some(error_span) = missing_output_signature_span(st, start) {
+
+    // Check for lowercase name violation
+    if let Some(name_span) = extract_transformer_name_span(st, start) {
+        let src = st.stream.src();
+        if let Some(name) = src.get(name_span.clone())
+            && !is_lowercase_ident(name)
+        {
+            st.extra.push(Simple::custom(
+                name_span,
+                "transformer names must start with a lowercase letter or underscore",
+            ));
+        }
+    }
+
+    // Check for missing output signature
+    if let Some(error_span) = missing_output_signature_span_unchecked(st, start) {
         st.extra
             .push(Simple::custom(error_span, MISSING_OUTPUT_SIGNATURE_ERROR));
-    } else {
-        st.extra.extend(errs);
     }
+
+    // Always extend with other parse errors
+    st.extra.extend(errs);
 }
 
 fn handle_non_extern_transformer(st: &mut State<'_>, span: Span) {
@@ -130,7 +146,7 @@ fn is_extern_transformer_start(st: &State<'_>) -> bool {
         .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TRANSFORMER)
 }
 
-fn missing_output_signature_span(st: &State<'_>, start: usize) -> Option<Span> {
+fn missing_output_signature_span_unchecked(st: &State<'_>, start: usize) -> Option<Span> {
     let tokens = st.stream.tokens();
     let src = st.stream.src();
     let mut idx = tokens.iter().position(|(_, span)| span.start == start)?;
@@ -150,15 +166,18 @@ fn missing_output_signature_span(st: &State<'_>, start: usize) -> Option<Span> {
     if !matches_token(tokens, idx, SyntaxKind::T_IDENT) {
         return None;
     }
-    // Validate that the transformer name is lowercase
-    let name_span = tokens.get(idx)?.1.clone();
-    let name = src.get(name_span.clone())?;
-    if !is_lowercase_ident(name) {
-        return None;
-    }
     idx += 1;
     idx = skip_trivia(tokens, idx);
 
+    missing_output_signature_span_impl(src, tokens, idx, start)
+}
+
+fn missing_output_signature_span_impl(
+    src: &str,
+    tokens: &[(SyntaxKind, Span)],
+    mut idx: usize,
+    start: usize,
+) -> Option<Span> {
     // The recovery scan mirrors the declaration prefix exactly:
     // `extern transformer <ident>(...)`.
     //

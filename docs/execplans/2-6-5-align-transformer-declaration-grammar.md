@@ -41,16 +41,16 @@ the older semicolon-only form.
 
 The canonical parser contract for this milestone should become:
 
-- `extern transformer <identifier>(<name: type pairs>?): <output-identifiers>`
+- `extern transformer <lowercase-name>(<name: type pairs>?): <output-identifiers>`
+- transformer names must follow the LcName rule (start with a lowercase letter
+  or underscore) and the parser enforces this;
 - the output signature after `:` is mandatory and must contain at least one
   identifier;
 - zero inputs remain valid, but zero outputs do not;
 - multiple outputs remain comma-separated and ordered;
 - non-`extern` transformer declarations keep the existing targeted diagnostic;
-- semicolon policy remains unchanged and out of scope for this item; and
-- parser-stage case-class validation for transformer names and outputs remains
-  out of scope unless the existing code cannot be documented coherently without
-  it.
+  and
+- semicolon policy remains unchanged and out of scope for this item.
 
 This is the smallest decision that matches the implemented AST surface,
 existing parser tests, and the already-landed `apply` item behaviour. The
@@ -134,12 +134,12 @@ policy decision, not an isolated grammar-alignment fix.
   add at least one behavioural test containing both a transformer declaration
   and an `apply` item in the same programme.
 
-- Risk: identifier case restrictions are inconsistent between the spec
-  (`UcName`) and the parser/tests (generic identifiers such as `normalise` and
-  `out`). Severity: medium. Likelihood: high. Mitigation: keep this milestone
-  focused on documenting current parser behaviour unless stronger case
-  validation can be added without touching `apply` parsing or broader naming
-  policy.
+- Risk: identifier case restrictions were inconsistent between the spec
+  (`UcName`) and the parser/tests (lowercase names such as `normalise` and
+  `out`). Severity: medium. Likelihood: high. Resolution: the parser now
+  enforces the LcName rule (lowercase letter or underscore start) for
+  transformer names, aligning parser validation with existing test fixtures and
+  `apply` examples.
 
 - Risk: semicolon examples in the spec can distract the implementation into a
   top-level terminator policy change. Severity: medium. Likelihood: medium.
@@ -188,11 +188,12 @@ policy decision, not an isolated grammar-alignment fix.
   statement, so reverting to a no-output transformer grammar would create
   additional downstream ambiguity.
 
-- The syntax spec mismatch is not limited to the colon. Section `5.4` also uses
-  `UcName`, while current parser fixtures and behavioural tests use lower-case
-  transformer names such as `normalise`, `correlate`, and `reserved`. This plan
-  keeps that case-policy question tightly bounded so the output signature
-  decision can land first.
+- The syntax spec mismatch was not limited to the colon. Section `5.4` also used
+  `UcName`, while parser fixtures and behavioural tests use lowercase
+  transformer names such as `normalise`, `correlate`, and `reserved`. The
+  implementation resolved this by enforcing the LcName rule (lowercase letter
+  or underscore start) in the span scanner, aligning the parser with existing
+  test fixtures.
 
 - Existing failure coverage for missing outputs is weak. The tests assert only
   a generic `Unexpected` pattern today, which is too vague for a conformance
@@ -216,11 +217,12 @@ policy decision, not an isolated grammar-alignment fix.
   signatures, not about harmonizing top-level terminators across the whole
   grammar.
 
-- Decision: do not widen this milestone into a general identifier case-policy
-  change unless implementation proves the docs cannot be aligned otherwise.
-  Rationale: lower-case transformer names already appear in tests and related
-  `apply` examples, so tightening case classes would have a larger blast radius
-  than the roadmap item requires.
+- Decision: enforce the LcName rule for transformer names in the parser.
+  Rationale: lowercase transformer names already appear in tests and related
+  `apply` examples, so enforcing this rule aligns the parser with existing
+  fixtures and provides clearer diagnostics. The implementation validates names
+  in `src/parser/span_scanners/transformers.rs` and emits a targeted diagnostic
+  when capitalized names are used.
 
 ## Outcomes & Retrospective
 
