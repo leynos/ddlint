@@ -1,7 +1,8 @@
 //! Behavioural tests for `apply` statements.
 
+use chumsky::error::SimpleReason;
+use ddlint::SyntaxKind;
 use ddlint::parse;
-use ddlint::test_util::assert_parse_error;
 
 #[test]
 fn parses_apply_items_in_program() {
@@ -29,7 +30,51 @@ fn parses_apply_items_in_program() {
 fn transformer_declarations_require_a_colon_before_outputs() {
     let src = "extern transformer missing_colon(input: SomeData)";
     let parsed = parse(src);
+    let errors = parsed.errors();
 
-    assert_parse_error(parsed.errors(), "Unexpected", 0, src.len());
+    let [error] = errors else {
+        panic!("expected one parse error, got {errors:?}");
+    };
+    assert!(matches!(error.reason(), SimpleReason::Unexpected));
+    assert!(
+        error
+            .expected()
+            .filter_map(|expected| expected.as_ref())
+            .any(|kind| *kind == SyntaxKind::T_COLON),
+        "expected missing-colon error, got {error:?}",
+    );
+    assert_eq!(error.found(), None);
     assert!(parsed.root().transformers().is_empty());
+}
+
+#[test]
+fn malformed_transformer_does_not_prevent_parsing_subsequent_declarations() {
+    let src = concat!(
+        "extern transformer missing_colon(input: SomeData)\n",
+        "extern transformer ok(input: SomeData): OtherData\n",
+        "extern transformer another(input: OtherData): FinalData",
+    );
+    let parsed = parse(src);
+    let errors = parsed.errors();
+
+    let [error] = errors else {
+        panic!("expected one parse error, got {errors:?}");
+    };
+    assert!(matches!(error.reason(), SimpleReason::Unexpected));
+    assert!(
+        error
+            .expected()
+            .filter_map(|expected| expected.as_ref())
+            .any(|kind| *kind == SyntaxKind::T_COLON),
+        "expected missing-colon error, got {error:?}",
+    );
+    assert_eq!(error.found(), Some(&SyntaxKind::K_EXTERN));
+
+    let transformers = parsed.root().transformers();
+    assert_eq!(transformers.len(), 2);
+    let names: Vec<_> = transformers
+        .iter()
+        .map(ddlint::ast::Transformer::name)
+        .collect();
+    assert_eq!(names, vec![Some("ok".into()), Some("another".into())]);
 }
