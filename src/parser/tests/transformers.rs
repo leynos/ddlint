@@ -161,10 +161,22 @@ fn transformer_requires_extern(transformer_non_extern: &str) {
 }
 
 #[rstest]
-fn transformer_capitalized_name_rejected() {
-    let src = "extern transformer Foo(input: InputType): OutputType";
+#[case::simple_capitalized("extern transformer Foo(input: InputType): OutputType")]
+#[case::capitalized_missing_colon("extern transformer Foo(input: InputType) OutputType")]
+#[case::capitalized_empty_output("extern transformer Foo(input: InputType):")]
+fn transformer_capitalized_name_rejected(#[case] src: &str) {
     let parsed = crate::parse(src);
     assert_custom_parse_error_contains(parsed.errors(), CAPITALIZED_TRANSFORMER_NAME_ERROR);
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+#[case::capitalized_missing_colon("extern transformer Foo(input: InputType) OutputType")]
+#[case::capitalized_empty_output("extern transformer Foo(input: InputType):")]
+fn transformer_capitalized_name_with_missing_output(#[case] src: &str) {
+    let parsed = crate::parse(src);
+    assert_custom_parse_error_contains(parsed.errors(), CAPITALIZED_TRANSFORMER_NAME_ERROR);
+    assert_custom_parse_error_contains(parsed.errors(), MISSING_OUTPUT_SIGNATURE_ERROR);
     assert!(parsed.root().transformers().is_empty());
 }
 
