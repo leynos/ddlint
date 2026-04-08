@@ -52,31 +52,19 @@ declare_lint! {
 
 #[cfg(test)]
 mod tests {
+    use crate::linter::testing::run_rule;
     use rstest::rstest;
-
-    // Import the shared test helper from the tests/support module.
-    // This ensures unit and behavioral tests use identical rule-running logic.
-    fn run_rule(source: &str) -> Vec<crate::linter::LintDiagnostic> {
-        // We can't directly use the tests/support module from src/ unit tests,
-        // so we duplicate the minimal logic here but keep it aligned.
-        let parsed = crate::parse(source);
-        assert!(
-            parsed.errors().is_empty(),
-            "unused-relation test source should parse cleanly: {:?}",
-            parsed.errors()
-        );
-        let mut store = crate::linter::CstRuleStore::new();
-        store.register(Box::new(super::UnusedRelationRule));
-        crate::linter::Runner::new(&store, source, &parsed, crate::linter::RuleConfig::new()).run()
-    }
 
     #[rstest]
     fn warns_for_declared_relation_with_no_reads() {
-        let diagnostics = run_rule(concat!(
-            "input relation Source(x: u32)\n",
-            "relation Sink(x: u32)\n",
-            "Sink(x) :- Source(x).\n",
-        ));
+        let diagnostics = run_rule(
+            super::UnusedRelationRule,
+            concat!(
+                "input relation Source(x: u32)\n",
+                "relation Sink(x: u32)\n",
+                "Sink(x) :- Source(x).\n",
+            ),
+        );
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(
@@ -95,13 +83,16 @@ mod tests {
 
     #[rstest]
     fn does_not_warn_for_relation_with_resolved_read() {
-        let diagnostics = run_rule(concat!(
-            "input relation Source(x: u32)\n",
-            "relation Used(x: u32)\n",
-            "relation Sink(x: u32)\n",
-            "Used(x) :- Source(x).\n",
-            "Sink(x) :- Used(x).\n",
-        ));
+        let diagnostics = run_rule(
+            super::UnusedRelationRule,
+            concat!(
+                "input relation Source(x: u32)\n",
+                "relation Used(x: u32)\n",
+                "relation Sink(x: u32)\n",
+                "Used(x) :- Source(x).\n",
+                "Sink(x) :- Used(x).\n",
+            ),
+        );
 
         assert!(
             diagnostics.iter().all(|diagnostic| diagnostic.message()
@@ -112,11 +103,14 @@ mod tests {
 
     #[rstest]
     fn ignores_unresolved_relation_uses_when_checking_reads() {
-        let diagnostics = run_rule(concat!(
-            "relation Declared(x: u32)\n",
-            "relation Sink(x: u32)\n",
-            "Sink(x) :- Missing(x).\n",
-        ));
+        let diagnostics = run_rule(
+            super::UnusedRelationRule,
+            concat!(
+                "relation Declared(x: u32)\n",
+                "relation Sink(x: u32)\n",
+                "Sink(x) :- Missing(x).\n",
+            ),
+        );
 
         let messages: Vec<_> = diagnostics
             .iter()

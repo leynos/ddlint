@@ -49,23 +49,12 @@ declare_lint! {
 
 #[cfg(test)]
 mod tests {
+    use crate::linter::testing::run_rule;
     use rstest::rstest;
-
-    fn run_rule(source: &str) -> Vec<crate::linter::LintDiagnostic> {
-        let parsed = crate::parse(source);
-        assert!(
-            parsed.errors().is_empty(),
-            "unused-variable test source should parse cleanly: {:?}",
-            parsed.errors()
-        );
-        let mut store = crate::linter::CstRuleStore::new();
-        store.register(Box::new(super::UnusedVariableRule));
-        crate::linter::Runner::new(&store, source, &parsed, crate::linter::RuleConfig::new()).run()
-    }
 
     #[rstest]
     fn warns_for_unused_head_binding() {
-        let diagnostics = run_rule("Output(head_x) :- Source(_).");
+        let diagnostics = run_rule(super::UnusedVariableRule, "Output(head_x) :- Source(_).");
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(
@@ -85,6 +74,7 @@ mod tests {
     #[rstest]
     fn does_not_warn_for_binding_with_resolved_use() {
         let diagnostics = run_rule(
+            super::UnusedVariableRule,
             "Output(head_x) :- Source(head_x), var assigned_x = Seed(head_x), Use(assigned_x).",
         );
 
@@ -96,7 +86,10 @@ mod tests {
 
     #[rstest]
     fn ignores_wildcards_and_unresolved_names() {
-        let diagnostics = run_rule("Output(head_x) :- Missing(other_y).");
+        let diagnostics = run_rule(
+            super::UnusedVariableRule,
+            "Output(head_x) :- Missing(other_y).",
+        );
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(
