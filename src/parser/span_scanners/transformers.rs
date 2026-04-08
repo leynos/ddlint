@@ -61,6 +61,22 @@ pub(crate) fn collect_transformer_spans(
     st.into_parts()
 }
 
+/// Validates that the transformer name starting at `start` begins with a
+/// lowercase letter or underscore, emitting a targeted diagnostic if not.
+fn push_invalid_name_diagnostic_if_needed(st: &mut State<'_>, start: usize) {
+    let Some(name_span) = extract_transformer_name_span(st, start) else {
+        return;
+    };
+    if let Some(name) = st.stream.src().get(name_span.clone())
+        && !is_lowercase_ident(name)
+    {
+        st.extra.push(Simple::custom(
+            name_span,
+            "transformer names must start with a lowercase letter or underscore",
+        ));
+    }
+}
+
 fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
     if !is_extern_transformer_start(st) {
         st.skip_line();
@@ -75,18 +91,7 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         .map(move |sp: Span| start..sp.end);
     let (res, errs) = st.parse_span(parser, start);
     if let Some(declaration_span) = res {
-        // Validate transformer name is lowercase
-        if let Some(name_span) = extract_transformer_name_span(st, start) {
-            let src = st.stream.src();
-            if let Some(name) = src.get(name_span.clone())
-                && !is_lowercase_ident(name)
-            {
-                st.extra.push(Simple::custom(
-                    name_span,
-                    "transformer names must start with a lowercase letter or underscore",
-                ));
-            }
-        }
+        push_invalid_name_diagnostic_if_needed(st, start);
         st.stream.skip_until(declaration_span.end);
         st.spans.push(declaration_span);
         st.extra.extend(errs);
@@ -94,27 +99,13 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
     }
 
     st.skip_line();
+    push_invalid_name_diagnostic_if_needed(st, start);
 
-    // Check for lowercase name violation
-    if let Some(name_span) = extract_transformer_name_span(st, start) {
-        let src = st.stream.src();
-        if let Some(name) = src.get(name_span.clone())
-            && !is_lowercase_ident(name)
-        {
-            st.extra.push(Simple::custom(
-                name_span,
-                "transformer names must start with a lowercase letter or underscore",
-            ));
-        }
-    }
-
-    // Check for missing output signature
     if let Some(error_span) = missing_output_signature_span_unchecked(st, start) {
         st.extra
             .push(Simple::custom(error_span, MISSING_OUTPUT_SIGNATURE_ERROR));
     }
 
-    // Always extend with other parse errors
     st.extra.extend(errs);
 }
 
