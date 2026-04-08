@@ -249,6 +249,16 @@ Important invariants:
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.
 
+Declaration recovery is intentionally line-oriented. Shared scanner utilities
+call `SpanCollector::skip_line()` when a declaration head does not match the
+expected grammar or when `parse_and_record()` cannot consume a full
+declaration. Transformer declarations therefore enforce their required output
+signature through the `transformer_decl()` chumsky grammar itself, with
+`.at_least(1)` on the output list; there is no separate token-walking heuristic
+for missing outputs to keep in sync. Function and other top-level declaration
+scanners follow the same newline-bounded recovery pattern for malformed
+declaration heads.
+
 ## Diagnostics policy
 
 The parser prefers localized, span-precise diagnostics and recovery over hard

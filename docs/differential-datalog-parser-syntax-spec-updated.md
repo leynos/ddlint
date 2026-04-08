@@ -231,10 +231,18 @@ Closure   ::= 'function' '(' Params? ')' RetType? Block
 ### 5.4 Transformers (extern‑only)
 
 ```ebnf
-Transformer ::= 'extern' 'transformer' UcName '(' Params? ')' ';'
+Transformer        ::= 'extern' 'transformer' Ident '(' Params? ')'
+                       ':' TransformerOutputs
+TransformerOutputs ::= Ident (',' Ident)*
 ```
 
-A non‑extern `transformer` is rejected.
+- A non‑extern `transformer` is rejected.
+- The current parser accepts any non-keyword identifier token for transformer
+  names and output names; it does not apply a case-class restriction such as
+  `LcName` or `UcName`.
+- Transformer declarations are expected to remain on one physical line.
+  Recovery for malformed declarations is line-oriented: once parsing fails, the
+  scanner discards tokens through the next newline boundary before resuming.
 
 ### 5.5 Relations
 

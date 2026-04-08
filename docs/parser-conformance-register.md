@@ -140,12 +140,19 @@ This register tracks parser behaviour against the syntax specification.
 
 ### 12. Transformer declaration grammar
 
-- Topic: output signature requirements.
+- Topic: output signature requirements and transformer-name token class.
 - Current behaviour (code): parser requires output list after `:`
-  (`src/parser/span_scanners/transformers.rs`).
-- Spec/target behaviour: section 5.4 currently documents extern-only
-  transformer shape without equivalent output-list requirement.
-- Decision status: `scheduled`.
+  (`src/parser/span_scanners/transformers.rs`). Transformer names and output
+  names are parsed through the generic identifier helper, so the parser accepts
+  any non-keyword identifier token rather than enforcing a lowercase-only name
+  class. The required output list is enforced directly in the chumsky grammar
+  via `.at_least(1)`, and malformed declarations recover by skipping to the
+  next newline boundary through shared scanner utilities.
+- Spec/target behaviour: section 5.4 now matches the implementation by
+  requiring `:` plus at least one output identifier, documenting generic
+  identifier acceptance for transformer names, and recording the single-line
+  recovery contract.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.5`.
 
 ### 13. Relation forms and role/kind grammar
