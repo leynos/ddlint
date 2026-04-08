@@ -126,81 +126,10 @@ impl SemanticModelBuilder {
 
     pub(crate) fn collect_program_declarations(&mut self, root: &ast::Root) {
         let mut order = 0usize;
-        let mut declare_from_child =
-            |name: Option<String>,
-             name_span: Option<Span>,
-             kind: DeclarationKind,
-             origin: SymbolOrigin,
-             child: &SyntaxNode<crate::DdlogLanguage>| {
-                if let Some(name) = name {
-                    self.declare_symbol(SymbolSpec {
-                        name,
-                        kind,
-                        origin,
-                        scope: self.program_scope,
-                        span: text_range_to_span(child.text_range()),
-                        name_span,
-                        source_order: order,
-                        visible_from_rule_order: 0,
-                    });
-                    order += 1;
-                }
-            };
-
         for child in root.syntax().children() {
-            match child.kind() {
-                SyntaxKind::N_RELATION_DECL => declare_from_child(
-                    {
-                        let relation = ast::Relation {
-                            syntax: child.clone(),
-                        };
-                        relation.name()
-                    },
-                    {
-                        let relation = ast::Relation {
-                            syntax: child.clone(),
-                        };
-                        relation.name_span()
-                    },
-                    DeclarationKind::Relation,
-                    SymbolOrigin::RelationDeclaration,
-                    &child,
-                ),
-                SyntaxKind::N_FUNCTION => declare_from_child(
-                    {
-                        let function = ast::Function {
-                            syntax: child.clone(),
-                        };
-                        function.name()
-                    },
-                    {
-                        let function = ast::Function {
-                            syntax: child.clone(),
-                        };
-                        function.name_span()
-                    },
-                    DeclarationKind::Function,
-                    SymbolOrigin::FunctionDeclaration,
-                    &child,
-                ),
-                SyntaxKind::N_TYPE_DEF => declare_from_child(
-                    {
-                        let type_def = ast::TypeDef {
-                            syntax: child.clone(),
-                        };
-                        type_def.name()
-                    },
-                    {
-                        let type_def = ast::TypeDef {
-                            syntax: child.clone(),
-                        };
-                        type_def.name_span()
-                    },
-                    DeclarationKind::Type,
-                    SymbolOrigin::TypeDeclaration,
-                    &child,
-                ),
-                _ => {}
+            if let Some(spec) = self.program_declaration_spec(&child, order) {
+                self.declare_symbol(spec);
+                order += 1;
             }
         }
     }
@@ -318,6 +247,60 @@ impl SemanticModelBuilder {
             span: spec.span,
         });
         scope_id
+    }
+
+    fn program_declaration_spec(
+        &self,
+        child: &SyntaxNode<crate::DdlogLanguage>,
+        source_order: usize,
+    ) -> Option<SymbolSpec> {
+        let (name, name_span, kind, origin) = match child.kind() {
+            SyntaxKind::N_RELATION_DECL => {
+                let relation = ast::Relation {
+                    syntax: child.clone(),
+                };
+                (
+                    relation.name(),
+                    relation.name_span(),
+                    DeclarationKind::Relation,
+                    SymbolOrigin::RelationDeclaration,
+                )
+            }
+            SyntaxKind::N_FUNCTION => {
+                let function = ast::Function {
+                    syntax: child.clone(),
+                };
+                (
+                    function.name(),
+                    function.name_span(),
+                    DeclarationKind::Function,
+                    SymbolOrigin::FunctionDeclaration,
+                )
+            }
+            SyntaxKind::N_TYPE_DEF => {
+                let type_def = ast::TypeDef {
+                    syntax: child.clone(),
+                };
+                (
+                    type_def.name(),
+                    type_def.name_span(),
+                    DeclarationKind::Type,
+                    SymbolOrigin::TypeDeclaration,
+                )
+            }
+            _ => return None,
+        };
+
+        name.map(|name| SymbolSpec {
+            name,
+            kind,
+            origin,
+            scope: self.program_scope,
+            span: text_range_to_span(child.text_range()),
+            name_span,
+            source_order,
+            visible_from_rule_order: 0,
+        })
     }
 
     pub(crate) fn declare_symbol(&mut self, spec: SymbolSpec) -> SymbolId {
