@@ -30,6 +30,11 @@ fn transformer_invalid_inputs() -> &'static str {
 }
 
 #[fixture]
+fn transformer_invalid_inputs_multiline() -> &'static str {
+    "extern transformer broken(\n    transformer: Type"
+}
+
+#[fixture]
 fn transformer_no_inputs() -> &'static str {
     "extern transformer no_inputs(): OutputType"
 }
@@ -99,6 +104,27 @@ fn transformer_malformed_inputs_error(transformer_invalid_inputs: &str) {
     let errors = parsed.errors();
     assert_parse_error(errors, ErrorPattern::from("Unexpected"), 0, 44);
     assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+fn transformer_malformed_inputs_multiline_error(transformer_invalid_inputs_multiline: &str) {
+    let parsed = crate::parse(transformer_invalid_inputs_multiline);
+    let errors = parsed.errors();
+    // Should get an "Unexpected" error for the unterminated parameter list
+    assert!(
+        !errors.is_empty(),
+        "expected parse errors for unterminated multiline parameter list"
+    );
+    // Should NOT produce a transformer node
+    assert!(parsed.root().transformers().is_empty());
+    // Verify we don't get a spurious "must be extern" error
+    let has_extern_error = errors
+        .iter()
+        .any(|e| format!("{e:?}").contains("must be extern"));
+    assert!(
+        !has_extern_error,
+        "should not emit 'must be extern' error for malformed extern transformer"
+    );
 }
 
 #[rstest]

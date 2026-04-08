@@ -105,7 +105,6 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         return;
     }
 
-    st.skip_line();
     push_invalid_name_diagnostic_if_needed(st, start);
 
     if let Some(error_span) = missing_output_signature_span_unchecked(st, start) {
@@ -115,6 +114,15 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         return;
     }
 
+    // For other parse failures, skip past all tokens involved in the error.
+    // Use the maximum span end from parser errors to avoid leaving the cursor
+    // in the middle of a multiline declaration.
+    let max_error_end = errs
+        .iter()
+        .map(|e| e.span().end)
+        .max()
+        .unwrap_or_else(|| st.stream.line_end(st.stream.cursor()));
+    st.stream.skip_until(max_error_end);
     st.extra.extend(errs);
 }
 
