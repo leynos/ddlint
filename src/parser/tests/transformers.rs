@@ -4,7 +4,8 @@
 
 use super::helpers::parse_transformer;
 use crate::test_util::{
-    ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR, assert_no_parse_errors, assert_parse_error,
+    CAPITALIZED_TRANSFORMER_NAME_ERROR, ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR,
+    assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
 };
 use rstest::{fixture, rstest};
 
@@ -163,20 +164,8 @@ fn transformer_requires_extern(transformer_non_extern: &str) {
 fn transformer_capitalized_name_rejected() {
     let src = "extern transformer Foo(input: InputType): OutputType";
     let parsed = crate::parse(src);
-    let errors = parsed.errors();
-    let expected_message = "transformer names must start with a lowercase letter or underscore";
-    let matching_error = errors.iter().find(|error| {
-        let rendered = format!("{error:?}");
-        rendered.contains(expected_message)
-    });
-    assert!(
-        matching_error.is_some(),
-        "expected lowercase-name error for capitalized transformer, got: {errors:?}"
-    );
-    assert!(
-        parsed.root().transformers().is_empty(),
-        "capitalized transformer should not be added to AST"
-    );
+    assert_custom_parse_error_contains(parsed.errors(), CAPITALIZED_TRANSFORMER_NAME_ERROR);
+    assert!(parsed.root().transformers().is_empty());
 }
 
 #[rstest]

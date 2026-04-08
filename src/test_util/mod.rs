@@ -16,6 +16,8 @@ pub use assertions::{
 };
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
     crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
+pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
+    crate::parser::error_messages::CAPITALIZED_TRANSFORMER_NAME_ERROR;
 pub use expressions::{
     bit_slice, break_expr, call, call_expr, closure, continue_expr, field, field_access, for_loop,
     if_expr, map_entry, map_lit, match_arm, match_expr, method_call, pat, qualified_call,

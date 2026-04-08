@@ -6,7 +6,9 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
+use crate::parser::error_messages::{
+    CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR,
+};
 use crate::parser::lexer_helpers::{balanced_block, ident, inline_ws};
 use crate::{Span, SyntaxKind};
 
@@ -73,7 +75,7 @@ fn push_invalid_name_diagnostic_if_needed(st: &mut State<'_>, start: usize) -> b
     {
         st.extra.push(Simple::custom(
             name_span,
-            "transformer names must start with a lowercase letter or underscore",
+            CAPITALIZED_TRANSFORMER_NAME_ERROR,
         ));
         return false;
     }
