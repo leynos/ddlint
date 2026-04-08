@@ -41,7 +41,7 @@ fn transformer_no_outputs() -> &'static str {
 
 #[fixture]
 fn transformer_multiline_no_outputs() -> &'static str {
-    "extern transformer multiline(\n    input: InputType\n):"
+    "extern transformer multiline(\n    transformer: InputType\n):"
 }
 
 #[fixture]

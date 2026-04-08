@@ -109,6 +109,7 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
     push_invalid_name_diagnostic_if_needed(st, start);
 
     if let Some(error_span) = missing_output_signature_span_unchecked(st, start) {
+        st.stream.skip_until(error_span.end);
         st.extra
             .push(Simple::custom(error_span, MISSING_OUTPUT_SIGNATURE_ERROR));
         return;
