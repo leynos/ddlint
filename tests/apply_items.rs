@@ -3,6 +3,7 @@
 use chumsky::error::SimpleReason;
 use ddlint::SyntaxKind;
 use ddlint::parse;
+use rstest::rstest;
 
 #[test]
 fn parses_apply_items_in_program() {
@@ -26,12 +27,10 @@ fn parses_apply_items_in_program() {
     assert_eq!(apply.outputs(), vec!["Normalised".to_string()]);
 }
 
-#[test]
-fn transformer_declarations_require_a_colon_before_outputs() {
-    let src = "extern transformer missing_colon(input: SomeData)";
-    let parsed = parse(src);
-    let errors = parsed.errors();
-
+fn assert_missing_colon_error(
+    errors: &[chumsky::error::Simple<SyntaxKind>],
+    expected_found: Option<SyntaxKind>,
+) {
     let [error] = errors else {
         panic!("expected one parse error, got {errors:?}");
     };
@@ -43,38 +42,32 @@ fn transformer_declarations_require_a_colon_before_outputs() {
             .any(|kind| *kind == SyntaxKind::T_COLON),
         "expected missing-colon error, got {error:?}",
     );
-    assert_eq!(error.found(), None);
-    assert!(parsed.root().transformers().is_empty());
+    assert_eq!(error.found().copied(), expected_found);
 }
 
-#[test]
-fn malformed_transformer_does_not_prevent_parsing_subsequent_declarations() {
-    let src = concat!(
+#[rstest]
+#[case("extern transformer missing_colon(input: SomeData)", None, Vec::new())]
+#[case(
+    concat!(
         "extern transformer missing_colon(input: SomeData)\n",
         "extern transformer ok(input: SomeData): OtherData\n",
         "extern transformer another(input: OtherData): FinalData",
-    );
+    ),
+    Some(SyntaxKind::K_EXTERN),
+    vec![Some(String::from("ok")), Some(String::from("another"))],
+)]
+fn transformer_missing_colon_behaviour(
+    #[case] src: &str,
+    #[case] expected_found: Option<SyntaxKind>,
+    #[case] expected_names: Vec<Option<String>>,
+) {
     let parsed = parse(src);
-    let errors = parsed.errors();
-
-    let [error] = errors else {
-        panic!("expected one parse error, got {errors:?}");
-    };
-    assert!(matches!(error.reason(), SimpleReason::Unexpected));
-    assert!(
-        error
-            .expected()
-            .filter_map(|expected| expected.as_ref())
-            .any(|kind| *kind == SyntaxKind::T_COLON),
-        "expected missing-colon error, got {error:?}",
-    );
-    assert_eq!(error.found(), Some(&SyntaxKind::K_EXTERN));
+    assert_missing_colon_error(parsed.errors(), expected_found);
 
     let transformers = parsed.root().transformers();
-    assert_eq!(transformers.len(), 2);
     let names: Vec<_> = transformers
         .iter()
         .map(ddlint::ast::Transformer::name)
         .collect();
-    assert_eq!(names, vec![Some("ok".into()), Some("another".into())]);
+    assert_eq!(names, expected_names);
 }
