@@ -737,7 +737,9 @@ wildcard `_` remains an explicit ignore and is never recorded as a
 warning-eligible binding. As of roadmap item `4.1.2`, rule-local binding spans
 still point at the enclosing rule or literal site rather than the exact
 identifier token, so diagnostics for these rules use that existing coarse
-provenance.
+provenance. The semantic model deliberately stays on the `Span` side of that
+boundary; conversion into diagnostic `rowan::TextRange` values happens in the
+linter layer so correctness rules share one linter-owned mapping seam.
 
 Resolution is deliberately tri-state:
 
