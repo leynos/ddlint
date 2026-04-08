@@ -568,7 +568,9 @@ porting and testing.
 - **Typedef:** `TypeDef { name, params, body }`.
 - **Function:** `FuncDef { name, params, ret, body }`, collated into
   `FuncGroup` by name.
-- **Transformer:** `TransformerDef { extern: true, name, params }`.
+- **Transformer:** `TransformerDef { extern: true, name, params, outputs }`,
+  where `outputs` is the ordered list of `Ident` values parsed from
+  `TransformerOutputs`.
 - **Apply:** `Apply { transformer, inputs, outputs }`.
 - **RelationDecl:** `Relation { role, kind, name, typeOrFields, primaryKey? }`.
 - **IndexDecl:** `Index { name, fields: [(name, type)], on: Atom }`.
