@@ -63,9 +63,10 @@ pub(crate) fn collect_transformer_spans(
 
 /// Validates that the transformer name starting at `start` begins with a
 /// lowercase letter or underscore, emitting a targeted diagnostic if not.
-fn push_invalid_name_diagnostic_if_needed(st: &mut State<'_>, start: usize) {
+/// Returns `true` if the name is valid, `false` otherwise.
+fn push_invalid_name_diagnostic_if_needed(st: &mut State<'_>, start: usize) -> bool {
     let Some(name_span) = extract_transformer_name_span(st, start) else {
-        return;
+        return true;
     };
     if let Some(name) = st.stream.src().get(name_span.clone())
         && !is_lowercase_ident(name)
@@ -74,7 +75,9 @@ fn push_invalid_name_diagnostic_if_needed(st: &mut State<'_>, start: usize) {
             name_span,
             "transformer names must start with a lowercase letter or underscore",
         ));
+        return false;
     }
+    true
 }
 
 fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
@@ -91,9 +94,11 @@ fn handle_extern_transformer(st: &mut State<'_>, span: Span) {
         .map(move |sp: Span| start..sp.end);
     let (res, errs) = st.parse_span(parser, start);
     if let Some(declaration_span) = res {
-        push_invalid_name_diagnostic_if_needed(st, start);
+        let name_valid = push_invalid_name_diagnostic_if_needed(st, start);
         st.stream.skip_until(declaration_span.end);
-        st.spans.push(declaration_span);
+        if name_valid {
+            st.spans.push(declaration_span);
+        }
         st.extra.extend(errs);
         return;
     }

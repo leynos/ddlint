@@ -28,8 +28,8 @@ observable when:
 - the parser, unit tests, behavioural tests, and active docs all describe the
   same transformer grammar;
 - missing-output and non-`extern` declarations produce stable diagnostics;
-- `make check-fmt`, `make lint`, and `make test` pass after the implementation
-  change; and
+- `make check-fmt`, `make lint`, `make markdownlint`, `make nixie`, and
+  `CI=1 make test` pass after the implementation change; and
 - `docs/roadmap.md` item `2.6.5` is marked done only after those checks
   succeed.
 
