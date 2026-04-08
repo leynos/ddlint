@@ -10,6 +10,8 @@ pub mod rules;
 mod runner;
 mod span_utils;
 mod store;
+#[cfg(test)]
+pub(crate) mod testing;
 
 pub use rule::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx, RuleLevel};
 pub use runner::Runner;
