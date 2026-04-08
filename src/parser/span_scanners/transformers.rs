@@ -137,9 +137,12 @@ fn is_extern_transformer_start(st: &State<'_>) -> bool {
         .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TRANSFORMER)
 }
 
-fn missing_output_signature_span_unchecked(st: &State<'_>, start: usize) -> Option<Span> {
-    let tokens = st.stream.tokens();
-    let src = st.stream.src();
+/// Skips past the `extern transformer <ident>` prefix, returning the
+/// identifier's span and the index immediately after it (past trivia).
+fn skip_extern_transformer_prefix(
+    tokens: &[(SyntaxKind, Span)],
+    start: usize,
+) -> Option<(Span, usize)> {
     let mut idx = tokens.iter().position(|(_, span)| span.start == start)?;
 
     if !matches_token(tokens, idx, SyntaxKind::K_EXTERN) {
@@ -157,9 +160,17 @@ fn missing_output_signature_span_unchecked(st: &State<'_>, start: usize) -> Opti
     if !matches_token(tokens, idx, SyntaxKind::T_IDENT) {
         return None;
     }
+    let ident_span = tokens.get(idx)?.1.clone();
     idx += 1;
     idx = skip_trivia(tokens, idx);
 
+    Some((ident_span, idx))
+}
+
+fn missing_output_signature_span_unchecked(st: &State<'_>, start: usize) -> Option<Span> {
+    let tokens = st.stream.tokens();
+    let src = st.stream.src();
+    let (_ident_span, idx) = skip_extern_transformer_prefix(tokens, start)?;
     missing_output_signature_span_impl(src, tokens, idx, start)
 }
 
@@ -180,7 +191,7 @@ fn missing_output_signature_span_impl(
     idx = skip_trivia(tokens, next_idx);
 
     if !matches_token(tokens, idx, SyntaxKind::T_COLON) {
-        return Some(start..declaration_error_end(src, tokens, idx, decl_end));
+        return Some(start..declaration_error_end(src, decl_end));
     }
     let colon_end = tokens.get(idx).map_or(decl_end, |(_, span)| span.end);
     idx += 1;
@@ -189,7 +200,7 @@ fn missing_output_signature_span_impl(
     if matches_token(tokens, idx, SyntaxKind::T_IDENT) {
         None
     } else {
-        Some(start..declaration_error_end(src, tokens, idx, colon_end))
+        Some(start..declaration_error_end(src, colon_end))
     }
 }
 
@@ -215,12 +226,7 @@ fn skip_balanced_parens(tokens: &[(SyntaxKind, Span)], start: usize) -> Option<(
     None
 }
 
-fn declaration_error_end(
-    src: &str,
-    _tokens: &[(SyntaxKind, Span)],
-    _idx: usize,
-    fallback_end: usize,
-) -> usize {
+fn declaration_error_end(src: &str, fallback_end: usize) -> usize {
     line_end_at(src, fallback_end)
 }
 
@@ -256,28 +262,8 @@ fn is_lowercase_ident(ident: &str) -> bool {
 
 fn extract_transformer_name_span(st: &State<'_>, start: usize) -> Option<Span> {
     let tokens = st.stream.tokens();
-    let mut idx = tokens.iter().position(|(_, span)| span.start == start)?;
-
-    // Skip 'extern'
-    if !matches_token(tokens, idx, SyntaxKind::K_EXTERN) {
-        return None;
-    }
-    idx += 1;
-    idx = skip_trivia(tokens, idx);
-
-    // Skip 'transformer'
-    if !matches_token(tokens, idx, SyntaxKind::K_TRANSFORMER) {
-        return None;
-    }
-    idx += 1;
-    idx = skip_trivia(tokens, idx);
-
-    // Return the name identifier span
-    if matches_token(tokens, idx, SyntaxKind::T_IDENT) {
-        tokens.get(idx).map(|(_, span)| span.clone())
-    } else {
-        None
-    }
+    let (ident_span, _idx) = skip_extern_transformer_prefix(tokens, start)?;
+    Some(ident_span)
 }
 
 fn matches_token(tokens: &[(SyntaxKind, Span)], idx: usize, expected: SyntaxKind) -> bool {

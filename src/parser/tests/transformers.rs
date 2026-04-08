@@ -109,21 +109,10 @@ fn transformer_error_cases(
 #[rstest]
 #[case::missing_colon(transformer_invalid(), MISSING_OUTPUT_SIGNATURE_ERROR)]
 #[case::no_outputs(transformer_no_outputs(), MISSING_OUTPUT_SIGNATURE_ERROR)]
+#[case::multiline(transformer_multiline_no_outputs(), MISSING_OUTPUT_SIGNATURE_ERROR)]
 fn transformer_missing_output_signature_errors(#[case] src: &str, #[case] expected_message: &str) {
     let parsed = crate::parse(src);
     crate::test_util::assert_custom_parse_error_contains(parsed.errors(), expected_message);
-    assert!(parsed.root().transformers().is_empty());
-}
-
-#[rstest]
-fn multiline_transformer_without_outputs_reports_targeted_error(
-    transformer_multiline_no_outputs: &str,
-) {
-    let parsed = crate::parse(transformer_multiline_no_outputs);
-    crate::test_util::assert_custom_parse_error_contains(
-        parsed.errors(),
-        MISSING_OUTPUT_SIGNATURE_ERROR,
-    );
     assert!(parsed.root().transformers().is_empty());
 }
 

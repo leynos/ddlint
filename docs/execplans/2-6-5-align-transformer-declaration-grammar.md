@@ -20,7 +20,7 @@ which contract is real.
 
 After this change, a novice should be able to read one transformer grammar,
 parse a declaration such as
-`extern transformer normalise(input: User): Normalised`, inspect both inputs
+`extern transformer normalize(input: User): Normalized`, inspect both inputs
 and outputs through the Abstract Syntax Tree (AST), and get deterministic
 diagnostics when the required output signature is missing or empty. Success is
 observable when:
@@ -135,7 +135,7 @@ policy decision, not an isolated grammar-alignment fix.
   and an `apply` item in the same programme.
 
 - Risk: identifier case restrictions were inconsistent between the spec
-  (`UcName`) and the parser/tests (lowercase names such as `normalise` and
+  (`UcName`) and the parser/tests (lowercase names such as `normalize` and
   `out`). Severity: medium. Likelihood: high. Resolution: the parser now
   enforces the LcName rule (lowercase letter or underscore start) for
   transformer names, aligning parser validation with existing test fixtures and
@@ -190,7 +190,7 @@ policy decision, not an isolated grammar-alignment fix.
 
 - The syntax spec mismatch was not limited to the colon. Section `5.4` also used
   `UcName`, while parser fixtures and behavioural tests use lowercase
-  transformer names such as `normalise`, `correlate`, and `reserved`. The
+  transformer names such as `normalize`, `correlate`, and `reserved`. The
   implementation resolved this by enforcing the LcName rule (lowercase letter
   or underscore start) in the span scanner, aligning the parser with existing
   test fixtures.
