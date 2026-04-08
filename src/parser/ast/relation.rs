@@ -58,6 +58,13 @@ impl Relation {
             })
     }
 
+    /// Precise source span for the relation name token, if present.
+    #[must_use]
+    pub fn name_span(&self) -> Option<crate::Span> {
+        self.name()
+            .and_then(|name| super::find_identifier_span(&self.syntax, &name))
+    }
+
     /// Returns `true` if declared with the `input` keyword.
     #[must_use]
     pub fn is_input(&self) -> bool {

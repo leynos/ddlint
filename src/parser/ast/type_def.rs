@@ -25,6 +25,13 @@ impl TypeDef {
         super::take_first_ident(iter)
     }
 
+    /// Precise source span for the type name token, if present.
+    #[must_use]
+    pub fn name_span(&self) -> Option<crate::Span> {
+        self.name()
+            .and_then(|name| super::find_identifier_span(&self.syntax, &name))
+    }
+
     /// Whether this declaration is `extern`.
     #[must_use]
     pub fn is_extern(&self) -> bool {

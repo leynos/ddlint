@@ -3,8 +3,8 @@
 //! The rule operates over semantic `RuleBinding` symbols rather than raw CST
 //! name matching so shadowing, unresolved names, and wildcard ignores follow
 //! the semantic model's existing contracts. Diagnostics currently use the
-//! binding symbol's stored span, which points at the enclosing rule or literal
-//! rather than the exact identifier token.
+//! binding symbol's precise identifier span when semantic collection captured
+//! one, falling back to the existing coarse provenance otherwise.
 
 use crate::linter::{LintDiagnostic, Rule};
 use crate::{SyntaxKind, declare_lint};
@@ -30,7 +30,8 @@ declare_lint! {
                     continue;
                 }
 
-                let Some(range) = crate::linter::span_utils::span_to_text_range(symbol.span()) else {
+                let span = symbol.name_span().unwrap_or_else(|| symbol.span());
+                let Some(range) = crate::linter::span_utils::span_to_text_range(span) else {
                     continue;
                 };
 
@@ -68,6 +69,10 @@ mod tests {
                 .first()
                 .map(crate::linter::LintDiagnostic::message),
             Some("variable `head_x` is defined but never used in this rule")
+        );
+        assert_eq!(
+            diagnostics.first().map(crate::linter::LintDiagnostic::span),
+            Some(rowan::TextRange::new(7.into(), 13.into()))
         );
     }
 
