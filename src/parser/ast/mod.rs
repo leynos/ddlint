@@ -9,15 +9,38 @@
 //! tests and fixtures to assemble match expressions without dipping into
 //! private modules.
 
-use rowan::SyntaxElement;
+use rowan::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use self::parse_utils::is_trivia;
-use crate::{DdlogLanguage, SyntaxKind};
+use crate::parser::ast::rule::text_range_to_span;
+use crate::{DdlogLanguage, Span, SyntaxKind};
 
 /// Common interface for AST wrappers.
 pub(crate) trait AstNode {
     /// Access the underlying syntax node.
     fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage>;
+}
+
+/// Find the first identifier token with matching text within a syntax subtree.
+#[must_use]
+pub(crate) fn find_identifier_span(syntax: &SyntaxNode<DdlogLanguage>, name: &str) -> Option<Span> {
+    for child in syntax.children_with_tokens() {
+        match child {
+            NodeOrToken::Token(token)
+                if token.kind() == SyntaxKind::T_IDENT && token.text() == name =>
+            {
+                return Some(text_range_to_span(token.text_range()));
+            }
+            NodeOrToken::Node(node) => {
+                if let Some(span) = find_identifier_span(&node, name) {
+                    return Some(span);
+                }
+            }
+            NodeOrToken::Token(_) => {}
+        }
+    }
+
+    None
 }
 
 macro_rules! impl_ast_node {

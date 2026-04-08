@@ -29,6 +29,13 @@ impl Function {
             })
     }
 
+    /// Precise source span for the function name token, if present.
+    #[must_use]
+    pub fn name_span(&self) -> Option<crate::Span> {
+        self.name()
+            .and_then(|name| super::find_identifier_span(&self.syntax, &name))
+    }
+
     /// Returns `true` if declared with the `extern` keyword.
     #[must_use]
     pub fn is_extern(&self) -> bool {

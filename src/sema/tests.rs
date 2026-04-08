@@ -388,4 +388,5 @@ fn relation_read_helpers_ignore_head_only_and_unresolved_uses(
     );
 }
 
+mod name_span;
 mod unused_variable;
