@@ -93,16 +93,10 @@ fn parses_transformers(
 }
 
 #[rstest]
-#[case::malformed_inputs(transformer_invalid_inputs(), ErrorPattern::from("Unexpected"), 0, 44)]
-fn transformer_error_cases(
-    #[case] src: &str,
-    #[case] pattern: ErrorPattern,
-    #[case] start: usize,
-    #[case] end: usize,
-) {
-    let parsed = crate::parse(src);
+fn transformer_malformed_inputs_error(transformer_invalid_inputs: &str) {
+    let parsed = crate::parse(transformer_invalid_inputs);
     let errors = parsed.errors();
-    assert_parse_error(errors, pattern, start, end);
+    assert_parse_error(errors, ErrorPattern::from("Unexpected"), 0, 44);
     assert!(parsed.root().transformers().is_empty());
 }
 

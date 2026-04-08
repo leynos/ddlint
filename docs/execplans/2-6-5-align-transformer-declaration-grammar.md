@@ -214,8 +214,7 @@ policy decision, not an isolated grammar-alignment fix.
 
 - Decision: keep semicolon policy out of scope for this milestone.
   Rationale: the open conformance item is about declaration shape and output
-  signatures, not about harmonizing top-level terminators across the whole
-  grammar.
+  signatures, not about harmonizing top-level terminators across the grammar.
 
 - Decision: enforce the LcName rule for transformer names in the parser.
   Rationale: lowercase transformer names already appear in tests and related
