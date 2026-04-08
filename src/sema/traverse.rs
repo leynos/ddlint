@@ -4,14 +4,13 @@ use rowan::SyntaxNode;
 
 use crate::Span;
 use crate::parser::ast;
-use crate::parser::ast::{AstNode, find_identifier_span};
-use crate::parser::ast::{Expr, RuleBodyTerm};
+use crate::parser::ast::{Expr, RuleBodyTerm, find_identifier_span};
 use crate::sema::model::{
     DeclarationKind, ScopeId, ScopeKind, ScopeOrigin, SymbolOrigin, UseKind, UseOrigin, UseSite,
 };
 
 use super::builder::{ScopeSpec, SemanticModelBuilder, SymbolSpec};
-use super::resolve::{collect_head_binding_names, collect_pattern_binding_names, relation_name};
+use super::resolve::{collect_pattern_binding_names, relation_name};
 use super::variables::VariableUseContext;
 
 #[derive(Clone, Copy)]
@@ -26,14 +25,14 @@ impl SemanticModelBuilder {
         if let Ok(heads) = rule.heads() {
             for head in heads {
                 self.collect_head_expr(&head.atom, ctx);
-                for binding_name in collect_head_binding_names(&head.atom) {
+                for (binding_name, name_span) in &head.binding_spans {
                     self.declare_symbol(SymbolSpec {
                         name: binding_name.clone(),
                         kind: DeclarationKind::RuleBinding,
                         origin: ctx.origin,
                         scope: ctx.scope,
                         span: ctx.span.clone(),
-                        name_span: find_identifier_span(rule.syntax(), &binding_name),
+                        name_span: Some(name_span.clone()),
                         source_order: self.symbols.len(),
                         visible_from_rule_order: 0,
                     });

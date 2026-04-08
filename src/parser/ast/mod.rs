@@ -24,15 +24,31 @@ pub(crate) trait AstNode {
 /// Find the first identifier token with matching text within a syntax subtree.
 #[must_use]
 pub(crate) fn find_identifier_span(syntax: &SyntaxNode<DdlogLanguage>, name: &str) -> Option<Span> {
+    find_identifier_span_in_range(syntax, &text_range_to_span(syntax.text_range()), name)
+}
+
+/// Find the first identifier token with matching text within a span-bounded subtree search.
+#[must_use]
+pub(crate) fn find_identifier_span_in_range(
+    syntax: &SyntaxNode<DdlogLanguage>,
+    search_span: &Span,
+    name: &str,
+) -> Option<Span> {
     for child in syntax.children_with_tokens() {
         match child {
             NodeOrToken::Token(token)
                 if token.kind() == SyntaxKind::T_IDENT && token.text() == name =>
             {
-                return Some(text_range_to_span(token.text_range()));
+                let token_span = text_range_to_span(token.text_range());
+                if span_contains(search_span, &token_span) {
+                    return Some(token_span);
+                }
             }
             NodeOrToken::Node(node) => {
-                if let Some(span) = find_identifier_span(&node, name) {
+                if !ranges_overlap(search_span, &text_range_to_span(node.text_range())) {
+                    continue;
+                }
+                if let Some(span) = find_identifier_span_in_range(&node, search_span, name) {
                     return Some(span);
                 }
             }
@@ -41,6 +57,14 @@ pub(crate) fn find_identifier_span(syntax: &SyntaxNode<DdlogLanguage>, name: &st
     }
 
     None
+}
+
+fn ranges_overlap(left: &Span, right: &Span) -> bool {
+    left.start < right.end && right.start < left.end
+}
+
+fn span_contains(container: &Span, candidate: &Span) -> bool {
+    container.start <= candidate.start && candidate.end <= container.end
 }
 
 macro_rules! impl_ast_node {
