@@ -7,7 +7,6 @@ use rowan::SyntaxNode;
 use crate::Span;
 use crate::SyntaxKind;
 use crate::parser::ast;
-use crate::parser::ast::AstNode;
 use crate::parser::ast::SemanticRule;
 use crate::parser::ast::rule::text_range_to_span;
 use crate::sema::model::{
@@ -155,9 +154,16 @@ impl SemanticModelBuilder {
 
             if let Ok(terms) = rule.body_terms() {
                 let body_nodes = rule.body_expression_nodes();
+                debug_assert_eq!(
+                    body_nodes.len(),
+                    terms.len(),
+                    "rule body node/term count mismatch should stay visible during semantic collection"
+                );
 
-                for (literal_index, (node, term)) in body_nodes.into_iter().zip(terms).enumerate() {
-                    let span = node.span();
+                for (literal_index, term) in terms.into_iter().enumerate() {
+                    let maybe_node = body_nodes.get(literal_index);
+                    let span =
+                        maybe_node.map_or_else(|| rule_span.clone(), ast::RuleBodyExpression::span);
                     self.collect_rule_term(
                         super::variables::VariableUseContext::new(
                             rule_scope,
@@ -165,7 +171,7 @@ impl SemanticModelBuilder {
                             &span,
                             literal_index,
                         ),
-                        Some(node.syntax()),
+                        maybe_node.map(ast::AstNode::syntax),
                         &term,
                     );
                 }

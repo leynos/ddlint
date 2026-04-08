@@ -88,6 +88,10 @@ pub struct RuleHead {
     pub atom: Expr,
     /// Optional `@` location expression.
     pub location: Option<Expr>,
+    /// Source span covering only the head atom.
+    pub span: Span,
+    /// Precise identifier-token spans for bindings introduced by the head atom.
+    pub binding_spans: Vec<(String, Span)>,
 }
 
 pub(crate) fn parse_rule_heads(
@@ -162,14 +166,65 @@ fn parse_rule_head_span(
             segment_offset.saturating_add(location_start),
         )?);
 
-        return Ok(Some(RuleHead { atom, location }));
+        let binding_spans = collect_head_binding_spans(atom_src, segment_offset);
+
+        return Ok(Some(RuleHead {
+            atom,
+            location,
+            span: segment_offset..segment_offset.saturating_add(at_span.start),
+            binding_spans,
+        }));
     }
 
+    let binding_spans = collect_head_binding_spans(trimmed, segment_offset);
     let atom = lower_by_ref_head(parse_expr_with_offset(trimmed, segment_offset)?);
     Ok(Some(RuleHead {
         atom,
         location: None,
+        span: segment_offset..segment_offset.saturating_add(trimmed.len()),
+        binding_spans,
     }))
+}
+
+fn collect_head_binding_spans(src: &str, base_offset: usize) -> Vec<(String, Span)> {
+    let tokens = tokenize_without_trivia(src);
+    let mut bindings = Vec::new();
+
+    for (index, (kind, span)) in tokens.iter().enumerate() {
+        if *kind != SyntaxKind::T_IDENT {
+            continue;
+        }
+
+        let text = src.get(span.clone()).unwrap_or("");
+        if should_skip_binding_ident(&tokens, index) || text == "_" {
+            continue;
+        }
+
+        if bindings.iter().any(|(existing, _)| existing == text) {
+            continue;
+        }
+
+        bindings.push((
+            text.to_string(),
+            base_offset.saturating_add(span.start)..base_offset.saturating_add(span.end),
+        ));
+    }
+
+    bindings
+}
+
+fn should_skip_binding_ident(tokens: &[(SyntaxKind, Span)], index: usize) -> bool {
+    let prev_kind = index
+        .checked_sub(1)
+        .and_then(|prev| tokens.get(prev))
+        .map(|(kind, _)| *kind);
+    let next_kind = tokens.get(index + 1).map(|(kind, _)| *kind);
+
+    prev_kind == Some(SyntaxKind::T_DOT)
+        || matches!(
+            next_kind,
+            Some(SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACE | SyntaxKind::T_COLON)
+        )
 }
 
 fn parse_expr_with_offset(src: &str, base_offset: usize) -> Result<Expr, Vec<Simple<SyntaxKind>>> {

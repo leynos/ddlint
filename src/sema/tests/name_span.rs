@@ -42,6 +42,13 @@ fn find_symbol<'a>(
     "project"
 )]
 #[case(
+    "function project(project: u32): u32 { project }",
+    "project",
+    DeclarationKind::Function,
+    SymbolOrigin::FunctionDeclaration,
+    "project"
+)]
+#[case(
     "typedef UserId = u64",
     "UserId",
     DeclarationKind::Type,
@@ -68,13 +75,29 @@ fn top_level_declarations_capture_identifier_name_spans(
 }
 
 #[rstest]
-fn rule_head_bindings_capture_identifier_name_spans() {
-    let source = "Output(head_x) :- Source(_).";
+fn semantic_rule_head_bindings_leave_name_span_unavailable() {
+    let source = "for (item_y in Source(item_y)) Output(item_y).";
     let parsed = parse_ok(source);
     let semantic_model = super::super::build(&parsed);
     let symbol = find_symbol(
         &semantic_model,
-        "head_x",
+        "item_y",
+        DeclarationKind::RuleBinding,
+        SymbolOrigin::SemanticRuleHead,
+    );
+
+    assert!(symbol.name_span().is_none());
+    assert_eq!(span_text(source, symbol.span()), source);
+}
+
+#[rstest]
+fn rule_head_bindings_capture_identifier_name_spans() {
+    let source = "Output(Output) :- Output(_).";
+    let parsed = parse_ok(source);
+    let semantic_model = super::super::build(&parsed);
+    let symbol = find_symbol(
+        &semantic_model,
+        "Output",
         DeclarationKind::RuleBinding,
         SymbolOrigin::RuleHead,
     );
@@ -83,7 +106,8 @@ fn rule_head_bindings_capture_identifier_name_spans() {
         .name_span()
         .unwrap_or_else(|| panic!("missing head binding name_span"));
 
-    assert_eq!(span_text(source, name_span), "head_x");
+    assert_eq!(span_text(source, name_span), "Output");
+    assert_eq!(name_span.start, 7);
     assert_eq!(span_text(source, symbol.span()), source);
 }
 
