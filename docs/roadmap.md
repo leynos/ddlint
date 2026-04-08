@@ -213,7 +213,7 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
   docs/parser-conformance-register.md item 10.
 - [x] 2.6.4. Align index declaration grammar between scanner implementation and
   syntax specification. See docs/parser-conformance-register.md item 11.
-- [ ] 2.6.5. Align transformer declaration grammar, including output signature
+- [x] 2.6.5. Align transformer declaration grammar, including output signature
   requirements. See docs/parser-conformance-register.md item 12.
 - [ ] 2.6.6. Resolve relation form coverage (role/kind/bracket variants) and
   document supported forms explicitly. See docs/parser-conformance-register.md
