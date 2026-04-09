@@ -145,6 +145,11 @@ impl SemanticModelBuilder {
         }
 
         for (term_offset, nested_term) in for_loop.body_terms.iter().enumerate() {
+            // Nested bodies recurse through `collect_rule_term`, but the
+            // `VariableUseContext::new(...)` path no longer retains CST handles
+            // for those inner terms. We therefore pass `None` here
+            // deliberately so nested bindings do not claim precise
+            // `name_span`s we cannot source faithfully.
             self.collect_rule_term(
                 VariableUseContext::new(
                     child_scope,
