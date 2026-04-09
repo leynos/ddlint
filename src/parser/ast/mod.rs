@@ -34,29 +34,20 @@ pub(crate) fn find_identifier_span_in_range(
     search_span: &Span,
     name: &str,
 ) -> Option<Span> {
-    for child in syntax.children_with_tokens() {
-        match child {
-            NodeOrToken::Token(token)
-                if token.kind() == SyntaxKind::T_IDENT && token.text() == name =>
-            {
-                let token_span = text_range_to_span(token.text_range());
-                if span_contains(search_span, &token_span) {
-                    return Some(token_span);
-                }
-            }
-            NodeOrToken::Node(node) => {
-                if !ranges_overlap(search_span, &text_range_to_span(node.text_range())) {
-                    continue;
-                }
-                if let Some(span) = find_identifier_span_in_range(&node, search_span, name) {
-                    return Some(span);
-                }
-            }
-            NodeOrToken::Token(_) => {}
+    syntax.children_with_tokens().find_map(|child| match child {
+        NodeOrToken::Token(token)
+            if token.kind() == SyntaxKind::T_IDENT && token.text() == name =>
+        {
+            let token_span = text_range_to_span(token.text_range());
+            span_contains(search_span, &token_span).then_some(token_span)
         }
-    }
-
-    None
+        NodeOrToken::Node(node) => {
+            ranges_overlap(search_span, &text_range_to_span(node.text_range()))
+                .then(|| find_identifier_span_in_range(&node, search_span, name))
+                .flatten()
+        }
+        NodeOrToken::Token(_) => None,
+    })
 }
 
 fn ranges_overlap(left: &Span, right: &Span) -> bool {
