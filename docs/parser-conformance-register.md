@@ -142,12 +142,15 @@ This register tracks parser behaviour against the syntax specification.
 
 - Topic: output signature requirements and transformer-name token class.
 - Current behaviour (code): parser requires output list after `:`
-  and emits a deterministic diagnostic when the signature is missing or empty
+  and emits a deterministic diagnostic when the signature is missing or empty.
+  Transformer names must start with a lowercase letter or underscore; the
+  parser rejects capitalized names (e.g., `Foo`) with a targeted diagnostic
   (`src/parser/span_scanners/transformers.rs`,
   `src/parser/tests/transformers.rs`). Malformed declarations recover by
   skipping to the next newline boundary through shared scanner utilities.
 - Spec/target behaviour: matches section 5.4's extern-only transformer form
-  with a mandatory `:` plus at least one ordered output identifier.
+  with a mandatory `:` plus at least one ordered output identifier, and
+  enforces lowercase-name class for transformer identifiers.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.5`.
 

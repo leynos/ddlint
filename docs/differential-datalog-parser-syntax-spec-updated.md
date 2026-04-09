@@ -245,6 +245,7 @@ Notes:
 - Transformer declarations are expected to remain on one physical line.
   Recovery for malformed declarations is line-oriented: once parsing fails, the
   scanner discards tokens through the next newline boundary before resuming.
+
 ### 5.5 Relations
 
 Two equivalent forms:

@@ -166,6 +166,39 @@ pub fn assert_custom_parse_error_contains(
     );
 }
 
+/// Assert that no custom parser error message contains `forbidden_pattern`.
+///
+/// This is the negated counterpart to [`assert_custom_parse_error_contains`],
+/// useful for verifying that specific error messages are not emitted.
+///
+/// # Examples
+///
+/// ```
+/// use chumsky::error::Simple;
+/// use ddlint::{SyntaxKind, test_util::assert_no_custom_parse_error_contains};
+///
+/// let errors = vec![Simple::custom(0..1, "different message")];
+/// assert_no_custom_parse_error_contains(&errors, "forbidden text");
+/// ```
+///
+/// # Panics
+/// Panics if any custom error message contains `forbidden_pattern`.
+#[track_caller]
+pub fn assert_no_custom_parse_error_contains(
+    errors: &[Simple<SyntaxKind>],
+    forbidden_pattern: impl AsRef<str>,
+) {
+    let forbidden_pattern = normalise_tokens(forbidden_pattern.as_ref());
+    let has_forbidden_error = errors.iter().any(|error| match error.reason() {
+        SimpleReason::Custom(message) => normalise_tokens(message).contains(&forbidden_pattern),
+        _ => false,
+    });
+    assert!(
+        !has_forbidden_error,
+        "expected no custom error containing `{forbidden_pattern}`, but found one in {errors:?}"
+    );
+}
+
 /// Find the first error in `errors` whose rendered text contains `pattern`.
 ///
 /// Returns `Some(index)` for the matching error, or `None` if no error

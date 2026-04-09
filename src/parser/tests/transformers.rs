@@ -5,7 +5,8 @@
 use super::helpers::parse_transformer;
 use crate::test_util::{
     CAPITALIZED_TRANSFORMER_NAME_ERROR, ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR,
-    assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
+    assert_custom_parse_error_contains, assert_no_custom_parse_error_contains,
+    assert_no_parse_errors, assert_parse_error,
 };
 use rstest::{fixture, rstest};
 
@@ -118,13 +119,7 @@ fn transformer_malformed_inputs_multiline_error(transformer_invalid_inputs_multi
     // Should NOT produce a transformer node
     assert!(parsed.root().transformers().is_empty());
     // Verify we don't get a spurious "must be extern" error
-    let has_extern_error = errors
-        .iter()
-        .any(|e| format!("{e:?}").contains("must be extern"));
-    assert!(
-        !has_extern_error,
-        "should not emit 'must be extern' error for malformed extern transformer"
-    );
+    assert_no_custom_parse_error_contains(errors, "must be extern");
 }
 
 #[rstest]

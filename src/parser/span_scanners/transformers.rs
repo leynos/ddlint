@@ -49,8 +49,8 @@ pub(crate) fn collect_transformer_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
-    while let Some(&(token_kind, ref span_ref)) = st.stream.peek() {
-        let span = span_ref.clone();
+    while let Some(&(token_kind, ref span)) = st.stream.peek() {
+        let span = span.clone();
         if token_kind == SyntaxKind::K_EXTERN {
             handle_extern_transformer(&mut st, span);
         } else if token_kind == SyntaxKind::K_TRANSFORMER {
@@ -197,13 +197,16 @@ fn missing_output_signature_span_impl(
     mut idx: usize,
     start: usize,
 ) -> Option<Span> {
-    // The recovery scan mirrors the declaration prefix exactly:
-    // `extern transformer <ident>(...)`.
+    // The recovery scan mirrors the declaration prefix: `extern transformer <ident>(...)`.
     //
-    // It intentionally tolerates multiline trivia because the parser accepts
-    // newline-separated parameter lists. If the parameter list itself is
-    // malformed, we fall back to the original parser errors instead of
-    // reclassifying the failure as "missing output signature".
+    // Note: skip_extern_transformer_prefix() uses skip_trivia() between prefix tokens
+    // (allowing multiline trivia), while the real parser uses inline_ws(). This is a
+    // deliberate trade-off for simpler recovery logic: the scanner may accept some
+    // constructs the parser rejects, but such cases still produce parser errors.
+    // Multiline trivia is valid inside balanced_block (parameter lists), so parameter
+    // list recovery remains correct. If the parameter list itself is malformed, we
+    // fall back to the original parser errors instead of reclassifying as "missing
+    // output signature".
     let (next_idx, decl_end) = skip_balanced_parens(tokens, idx)?;
     idx = skip_trivia(tokens, next_idx);
 
