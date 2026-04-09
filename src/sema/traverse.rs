@@ -88,16 +88,14 @@ impl SemanticModelBuilder {
     ) {
         self.walk_variable_uses(&assign.value, context);
         for binding_name in collect_pattern_binding_names(&assign.pattern) {
-            self.declare_symbol(SymbolSpec {
-                name: binding_name.clone(),
-                kind: DeclarationKind::RuleBinding,
-                origin: SymbolOrigin::AssignmentPattern,
-                scope: context.current_scope(),
-                span: context.span().clone(),
-                name_span: syntax.and_then(|syntax| find_identifier_span(syntax, &binding_name)),
-                source_order: self.symbols.len(),
-                visible_from_rule_order: context.literal_index() + 1,
-            });
+            self.declare_pattern_binding(
+                &binding_name,
+                SymbolOrigin::AssignmentPattern,
+                context.current_scope(),
+                context.span(),
+                syntax,
+                context.literal_index() + 1,
+            );
         }
     }
 
@@ -132,16 +130,14 @@ impl SemanticModelBuilder {
             span: context.span().clone(),
         });
         for binding_name in collect_pattern_binding_names(&for_loop.pattern) {
-            self.declare_symbol(SymbolSpec {
-                name: binding_name.clone(),
-                kind: DeclarationKind::RuleBinding,
-                origin: SymbolOrigin::ForPattern,
-                scope: child_scope,
-                span: context.span().clone(),
-                name_span: syntax.and_then(|syntax| find_identifier_span(syntax, &binding_name)),
-                source_order: self.symbols.len(),
-                visible_from_rule_order: 0,
-            });
+            self.declare_pattern_binding(
+                &binding_name,
+                SymbolOrigin::ForPattern,
+                child_scope,
+                context.span(),
+                syntax,
+                0,
+            );
         }
 
         for (term_offset, nested_term) in for_loop.body_terms.iter().enumerate() {
@@ -182,6 +178,27 @@ impl SemanticModelBuilder {
             span: context.span().clone(),
             source_order: context.literal_index(),
             resolution,
+        });
+    }
+
+    fn declare_pattern_binding(
+        &mut self,
+        binding_name: &str,
+        origin: SymbolOrigin,
+        scope: ScopeId,
+        span: &Span,
+        syntax: Option<&SyntaxNode<crate::DdlogLanguage>>,
+        visible_from_rule_order: usize,
+    ) {
+        self.declare_symbol(SymbolSpec {
+            name: binding_name.to_string(),
+            kind: DeclarationKind::RuleBinding,
+            origin,
+            scope,
+            span: span.clone(),
+            name_span: syntax.and_then(|syntax| find_identifier_span(syntax, binding_name)),
+            source_order: self.symbols.len(),
+            visible_from_rule_order,
         });
     }
 }

@@ -13,7 +13,7 @@ use rowan::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use self::parse_utils::is_trivia;
 use crate::parser::ast::rule::text_range_to_span;
-use crate::{DdlogLanguage, Span, SyntaxKind};
+use crate::{DdlogLanguage, Span, SyntaxKind, SyntaxToken};
 
 /// Common interface for AST wrappers.
 pub(crate) trait AstNode {
@@ -34,29 +34,49 @@ pub(crate) fn find_identifier_span_in_range(
     search_span: &Span,
     name: &str,
 ) -> Option<Span> {
-    for child in syntax.children_with_tokens() {
-        match child {
-            NodeOrToken::Token(token)
-                if token.kind() == SyntaxKind::T_IDENT && token.text() == name =>
-            {
+    let mut stack = reversed_children(syntax);
+
+    while let Some(element) = stack.pop() {
+        match element {
+            NodeOrToken::Token(token) => {
+                if !token_overlaps_range(&token, search_span) || !is_matching_ident(&token, name) {
+                    continue;
+                }
+
                 let token_span = text_range_to_span(token.text_range());
                 if span_contains(search_span, &token_span) {
                     return Some(token_span);
                 }
             }
             NodeOrToken::Node(node) => {
-                if !ranges_overlap(search_span, &text_range_to_span(node.text_range())) {
+                if !node_overlaps_range(&node, search_span) {
                     continue;
                 }
-                if let Some(span) = find_identifier_span_in_range(&node, search_span, name) {
-                    return Some(span);
-                }
+
+                stack.extend(reversed_children(&node));
             }
-            NodeOrToken::Token(_) => {}
         }
     }
 
     None
+}
+
+fn reversed_children(syntax: &SyntaxNode<DdlogLanguage>) -> Vec<SyntaxElement<DdlogLanguage>> {
+    let mut children: Vec<_> = syntax.children_with_tokens().collect();
+    children.reverse();
+    children
+}
+
+fn token_overlaps_range(token: &SyntaxToken<DdlogLanguage>, range: &Span) -> bool {
+    ranges_overlap(range, &text_range_to_span(token.text_range()))
+}
+
+fn node_overlaps_range(node: &SyntaxNode<DdlogLanguage>, range: &Span) -> bool {
+    ranges_overlap(range, &text_range_to_span(node.text_range()))
+}
+
+fn is_matching_ident(token: &SyntaxToken<DdlogLanguage>, name: &str) -> bool {
+    token.kind() == SyntaxKind::T_IDENT && token.text() == name
 }
 
 fn ranges_overlap(left: &Span, right: &Span) -> bool {
@@ -230,12 +250,78 @@ mod tests {
 
     mod precedence;
 
+    use super::{AstNode, find_identifier_span_in_range};
     use crate::parse;
+
+    fn first_rule(source: &str) -> super::Rule {
+        parse(source)
+            .root()
+            .rules()
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("expected a parsed rule in `{source}`"))
+    }
+
+    fn required_offset(source: &str, needle: &str) -> usize {
+        source
+            .find(needle)
+            .unwrap_or_else(|| panic!("expected `{needle}` in `{source}`"))
+    }
+
+    fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
+        source.get(span.start..span.end).unwrap_or_else(|| {
+            panic!(
+                "invalid UTF-8 boundary for span {}..{} in `{source}`",
+                span.start, span.end
+            )
+        })
+    }
 
     #[test]
     fn root_collects_imports() {
         let src = "import foo";
         let parsed = parse(src);
         assert_eq!(parsed.root().imports().len(), 1);
+    }
+
+    #[test]
+    fn identifier_search_picks_match_within_repeated_name_subtree() {
+        let source = "Output(foo) :- Source(foo), Other(foo).";
+        let rule = first_rule(source);
+        let other_start = required_offset(source, "Other(foo)");
+        let other_end = other_start + "Other(foo)".len();
+
+        let span = find_identifier_span_in_range(rule.syntax(), &(other_start..other_end), "foo")
+            .unwrap_or_else(|| panic!("expected foo within Other(foo) in `{source}`"));
+
+        assert_eq!(span_text(source, &span), "foo");
+        assert_eq!(span.start, other_start + "Other(".len());
+    }
+
+    #[test]
+    fn identifier_search_returns_none_for_non_overlapping_range() {
+        let source = "Output(foo) :- Source(foo), Other(foo).";
+        let rule = first_rule(source);
+        let output_start = required_offset(source, "Output");
+        let output_end = output_start + "Output".len();
+
+        assert_eq!(
+            find_identifier_span_in_range(rule.syntax(), &(output_start..output_end), "foo"),
+            None
+        );
+    }
+
+    #[test]
+    fn identifier_search_matches_exact_nested_token_range() {
+        let source = "Output(result) :- var assigned_x = Seed(result).";
+        let rule = first_rule(source);
+        let assign_start = required_offset(source, "assigned_x");
+        let assign_end = assign_start + "assigned_x".len();
+        let token_span = assign_start..assign_end;
+
+        let span = find_identifier_span_in_range(rule.syntax(), &token_span, "assigned_x")
+            .unwrap_or_else(|| panic!("expected exact nested token match in `{source}`"));
+
+        assert_eq!(span, token_span);
     }
 }
