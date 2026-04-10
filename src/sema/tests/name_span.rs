@@ -91,70 +91,56 @@ fn semantic_rule_head_bindings_leave_name_span_unavailable() {
 }
 
 #[rstest]
-fn rule_head_bindings_capture_identifier_name_spans() {
-    let source = "Output(Output) :- Output(_).";
+#[case(
+    "Output(Output) :- Output(_).",
+    "Output",
+    SymbolOrigin::RuleHead,
+    "Output",
+    Some(7),
+    "Output(Output) :- Output(_)."
+)]
+#[case(
+    "Output(result) :- Source(result), var assigned_x = Seed(result).",
+    "assigned_x",
+    SymbolOrigin::AssignmentPattern,
+    "assigned_x",
+    None,
+    "var assigned_x = Seed(result)"
+)]
+#[case(
+    "Output(result) :- Source(result), for (item_y in Items(result)) Inner(result).",
+    "item_y",
+    SymbolOrigin::ForPattern,
+    "item_y",
+    None,
+    "for (item_y in Items(result)) Inner(result)"
+)]
+fn binding_declarations_capture_identifier_name_spans(
+    #[case] source: &str,
+    #[case] symbol_name: &str,
+    #[case] origin: SymbolOrigin,
+    #[case] expected_name_text: &str,
+    #[case] expected_name_span_start: Option<usize>,
+    #[case] expected_span_text: &str,
+) {
     let parsed = parse_ok(source);
     let semantic_model = super::super::build(&parsed);
     let symbol = find_symbol(
         &semantic_model,
-        "Output",
+        symbol_name,
         DeclarationKind::RuleBinding,
-        SymbolOrigin::RuleHead,
+        origin,
     );
 
     let name_span = symbol
         .name_span()
-        .unwrap_or_else(|| panic!("missing head binding name_span"));
+        .unwrap_or_else(|| panic!("missing binding name_span for `{symbol_name}`"));
 
-    assert_eq!(span_text(source, name_span), "Output");
-    assert_eq!(name_span.start, 7);
-    assert_eq!(span_text(source, symbol.span()), source);
-}
-
-#[rstest]
-fn assignment_bindings_capture_identifier_name_spans() {
-    let source = "Output(result) :- Source(result), var assigned_x = Seed(result).";
-    let parsed = parse_ok(source);
-    let semantic_model = super::super::build(&parsed);
-    let symbol = find_symbol(
-        &semantic_model,
-        "assigned_x",
-        DeclarationKind::RuleBinding,
-        SymbolOrigin::AssignmentPattern,
-    );
-
-    let name_span = symbol
-        .name_span()
-        .unwrap_or_else(|| panic!("missing assignment binding name_span"));
-
-    assert_eq!(span_text(source, name_span), "assigned_x");
-    assert_eq!(
-        span_text(source, symbol.span()),
-        "var assigned_x = Seed(result)"
-    );
-}
-
-#[rstest]
-fn for_loop_bindings_capture_identifier_name_spans() {
-    let source = "Output(result) :- Source(result), for (item_y in Items(result)) Inner(result).";
-    let parsed = parse_ok(source);
-    let semantic_model = super::super::build(&parsed);
-    let symbol = find_symbol(
-        &semantic_model,
-        "item_y",
-        DeclarationKind::RuleBinding,
-        SymbolOrigin::ForPattern,
-    );
-
-    let name_span = symbol
-        .name_span()
-        .unwrap_or_else(|| panic!("missing for-loop binding name_span"));
-
-    assert_eq!(span_text(source, name_span), "item_y");
-    assert_eq!(
-        span_text(source, symbol.span()),
-        "for (item_y in Items(result)) Inner(result)"
-    );
+    assert_eq!(span_text(source, name_span), expected_name_text);
+    if let Some(start) = expected_name_span_start {
+        assert_eq!(name_span.start, start);
+    }
+    assert_eq!(span_text(source, symbol.span()), expected_span_text);
 }
 
 #[rstest]
