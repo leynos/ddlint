@@ -96,7 +96,7 @@ fn semantic_rule_head_bindings_leave_name_span_unavailable() {
     "Output",
     SymbolOrigin::RuleHead,
     "Output",
-    Some(7),
+    Some(7_usize),
     "Output(Output) :- Output(_)."
 )]
 #[case(

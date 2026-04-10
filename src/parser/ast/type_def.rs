@@ -48,6 +48,15 @@ mod tests {
 
     use crate::parse;
 
+    fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
+        source.get(span.start..span.end).unwrap_or_else(|| {
+            panic!(
+                "invalid UTF-8 boundary for span {}..{} in `{source}`",
+                span.start, span.end
+            )
+        })
+    }
+
     #[test]
     fn extern_type_parsed() {
         let parsed = parse("extern type Handle");
@@ -76,5 +85,26 @@ mod tests {
             .expect("typedef missing");
         assert_eq!(td.name().as_deref(), Some("UserId"));
         assert!(!td.is_extern());
+    }
+
+    #[test]
+    fn typedef_name_span_points_to_declaration_identifier() {
+        let source = "typedef UserId = UserId";
+        let parsed = parse(source);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let td = parsed
+            .root()
+            .type_defs()
+            .first()
+            .cloned()
+            .expect("typedef missing");
+
+        let span = td
+            .name_span()
+            .unwrap_or_else(|| panic!("missing typedef name_span in `{source}`"));
+
+        assert_eq!(span_text(source, &span), "UserId");
+        assert_eq!(span.start, "typedef ".len());
     }
 }

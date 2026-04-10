@@ -61,28 +61,34 @@ pub(crate) fn find_identifier_span_in_range(
     None
 }
 
+/// Collect child elements in reverse order so a stack preserves source order.
 fn reversed_children(syntax: &SyntaxNode<DdlogLanguage>) -> Vec<SyntaxElement<DdlogLanguage>> {
     let mut children: Vec<_> = syntax.children_with_tokens().collect();
     children.reverse();
     children
 }
 
+/// Whether a token's byte span overlaps the search range at all.
 fn token_overlaps_range(token: &SyntaxToken<DdlogLanguage>, range: &Span) -> bool {
     ranges_overlap(range, &text_range_to_span(token.text_range()))
 }
 
+/// Whether a node's byte span overlaps the search range at all.
 fn node_overlaps_range(node: &SyntaxNode<DdlogLanguage>, range: &Span) -> bool {
     ranges_overlap(range, &text_range_to_span(node.text_range()))
 }
 
+/// Whether the token is the identifier text the caller is searching for.
 fn is_matching_ident(token: &SyntaxToken<DdlogLanguage>, name: &str) -> bool {
     token.kind() == SyntaxKind::T_IDENT && token.text() == name
 }
 
+/// Whether two byte ranges intersect.
 fn ranges_overlap(left: &Span, right: &Span) -> bool {
     left.start < right.end && right.start < left.end
 }
 
+/// Whether the candidate span sits entirely within the container span.
 fn span_contains(container: &Span, candidate: &Span) -> bool {
     container.start <= candidate.start && candidate.end <= container.end
 }
@@ -248,80 +254,15 @@ pub use type_def::TypeDef;
 #[cfg(test)]
 mod tests {
 
+    mod identifier_span;
     mod precedence;
 
-    use super::{AstNode, find_identifier_span_in_range};
     use crate::parse;
-
-    fn first_rule(source: &str) -> super::Rule {
-        parse(source)
-            .root()
-            .rules()
-            .into_iter()
-            .next()
-            .unwrap_or_else(|| panic!("expected a parsed rule in `{source}`"))
-    }
-
-    fn required_offset(source: &str, needle: &str) -> usize {
-        source
-            .find(needle)
-            .unwrap_or_else(|| panic!("expected `{needle}` in `{source}`"))
-    }
-
-    fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
-        source.get(span.start..span.end).unwrap_or_else(|| {
-            panic!(
-                "invalid UTF-8 boundary for span {}..{} in `{source}`",
-                span.start, span.end
-            )
-        })
-    }
 
     #[test]
     fn root_collects_imports() {
         let src = "import foo";
         let parsed = parse(src);
         assert_eq!(parsed.root().imports().len(), 1);
-    }
-
-    #[test]
-    fn identifier_search_picks_match_within_repeated_name_subtree() {
-        let source = "Output(foo) :- Source(foo), Other(foo).";
-        let rule = first_rule(source);
-        let other_start = required_offset(source, "Other(foo)");
-        let other_end = other_start + "Other(foo)".len();
-
-        let span = find_identifier_span_in_range(rule.syntax(), &(other_start..other_end), "foo")
-            .unwrap_or_else(|| panic!("expected foo within Other(foo) in `{source}`"));
-
-        assert_eq!(span_text(source, &span), "foo");
-        assert_eq!(span.start, other_start + "Other(".len());
-    }
-
-    #[test]
-    fn identifier_search_returns_none_for_non_overlapping_range() {
-        let source = "Output(foo) :- Source(foo), Other(foo).";
-        let rule = first_rule(source);
-        let output_start = required_offset(source, "Output");
-        let output_end = output_start + "Output".len();
-
-        assert_eq!(
-            find_identifier_span_in_range(rule.syntax(), &(output_start..output_end), "foo"),
-            None
-        );
-    }
-
-    #[test]
-    fn identifier_search_matches_exact_nested_token_range() {
-        let source = "Output(result) :- var assigned_x = Seed(result).";
-        let rule = first_rule(source);
-        let assign_start = required_offset(source, "assigned_x");
-        let assign_end = assign_start + "assigned_x".len();
-        let token_span = assign_start..assign_end;
-
-        let span = find_identifier_span_in_range(rule.syntax(), &token_span, "assigned_x")
-            .unwrap_or_else(|| panic!("expected exact nested token match in `{source}`"));
-
-        assert_eq!(span, token_span);
     }
 }

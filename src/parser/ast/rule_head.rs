@@ -55,6 +55,7 @@ fn process_token_for_head_text(
     }
 }
 
+/// Extract the first head segment text from a rule syntax node.
 pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Option<String> {
     use rowan::NodeOrToken;
 
@@ -94,6 +95,7 @@ pub struct RuleHead {
     pub binding_spans: Vec<(String, Span)>,
 }
 
+/// Parse the comma-separated heads at the start of a rule.
 pub(crate) fn parse_rule_heads(
     rule_src: &str,
     base_offset: usize,
@@ -186,6 +188,11 @@ fn parse_rule_head_span(
     }))
 }
 
+/// Collect unique binding identifier spans from a parsed head atom slice.
+///
+/// The scanner keeps only declaration-like identifiers. Relation callees,
+/// dotted access segments, constructor-like identifiers, and wildcards are
+/// skipped so the returned spans can feed `RuleHead::binding_spans`.
 fn collect_head_binding_spans(src: &str, base_offset: usize) -> Vec<(String, Span)> {
     let tokens = tokenize_without_trivia(src);
     let mut bindings = Vec::new();
@@ -213,6 +220,11 @@ fn collect_head_binding_spans(src: &str, base_offset: usize) -> Vec<(String, Spa
     bindings
 }
 
+/// Whether the identifier token at `index` is structural rather than a binding.
+///
+/// Identifiers used as dotted members or immediately followed by `(`, `{`, or
+/// `:` are treated as relation names, constructors, or field labels and are
+/// therefore excluded from head-binding collection.
 fn should_skip_binding_ident(tokens: &[(SyntaxKind, Span)], index: usize) -> bool {
     let prev_kind = index
         .checked_sub(1)
@@ -358,3 +370,7 @@ fn parse_delay_suffix(
     let full = minus_span.start..tokens.last().map_or(minus_span.end, |(_, sp)| sp.end);
     Ok(Some(DelaySuffix { full, value }))
 }
+
+#[cfg(test)]
+#[path = "rule_head/tests.rs"]
+mod tests;

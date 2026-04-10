@@ -83,6 +83,16 @@ impl_ast_node!(Function);
 mod tests {
 
     use crate::parse;
+
+    fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
+        source.get(span.start..span.end).unwrap_or_else(|| {
+            panic!(
+                "invalid UTF-8 boundary for span {}..{} in `{source}`",
+                span.start, span.end
+            )
+        })
+    }
+
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn function_name() {
@@ -95,5 +105,26 @@ mod tests {
             .cloned()
             .expect("function missing");
         assert_eq!(func.name().as_deref(), Some("foo"));
+    }
+
+    #[test]
+    fn function_name_span_points_to_declaration_identifier() {
+        let source = "function project(project: u32): u32 { project }";
+        let parsed = parse(source);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let func = parsed
+            .root()
+            .functions()
+            .first()
+            .cloned()
+            .expect("function missing");
+
+        let span = func
+            .name_span()
+            .unwrap_or_else(|| panic!("missing function name_span in `{source}`"));
+
+        assert_eq!(span_text(source, &span), "project");
+        assert_eq!(span.start, "function ".len());
     }
 }

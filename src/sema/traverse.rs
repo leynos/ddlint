@@ -20,6 +20,7 @@ pub(super) struct RuleHeadContext<'a> {
     pub(super) origin: SymbolOrigin,
 }
 
+/// Collected inputs needed to declare a pattern binding symbol.
 #[derive(Clone, Copy)]
 struct PatternBindingSpec<'a> {
     binding_name: &'a str,
@@ -191,6 +192,7 @@ impl SemanticModelBuilder {
         });
     }
 
+    /// Declare a rule-body pattern binding with optional precise CST-backed span data.
     fn declare_pattern_binding(&mut self, spec: PatternBindingSpec<'_>) {
         self.declare_symbol(SymbolSpec {
             name: spec.binding_name.to_string(),

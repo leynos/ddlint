@@ -213,6 +213,41 @@ Current guarantees are intentionally narrow:
 - Name resolution records `Resolved`, `Unresolved`, and `Ignored` outcomes
   rather than emitting diagnostics directly.
 
+### Precise identifier span sourcing
+
+Precise diagnostic spans for declarations and rule-local bindings are captured
+once during syntax or semantic collection rather than by re-walking the CST in
+lint rules.
+
+Implementation points:
+
+- `src/parser/ast/mod.rs` exposes `find_identifier_span(...)` and
+  `find_identifier_span_in_range(...)`, which locate the first matching
+  `T_IDENT` token within a syntax subtree or span-bounded search window.
+- `src/parser/ast/function.rs`, `src/parser/ast/relation.rs`, and
+  `src/parser/ast/type_def.rs` use that helper to expose `name_span()` for
+  top-level declaration identifiers.
+- `src/parser/ast/rule_head.rs` computes `RuleHead::binding_spans` while
+  parsing head text. `collect_head_binding_spans(...)` tokenizes the head atom
+  slice, filters out structural identifiers such as relation callees and field
+  labels, and records only declaration-like binding identifiers with absolute
+  source spans.
+
+Semantic collection then threads those precise spans into the owned
+`SemanticModel`:
+
+- `src/sema/builder.rs` records top-level declaration `name_span` values while
+  AST wrappers are already in hand.
+- `src/sema/traverse.rs` consumes `RuleHead::binding_spans` for AST-backed rule
+  heads and threads optional CST `syntax` handles through
+  `collect_rule_term(...)`, `collect_assignment_term(...)`, and
+  `collect_for_loop_term(...)` so assignment and `for` pattern bindings can
+  resolve `SymbolSpec.name_span` during collection.
+- Where CST handles are not preserved faithfully, semantic collection leaves
+  `SymbolSpec.name_span` unset by design. This includes synthetic
+  `SemanticRuleHead` bindings produced by top-level `for` lowering and nested
+  `for` body traversals that recurse with `syntax: None`.
+
 Similarly, collection literal lowering is not part of the base `parse()`
 pipeline:
 

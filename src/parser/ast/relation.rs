@@ -145,6 +145,15 @@ mod tests {
 
     use crate::parse;
 
+    fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
+        source.get(span.start..span.end).unwrap_or_else(|| {
+            panic!(
+                "invalid UTF-8 boundary for span {}..{} in `{source}`",
+                span.start, span.end
+            )
+        })
+    }
+
     #[test]
     fn relation_name() {
         let parsed = parse("input relation R(x: u32)");
@@ -157,5 +166,26 @@ mod tests {
             .expect("relation missing");
         assert_eq!(rel.name().as_deref(), Some("R"));
         assert!(rel.is_input());
+    }
+
+    #[test]
+    fn relation_name_span_points_to_declaration_identifier() {
+        let source = "input relation Source(Source: u32)";
+        let parsed = parse(source);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let rel = parsed
+            .root()
+            .relations()
+            .first()
+            .cloned()
+            .expect("relation missing");
+
+        let span = rel
+            .name_span()
+            .unwrap_or_else(|| panic!("missing relation name_span in `{source}`"));
+
+        assert_eq!(span_text(source, &span), "Source");
+        assert_eq!(span.start, "input relation ".len());
     }
 }
