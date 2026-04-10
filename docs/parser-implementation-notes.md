@@ -298,11 +298,11 @@ Constants currently defined:
 Test utilities that match these messages:
 
 - `assert_custom_parse_error_contains(errors, pattern)` — asserts that at
-  least one `SimpleReason::Custom` error contains the normalised `pattern`.
+  least one `SimpleReason::Custom` error contains the normalized `pattern`.
 - `assert_no_custom_parse_error_contains(errors, pattern)` — the negated
   counterpart; asserts that no custom error contains `pattern`.
 
-Both helpers normalise internal token names to human-readable forms before
+Both helpers normalize internal token names to human-readable forms before
 comparison (via `normalise_tokens`), so assertion strings can use either raw
 token names or their human-readable equivalents.
 
@@ -312,7 +312,7 @@ token names or their human-readable equivalents.
 - Entry parse orchestration: `src/parser/mod.rs`
 - Pratt parser: `src/parser/expression/pratt.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`
-- Centralised diagnostic messages: `src/parser/error_messages.rs`
+- Centralized diagnostic messages: `src/parser/error_messages.rs`
 - Rule span scanning: `src/parser/span_scanners/rules.rs`
 - Top-level scanners: `src/parser/span_scanners/*.rs`
 - AST wrappers: `src/parser/ast/*.rs`
