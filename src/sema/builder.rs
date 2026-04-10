@@ -200,6 +200,10 @@ impl SemanticModelBuilder {
                     origin: SymbolOrigin::SemanticRuleHead,
                 },
             );
+            // This is intentionally asymmetric with `traverse.rs`: AST rule-head
+            // bindings capture precise `SymbolSpec.name_span` values from
+            // `binding_spans`, but parse-time `SemanticRule` values do not
+            // retain the CST handles needed to recover those token spans here.
             for binding_name in collect_head_binding_names(rule.head()) {
                 self.declare_symbol(SymbolSpec {
                     name: binding_name,
