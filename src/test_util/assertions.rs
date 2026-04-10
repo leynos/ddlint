@@ -132,6 +132,16 @@ pub fn assert_parse_error(
     assert_eq!(error.span(), start..end);
 }
 
+/// Return `true` if any error in `errors` is a [`SimpleReason::Custom`] whose
+/// normalised message contains the normalised `pattern`.
+fn any_custom_error_contains(errors: &[Simple<SyntaxKind>], pattern: &str) -> bool {
+    let normalised = normalise_tokens(pattern);
+    errors.iter().any(|error| match error.reason() {
+        SimpleReason::Custom(message) => normalise_tokens(message).contains(&normalised),
+        _ => false,
+    })
+}
+
 /// Assert that at least one custom parser error message contains
 /// `expected_pattern`.
 ///
@@ -155,14 +165,11 @@ pub fn assert_custom_parse_error_contains(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: impl AsRef<str>,
 ) {
-    let expected_pattern = normalise_tokens(expected_pattern.as_ref());
-    let has_expected_error = errors.iter().any(|error| match error.reason() {
-        SimpleReason::Custom(message) => normalise_tokens(message).contains(&expected_pattern),
-        _ => false,
-    });
+    let pattern = expected_pattern.as_ref();
     assert!(
-        has_expected_error,
-        "expected custom error containing `{expected_pattern}`, got {errors:?}"
+        any_custom_error_contains(errors, pattern),
+        "expected custom error containing `{}`, got {errors:?}",
+        normalise_tokens(pattern),
     );
 }
 
@@ -188,14 +195,11 @@ pub fn assert_no_custom_parse_error_contains(
     errors: &[Simple<SyntaxKind>],
     forbidden_pattern: impl AsRef<str>,
 ) {
-    let forbidden_pattern = normalise_tokens(forbidden_pattern.as_ref());
-    let has_forbidden_error = errors.iter().any(|error| match error.reason() {
-        SimpleReason::Custom(message) => normalise_tokens(message).contains(&forbidden_pattern),
-        _ => false,
-    });
+    let pattern = forbidden_pattern.as_ref();
     assert!(
-        !has_forbidden_error,
-        "expected no custom error containing `{forbidden_pattern}`, but found one in {errors:?}"
+        !any_custom_error_contains(errors, pattern),
+        "expected no custom error containing `{}`, but found one in {errors:?}",
+        normalise_tokens(pattern),
     );
 }
 
