@@ -387,3 +387,4 @@ fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
 }
 
 mod attribute_tests;
+mod transformer_tests;

@@ -270,7 +270,7 @@ declaration heads.
 
 ## Diagnostics policy
 
-The parser prefers localized, span-precise diagnostics and recovery over hard
+The parser prefers localised, span-precise diagnostics and recovery over hard
 stops. This keeps CST and AST extraction usable in partially invalid files.
 
 Representative diagnostics include:
@@ -280,13 +280,41 @@ Representative diagnostics include:
 - malformed aggregation signatures,
 - invalid transformer declaration forms.
 
+### Centralised diagnostic messages
+
+Diagnostic strings that form part of the parser's contract (asserted in tests
+or exposed through `Parsed::errors()`) are defined once in
+`src/parser/error_messages.rs` and re-exported via `src/test_util/mod.rs`.
+Scanner code and test helpers import the same constants, so message text cannot
+drift between production code and assertions.
+
+Constants currently defined:
+
+- `MISSING_OUTPUT_SIGNATURE_ERROR` — emitted when a transformer declaration
+  omits `:` or has no output identifier after it.
+- `CAPITALIZED_TRANSFORMER_NAME_ERROR` — emitted when a transformer name
+  starts with an uppercase letter instead of a lowercase letter or underscore.
+
+Test utilities that match these messages:
+
+- `assert_custom_parse_error_contains(errors, pattern)` — asserts that at
+  least one `SimpleReason::Custom` error contains the normalised `pattern`.
+- `assert_no_custom_parse_error_contains(errors, pattern)` — the negated
+  counterpart; asserts that no custom error contains `pattern`.
+
+Both helpers normalise internal token names to human-readable forms before
+comparison (via `normalise_tokens`), so assertion strings can use either raw
+token names or their human-readable equivalents.
+
 ## File index
 
 - Tokenization and keyword policy: `src/tokenizer.rs`
 - Entry parse orchestration: `src/parser/mod.rs`
 - Pratt parser: `src/parser/expression/pratt.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`
+- Centralised diagnostic messages: `src/parser/error_messages.rs`
 - Rule span scanning: `src/parser/span_scanners/rules.rs`
 - Top-level scanners: `src/parser/span_scanners/*.rs`
 - AST wrappers: `src/parser/ast/*.rs`
 - Shared parse utilities: `src/parser/ast/parse_utils/*.rs`
+- Test assertion helpers: `src/test_util/assertions.rs`
