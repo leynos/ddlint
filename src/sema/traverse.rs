@@ -20,6 +20,16 @@ pub(super) struct RuleHeadContext<'a> {
     pub(super) origin: SymbolOrigin,
 }
 
+#[derive(Clone, Copy)]
+struct PatternBindingSpec<'a> {
+    binding_name: &'a str,
+    origin: SymbolOrigin,
+    scope: ScopeId,
+    span: &'a Span,
+    syntax: Option<&'a SyntaxNode<crate::DdlogLanguage>>,
+    visible_from_rule_order: usize,
+}
+
 impl SemanticModelBuilder {
     pub(crate) fn collect_rule_heads(&mut self, ctx: RuleHeadContext<'_>, rule: &ast::Rule) {
         if let Ok(heads) = rule.heads() {
@@ -88,14 +98,14 @@ impl SemanticModelBuilder {
     ) {
         self.walk_variable_uses(&assign.value, context);
         for binding_name in collect_pattern_binding_names(&assign.pattern) {
-            self.declare_pattern_binding(
-                &binding_name,
-                SymbolOrigin::AssignmentPattern,
-                context.current_scope(),
-                context.span(),
+            self.declare_pattern_binding(PatternBindingSpec {
+                binding_name: &binding_name,
+                origin: SymbolOrigin::AssignmentPattern,
+                scope: context.current_scope(),
+                span: context.span(),
                 syntax,
-                context.literal_index() + 1,
-            );
+                visible_from_rule_order: context.literal_index() + 1,
+            });
         }
     }
 
@@ -130,14 +140,14 @@ impl SemanticModelBuilder {
             span: context.span().clone(),
         });
         for binding_name in collect_pattern_binding_names(&for_loop.pattern) {
-            self.declare_pattern_binding(
-                &binding_name,
-                SymbolOrigin::ForPattern,
-                child_scope,
-                context.span(),
+            self.declare_pattern_binding(PatternBindingSpec {
+                binding_name: &binding_name,
+                origin: SymbolOrigin::ForPattern,
+                scope: child_scope,
+                span: context.span(),
                 syntax,
-                0,
-            );
+                visible_from_rule_order: 0,
+            });
         }
 
         for (term_offset, nested_term) in for_loop.body_terms.iter().enumerate() {
@@ -181,24 +191,18 @@ impl SemanticModelBuilder {
         });
     }
 
-    fn declare_pattern_binding(
-        &mut self,
-        binding_name: &str,
-        origin: SymbolOrigin,
-        scope: ScopeId,
-        span: &Span,
-        syntax: Option<&SyntaxNode<crate::DdlogLanguage>>,
-        visible_from_rule_order: usize,
-    ) {
+    fn declare_pattern_binding(&mut self, spec: PatternBindingSpec<'_>) {
         self.declare_symbol(SymbolSpec {
-            name: binding_name.to_string(),
+            name: spec.binding_name.to_string(),
             kind: DeclarationKind::RuleBinding,
-            origin,
-            scope,
-            span: span.clone(),
-            name_span: syntax.and_then(|syntax| find_identifier_span(syntax, binding_name)),
+            origin: spec.origin,
+            scope: spec.scope,
+            span: spec.span.clone(),
+            name_span: spec
+                .syntax
+                .and_then(|s| find_identifier_span(s, spec.binding_name)),
             source_order: self.symbols.len(),
-            visible_from_rule_order,
+            visible_from_rule_order: spec.visible_from_rule_order,
         });
     }
 }
