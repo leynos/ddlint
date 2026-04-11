@@ -1,7 +1,7 @@
 //! Tests for identifier-span discovery helpers.
 
 use super::super::{AstNode, find_identifier_span, find_identifier_span_in_range};
-use crate::parse;
+use crate::{parse, test_util::span_text};
 
 fn first_rule(source: &str) -> super::super::Rule {
     parse(source)
@@ -16,15 +16,6 @@ fn required_offset(source: &str, needle: &str) -> usize {
     source
         .find(needle)
         .unwrap_or_else(|| panic!("expected `{needle}` in `{source}`"))
-}
-
-fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
-    source.get(span.start..span.end).unwrap_or_else(|| {
-        panic!(
-            "invalid UTF-8 boundary for span {}..{} in `{source}`",
-            span.start, span.end
-        )
-    })
 }
 
 #[test]

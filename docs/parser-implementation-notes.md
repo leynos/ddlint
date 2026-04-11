@@ -216,8 +216,8 @@ Current guarantees are intentionally narrow:
 ### Precise identifier span sourcing
 
 Precise diagnostic spans for declarations and rule-local bindings are captured
-once during syntax or semantic collection rather than by re-walking the CST in
-lint rules.
+once, either during syntax collection or during semantic collection, rather
+than by re-walking the CST in lint rules.
 
 Implementation points:
 

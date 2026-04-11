@@ -143,16 +143,7 @@ impl_ast_node!(Relation);
 #[cfg(test)]
 mod tests {
 
-    use crate::parse;
-
-    fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
-        source.get(span.start..span.end).unwrap_or_else(|| {
-            panic!(
-                "invalid UTF-8 boundary for span {}..{} in `{source}`",
-                span.start, span.end
-            )
-        })
-    }
+    use crate::{parse, test_util::span_text};
 
     #[test]
     fn relation_name() {

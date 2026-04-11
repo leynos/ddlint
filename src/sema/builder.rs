@@ -154,14 +154,20 @@ impl SemanticModelBuilder {
 
             if let Ok(terms) = rule.body_terms() {
                 let body_nodes = rule.body_expression_nodes();
+                let body_nodes_len = body_nodes.len();
+                let counts_match = body_nodes_len == terms.len();
                 debug_assert_eq!(
-                    body_nodes.len(),
+                    body_nodes_len,
                     terms.len(),
                     "rule body node/term count mismatch should stay visible during semantic collection"
                 );
 
                 for (literal_index, term) in terms.into_iter().enumerate() {
-                    let maybe_node = body_nodes.get(literal_index);
+                    let maybe_node = if counts_match && literal_index < body_nodes_len {
+                        body_nodes.get(literal_index)
+                    } else {
+                        None
+                    };
                     let span =
                         maybe_node.map_or_else(|| rule_span.clone(), ast::RuleBodyExpression::span);
                     self.collect_rule_term(
