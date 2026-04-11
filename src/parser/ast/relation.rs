@@ -58,6 +58,13 @@ impl Relation {
             })
     }
 
+    /// Precise source span for the relation name token, if present.
+    #[must_use]
+    pub fn name_span(&self) -> Option<crate::Span> {
+        self.name()
+            .and_then(|name| super::find_identifier_span(&self.syntax, &name))
+    }
+
     /// Returns `true` if declared with the `input` keyword.
     #[must_use]
     pub fn is_input(&self) -> bool {
@@ -136,7 +143,7 @@ impl_ast_node!(Relation);
 #[cfg(test)]
 mod tests {
 
-    use crate::parse;
+    use crate::{parse, test_util::span_text};
 
     #[test]
     fn relation_name() {
@@ -150,5 +157,26 @@ mod tests {
             .expect("relation missing");
         assert_eq!(rel.name().as_deref(), Some("R"));
         assert!(rel.is_input());
+    }
+
+    #[test]
+    fn relation_name_span_points_to_declaration_identifier() {
+        let source = "input relation Source(Source: u32)";
+        let parsed = parse(source);
+        crate::test_util::assert_no_parse_errors(parsed.errors());
+        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
+        let rel = parsed
+            .root()
+            .relations()
+            .first()
+            .cloned()
+            .expect("relation missing");
+
+        let span = rel
+            .name_span()
+            .unwrap_or_else(|| panic!("missing relation name_span in `{source}`"));
+
+        assert_eq!(span_text(source, &span), "Source");
+        assert_eq!(span.start, "input relation ".len());
     }
 }

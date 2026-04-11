@@ -175,6 +175,7 @@ pub struct Symbol {
     pub(crate) origin: SymbolOrigin,
     pub(crate) scope: ScopeId,
     pub(crate) span: Span,
+    pub(crate) name_span: Option<Span>,
     pub(crate) source_order: usize,
     pub(crate) visible_from_rule_order: usize,
 }
@@ -208,6 +209,12 @@ impl Symbol {
     #[must_use]
     pub fn span(&self) -> &Span {
         &self.span
+    }
+
+    /// Precise source span for the identifier token, when captured.
+    #[must_use]
+    pub fn name_span(&self) -> Option<&Span> {
+        self.name_span.as_ref()
     }
 
     /// Stable source-order index within the owning scope.

@@ -48,6 +48,28 @@ pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
     tokenize_with_trivia(src)
 }
 
+/// Slice `source` by a validated byte span for test assertions.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # #[cfg(feature = "test-support")]
+/// # {
+/// use ddlint::test_util::span_text;
+///
+/// assert_eq!(span_text("abcdef", &(1..4)), "bcd");
+/// # }
+/// ```
+#[must_use]
+pub fn span_text<'a>(source: &'a str, span: &Span) -> &'a str {
+    source.get(span.start..span.end).unwrap_or_else(|| {
+        panic!(
+            "invalid UTF-8 boundary for span {}..{} in `{source}`",
+            span.start, span.end
+        )
+    })
+}
+
 /// Typed wrapper for variable and function names.
 #[derive(Debug, Clone)]
 pub struct Name(pub(crate) String);

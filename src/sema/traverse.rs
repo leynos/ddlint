@@ -1,14 +1,16 @@
 //! Expression and rule-body traversal for semantic-model collection.
 
+use rowan::SyntaxNode;
+
 use crate::Span;
 use crate::parser::ast;
-use crate::parser::ast::{Expr, RuleBodyTerm};
+use crate::parser::ast::{Expr, RuleBodyTerm, find_identifier_span};
 use crate::sema::model::{
     DeclarationKind, ScopeId, ScopeKind, ScopeOrigin, SymbolOrigin, UseKind, UseOrigin, UseSite,
 };
 
 use super::builder::{ScopeSpec, SemanticModelBuilder, SymbolSpec};
-use super::resolve::{collect_head_binding_names, collect_pattern_binding_names, relation_name};
+use super::resolve::{collect_pattern_binding_names, relation_name};
 use super::variables::VariableUseContext;
 
 #[derive(Clone, Copy)]
@@ -18,11 +20,34 @@ pub(super) struct RuleHeadContext<'a> {
     pub(super) origin: SymbolOrigin,
 }
 
+/// Collected inputs needed to declare a pattern binding symbol.
+#[derive(Clone, Copy)]
+struct PatternBindingSpec<'a> {
+    binding_name: &'a str,
+    origin: SymbolOrigin,
+    scope: ScopeId,
+    span: &'a Span,
+    syntax: Option<&'a SyntaxNode<crate::DdlogLanguage>>,
+    visible_from_rule_order: usize,
+}
+
 impl SemanticModelBuilder {
     pub(crate) fn collect_rule_heads(&mut self, ctx: RuleHeadContext<'_>, rule: &ast::Rule) {
         if let Ok(heads) = rule.heads() {
             for head in heads {
                 self.collect_head_expr(&head.atom, ctx);
+                for (binding_name, name_span) in &head.binding_spans {
+                    self.declare_symbol(SymbolSpec {
+                        name: binding_name.clone(),
+                        kind: DeclarationKind::RuleBinding,
+                        origin: ctx.origin,
+                        scope: ctx.scope,
+                        span: ctx.span.clone(),
+                        name_span: Some(name_span.clone()),
+                        source_order: self.symbols.len(),
+                        visible_from_rule_order: 0,
+                    });
+                }
                 if let Some(location) = head.location.as_ref() {
                     self.walk_variable_uses(
                         location,
@@ -39,31 +64,25 @@ impl SemanticModelBuilder {
             UseOrigin::RelationHead,
             expr,
         );
-        for binding_name in collect_head_binding_names(expr) {
-            self.declare_symbol(SymbolSpec {
-                name: binding_name,
-                kind: DeclarationKind::RuleBinding,
-                origin: ctx.origin,
-                scope: ctx.scope,
-                span: ctx.span.clone(),
-                source_order: self.symbols.len(),
-                visible_from_rule_order: 0,
-            });
-        }
     }
 
     pub(crate) fn collect_rule_term(
         &mut self,
         context: VariableUseContext<'_>,
+        syntax: Option<&SyntaxNode<crate::DdlogLanguage>>,
         term: &RuleBodyTerm,
     ) {
         match term {
             RuleBodyTerm::Expression(expr) => self.collect_expression_term(expr, context),
-            RuleBodyTerm::Assignment(assign) => self.collect_assignment_term(assign, context),
+            RuleBodyTerm::Assignment(assign) => {
+                self.collect_assignment_term(assign, syntax, context);
+            }
             RuleBodyTerm::Aggregation(aggregation) => {
                 self.collect_aggregation_term(aggregation, context);
             }
-            RuleBodyTerm::ForLoop(for_loop) => self.collect_for_loop_term(for_loop, context),
+            RuleBodyTerm::ForLoop(for_loop) => {
+                self.collect_for_loop_term(for_loop, syntax, context);
+            }
         }
     }
 
@@ -75,17 +94,17 @@ impl SemanticModelBuilder {
     fn collect_assignment_term(
         &mut self,
         assign: &ast::RuleAssignment,
+        syntax: Option<&SyntaxNode<crate::DdlogLanguage>>,
         context: VariableUseContext<'_>,
     ) {
         self.walk_variable_uses(&assign.value, context);
         for binding_name in collect_pattern_binding_names(&assign.pattern) {
-            self.declare_symbol(SymbolSpec {
-                name: binding_name,
-                kind: DeclarationKind::RuleBinding,
+            self.declare_pattern_binding(PatternBindingSpec {
+                binding_name: &binding_name,
                 origin: SymbolOrigin::AssignmentPattern,
                 scope: context.current_scope(),
-                span: context.span().clone(),
-                source_order: self.symbols.len(),
+                span: context.span(),
+                syntax,
                 visible_from_rule_order: context.literal_index() + 1,
             });
         }
@@ -103,6 +122,7 @@ impl SemanticModelBuilder {
     fn collect_for_loop_term(
         &mut self,
         for_loop: &ast::RuleForLoop,
+        syntax: Option<&SyntaxNode<crate::DdlogLanguage>>,
         context: VariableUseContext<'_>,
     ) {
         self.record_top_level_relation_use(context, UseOrigin::ForIterable, &for_loop.iterable);
@@ -121,18 +141,22 @@ impl SemanticModelBuilder {
             span: context.span().clone(),
         });
         for binding_name in collect_pattern_binding_names(&for_loop.pattern) {
-            self.declare_symbol(SymbolSpec {
-                name: binding_name,
-                kind: DeclarationKind::RuleBinding,
+            self.declare_pattern_binding(PatternBindingSpec {
+                binding_name: &binding_name,
                 origin: SymbolOrigin::ForPattern,
                 scope: child_scope,
-                span: context.span().clone(),
-                source_order: self.symbols.len(),
+                span: context.span(),
+                syntax,
                 visible_from_rule_order: 0,
             });
         }
 
         for (term_offset, nested_term) in for_loop.body_terms.iter().enumerate() {
+            // Nested bodies recurse through `collect_rule_term`, but the
+            // `VariableUseContext::new(...)` path no longer retains CST handles
+            // for those inner terms. We therefore pass `None` here
+            // deliberately so nested bindings do not claim precise
+            // `name_span`s we cannot source faithfully.
             self.collect_rule_term(
                 VariableUseContext::new(
                     child_scope,
@@ -140,6 +164,7 @@ impl SemanticModelBuilder {
                     context.span(),
                     context.rule_order_limit(),
                 ),
+                None,
                 nested_term,
             );
         }
@@ -164,6 +189,22 @@ impl SemanticModelBuilder {
             span: context.span().clone(),
             source_order: context.literal_index(),
             resolution,
+        });
+    }
+
+    /// Declare a rule-body pattern binding with optional precise CST-backed span data.
+    fn declare_pattern_binding(&mut self, spec: PatternBindingSpec<'_>) {
+        self.declare_symbol(SymbolSpec {
+            name: spec.binding_name.to_string(),
+            kind: DeclarationKind::RuleBinding,
+            origin: spec.origin,
+            scope: spec.scope,
+            span: spec.span.clone(),
+            name_span: spec
+                .syntax
+                .and_then(|s| find_identifier_span(s, spec.binding_name)),
+            source_order: self.symbols.len(),
+            visible_from_rule_order: spec.visible_from_rule_order,
         });
     }
 }

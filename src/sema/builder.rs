@@ -14,7 +14,7 @@ use crate::sema::model::{
     SymbolId, SymbolOrigin, UseKind,
 };
 
-use super::resolve::collect_pattern_binding_names;
+use super::resolve::{collect_head_binding_names, collect_pattern_binding_names};
 
 pub(crate) struct SymbolSpec {
     pub(crate) name: String,
@@ -22,6 +22,7 @@ pub(crate) struct SymbolSpec {
     pub(crate) origin: SymbolOrigin,
     pub(crate) scope: ScopeId,
     pub(crate) span: Span,
+    pub(crate) name_span: Option<Span>,
     pub(crate) source_order: usize,
     pub(crate) visible_from_rule_order: usize,
 }
@@ -124,55 +125,10 @@ impl SemanticModelBuilder {
 
     pub(crate) fn collect_program_declarations(&mut self, root: &ast::Root) {
         let mut order = 0usize;
-        let mut declare_from_child =
-            |name: Option<String>,
-             kind: DeclarationKind,
-             origin: SymbolOrigin,
-             child: &SyntaxNode<crate::DdlogLanguage>| {
-                if let Some(name) = name {
-                    self.declare_symbol(SymbolSpec {
-                        name,
-                        kind,
-                        origin,
-                        scope: self.program_scope,
-                        span: text_range_to_span(child.text_range()),
-                        source_order: order,
-                        visible_from_rule_order: 0,
-                    });
-                    order += 1;
-                }
-            };
-
         for child in root.syntax().children() {
-            match child.kind() {
-                SyntaxKind::N_RELATION_DECL => declare_from_child(
-                    ast::Relation {
-                        syntax: child.clone(),
-                    }
-                    .name(),
-                    DeclarationKind::Relation,
-                    SymbolOrigin::RelationDeclaration,
-                    &child,
-                ),
-                SyntaxKind::N_FUNCTION => declare_from_child(
-                    ast::Function {
-                        syntax: child.clone(),
-                    }
-                    .name(),
-                    DeclarationKind::Function,
-                    SymbolOrigin::FunctionDeclaration,
-                    &child,
-                ),
-                SyntaxKind::N_TYPE_DEF => declare_from_child(
-                    ast::TypeDef {
-                        syntax: child.clone(),
-                    }
-                    .name(),
-                    DeclarationKind::Type,
-                    SymbolOrigin::TypeDeclaration,
-                    &child,
-                ),
-                _ => {}
+            if let Some(spec) = self.program_declaration_spec(&child, order) {
+                self.declare_symbol(spec);
+                order += 1;
             }
         }
     }
@@ -197,17 +153,23 @@ impl SemanticModelBuilder {
             );
 
             if let Ok(terms) = rule.body_terms() {
-                let spans: Vec<Span> = rule
-                    .body_expression_nodes()
-                    .into_iter()
-                    .map(|node| node.span())
-                    .collect();
+                let body_nodes = rule.body_expression_nodes();
+                let body_nodes_len = body_nodes.len();
+                let counts_match = body_nodes_len == terms.len();
+                debug_assert_eq!(
+                    body_nodes_len,
+                    terms.len(),
+                    "rule body node/term count mismatch should stay visible during semantic collection"
+                );
 
                 for (literal_index, term) in terms.into_iter().enumerate() {
-                    let span = spans
-                        .get(literal_index)
-                        .cloned()
-                        .unwrap_or_else(|| rule_span.clone());
+                    let maybe_node = if counts_match && literal_index < body_nodes_len {
+                        body_nodes.get(literal_index)
+                    } else {
+                        None
+                    };
+                    let span =
+                        maybe_node.map_or_else(|| rule_span.clone(), ast::RuleBodyExpression::span);
                     self.collect_rule_term(
                         super::variables::VariableUseContext::new(
                             rule_scope,
@@ -215,6 +177,7 @@ impl SemanticModelBuilder {
                             &span,
                             literal_index,
                         ),
+                        maybe_node.map(ast::AstNode::syntax),
                         &term,
                     );
                 }
@@ -243,8 +206,26 @@ impl SemanticModelBuilder {
                     origin: SymbolOrigin::SemanticRuleHead,
                 },
             );
+            // This is intentionally asymmetric with `traverse.rs`: AST rule-head
+            // bindings capture precise `SymbolSpec.name_span` values from
+            // `binding_spans`, but parse-time `SemanticRule` values do not
+            // retain the CST handles needed to recover those token spans here.
+            for binding_name in collect_head_binding_names(rule.head()) {
+                self.declare_symbol(SymbolSpec {
+                    name: binding_name,
+                    kind: DeclarationKind::RuleBinding,
+                    origin: SymbolOrigin::SemanticRuleHead,
+                    scope: rule_scope,
+                    span: rule_span.clone(),
+                    name_span: None,
+                    source_order: self.symbols.len(),
+                    visible_from_rule_order: 0,
+                });
+            }
 
             for pattern in rule.patterns() {
+                // Parse-time semantic rules do not currently preserve CST token
+                // handles, so precise identifier spans are unavailable here.
                 for binding_name in collect_pattern_binding_names(pattern) {
                     self.declare_symbol(SymbolSpec {
                         name: binding_name,
@@ -252,6 +233,7 @@ impl SemanticModelBuilder {
                         origin: SymbolOrigin::ForPattern,
                         scope: rule_scope,
                         span: rule_span.clone(),
+                        name_span: None,
                         source_order: self.symbols.len(),
                         visible_from_rule_order: 0,
                     });
@@ -283,6 +265,60 @@ impl SemanticModelBuilder {
         scope_id
     }
 
+    fn program_declaration_spec(
+        &self,
+        child: &SyntaxNode<crate::DdlogLanguage>,
+        source_order: usize,
+    ) -> Option<SymbolSpec> {
+        let (name, name_span, kind, origin) = match child.kind() {
+            SyntaxKind::N_RELATION_DECL => {
+                let relation = ast::Relation {
+                    syntax: child.clone(),
+                };
+                (
+                    relation.name(),
+                    relation.name_span(),
+                    DeclarationKind::Relation,
+                    SymbolOrigin::RelationDeclaration,
+                )
+            }
+            SyntaxKind::N_FUNCTION => {
+                let function = ast::Function {
+                    syntax: child.clone(),
+                };
+                (
+                    function.name(),
+                    function.name_span(),
+                    DeclarationKind::Function,
+                    SymbolOrigin::FunctionDeclaration,
+                )
+            }
+            SyntaxKind::N_TYPE_DEF => {
+                let type_def = ast::TypeDef {
+                    syntax: child.clone(),
+                };
+                (
+                    type_def.name(),
+                    type_def.name_span(),
+                    DeclarationKind::Type,
+                    SymbolOrigin::TypeDeclaration,
+                )
+            }
+            _ => return None,
+        };
+
+        name.map(|name| SymbolSpec {
+            name,
+            kind,
+            origin,
+            scope: self.program_scope,
+            span: text_range_to_span(child.text_range()),
+            name_span,
+            source_order,
+            visible_from_rule_order: 0,
+        })
+    }
+
     pub(crate) fn declare_symbol(&mut self, spec: SymbolSpec) -> SymbolId {
         let symbol_id = SymbolId(self.symbols.len());
         self.symbols_by_scope_and_name
@@ -297,6 +333,7 @@ impl SemanticModelBuilder {
             origin: spec.origin,
             scope: spec.scope,
             span: spec.span,
+            name_span: spec.name_span,
             source_order: spec.source_order,
             visible_from_rule_order: spec.visible_from_rule_order,
         });

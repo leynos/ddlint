@@ -447,7 +447,9 @@ The core contracts are:
   semantic failures without leaking internal implementation types.
 - Provenance: semantic nodes must retain source mappings back to the lossless
   syntax layer for rule heads, body terms, aggregations, attributes, and
-  adornments, so diagnostics and later rewrites remain explainable.
+  adornments, so diagnostics and later rewrites remain explainable. For symbol
+  records specifically, coarse declaration or literal provenance must stay
+  distinct from any precise identifier-token span used for diagnostics.
 - Semantic model completeness: `ddlog-sema` must expose typed structures for
   constructs that downstream planners care about, including joins, filters,
   projections, aggregations, recursion boundaries, and semantic facts such as
@@ -734,14 +736,24 @@ genuine reads.
 `for`-loop pattern, and it treats a binding as used only when semantic
 resolution maps a `UseKind::Variable` site back to that exact symbol. The
 wildcard `_` remains an explicit ignore and is never recorded as a
-warning-eligible binding. As of roadmap item `4.1.2`, rule-local binding spans
-still point at the enclosing rule or literal site rather than the exact
-identifier token, so diagnostics for these rules use that existing coarse
-provenance. The semantic model deliberately stays on the `Span` side of that
-boundary; conversion into diagnostic `rowan::TextRange` values happens in the
-linter layer through one shared boundary helper in `src/linter/span_utils.rs`.
-This keeps a single conversion point, rather than per-rule glue, for
-correctness diagnostics.
+warning-eligible binding.
+
+Each `Symbol` now carries two related provenance fields:
+
+- `span` remains the existing coarse provenance used for debugging, maps, and
+  ownership; it points at the enclosing declaration, rule, or body term that
+  introduced the symbol.
+- `name_span` is an additive optional field that points at the precise
+  identifier token when semantic collection had CST access to capture it.
+
+Rules such as `unused-variable` should prefer `name_span` for diagnostic
+highlighting and fall back to `span` only when precise token provenance is not
+available, such as parse-time `SemanticRule` values that retain only lowered
+expressions plus a coarse source span. The semantic model deliberately stays on
+the `Span` side of that boundary; conversion into diagnostic `rowan::TextRange`
+values happens in the linter layer through one shared boundary helper in
+`src/linter/span_utils.rs`. This keeps a single conversion point, rather than
+per-rule glue, for correctness diagnostics.
 
 Resolution is deliberately tri-state:
 
@@ -763,8 +775,9 @@ body scope and do not escape to later top-level literals.
 
 This pass consumes both AST-backed rules and parse-time `SemanticRule` values
 from top-level `for` desugaring, so the semantic view matches the parser's
-existing rule surface. Provenance is retained through source spans on
-declarations and on the enclosing literal or rule site for rule-local facts.
+existing rule surface. Provenance is retained through coarse source spans on
+declarations and on the enclosing literal or rule site for rule-local facts,
+with precise identifier-token spans captured additively when CST access exists.
 
 ### 3.3. Initial lint rule catalog
 
@@ -775,16 +788,16 @@ suggestions, establishing a solid foundation of essential lints.
 
 Table: DDLint rule catalogue and metadata.
 
-| Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                                                                 |
-| ---------------------- | ----------- | ------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| unused-relation        | correctness | warn          | No          | Detects declared relations with no resolved read-like uses in rule bodies, `for` iterables, or `for` guards; rule heads count only as writes.                               |
-| unused-variable        | correctness | warn          | No          | Detects rule-local bindings from rule heads, assignment patterns, or `for` patterns that never receive a resolved variable use in the same rule; `_` is an explicit ignore. |
-| shadowed-variable      | correctness | warn          | No          | Detects when a variable binding in a literal shadows one from a preceding literal in the same rule body.                                                                    |
-| recursive-negation     | correctness | error         | No          | Detects rules with recursion through negation, which leads to unsafe, non-monotonic programs.                                                                               |
-| inefficient-join-order | performance | hint          | No          | Evaluates rule bodies and suggests reordering atoms for a more efficient join plan, e.g., placing more restrictive literals first.                                          |
-| superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                                                             |
-| consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).                                                   |
-| no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                                                           |
+| Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                                                                                                                                       |
+| ---------------------- | ----------- | ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| unused-relation        | correctness | warn          | No          | Detects declared relations with no resolved read-like uses in rule bodies, `for` iterables, or `for` guards; rule heads count only as writes.                                                                                                     |
+| unused-variable        | correctness | warn          | No          | Detects rule-local bindings from rule heads, assignment patterns, or `for` patterns that never receive a resolved variable use in the same rule; `_` is an explicit ignore, and diagnostics prefer precise identifier-token spans when available. |
+| shadowed-variable      | correctness | warn          | No          | Detects when a variable binding in a literal shadows one from a preceding literal in the same rule body.                                                                                                                                          |
+| recursive-negation     | correctness | error         | No          | Detects rules with recursion through negation, which leads to unsafe, non-monotonic programs.                                                                                                                                                     |
+| inefficient-join-order | performance | hint          | No          | Evaluates rule bodies and suggests reordering atoms for a more efficient join plan, e.g., placing more restrictive literals first.                                                                                                                |
+| superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                                                                                                                                   |
+| consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).                                                                                                                         |
+| no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                                                                                                                                 |
 
 This table serves as a concrete work breakdown for the engineering team and
 clearly communicates the linter's initial capabilities and priorities to early

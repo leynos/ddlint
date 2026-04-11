@@ -9,15 +9,88 @@
 //! tests and fixtures to assemble match expressions without dipping into
 //! private modules.
 
-use rowan::SyntaxElement;
+use rowan::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use self::parse_utils::is_trivia;
-use crate::{DdlogLanguage, SyntaxKind};
+use crate::parser::ast::rule::text_range_to_span;
+use crate::{DdlogLanguage, Span, SyntaxKind, SyntaxToken};
 
 /// Common interface for AST wrappers.
 pub(crate) trait AstNode {
     /// Access the underlying syntax node.
     fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage>;
+}
+
+/// Find the first identifier token with matching text within a syntax subtree.
+#[must_use]
+pub(crate) fn find_identifier_span(syntax: &SyntaxNode<DdlogLanguage>, name: &str) -> Option<Span> {
+    find_identifier_span_in_range(syntax, &text_range_to_span(syntax.text_range()), name)
+}
+
+/// Find the first identifier token with matching text within a span-bounded subtree search.
+#[must_use]
+pub(crate) fn find_identifier_span_in_range(
+    syntax: &SyntaxNode<DdlogLanguage>,
+    search_span: &Span,
+    name: &str,
+) -> Option<Span> {
+    let mut stack = reversed_children(syntax);
+
+    while let Some(element) = stack.pop() {
+        match element {
+            NodeOrToken::Token(token) => {
+                if !token_overlaps_range(&token, search_span) || !is_matching_ident(&token, name) {
+                    continue;
+                }
+
+                let token_span = text_range_to_span(token.text_range());
+                if span_contains(search_span, &token_span) {
+                    return Some(token_span);
+                }
+            }
+            NodeOrToken::Node(node) => {
+                if !node_overlaps_range(&node, search_span) {
+                    continue;
+                }
+
+                stack.extend(reversed_children(&node));
+            }
+        }
+    }
+
+    None
+}
+
+/// Collect child elements in reverse order so a stack preserves source order.
+fn reversed_children(syntax: &SyntaxNode<DdlogLanguage>) -> Vec<SyntaxElement<DdlogLanguage>> {
+    let mut children: Vec<_> = syntax.children_with_tokens().collect();
+    children.reverse();
+    children
+}
+
+/// Whether a token's byte span overlaps the search range at all.
+fn token_overlaps_range(token: &SyntaxToken<DdlogLanguage>, range: &Span) -> bool {
+    ranges_overlap(range, &text_range_to_span(token.text_range()))
+}
+
+/// Whether a node's byte span overlaps the search range at all.
+fn node_overlaps_range(node: &SyntaxNode<DdlogLanguage>, range: &Span) -> bool {
+    ranges_overlap(range, &text_range_to_span(node.text_range()))
+}
+
+/// Whether the token is the identifier text the caller is searching for.
+fn is_matching_ident(token: &SyntaxToken<DdlogLanguage>, name: &str) -> bool {
+    token.kind() == SyntaxKind::T_IDENT && token.text() == name
+}
+
+/// Whether two byte ranges intersect.
+fn ranges_overlap(left: &Span, right: &Span) -> bool {
+    left.start < right.end && right.start < left.end
+}
+
+/// Whether the candidate span sits entirely within the container span.
+fn span_contains(container: &Span, candidate: &Span) -> bool {
+    container.start <= candidate.start && candidate.end <= container.end
 }
 
 macro_rules! impl_ast_node {
@@ -181,6 +254,7 @@ pub use type_def::TypeDef;
 #[cfg(test)]
 mod tests {
 
+    mod identifier_span;
     mod precedence;
 
     use crate::parse;
