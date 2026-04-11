@@ -3,7 +3,11 @@
 //! Validates extern transformer syntax and edge cases.
 
 use super::helpers::parse_transformer;
-use crate::test_util::{ErrorPattern, assert_no_parse_errors, assert_parse_error};
+use crate::test_util::{
+    CAPITALIZED_TRANSFORMER_NAME_ERROR, ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR,
+    assert_custom_parse_error_contains, assert_no_custom_parse_error_contains,
+    assert_no_parse_errors, assert_parse_error,
+};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -18,7 +22,17 @@ fn transformer_multi_io() -> &'static str {
 
 #[fixture]
 fn transformer_invalid() -> &'static str {
-    "extern transformer incomplete_transformer(input: SomeData):"
+    "extern transformer incomplete_transformer(input: SomeData)"
+}
+
+#[fixture]
+fn transformer_invalid_inputs() -> &'static str {
+    "extern transformer malformed(input: SomeData"
+}
+
+#[fixture]
+fn transformer_invalid_inputs_multiline() -> &'static str {
+    "extern transformer broken(\n    transformer: Type"
 }
 
 #[fixture]
@@ -29,6 +43,11 @@ fn transformer_no_inputs() -> &'static str {
 #[fixture]
 fn transformer_no_outputs() -> &'static str {
     "extern transformer no_outputs(input: InputType):"
+}
+
+#[fixture]
+fn transformer_multiline_no_outputs() -> &'static str {
+    "extern transformer multiline(\n    transformer: InputType\n):"
 }
 
 #[fixture]
@@ -81,17 +100,35 @@ fn parses_transformers(
 }
 
 #[rstest]
-#[case::no_outputs(transformer_no_outputs(), ErrorPattern::from("Unexpected"), 0, 48)]
-#[case::invalid_decl(transformer_invalid(), ErrorPattern::from("Unexpected"), 0, 59)]
-fn transformer_error_cases(
-    #[case] src: &str,
-    #[case] pattern: ErrorPattern,
-    #[case] start: usize,
-    #[case] end: usize,
-) {
-    let parsed = crate::parse(src);
+fn transformer_malformed_inputs_error(transformer_invalid_inputs: &str) {
+    let parsed = crate::parse(transformer_invalid_inputs);
     let errors = parsed.errors();
-    assert_parse_error(errors, pattern, start, end);
+    assert_parse_error(errors, ErrorPattern::from("Unexpected"), 0, 44);
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+fn transformer_malformed_inputs_multiline_error(transformer_invalid_inputs_multiline: &str) {
+    let parsed = crate::parse(transformer_invalid_inputs_multiline);
+    let errors = parsed.errors();
+    // Should get an "Unexpected" error for the unterminated parameter list
+    assert!(
+        !errors.is_empty(),
+        "expected parse errors for unterminated multiline parameter list"
+    );
+    // Should NOT produce a transformer node
+    assert!(parsed.root().transformers().is_empty());
+    // Verify we don't get a spurious "must be extern" error
+    assert_no_custom_parse_error_contains(errors, "must be extern");
+}
+
+#[rstest]
+#[case::missing_colon(transformer_invalid(), MISSING_OUTPUT_SIGNATURE_ERROR)]
+#[case::no_outputs(transformer_no_outputs(), MISSING_OUTPUT_SIGNATURE_ERROR)]
+#[case::multiline(transformer_multiline_no_outputs(), MISSING_OUTPUT_SIGNATURE_ERROR)]
+fn transformer_missing_output_signature_errors(#[case] src: &str, #[case] expected_message: &str) {
+    let parsed = crate::parse(src);
+    crate::test_util::assert_custom_parse_error_contains(parsed.errors(), expected_message);
     assert!(parsed.root().transformers().is_empty());
 }
 
@@ -141,6 +178,26 @@ fn transformer_requires_extern(transformer_non_extern: &str) {
         0,
         transformer_non_extern.len(),
     );
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+#[case::simple_capitalized("extern transformer Foo(input: InputType): OutputType")]
+#[case::capitalized_missing_colon("extern transformer Foo(input: InputType) OutputType")]
+#[case::capitalized_empty_output("extern transformer Foo(input: InputType):")]
+fn transformer_capitalized_name_rejected(#[case] src: &str) {
+    let parsed = crate::parse(src);
+    assert_custom_parse_error_contains(parsed.errors(), CAPITALIZED_TRANSFORMER_NAME_ERROR);
+    assert!(parsed.root().transformers().is_empty());
+}
+
+#[rstest]
+#[case::capitalized_missing_colon("extern transformer Foo(input: InputType) OutputType")]
+#[case::capitalized_empty_output("extern transformer Foo(input: InputType):")]
+fn transformer_capitalized_name_with_missing_output(#[case] src: &str) {
+    let parsed = crate::parse(src);
+    assert_custom_parse_error_contains(parsed.errors(), CAPITALIZED_TRANSFORMER_NAME_ERROR);
+    assert_custom_parse_error_contains(parsed.errors(), MISSING_OUTPUT_SIGNATURE_ERROR);
     assert!(parsed.root().transformers().is_empty());
 }
 

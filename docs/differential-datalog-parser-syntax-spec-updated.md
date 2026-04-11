@@ -231,15 +231,17 @@ Closure   ::= 'function' '(' Params? ')' RetType? Block
 ### 5.4 Transformers (extern‑only)
 
 ```ebnf
-Transformer        ::= 'extern' 'transformer' Ident '(' Params? ')'
-                       ':' TransformerOutputs
+Transformer ::= 'extern' 'transformer' LcName '(' Params? ')' ':' TransformerOutputs
 TransformerOutputs ::= Ident (',' Ident)*
 ```
 
+Notes:
+
+- The output signature after `:` is mandatory and must contain at least one
+  identifier.
+- Zero-input transformers remain valid (`extern transformer t(): Out`).
+- Output identifiers are preserved in order and exposed through the parser AST.
 - A non‑extern `transformer` is rejected.
-- The current parser accepts any non-keyword identifier token for transformer
-  names and output names; it does not apply a case-class restriction such as
-  `LcName` or `UcName`.
 - Transformer declarations are expected to remain on one physical line.
   Recovery for malformed declarations is line-oriented: once parsing fails, the
   scanner discards tokens through the next newline boundary before resuming.
@@ -679,7 +681,13 @@ X(x) :- group_by(sum(x)). // error: expected 2 arguments
 - **Non‑extern transformer:**
 
 ```ddlog
-transformer Foo(); // error: transformer declarations must be extern
+transformer foo(x: T): Out // error: transformer declarations must be extern
+```
+
+- **Missing transformer output signature:**
+
+```ddlog
+extern transformer foo(x: T): // error: transformer declarations require ':' followed by at least one output identifier
 ```
 
 - **Attribute on index:**

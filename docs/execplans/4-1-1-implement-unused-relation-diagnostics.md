@@ -14,7 +14,7 @@ correctness catalogue. After this change, `ddlint` exports an `unused-relation`
 lint rule (`UnusedRelationRule`) that callers must explicitly register in a
 `CstRuleStore` before running the `Runner`. Once registered, the rule emits an
 `unused-relation` warning for each declared relation that has no resolved
-read-like uses anywhere in the analysed program.
+read-like uses anywhere in the analyzed program.
 
 For this milestone, "read from" means a resolved relation-position use in a
 rule body, a `for` iterable, or a `for` guard. A relation named in a rule head
