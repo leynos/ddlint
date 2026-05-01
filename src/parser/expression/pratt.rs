@@ -135,21 +135,34 @@ where
         &mut self,
         f: impl FnOnce(&mut Self) -> R,
     ) -> R {
-        if !self.struct_literals.suspend() {
-            return f(self);
-        }
-        let result = f(self);
-        self.struct_literals.resume();
-        result
+        self.with_struct_literal_scope(StructLiteralState::suspend, StructLiteralState::resume, f)
     }
 
     pub(super) fn with_struct_literal_activation<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> R,
     ) -> R {
-        self.struct_literals.activate();
+        self.with_struct_literal_scope(
+            |state| {
+                state.activate();
+                true
+            },
+            StructLiteralState::deactivate,
+            f,
+        )
+    }
+
+    fn with_struct_literal_scope<R>(
+        &mut self,
+        setup: impl FnOnce(&mut StructLiteralState) -> bool,
+        teardown: impl FnOnce(&mut StructLiteralState),
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        if !setup(&mut self.struct_literals) {
+            return f(self);
+        }
         let result = f(self);
-        self.struct_literals.deactivate();
+        teardown(&mut self.struct_literals);
         result
     }
 
