@@ -90,143 +90,39 @@ pub(super) fn postfix_error_cases() -> Vec<PostfixErrorCase> {
     ]
 }
 
+fn counted_error_cases(srcs: &[&'static str]) -> Vec<CountedErrorCase> {
+    srcs.iter()
+        .map(|&src| CountedErrorCase { src, min_errs: 1 })
+        .collect()
+}
+
 fn operator_error_cases() -> Vec<CountedErrorCase> {
-    vec![
-        CountedErrorCase {
-            src: "1 +",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "(1 + 2",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "1 ? 2",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "x :",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "x as",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "x =",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "x ;",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "x =>",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "",
-            min_errs: 1,
-        },
-    ]
+    counted_error_cases(&[
+        "1 +", "(1 + 2", "1 ? 2", "x :", "x as", "x =", "x ;", "x =>", "",
+    ])
 }
 
 fn postfix_counted_error_cases() -> Vec<CountedErrorCase> {
-    vec![
-        CountedErrorCase {
-            src: "e[1 0]",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "e[,0]",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "e[1,]",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "e[1,,0]",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "t.",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "t.-1",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "t.+1",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "t..0",
-            min_errs: 1,
-        },
-    ]
+    counted_error_cases(&[
+        "e[1 0]", "e[,0]", "e[1,]", "e[1,,0]", "t.", "t.-1", "t.+1", "t..0",
+    ])
 }
 
 fn control_flow_error_cases() -> Vec<CountedErrorCase> {
-    vec![
-        CountedErrorCase {
-            src: "if cond else value",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "if cond value else",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "if",
-            min_errs: 1,
-        },
-    ]
+    counted_error_cases(&["if cond else value", "if cond value else", "if"])
 }
 
 fn match_error_cases() -> Vec<CountedErrorCase> {
-    vec![
-        CountedErrorCase {
-            src: "match (x) { _ => x }",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "match (x) {}",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "match x { _ -> x }",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "match (x) { ) -> x }",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "match (x) { } -> x }",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "match (x) { ] -> x }",
-            min_errs: 1,
-        },
-    ]
+    counted_error_cases(&[
+        "match (x) { _ => x }",
+        "match (x) {}",
+        "match x { _ -> x }",
+        "match (x) { ) -> x }",
+        "match (x) { } -> x }",
+        "match (x) { ] -> x }",
+    ])
 }
 
 fn collection_error_cases() -> Vec<CountedErrorCase> {
-    vec![
-        CountedErrorCase {
-            src: "[1, 2",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "{a: 1",
-            min_errs: 1,
-        },
-        CountedErrorCase {
-            src: "{a, b}",
-            min_errs: 1,
-        },
-    ]
+    counted_error_cases(&["[1, 2", "{a: 1", "{a, b}"])
 }
