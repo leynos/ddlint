@@ -1,4 +1,7 @@
-//! Diff-marker postfix helpers for the Pratt parser.
+//! Diff-marker postfix helpers for the Pratt expression parser.
+//!
+//! Tracks a pending `'` diff-marker span across the postfix chain and wraps
+//! completed postfix expressions in [`Expr::AtomDiff`] via `apply_pending_diff`.
 
 use crate::parser::ast::Expr;
 use crate::{Span, SyntaxKind};

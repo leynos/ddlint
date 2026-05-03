@@ -1,4 +1,7 @@
-//! Postfix-operator parsing for the Pratt parser.
+//! Postfix-operator parsing for the Pratt expression parser.
+//!
+//! `parse_postfix` dispatches `(`, `[`, `.`, `-<`, and `'` postfix forms to
+//! dedicated helpers, coordinating diff-marker tracking across the full chain.
 
 use crate::parser::ast::Expr;
 use crate::parser::expression::qualified::is_qualified_function_callee;

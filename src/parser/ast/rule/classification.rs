@@ -58,7 +58,7 @@ fn parse_assignment(
         )]);
     }
 
-    if parts.value.is_empty() {
+    if parts.value.trim().is_empty() {
         return Err(vec![Simple::custom(
             literal_span.clone(),
             "expected expression after '=' in rule literal",

@@ -139,3 +139,26 @@ fn body_terms_shift_assignment_value_error_spans() {
         "expected shifted value error span {expected_span:?}, got {errors:?}",
     );
 }
+
+#[test]
+fn body_terms_rejects_whitespace_only_value() {
+    let src = "Bad() :- Source(), x =   .";
+    let parsed = parse_err(src);
+    #[expect(clippy::expect_used, reason = "tests require a single rule")]
+    let rule = parsed
+        .root()
+        .rules()
+        .first()
+        .cloned()
+        .expect("rule missing");
+    let errors = match rule.body_terms() {
+        Ok(terms) => panic!("expected body terms error, got {terms:?}"),
+        Err(errs) => errs,
+    };
+    assert!(
+        errors
+            .iter()
+            .any(|e| format!("{e:?}").contains("expected expression after '='")),
+        "expected 'expected expression after =' diagnostic, got {errors:?}",
+    );
+}

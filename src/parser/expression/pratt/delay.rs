@@ -1,4 +1,7 @@
-//! Delay-postfix parsing for the Pratt parser.
+//! Delay-postfix parsing for the Pratt expression parser.
+//!
+//! Handles the `expr -<N>` construct, consuming the `-<` token pair and
+//! a decimal delay value to produce [`Expr::AtomDelay`].
 
 use crate::parser::ast::Expr;
 use crate::parser::span_utils::parse_u32_decimal;
