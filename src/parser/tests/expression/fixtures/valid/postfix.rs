@@ -84,5 +84,18 @@ pub(super) fn postfix_expression_cases() -> Vec<ExpressionCase> {
             src: "e-<0>",
             expected: atom_delay(0, var("e")),
         },
+        ExpressionCase {
+            src: "S'(x)",
+            expected: Expr::AtomDiff {
+                expr: Box::new(call_expr(var("S"), vec![var("x")])),
+            },
+        },
+        ExpressionCase {
+            src: "A() -<10>",
+            expected: Expr::AtomDelay {
+                delay: 10,
+                expr: Box::new(call_expr(var("A"), vec![])),
+            },
+        },
     ]
 }
