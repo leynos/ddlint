@@ -3,7 +3,8 @@
 use crate::parser::ast::Expr;
 use crate::parser::tests::expression::fixtures::ExpressionCase;
 use crate::test_util::{
-    bit_slice, call_expr, field_access, lit_num, method_call, tuple_index, var,
+    atom_delay, atom_diff, bit_slice, call_expr, field_access, lit_num, method_call, tuple_index,
+    var,
 };
 
 pub(super) fn postfix_expression_cases() -> Vec<ExpressionCase> {
@@ -62,6 +63,26 @@ pub(super) fn postfix_expression_cases() -> Vec<ExpressionCase> {
         ExpressionCase {
             src: "t.0",
             expected: tuple_index(var("t"), "0"),
+        },
+        // Diff marker: e'(x) — diff wraps the completed call
+        ExpressionCase {
+            src: "e'(x)",
+            expected: atom_diff(call_expr(var("e"), vec![var("x")])),
+        },
+        // Diff marker with bit-slice: e'[1,0]
+        ExpressionCase {
+            src: "e'[1,0]",
+            expected: atom_diff(bit_slice(var("e"), lit_num("1"), lit_num("0"))),
+        },
+        // Delay postfix: e-<5>
+        ExpressionCase {
+            src: "e-<5>",
+            expected: atom_delay(5, var("e")),
+        },
+        // Delay postfix with zero: e-<0>
+        ExpressionCase {
+            src: "e-<0>",
+            expected: atom_delay(0, var("e")),
         },
     ]
 }

@@ -19,9 +19,9 @@ pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
 pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
     crate::parser::error_messages::CAPITALIZED_TRANSFORMER_NAME_ERROR;
 pub use expressions::{
-    bit_slice, break_expr, call, call_expr, closure, continue_expr, field, field_access, for_loop,
-    if_expr, map_entry, map_lit, match_arm, match_expr, method_call, pat, qualified_call,
-    return_expr, struct_expr, tuple, tuple_index, var, vec_lit,
+    atom_delay, atom_diff, bit_slice, break_expr, call, call_expr, closure, continue_expr, field,
+    field_access, for_loop, if_expr, map_entry, map_lit, match_arm, match_expr, method_call, pat,
+    qualified_call, return_expr, struct_expr, tuple, tuple_index, var, vec_lit,
 };
 pub use literals::{
     NumericText, StringBody, lit_bool, lit_interned_raw_interpolated_str, lit_interned_raw_str,

@@ -105,6 +105,23 @@ pub fn bit_slice(expr: Expr, hi: Expr, lo: Expr) -> Expr {
     }
 }
 
+/// Construct an atom diff marker [`Expr::AtomDiff`].
+#[must_use]
+pub fn atom_diff(expr: Expr) -> Expr {
+    Expr::AtomDiff {
+        expr: Box::new(expr),
+    }
+}
+
+/// Construct an atom delay marker [`Expr::AtomDelay`].
+#[must_use]
+pub fn atom_delay(delay: u32, expr: Expr) -> Expr {
+    Expr::AtomDelay {
+        delay,
+        expr: Box::new(expr),
+    }
+}
+
 /// Construct a struct literal [`Expr::Struct`].
 #[must_use]
 pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
