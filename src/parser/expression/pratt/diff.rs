@@ -12,14 +12,16 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
-    pub(super) fn handle_diff_marker(&mut self, pending: &mut Option<Span>) -> Option<()> {
-        let (_, span) = self.ts.next_tok()?;
+    pub(super) fn handle_diff_marker(&mut self, pending: &mut Option<Span>) {
+        let (_, span) = self.ts.next_tok().unwrap_or_else(|| {
+            let span = self.ts.eof_span();
+            (SyntaxKind::N_ERROR, span)
+        });
         if pending.is_some() {
             self.ts.push_error(span, "duplicate diff marker");
         } else {
             *pending = Some(span);
         }
-        Some(())
     }
 
     pub(super) fn apply_pending_diff(expr: Expr, pending: &mut Option<Span>) -> Expr {
@@ -32,7 +34,7 @@ where
         }
     }
 
-    pub(super) fn validate_diff_not_pending(&mut self, pending: &mut Option<Span>) {
+    pub(super) fn emit_error_if_diff_pending(&mut self, pending: &mut Option<Span>) {
         if let Some(diff_span) = pending.take() {
             self.ts
                 .push_error(diff_span, "diff marker must apply to an atom");

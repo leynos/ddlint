@@ -19,7 +19,7 @@ where
         loop {
             match self.ts.peek_kind() {
                 Some(SyntaxKind::T_APOSTROPHE) => {
-                    self.handle_diff_marker(&mut pending_diff_span)?;
+                    self.handle_diff_marker(&mut pending_diff_span);
                     continue;
                 }
                 Some(SyntaxKind::T_LPAREN) => {
@@ -32,7 +32,7 @@ where
                     lhs = self.parse_dot_access_postfix(lhs)?;
                 }
                 Some(SyntaxKind::T_MINUS) if self.ts.peek_nth_kind(1) == Some(SyntaxKind::T_LT) => {
-                    self.validate_diff_not_pending(&mut pending_diff_span);
+                    self.emit_error_if_diff_pending(&mut pending_diff_span);
                     lhs = self.parse_delay_postfix(lhs)?;
                 }
                 _ => break,
@@ -61,7 +61,7 @@ where
     }
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
-        self.ts.next_tok();
+        let _ = self.ts.next_tok();
         self.with_struct_literals_suspended(move |this| {
             let hi = this.parse_expr(0)?;
             if !this.ts.expect(SyntaxKind::T_COMMA) {
@@ -80,7 +80,8 @@ where
     }
 
     fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
-        self.ts.next_tok();
+        // token is consumed to advance past '.'
+        let _ = self.ts.next_tok();
         match self.ts.next_tok() {
             Some((SyntaxKind::T_IDENT, span)) => {
                 let name = self.ts.slice(&span);
@@ -119,7 +120,8 @@ where
     }
 
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
-        self.ts.next_tok();
+        // token is consumed to advance past '('
+        let _ = self.ts.next_tok();
         self.with_struct_literals_suspended(|this| {
             let args = this.parse_args()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
