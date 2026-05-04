@@ -19,17 +19,6 @@ where
         } else {
             *pending = Some(span);
         }
-
-        if !matches!(
-            self.ts.peek_kind(),
-            Some(SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET)
-        ) {
-            let diff_span = pending.take().unwrap_or_else(|| self.ts.eof_span());
-            self.ts
-                .push_error(diff_span, "diff marker must precede atom arguments");
-            return None;
-        }
-
         Some(())
     }
 
