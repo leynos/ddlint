@@ -31,7 +31,13 @@ fn parses_postfix_expressions(#[case] src: &str, #[case] expected: Expr) {
 #[case::trailing_dot("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
 #[case::bit_slice_missing_comma("e[1]", "expected comma", 3, 4, false)]
 #[case::bit_slice_unclosed("e[1,0", "expected right bracket", 5, 5, true)]
-#[case::diff_marker_without_args("S'", "diff marker must be followed by atom arguments", 1, 2, false)]
+#[case::diff_marker_without_args(
+    "S'",
+    "diff marker must be followed by atom arguments",
+    1,
+    2,
+    false
+)]
 #[case::delay_out_of_range("A() -<4294967296>", "delay must fit u32", 6, 16, false)]
 fn postfix_expression_errors(
     #[case] src: &str,
