@@ -45,8 +45,12 @@ check-fmt: ## Verify formatting
 	$(CARGO) fmt --all -- --check
 
 markdownlint: ## Lint Markdown files
+	git rev-parse --verify origin/main >/dev/null
+	tmp=$$(mktemp); \
 	git diff --name-only -z --diff-filter=ACMRT origin/main...HEAD -- \
-		'*.md' '*.markdown' '*.mdx' | xargs -0 -r $(MDLINT)
+		'*.md' '*.markdown' '*.mdx' > "$$tmp"; \
+	if [ -s "$$tmp" ]; then xargs -0 $(MDLINT) < "$$tmp"; fi; \
+	rm -f "$$tmp"
 
 nixie: ## Validate Mermaid diagrams
 	find . -type f -name '*.md' -not -path './target/*' -print0 | xargs -0 $(NIXIE)
