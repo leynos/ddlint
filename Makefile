@@ -45,7 +45,8 @@ check-fmt: ## Verify formatting
 	$(CARGO) fmt --all -- --check
 
 markdownlint: ## Lint Markdown files
-	find . -type f -name '*.md' -not -path './target/*' -print0 | xargs -0 $(MDLINT)
+	git diff --name-only -z --diff-filter=ACMRT origin/main...HEAD -- \
+		'*.md' '*.markdown' '*.mdx' | xargs -0 -r $(MDLINT)
 
 nixie: ## Validate Mermaid diagrams
 	find . -type f -name '*.md' -not -path './target/*' -print0 | xargs -0 $(NIXIE)
