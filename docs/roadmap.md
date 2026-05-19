@@ -120,6 +120,15 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
 - [x] 2.3.2. Parse aggregation and FlatMap constructs in rule bodies.
   See docs/differential-datalog-parser-syntax-spec-updated.md §5.12 and
   docs/differential-datalog-parser-syntax-spec-updated.md §6.1.
+- [x] 2.3.3. Refactor oversized parser modules to satisfy the 400-line
+  maintainability guideline (issue `#223`). Split `rule.rs`, `expr.rs`, `pratt.rs`,
+  and the expression test module into focused submodules:
+  `src/parser/ast/rule/classification.rs`,
+  `src/parser/ast/expr/sexpr.rs`,
+  `src/parser/expression/pratt/delay.rs`,
+  `src/parser/expression/pratt/diff.rs`,
+  `src/parser/expression/pratt/postfix.rs`, and
+  `src/parser/tests/expression/fixtures/`. See PR `#259`.
 
 ### 2.4. Syntax-spec lexical and expression conformance
 

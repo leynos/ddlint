@@ -14,6 +14,8 @@ This page lists the current documents in the `docs/` directory.
   roadmap for the `ddlint` linter.
 - [Documentation style guide](./documentation-style-guide.md): Authoring
   conventions for Markdown structure, spelling, formatting, and ADR content.
+- [Developer guide](./developers-guide.md): Parser module boundaries and
+  ownership notes for the current implementation split.
 - [Differential Datalog parser syntax specification updated](./differential-datalog-parser-syntax-spec-updated.md):
   Normative reference for DDlog syntax, lexer rules, operator precedence, and
   parser desugarings.
