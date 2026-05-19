@@ -148,7 +148,7 @@ where
             if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
                 break;
             }
-            self.ts.next_tok();
+            let _ = self.ts.next_tok();
             if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
                 let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
                 self.ts
