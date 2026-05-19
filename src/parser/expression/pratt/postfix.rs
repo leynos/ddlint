@@ -162,13 +162,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "tests assert exact parser output")]
-
     use chumsky::error::SimpleReason;
 
+    use crate::SyntaxKind;
     use crate::parser::expression::parse_expression;
 
     #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
     fn qualified_callee_uses_call_postfix() {
         let expr =
             parse_expression("std::map(value)").expect("qualified function call should parse");
@@ -177,6 +177,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser error")]
     fn trailing_argument_comma_is_rejected() {
         let errors = parse_expression("f(1,)").expect_err("trailing comma should fail");
 
@@ -185,5 +186,42 @@ mod tests {
             SimpleReason::Custom(message)
                 if message == "unexpected trailing comma in argument list"
         )));
+    }
+
+    #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
+    fn parse_postfix_handles_diff_postfix() {
+        let expr = parse_expression("S'(x)").expect("diff postfix should parse");
+
+        assert_eq!(expr.to_sexpr(), "(diff (call S x))");
+    }
+
+    #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
+    fn parse_postfix_handles_delay_postfix() {
+        let expr = parse_expression("signal-<3>").expect("delay postfix should parse");
+
+        assert_eq!(expr.to_sexpr(), "(delay 3 signal)");
+    }
+
+    #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser error")]
+    fn parse_postfix_rejects_delay_when_diff_is_pending() {
+        let errors = parse_expression("signal'-<3>")
+            .expect_err("delay postfix with pending diff should fail");
+
+        assert!(has_custom_error(
+            &errors,
+            "diff marker must apply to an atom"
+        ));
+    }
+
+    fn has_custom_error(errors: &[chumsky::error::Simple<SyntaxKind>], expected: &str) -> bool {
+        errors.iter().any(|error| {
+            matches!(
+                error.reason(),
+                SimpleReason::Custom(message) if message == expected
+            )
+        })
     }
 }
