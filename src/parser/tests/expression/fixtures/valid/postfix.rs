@@ -111,7 +111,6 @@ fn delay_cases() -> Vec<ExpressionCase> {
     ]
 }
 
-/// Return parser test cases covering postfix expression forms.
 pub(super) fn postfix_expression_cases() -> Vec<ExpressionCase> {
     let mut cases = field_and_method_call_cases();
     cases.extend(call_and_slice_cases());
