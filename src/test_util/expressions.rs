@@ -105,7 +105,7 @@ pub fn bit_slice(expr: Expr, hi: Expr, lo: Expr) -> Expr {
     }
 }
 
-/// Construct an atom diff marker [`Expr::AtomDiff`].
+/// Construct an [`Expr::AtomDiff`] postfix node.
 #[must_use]
 pub fn atom_diff(expr: Expr) -> Expr {
     Expr::AtomDiff {
@@ -113,7 +113,7 @@ pub fn atom_diff(expr: Expr) -> Expr {
     }
 }
 
-/// Construct an atom delay marker [`Expr::AtomDelay`].
+/// Construct an [`Expr::AtomDelay`] postfix node with the given `delay` value.
 #[must_use]
 pub fn atom_delay(delay: u32, expr: Expr) -> Expr {
     Expr::AtomDelay {
