@@ -154,3 +154,41 @@ fn format_match(scrutinee: &Expr, arms: &[MatchArm]) -> String {
         std::iter::once(scrutinee.to_sexpr()).chain(arm_parts),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::ast::{BinaryOp, Literal};
+
+    fn var(name: &str) -> Expr {
+        Expr::Variable(name.into())
+    }
+
+    #[test]
+    fn snapshots_nested_expression_format() {
+        let expr = Expr::Binary {
+            op: BinaryOp::Add,
+            lhs: Box::new(Expr::MethodCall {
+                recv: Box::new(var("stream")),
+                name: "map".into(),
+                args: vec![var("value")],
+            }),
+            rhs: Box::new(Expr::Literal(Literal::Bool(true))),
+        };
+
+        insta::assert_snapshot!(expr.to_sexpr(), @"(+ (method stream map value) true)");
+    }
+
+    #[test]
+    fn snapshots_collection_expression_format() {
+        let expr = Expr::MapLit(vec![
+            (var("key"), Expr::VecLit(vec![var("first"), var("second")])),
+            (var("enabled"), Expr::Literal(Literal::Bool(false))),
+        ]);
+
+        insta::assert_snapshot!(
+            expr.to_sexpr(),
+            @"(map (entry key (vec first second)) (entry enabled false))"
+        );
+    }
+}

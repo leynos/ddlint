@@ -15,6 +15,13 @@ use crate::parser::pattern::parse_pattern;
 use crate::parser::span_utils::shift_errors;
 use crate::{Span, SyntaxKind};
 
+/// Classify a raw rule-body literal into the structured rule-body term used by
+/// semantic consumers.
+///
+/// The caller provides the literal span so diagnostics can point back to the
+/// CST node that supplied the raw text. `first_aggregation_span` is shared
+/// across the surrounding rule body, allowing this helper to reject multiple
+/// aggregations while still parsing each literal independently.
 pub(super) fn parse_rule_body_term(
     raw: &str,
     literal_span: Span,
@@ -267,4 +274,49 @@ fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple
         second_span.clone(),
         "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_string(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::expect_used, reason = "tests assert exact parser output")]
+
+    use super::*;
+    use chumsky::error::SimpleReason;
+
+    fn span_for(src: &str) -> Span {
+        0..src.len()
+    }
+
+    #[test]
+    fn assignment_literal_becomes_assignment_term() {
+        let src = "var item = FlatMap(items)";
+        let mut first_aggregation_span = None;
+        let mut errors = Vec::new();
+
+        let term =
+            parse_rule_body_term(src, span_for(src), &mut first_aggregation_span, &mut errors)
+                .expect("assignment should parse");
+
+        assert!(matches!(term, RuleBodyTerm::Assignment(_)));
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn second_aggregation_reports_error() {
+        let src = "group_by(count(), key)";
+        let mut first_aggregation_span = Some(0..4);
+        let mut errors = Vec::new();
+
+        let term =
+            parse_rule_body_term(src, span_for(src), &mut first_aggregation_span, &mut errors);
+
+        assert!(term.is_none());
+        assert_eq!(errors.len(), 1);
+        let error = errors.first().expect("aggregation error missing");
+        assert!(matches!(
+            error.reason(),
+            SimpleReason::Custom(message)
+                if message == "at most one aggregation (group_by or Aggregate) is permitted per rule body"
+        ));
+    }
 }

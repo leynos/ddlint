@@ -13,6 +13,8 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
+    /// Parse a `-<N>` delay postfix, returning an [`Expr::AtomDelay`] around
+    /// the expression parsed before the postfix marker.
     pub(super) fn parse_delay_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         let (minus_kind, _) = self.ts.next_tok()?;
         debug_assert_eq!(
@@ -46,5 +48,32 @@ where
             delay,
             expr: Box::new(lhs),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::expect_used, reason = "tests assert exact parser output")]
+
+    use chumsky::error::SimpleReason;
+
+    use crate::parser::expression::parse_expression;
+
+    #[test]
+    fn parses_atom_delay_postfix() {
+        let expr = parse_expression("signal-<3>").expect("delay expression should parse");
+
+        assert_eq!(expr.to_sexpr(), "(delay 3 signal)");
+    }
+
+    #[test]
+    fn rejects_non_numeric_delay_value() {
+        let errors =
+            parse_expression("signal -< delay").expect_err("non-numeric delay should fail");
+
+        assert!(errors.iter().any(|error| matches!(
+            error.reason(),
+            SimpleReason::Custom(message) if message == "expected delay value"
+        )));
     }
 }

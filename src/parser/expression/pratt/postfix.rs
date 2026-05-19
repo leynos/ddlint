@@ -131,6 +131,8 @@ where
         })
     }
 
+    /// Parse a comma-separated argument list after the opening parenthesis has
+    /// already been consumed.
     pub(super) fn parse_args(&mut self) -> Option<Vec<Expr>> {
         let mut args = Vec::new();
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
@@ -155,5 +157,33 @@ where
             }
         }
         Some(args)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::expect_used, reason = "tests assert exact parser output")]
+
+    use chumsky::error::SimpleReason;
+
+    use crate::parser::expression::parse_expression;
+
+    #[test]
+    fn qualified_callee_uses_call_postfix() {
+        let expr =
+            parse_expression("std::map(value)").expect("qualified function call should parse");
+
+        assert_eq!(expr.to_sexpr(), "(call std::map value)");
+    }
+
+    #[test]
+    fn trailing_argument_comma_is_rejected() {
+        let errors = parse_expression("f(1,)").expect_err("trailing comma should fail");
+
+        assert!(errors.iter().any(|error| matches!(
+            error.reason(),
+            SimpleReason::Custom(message)
+                if message == "unexpected trailing comma in argument list"
+        )));
     }
 }
