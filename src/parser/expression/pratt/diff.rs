@@ -14,16 +14,14 @@ where
 {
     /// Consume a diff marker and remember that the next completed postfix atom
     /// should be wrapped in [`Expr::AtomDiff`].
-    pub(super) fn handle_diff_marker(&mut self, pending: &mut Option<Span>) {
-        let (_, span) = self.ts.next_tok().unwrap_or_else(|| {
-            let span = self.ts.eof_span();
-            (SyntaxKind::N_ERROR, span)
-        });
+    pub(super) fn handle_diff_marker(&mut self, pending: &mut Option<Span>) -> Option<()> {
+        let (_, span) = self.ts.next_tok()?;
         if pending.is_some() {
             self.ts.push_error(span, "duplicate diff marker");
         } else {
             *pending = Some(span);
         }
+        Some(())
     }
 
     /// Wrap `expr` in [`Expr::AtomDiff`] when a preceding diff marker is
@@ -70,7 +68,12 @@ mod tests {
             &mut pending,
         );
 
-        assert!(matches!(expr, Expr::AtomDiff { .. }));
+        assert_eq!(
+            expr,
+            Expr::AtomDiff {
+                expr: Box::new(Expr::Variable("atom".into()))
+            }
+        );
         assert!(pending.is_none());
     }
 

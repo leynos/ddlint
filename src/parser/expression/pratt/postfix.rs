@@ -19,7 +19,7 @@ where
         loop {
             match self.ts.peek_kind() {
                 Some(SyntaxKind::T_APOSTROPHE) => {
-                    self.handle_diff_marker(&mut pending_diff_span);
+                    self.handle_diff_marker(&mut pending_diff_span)?;
                     continue;
                 }
                 Some(SyntaxKind::T_LPAREN) => {
@@ -61,7 +61,7 @@ where
     }
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
-        let _ = self.ts.next_tok();
+        let (_, _slice_span) = self.ts.next_tok()?;
         self.with_struct_literals_suspended(move |this| {
             let hi = this.parse_expr(0)?;
             if !this.ts.expect(SyntaxKind::T_COMMA) {
@@ -81,7 +81,7 @@ where
 
     fn parse_dot_access_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         // token is consumed to advance past '.'
-        let _ = self.ts.next_tok();
+        let (_, _dot_span) = self.ts.next_tok()?;
         match self.ts.next_tok() {
             Some((SyntaxKind::T_IDENT, span)) => {
                 let name = self.ts.slice(&span);
@@ -121,7 +121,7 @@ where
 
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
         // token is consumed to advance past '('
-        let _ = self.ts.next_tok();
+        let (_, _open_span) = self.ts.next_tok()?;
         self.with_struct_literals_suspended(|this| {
             let args = this.parse_args()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
@@ -148,11 +148,10 @@ where
             if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
                 break;
             }
-            let sep_span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            let _ = self.ts.next_tok();
+            let (_, comma_span) = self.ts.next_tok()?;
             if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
                 self.ts
-                    .push_error(sep_span, "unexpected trailing comma in argument list");
+                    .push_error(comma_span, "unexpected trailing comma in argument list");
                 return None;
             }
         }

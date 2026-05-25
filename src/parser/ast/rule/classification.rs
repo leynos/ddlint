@@ -297,7 +297,11 @@ mod tests {
             parse_rule_body_term(src, span_for(src), &mut first_aggregation_span, &mut errors)
                 .expect("assignment should parse");
 
-        assert!(matches!(term, RuleBodyTerm::Assignment(_)));
+        let RuleBodyTerm::Assignment(assignment) = term else {
+            panic!("expected assignment term");
+        };
+        assert_eq!(assignment.pattern.to_source(), "var item");
+        assert_eq!(assignment.value.to_sexpr(), "(call FlatMap items)");
         assert!(errors.is_empty());
     }
 

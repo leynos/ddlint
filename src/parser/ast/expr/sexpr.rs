@@ -175,8 +175,10 @@ mod tests {
             }),
             rhs: Box::new(Expr::Literal(Literal::Bool(true))),
         };
+        let rendered = expr.to_sexpr();
 
-        insta::assert_snapshot!(expr.to_sexpr(), @"(+ (method stream map value) true)");
+        assert_eq!(rendered, "(+ (method stream map value) true)");
+        insta::assert_snapshot!(rendered, @"(+ (method stream map value) true)");
     }
 
     #[test]
@@ -185,9 +187,10 @@ mod tests {
             (var("key"), Expr::VecLit(vec![var("first"), var("second")])),
             (var("enabled"), Expr::Literal(Literal::Bool(false))),
         ]);
+        let rendered = expr.to_sexpr();
 
         insta::assert_snapshot!(
-            expr.to_sexpr(),
+            rendered,
             @"(map (entry key (vec first second)) (entry enabled false))"
         );
     }
