@@ -148,11 +148,11 @@ where
             if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
                 break;
             }
+            let sep_span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
             let _ = self.ts.next_tok();
             if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
-                let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
                 self.ts
-                    .push_error(span, "unexpected trailing comma in argument list");
+                    .push_error(sep_span, "unexpected trailing comma in argument list");
                 return None;
             }
         }

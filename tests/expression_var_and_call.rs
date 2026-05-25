@@ -38,8 +38,8 @@ enum Kind {
 #[case(
     "foo(x,)",
     "unexpected trailing comma in argument list",
+    5,
     6,
-    7,
     Kind::Other
 )]
 #[case("foo(1 2)", "expected right paren", 6, 7, Kind::Other)]
