@@ -1,4 +1,8 @@
-//! Error-case fixtures for expression parser tests.
+//! Aggregated invalid-expression fixtures for parser tests.
+//!
+//! These cases are grouped by diagnostic style so the parent expression suite
+//! can assert error counts, spans, and postfix delimiter recovery without
+//! duplicating fixture wiring.
 
 use crate::parser::tests::expression::fixtures::{
     CountedErrorCase, PostfixErrorCase, SpannedErrorCase,

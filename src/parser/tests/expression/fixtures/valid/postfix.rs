@@ -1,4 +1,7 @@
 //! Postfix-expression fixtures for parser tests.
+//!
+//! These cases cover field access, method calls, indexing, diff markers, and
+//! delay syntax that extend an already parsed atom in the shared fixture suite.
 
 use crate::parser::ast::Expr;
 use crate::parser::tests::expression::fixtures::ExpressionCase;

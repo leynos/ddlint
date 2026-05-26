@@ -1,4 +1,7 @@
-//! Control-flow expression fixtures for parser tests.
+//! Control-flow fixtures for expression parser tests.
+//!
+//! These grouped cases cover `if`, `match`, and `for` expressions, including
+//! nested forms that build larger ASTs for the shared valid-expression suite.
 
 use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::tests::expression::fixtures::ExpressionCase;

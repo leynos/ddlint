@@ -1,4 +1,7 @@
-//! Valid expression fixtures for parser tests.
+//! Aggregated valid-expression fixtures for parser tests.
+//!
+//! Each child module covers one syntactic area, and this module combines those
+//! groups into the ordered case lists exercised by the expression parser suite.
 
 mod basic;
 mod collections;

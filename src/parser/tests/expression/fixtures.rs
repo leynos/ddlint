@@ -1,4 +1,8 @@
-//! Shared fixture data for expression parser tests.
+//! Shared fixture definitions and accessors for expression parser tests.
+//!
+//! This module defines the case types used by the valid and error fixture
+//! groups, then exposes the grouped lists consumed by the parent expression
+//! parser test modules.
 
 mod errors;
 mod valid;

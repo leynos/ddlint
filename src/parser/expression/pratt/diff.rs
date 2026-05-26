@@ -59,6 +59,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chumsky::error::SimpleReason;
 
     #[test]
     fn apply_pending_diff_wraps_and_clears_marker() {
@@ -86,5 +87,72 @@ mod tests {
         );
 
         assert_eq!(expr, Expr::Variable("atom".into()));
+    }
+
+    #[test]
+    fn handle_diff_marker_reports_duplicate_marker() {
+        let mut parser = Pratt::new(
+            vec![
+                (SyntaxKind::T_APOSTROPHE, 0..1),
+                (SyntaxKind::T_APOSTROPHE, 1..2),
+            ]
+            .into_iter(),
+            "''",
+        );
+        let mut pending = None;
+
+        assert_eq!(parser.handle_diff_marker(&mut pending), Some(()));
+        assert_eq!(pending, Some(0..1));
+        assert_eq!(parser.handle_diff_marker(&mut pending), Some(()));
+
+        assert_eq!(pending, Some(0..1));
+        let errors = parser.ts.take_errors();
+        assert!(has_custom_error(&errors, "duplicate diff marker", 1..2));
+    }
+
+    #[test]
+    fn emit_error_if_diff_pending_reports_and_clears_marker() {
+        let mut parser = Pratt::new(Vec::new().into_iter(), "");
+        let mut pending = Some(2..3);
+
+        parser.emit_error_if_diff_pending(&mut pending);
+
+        assert!(pending.is_none());
+        let errors = parser.ts.take_errors();
+        assert!(has_custom_error(
+            &errors,
+            "diff marker must apply to an atom",
+            2..3
+        ));
+    }
+
+    #[test]
+    fn validate_no_pending_diff_reports_unbound_marker() {
+        let mut parser = Pratt::new(Vec::new().into_iter(), "");
+        let mut pending = Some(4..5);
+
+        assert_eq!(parser.validate_no_pending_diff(&mut pending), None);
+
+        assert!(pending.is_none());
+        let errors = parser.ts.take_errors();
+        assert!(has_custom_error(
+            &errors,
+            "diff marker must be followed by atom arguments",
+            4..5
+        ));
+    }
+
+    fn has_custom_error(
+        errors: &[chumsky::error::Simple<SyntaxKind>],
+        expected: &str,
+        span: Span,
+    ) -> bool {
+        errors.iter().any(|error| {
+            error.span() == span
+                && matches!(
+                    error.reason(),
+                    SimpleReason::Custom(message) if message == expected
+                )
+        })
     }
 }

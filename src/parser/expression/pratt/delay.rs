@@ -53,13 +53,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "tests assert exact parser output")]
-
     use chumsky::error::SimpleReason;
 
+    use crate::parser::ast::Expr;
     use crate::parser::expression::parse_expression;
+    use crate::tokenize_without_trivia;
+    use crate::{Span, SyntaxKind};
 
     #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
     fn parses_atom_delay_postfix() {
         let expr = parse_expression("signal-<3>").expect("delay expression should parse");
 
@@ -67,6 +69,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser error")]
     fn rejects_non_numeric_delay_value() {
         let errors =
             parse_expression("signal -< delay").expect_err("non-numeric delay should fail");
@@ -75,5 +78,63 @@ mod tests {
             error.reason(),
             SimpleReason::Custom(message) if message == "expected delay value"
         )));
+    }
+
+    #[test]
+    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
+    fn parse_delay_postfix_accepts_max_u32_delay() {
+        let mut parser = delay_parser("-<4294967295>");
+
+        let expr = parser
+            .parse_delay_postfix(Expr::Variable("signal".into()))
+            .expect("u32 max delay should parse");
+
+        assert_eq!(expr.to_sexpr(), "(delay 4294967295 signal)");
+    }
+
+    #[test]
+    fn parse_delay_postfix_rejects_delay_above_u32_max() {
+        let mut parser = delay_parser("-<4294967296>");
+
+        let expr = parser.parse_delay_postfix(Expr::Variable("signal".into()));
+
+        assert!(expr.is_none());
+        let errors = parser.ts.take_errors();
+        assert!(has_custom_error(&errors, "delay must fit u32"));
+    }
+
+    #[test]
+    fn parse_delay_postfix_rejects_empty_delay_value() {
+        let mut parser = delay_parser("-<>");
+
+        let expr = parser.parse_delay_postfix(Expr::Variable("signal".into()));
+
+        assert!(expr.is_none());
+        let errors = parser.ts.take_errors();
+        assert!(has_custom_error(&errors, "expected delay value"));
+    }
+
+    #[test]
+    fn parse_delay_postfix_rejects_negative_delay_value() {
+        let mut parser = delay_parser("-<-1>");
+
+        let expr = parser.parse_delay_postfix(Expr::Variable("signal".into()));
+
+        assert!(expr.is_none());
+        let errors = parser.ts.take_errors();
+        assert!(has_custom_error(&errors, "expected delay value"));
+    }
+
+    fn delay_parser(src: &str) -> super::Pratt<'_, std::vec::IntoIter<(SyntaxKind, Span)>> {
+        super::Pratt::new(tokenize_without_trivia(src).into_iter(), src)
+    }
+
+    fn has_custom_error(errors: &[chumsky::error::Simple<SyntaxKind>], expected: &str) -> bool {
+        errors.iter().any(|error| {
+            matches!(
+                error.reason(),
+                SimpleReason::Custom(message) if message == expected
+            )
+        })
     }
 }

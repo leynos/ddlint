@@ -1,4 +1,7 @@
-//! Basic expression fixtures that do not need specialised helper groupings.
+//! Core expression fixtures for the simplest valid forms.
+//!
+//! These cases cover atoms, calls, tuples, and literals that the parser must
+//! accept before the specialised fixture modules add broader syntax coverage.
 
 use crate::parser::ast::Expr;
 use crate::parser::tests::expression::fixtures::ExpressionCase;

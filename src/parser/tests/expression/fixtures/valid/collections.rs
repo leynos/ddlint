@@ -1,4 +1,8 @@
 //! Collection literal fixtures for expression parser tests.
+//!
+//! These cases exercise list and map forms, including nested expressions,
+//! trailing commas, and key-value pairs that feed the shared valid-expression
+//! suite.
 
 use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::tests::expression::fixtures::ExpressionCase;

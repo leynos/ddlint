@@ -1,4 +1,8 @@
-//! Struct and closure fixtures for expression parser tests.
+//! Structured-expression fixtures for parser tests.
+//!
+//! These cases cover struct literals and closures, including grouped
+//! expressions inside compound forms and parameter lists used by the parent
+//! expression suite.
 
 use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::tests::expression::fixtures::ExpressionCase;
