@@ -189,6 +189,10 @@ mod tests {
         ]);
         let rendered = expr.to_sexpr();
 
+        assert_eq!(
+            rendered,
+            "(map (entry key (vec first second)) (entry enabled false))"
+        );
         insta::assert_snapshot!(
             rendered,
             @"(map (entry key (vec first second)) (entry enabled false))"

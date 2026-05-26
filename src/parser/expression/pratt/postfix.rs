@@ -164,6 +164,7 @@ mod tests {
     use chumsky::error::SimpleReason;
 
     use crate::SyntaxKind;
+    use crate::parser::ast::Expr;
     use crate::parser::expression::parse_expression;
 
     #[test]
@@ -185,6 +186,7 @@ mod tests {
             SimpleReason::Custom(message)
                 if message == "unexpected trailing comma in argument list"
         )));
+        assert!(errors.iter().any(|error| error.span() == (3..4)));
     }
 
     #[test]
@@ -193,6 +195,10 @@ mod tests {
         let expr = parse_expression("S'(x)").expect("diff postfix should parse");
 
         assert_eq!(expr.to_sexpr(), "(diff (call S x))");
+        let Expr::AtomDiff { expr } = expr else {
+            panic!("expected diff postfix to wrap the completed call");
+        };
+        assert_eq!(expr.to_sexpr(), "(call S x)");
     }
 
     #[test]
