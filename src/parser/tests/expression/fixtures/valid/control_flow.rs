@@ -10,6 +10,11 @@ use crate::test_util::{
     struct_expr, var,
 };
 
+/// Returns control-flow expression fixtures grouped by kind.
+///
+/// The returned list is constructed by appending `match_and_for_expression_cases`
+/// after `if_expression_cases`, so consumers can rely on the ordering of groups
+/// (`if` cases first, then `match`/`for` cases).
 pub(super) fn control_flow_expression_cases() -> Vec<ExpressionCase> {
     let mut cases = if_expression_cases();
     cases.extend(match_and_for_expression_cases());

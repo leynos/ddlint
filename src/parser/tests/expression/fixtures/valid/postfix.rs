@@ -114,6 +114,11 @@ fn delay_cases() -> Vec<ExpressionCase> {
     ]
 }
 
+/// Returns postfix parsing expression fixtures in ordered groups.
+///
+/// The result appends `field_and_method_call_cases`, then `call_and_slice_cases`,
+/// then `diff_marker_cases`, then `delay_cases`, preserving that ordering for the
+/// shared parser test suite.
 pub(super) fn postfix_expression_cases() -> Vec<ExpressionCase> {
     let mut cases = field_and_method_call_cases();
     cases.extend(call_and_slice_cases());

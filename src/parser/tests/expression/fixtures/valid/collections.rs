@@ -8,6 +8,13 @@ use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::tests::expression::fixtures::ExpressionCase;
 use crate::test_util::{lit_num, map_entry, map_lit, var, vec_lit};
 
+/// Returns collection literal cases as [`Vec<ExpressionCase>`].
+///
+/// Covers empty and numeric vectors (`[]`, `[1]`, `[1, 2]`, `[1, 2, 3]`),
+/// trailing-comma vector variants (`[1,]`, `[1, 2,]`), nested element forms
+/// (`[x, y + 1]`), and map literals (`{}`, `{a: 1}`, `{a: 1,}`, `{x: y, z: w}`).
+/// Tests consume the returned vector to populate parameterized parser fixture
+/// cases.
 pub(super) fn collection_expression_cases() -> Vec<ExpressionCase> {
     vec![
         ExpressionCase {

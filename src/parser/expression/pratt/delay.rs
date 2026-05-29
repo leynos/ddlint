@@ -53,6 +53,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    //! Unit tests for Pratt delay-postfix parsing.
+    //!
+    //! Covers successful parse paths for `expr -<N>` as well as
+    //! negative cases for malformed values and numeric boundary failures.
     use chumsky::error::SimpleReason;
 
     use crate::parser::ast::Expr;

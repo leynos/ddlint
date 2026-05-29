@@ -8,6 +8,11 @@ use crate::parser::ast::{BinaryOp, Expr};
 use crate::parser::tests::expression::fixtures::ExpressionCase;
 use crate::test_util::{closure, field, lit_num, struct_expr, tuple, var};
 
+/// Returns structured expression fixtures as [`Vec<ExpressionCase>`].
+///
+/// Covers struct and closure syntax, tuple expressions, and nested variants used
+/// by parser tests. Each case pairs a source string with the AST expected for
+/// that input.
 pub(super) fn struct_and_closure_cases() -> Vec<ExpressionCase> {
     vec![
         ExpressionCase {

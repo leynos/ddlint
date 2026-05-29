@@ -7,6 +7,11 @@ use crate::parser::ast::Expr;
 use crate::parser::tests::expression::fixtures::ExpressionCase;
 use crate::test_util::{call, lit_bool, lit_num, lit_str, qualified_call, tuple, var};
 
+/// Returns test cases for basic expressions as [`Vec<ExpressionCase>`].
+///
+/// # Returns
+/// A vector of simple atomic and grouped valid expressions used by shared parser
+/// tests.
 pub(super) fn basic_expression_cases() -> Vec<ExpressionCase> {
     vec![
         ExpressionCase {
@@ -52,6 +57,11 @@ pub(super) fn basic_expression_cases() -> Vec<ExpressionCase> {
     ]
 }
 
+/// Returns invalid for-loop source fixtures as [`[&'static str; 4]`].
+///
+/// # Returns
+/// A fixed-size array of source strings intentionally written to trigger parse
+/// failures in for-loop syntax tests.
 pub(super) fn invalid_for_loop_sources() -> [&'static str; 4] {
     [
         "for item in items) item",
@@ -61,6 +71,11 @@ pub(super) fn invalid_for_loop_sources() -> [&'static str; 4] {
     ]
 }
 
+/// Returns literal expression cases as [`Vec<ExpressionCase>`].
+///
+/// # Returns
+/// String, boolean, and numeric literal fixtures used by parser test cases that
+/// focus on atomic expression parsing.
 pub(super) fn literal_cases() -> Vec<ExpressionCase> {
     vec![
         ExpressionCase {
