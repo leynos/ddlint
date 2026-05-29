@@ -2,7 +2,7 @@
         nixie tools
 
 APP ?= ddlint
-CARGO ?= cargo
+CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
 BUILD_JOBS ?=
 CLIPPY_FLAGS ?= --all-targets --all-features -- -D warnings
 MDLINT ?= markdownlint
@@ -45,7 +45,13 @@ check-fmt: ## Verify formatting
 	$(CARGO) fmt --all -- --check
 
 markdownlint: ## Lint Markdown files
-	find . -type f -name '*.md' -not -path './target/*' -print0 | xargs -0 $(MDLINT)
+	git rev-parse --verify origin/main >/dev/null
+	@set -e; \
+	tmp=$$(mktemp); \
+	trap 'rm -f "$$tmp"' EXIT; \
+	git diff --name-only -z --diff-filter=ACMRT origin/main...HEAD -- \
+		'*.md' '*.markdown' '*.mdx' > "$$tmp"; \
+	if [ -s "$$tmp" ]; then xargs -0 $(MDLINT) < "$$tmp"; fi
 
 nixie: ## Validate Mermaid diagrams
 	find . -type f -name '*.md' -not -path './target/*' -print0 | xargs -0 $(NIXIE)

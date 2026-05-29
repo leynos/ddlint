@@ -22,6 +22,7 @@ test-support = []
 
 [dev-dependencies]
 rstest = "0.25"
+insta = "1.47.2"
 ddlint = { path = ".", features = ["test-support"] }
 
 [lints.clippy]

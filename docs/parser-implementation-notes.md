@@ -14,6 +14,9 @@ code review. It is intentionally non-normative.
   architecture and public contracts.
 - This document is the worked implementation guide for current module mapping,
   migration sequencing, and non-regression invariants.
+- `docs/developers-guide.md` records the parser module boundaries introduced by
+  issue `#223` and should be kept in sync with this document when those
+  boundaries move.
 - If behaviour differs from the syntax spec, track that mismatch in
   `docs/parser-conformance-register.md` rather than duplicating decision text
   here.
@@ -30,6 +33,18 @@ The parser stack is split into three cooperating layers:
   spans and structural boundaries.
 - AST wrappers and expression parsing (`src/parser/ast/*`,
   `src/parser/expression/*`): build typed views and expression trees.
+
+Issue `#223` sharpened the internal ownership boundaries inside the AST and
+expression layers:
+
+- `src/parser/ast/expr/sexpr.rs` owns S-expression rendering helpers for
+  `Expr` and is presentation-only.
+- `src/parser/ast/rule/classification.rs` owns rule-body term classification
+  and the aggregation-tracking path used by `Rule` helpers.
+- `src/parser/expression/pratt/postfix.rs`,
+  `src/parser/expression/pratt/diff.rs`, and
+  `src/parser/expression/pratt/delay.rs` split the Pratt postfix chain into a
+  dispatcher plus two focused helpers for diff markers and delay postfixes.
 
 Current pipeline guarantees are intentionally narrow:
 
@@ -101,6 +116,9 @@ The following invariants must hold throughout the crate split:
 Primary implementation points:
 
 - `src/parser/expression/pratt.rs`
+- `src/parser/expression/pratt/postfix.rs`
+- `src/parser/expression/pratt/diff.rs`
+- `src/parser/expression/pratt/delay.rs`
 - `src/parser/expression/qualified.rs`
 
 ### Struct-literal guard
@@ -171,6 +189,7 @@ Implementation points:
 
 - `src/parser/span_scanners/rules.rs`
 - `src/parser/ast/rule.rs`
+- `src/parser/ast/rule/classification.rs`
 
 Aggregation and lowering stage boundaries are tracked in the conformance
 register. The aggregation boundary itself is now fixed as helper-stage in the
@@ -287,8 +306,8 @@ Important invariants:
   rejects capitalized names (e.g., `Foo`) as invalid.
 - The span scanner keeps non-`extern` rejection separate from the
   output-signature check and emits the targeted diagnostic
-  `transformer declarations require ':' followed by at least one output identifier`
-  when the colon or first output identifier is missing.
+  `transformer declarations require ':' followed by at least one output
+  identifier` when the colon or first output identifier is missing.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.
@@ -346,10 +365,13 @@ token names or their human-readable equivalents.
 - Tokenization and keyword policy: `src/tokenizer.rs`
 - Entry parse orchestration: `src/parser/mod.rs`
 - Pratt parser: `src/parser/expression/pratt.rs`
+- Pratt postfix helpers:
+  `src/parser/expression/pratt/{postfix,diff,delay}.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`
 - Centralized diagnostic messages: `src/parser/error_messages.rs`
 - Rule span scanning: `src/parser/span_scanners/rules.rs`
 - Top-level scanners: `src/parser/span_scanners/*.rs`
 - AST wrappers: `src/parser/ast/*.rs`
+- Rule-body classification helpers: `src/parser/ast/rule/classification.rs`
 - Shared parse utilities: `src/parser/ast/parse_utils/*.rs`
 - Test assertion helpers: `src/test_util/assertions.rs`
