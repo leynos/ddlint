@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections
 `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
 proceeds.
 
-Status: DRAFT — revised after Logisphere review
+Status: BLOCKED — scope tolerance exceeded during implementation audit
 
 ## Purpose / big picture
 
@@ -260,6 +260,14 @@ scope tolerance below, stop and escalate.
   `make lint`, and `CI=1 make test`, capturing each log under `/tmp`.
 - [ ] Mark roadmap item `2.6.7` done and close the conformance register entry
   as `implemented`.
+- [x] (2026-06-16) Resumed implementation on branch
+  `2-6-7-finalize-legacy-token-compatibility-policy`, loaded `leta`,
+  `execplans`, `rust-router`, `rust-unit-testing`, and `rust-errors`, and
+  re-read the plan and active documentation index before editing code.
+- [x] (2026-06-16) Re-ran the workspace token audit before stage A and found
+  that completing the plan as written will require more than the current
+  14-file scope tolerance because documentation updates, parser/test changes,
+  and owned example migrations together exceed that threshold.
 
 ## Surprises & Discoveries
 
@@ -294,6 +302,24 @@ scope tolerance below, stop and escalate.
   required for completeness. These counts confirm the scope tolerance
   (≤14 files, ≤360 net LOC) is realistic provided the `.dl` examples are
   updated alongside the parser change.
+- On 2026-06-16, `docs/repository-layout.md`, referenced by the general
+  repository-orientation guidance, was absent. Orientation used
+  `docs/contents.md` and `leta files` instead.
+- On 2026-06-16, a refined audit of parseable `.dl` examples found legacy
+  tokens in seven owned examples:
+  `examples/left_join_by_negation.dl`,
+  `examples/tuple_destructuring.dl`, `examples/paths_excluding.dl`,
+  `examples/reachability.dl`, `examples/functions_and_match.dl`,
+  `examples/extern_transformer_decl.dl`,
+  `examples/hello_join.dl`, `examples/ref_and_intern.dl`, and
+  `examples/primary_key_and_index.dl`. `typedef` appears in seven examples;
+  `bit<N>` appears in three examples. No `<=>`, `bigint`, `double`,
+  `float`, `signed`, or bare `#` use was found in the example programmes.
+- No `CHANGELOG.md` exists in the repository. The closest existing
+  migration-notes file found by `rg --files` is
+  `docs/differential-datalog-parser-syntax-spec-migration-plan.md`, but
+  using it as release-facing migration notes would be a new documentation
+  role and should be a conscious decision.
 
 ## Decision Log
 
@@ -350,6 +376,23 @@ scope tolerance below, stop and escalate.
   `scheduled`. If subsequent adopter feedback shows external programmes
   depend on `typedef`, the policy module can grow a warning variant
   without changing the public surface.
+- Decision pending user direction: the plan's 14-file scope tolerance is
+  exceeded before implementation begins. Completing the plan exactly as
+  written appears to require at least parser code, new parser tests, a
+  behavioural test, a linter regression, seven active documentation or
+  migration-note files, the roadmap, this ExecPlan, and up to seven owned
+  example migrations. Options are:
+  1. raise the file-count tolerance and proceed with the complete plan;
+  2. keep the tolerance and narrow the milestone by deferring owned example
+     migration or some documentation updates, accepting that the repository
+     may temporarily contain invalid examples or incomplete public contract
+     text;
+  3. split the work into multiple explicitly scoped commits or follow-up
+     ExecPlans while keeping this branch blocked at the parser-policy
+     boundary.
+  The cleanest option is to raise the tolerance because the extra files are
+  not scope creep; they are direct consequences of the already-approved
+  acceptance criteria.
 
 ## Outcomes & Retrospective
 
