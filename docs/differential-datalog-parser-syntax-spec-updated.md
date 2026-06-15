@@ -565,8 +565,13 @@ ______________________________________________________________________
 This section maps grammar constructs to representative AST node names to aid
 porting and testing.
 
-- **Program:** `DatalogProgram { imports, typedefs, functions, transformers,
-  relations, indexes, rules, applys }`.
+<!-- markdownlint-disable MD013 --><!-- AST shape line stays intact for copy/paste. -->
+
+- **Program:**
+  `DatalogProgram { imports, typedefs, functions, transformers, relations, indexes, rules, applys }`.
+
+<!-- markdownlint-enable MD013 -->
+
 - **Typedef:** `TypeDef { name, params, body }`.
 - **Function:** `FuncDef { name, params, ret, body }`, collated into
   `FuncGroup` by name.

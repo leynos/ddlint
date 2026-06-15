@@ -315,6 +315,17 @@ pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 mod tests {
     //! Tests for the tokenizer.
     use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::internal_identifier("internal", SyntaxKind::T_IDENT)]
+    #[case::stream_keyword("stream", SyntaxKind::K_STREAM)]
+    #[case::multiset_keyword("multiset", SyntaxKind::K_MULTISET)]
+    fn tokenize_relation_role_and_kind_words(#[case] src: &str, #[case] expected: SyntaxKind) {
+        let tokens = tokenize_without_trivia(src);
+        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(kind, _)| *kind).collect();
+        assert_eq!(kinds, vec![expected]);
+    }
 
     #[test]
     fn tokenize_recognises_ampersand_tokens() {

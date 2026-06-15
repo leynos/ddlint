@@ -42,15 +42,16 @@ repository (Parse.hs and the language reference, last substantive change
 places. These deltas must be resolved as part of the milestone because they
 materially change what the parser should accept.
 
-<!-- markdownlint-disable MD013 MD060 --><!-- Table rows are intentionally kept intact for reviewability. -->
+<!-- markdownlint-disable MD013 MD060 --><!-- Table rows are intentionally kept
+intact for reviewability. -->
 
-| #   | Local spec §5.5                                              | Upstream DDlog (authoritative)                                                                                 | Recommended action                                                                                                                                             |
-| --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #   | Local spec §5.5                                              | Upstream DDlog (authoritative)                                                                                 | Recommended action                                                                                                                                                                              |
+| --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | `Role ::= 'input' \| 'output' \| 'internal'`                 | No `internal` keyword; "internal" is the *absence* of `input`/`output`                                         | Update spec: drop `internal` from the keyword list; treat absence of a role keyword as the implicit internal role. AST exposes this via `RelationRole::Internal` plus `role_keyword_present()`. |
-| D2  | `PrimaryKey ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'` | `primary key (var_name) expr` — no surrounding brackets, single lambda binder, restricted to `input` relations | Update spec: drop the outer brackets; clarify the binder is a single lambda-style variable followed by an expression; record the input-only static check.      |
-| D3  | Each `RelationDecl` terminates with `';'`                    | No trailing `;`; declarations end where the next one begins                                                    | Update spec: drop the mandatory `';'` from `RelationDecl`. Defer scanner work — current scanner already does not require `;`.                                  |
-| D4  | No `&` ref form                                              | `Role? Kind? '&'? UcName ...` declares `Ref<...>` element type                                                 | Add `'&'?` to the grammar in this milestone. Scanner records the marker; AST exposes `is_ref()`.                                                               |
-| D5  | No relation-level `#[...]` attributes                        | Relations accept attribute prefixes (`relAttrs` in Parse.hs)                                                   | Cross-reference §9; confirm `src/parser/span_scanners/attributes.rs` already allows the relation role and kind keyword set.                                    |
+| D2  | `PrimaryKey ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'` | `primary key (var_name) expr` — no surrounding brackets, single lambda binder, restricted to `input` relations | Update spec: drop the outer brackets; clarify the binder is a single lambda-style variable followed by an expression; record the input-only static check.                                       |
+| D3  | Each `RelationDecl` terminates with `';'`                    | No trailing `;`; declarations end where the next one begins                                                    | Update spec: drop the mandatory `';'` from `RelationDecl`. Defer scanner work — current scanner already does not require `;`.                                                                   |
+| D4  | No `&` ref form                                              | `Role? Kind? '&'? UcName ...` declares `Ref<...>` element type                                                 | Add `'&'?` to the grammar in this milestone. Scanner records the marker; AST exposes `is_ref()`.                                                                                                |
+| D5  | No relation-level `#[...]` attributes                        | Relations accept attribute prefixes (`relAttrs` in Parse.hs)                                                   | Cross-reference §9; confirm `src/parser/span_scanners/attributes.rs` already allows the relation role and kind keyword set.                                                                     |
 
 <!-- markdownlint-enable MD013 MD060 -->
 
@@ -163,7 +164,8 @@ outcome the milestone exists to deliver.
 
 ## Rejected forms (with diagnostics)
 
-<!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay on one row for stable review. -->
+<!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay on one
+row for stable review. -->
 
 | Rejected form                                         | Diagnostic ID | Message                                                                                | Recovery                                                    |
 | ----------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -587,7 +589,11 @@ flipped, and the roadmap item can be closed.
       boundaries for `primary key (x) (x.author, x.title)`,
       `primary key (row) (row.id)`, and `primary key (x) ()`, and each next
       declaration boundary was reachable.
-- [ ] (YYYY-MM-DD) Landed Milestone 1 (tokenizer audit).
+- [x] (2026-06-16) Landed Milestone 1 (tokenizer audit). Added tokenizer
+      regression coverage confirming `internal` remains `T_IDENT` while
+      `stream` and `multiset` remain `K_STREAM` and `K_MULTISET`. Added
+      attribute scanner coverage for `input`, `output`, bare `relation`,
+      `stream`, and `multiset` relation targets.
 - [ ] (YYYY-MM-DD) Landed Milestone 2 (scanner refactor + diagnostics).
 - [ ] (YYYY-MM-DD) Landed Milestone 3 (typed AST surface + proptest).
 - [ ] (YYYY-MM-DD) Landed Milestone 4 (primary-key decision).
@@ -631,6 +637,10 @@ flipped, and the roadmap item can be closed.
   tracking `()`, `[]`, and `{}` delimiter depth until the next zero-depth
   newline is enough for the three sampled upstream forms, including tuple and
   unit expressions.
+- Milestone 1 required no production tokenizer or attribute scanner changes:
+  `internal` was already absent from `KEYWORDS`, and
+  `src/parser/span_scanners/attributes.rs` already accepted `K_INPUT`,
+  `K_OUTPUT`, `K_RELATION`, `K_STREAM`, and `K_MULTISET`.
 
 ## Decision Log
 
@@ -648,35 +658,38 @@ flipped, and the roadmap item can be closed.
 3. Proceed past Milestone 0 using delimiter-depth opaque primary-key clause
    preservation. The spike showed that the expression boundary can be found
    without expression parsing for the sampled upstream declarations. The
-   production implementation must avoid comment false positives by only
-   looking for `primary key` after a relation body has parsed successfully.
-4. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
+   production implementation must avoid comment false positives by only looking
+   for `primary key` after a relation body has parsed successfully.
+4. Keep Milestone 1 as coverage-only groundwork. The audit confirmed the
+   intended tokenizer and attribute-target behaviour already exists, so adding
+   production code would only churn stable surfaces.
+5. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
    in Commit 5b, and user-facing docs in Commit 5c, rather than bundling them.
    Partial reviewer pushback on any slice does not bounce the others.
-5. Keep `is_input()` and `is_output()` in this milestone, annotated as
+6. Keep `is_input()` and `is_output()` in this milestone, annotated as
    derived. **Rejected alternative:** deprecate or remove them now under
    ADR-002. Reason for rejection: phase `2.7` has not yet locked the public API
    and phase 4 lint rules already use them; churning them twice (now and at
    freeze time) is wasted effort.
-6. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
+7. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
    **Rejected alternative:** expose `fields() -> Option<...>` and
    `element_type() -> Option<...>` directly. Reason for rejection: exhaustive
    `match` is the cheapest way to guarantee that a future third body form (e.g.
    union) cannot silently slip past consumers.
-7. Include the `&` ref-relation form (delta D4) in this milestone.
+8. Include the `&` ref-relation form (delta D4) in this milestone.
    **Rejected alternative:** defer to a follow-up. Reason for rejection: it is
    the only delta that adds surface area; landing it alongside D1–D3 keeps the
    spec-reconciliation commit cohesive.
-8. Defer typed access to spec-form (lambda-style) primary keys; only
+9. Defer typed access to spec-form (lambda-style) primary keys; only
    preserve their text in the CST. Record follow-up as `2.6.6.1`. The Milestone
    0 spike gates this decision.
-9. Enforce D-REL-006 (primary key only on `input` relations) inside
+10. Enforce D-REL-006 (primary key only on `input` relations) inside
    this milestone, not as a follow-up. Deferring it would prevent conformance
    register item `13` from flipping to `implemented`.
-10. Promote `proptest` from optional (Milestone 6) to required
+11. Promote `proptest` from optional (Milestone 6) to required
    (Milestone 3). Hand-picked accepts cover ~17 % of the role × kind × body ×
    ref × pk space; an ADR-001-frozen contract needs better.
-11. Recommend ADR-002 for the role/kind/body modelling and the
+12. Recommend ADR-002 for the role/kind/body modelling and the
     spec-delta reconciliation, explicitly cross-referencing ADR-001.
 
 ## Outcomes & Retrospective
