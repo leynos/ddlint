@@ -42,13 +42,17 @@ repository (Parse.hs and the language reference, last substantive change
 places. These deltas must be resolved as part of the milestone because they
 materially change what the parser should accept.
 
+<!-- markdownlint-disable MD013 MD060 --><!-- Table rows are intentionally kept intact for reviewability. -->
+
 | #   | Local spec §5.5                                              | Upstream DDlog (authoritative)                                                                                 | Recommended action                                                                                                                                             |
 | --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | `Role ::= 'input' \| 'output' \| 'internal'`                 | No `internal` keyword; "internal" is the *absence* of `input`/`output`                                         | Update spec: drop `internal` from the keyword list; treat absence of a role keyword as the implicit internal role. AST exposes this as `Option<RelationRole>`. |
+| D1  | `Role ::= 'input' \| 'output' \| 'internal'`                 | No `internal` keyword; "internal" is the *absence* of `input`/`output`                                         | Update spec: drop `internal` from the keyword list; treat absence of a role keyword as the implicit internal role. AST exposes this via `RelationRole::Internal` plus `role_keyword_present()`. |
 | D2  | `PrimaryKey ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'` | `primary key (var_name) expr` — no surrounding brackets, single lambda binder, restricted to `input` relations | Update spec: drop the outer brackets; clarify the binder is a single lambda-style variable followed by an expression; record the input-only static check.      |
 | D3  | Each `RelationDecl` terminates with `';'`                    | No trailing `;`; declarations end where the next one begins                                                    | Update spec: drop the mandatory `';'` from `RelationDecl`. Defer scanner work — current scanner already does not require `;`.                                  |
 | D4  | No `&` ref form                                              | `Role? Kind? '&'? UcName ...` declares `Ref<...>` element type                                                 | Add `'&'?` to the grammar in this milestone. Scanner records the marker; AST exposes `is_ref()`.                                                               |
-| D5  | No relation-level `#[...]` attributes                        | Relations accept attribute prefixes (`relAttrs` in Parse.hs)                                                   | Cross-reference §9; confirm `src/parser/span_scanners/attributes.rs` already allows the relation kind set and extend it for `K_INTERNAL`.                      |
+| D5  | No relation-level `#[...]` attributes                        | Relations accept attribute prefixes (`relAttrs` in Parse.hs)                                                   | Cross-reference §9; confirm `src/parser/span_scanners/attributes.rs` already allows the relation role and kind keyword set.                                    |
+
+<!-- markdownlint-enable MD013 MD060 -->
 
 These corrections land in Milestone 5 alongside conformance-register updates.
 They are listed here so design reviewers can challenge the direction before the
@@ -159,6 +163,8 @@ outcome the milestone exists to deliver.
 
 ## Rejected forms (with diagnostics)
 
+<!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay on one row for stable review. -->
+
 | Rejected form                                         | Diagnostic ID | Message                                                                                | Recovery                                                    |
 | ----------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Kind keyword before role keyword                      | D-REL-001     | `relation role keyword (input/output) must precede the kind keyword`                   | consume both preamble keywords, then skip to next newline   |
@@ -169,6 +175,8 @@ outcome the milestone exists to deliver.
 | Primary key on non-`input` relation                   | D-REL-006     | `primary key clauses are only valid on input relations`                                | accept the relation; drop the primary key tokens to newline |
 | Stray or malformed `primary` token                    | D-REL-007     | `unexpected or malformed primary key clause` (retain current scanner wording)          | skip to next newline (existing behaviour)                   |
 | Spec-form bracket primary key (`[ primary key ... ]`) | D-REL-008     | `bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']` | accept the relation; drop the bracket block to its `]`      |
+
+<!-- markdownlint-enable MD013 -->
 
 Per-diagnostic recovery paths are normative for this milestone: tests must
 assert both the diagnostic and the resulting CST state (relation recorded or
@@ -265,7 +273,7 @@ sets precedent for index and transformer classification; and ADR-001 (parser
 crate split) needs to point at a settled relation surface. The ADR documents:
 
 - the enum shapes and their `Display`/`FromStr` policy;
-- the `Option<RelationRole>` "unmarked = implicit internal" choice;
+- the enum-plus-predicate "unmarked = implicit internal" choice;
 - the decision to keep `is_input()` / `is_output()` as derived helpers;
 - the deferred typed access to spec-form primary keys; and
 - the spec deltas D1–D5 above and how the local spec is reconciled with
@@ -572,7 +580,7 @@ flipped, and the roadmap item can be closed.
       role/kind APIs, Milestone 0 PK-preservation spike, Milestone 5
       split into three commits, mandatory `proptest`, per-diagnostic
       recovery, explicit rejected alternatives in Decision Log.
-- [ ] (YYYY-MM-DD) Ran Milestone 0 (PK-preservation spike).
+- [ ] (2026-06-16) Started Milestone 0 (PK-preservation spike).
 - [ ] (YYYY-MM-DD) Landed Milestone 1 (tokenizer audit).
 - [ ] (YYYY-MM-DD) Landed Milestone 2 (scanner refactor + diagnostics).
 - [ ] (YYYY-MM-DD) Landed Milestone 3 (typed AST surface + proptest).
@@ -604,6 +612,10 @@ flipped, and the roadmap item can be closed.
   the index scanner uses a hand-rolled cursor walker. Aligning on the
   index-scanner style for the new preamble parser keeps complexity predictable
   and matches the pattern landed in `2.6.4`.
+- The ADR recommendation still mentioned `Option<RelationRole>` from an
+  earlier draft even though the accepted API shape is the enum-plus-predicate
+  model. Corrected the plan before implementation to keep the ADR guidance
+  aligned with the Decision Log.
 
 ## Decision Log
 
