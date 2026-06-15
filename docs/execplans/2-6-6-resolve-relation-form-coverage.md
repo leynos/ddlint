@@ -580,7 +580,13 @@ flipped, and the roadmap item can be closed.
       role/kind APIs, Milestone 0 PK-preservation spike, Milestone 5
       split into three commits, mandatory `proptest`, per-diagnostic
       recovery, explicit rejected alternatives in Decision Log.
-- [ ] (2026-06-16) Started Milestone 0 (PK-preservation spike).
+- [x] (2026-06-16) Ran Milestone 0 (PK-preservation spike). Cloned
+      upstream DDlog into `/tmp/ddlog-spike`, copied three representative
+      fixtures into `/tmp/relation_pk_spike`, and ran the delimiter-depth probe
+      logged at `/tmp/2-6-6-milestone-0-pk-spike.log`. The probe found clause
+      boundaries for `primary key (x) (x.author, x.title)`,
+      `primary key (row) (row.id)`, and `primary key (x) ()`, and each next
+      declaration boundary was reachable.
 - [ ] (YYYY-MM-DD) Landed Milestone 1 (tokenizer audit).
 - [ ] (YYYY-MM-DD) Landed Milestone 2 (scanner refactor + diagnostics).
 - [ ] (YYYY-MM-DD) Landed Milestone 3 (typed AST surface + proptest).
@@ -616,6 +622,15 @@ flipped, and the roadmap item can be closed.
   earlier draft even though the accepted API shape is the enum-plus-predicate
   model. Corrected the plan before implementation to keep the ADR guidance
   aligned with the Decision Log.
+- A plain `primary key` text search is not sufficient for the scanner because
+  upstream examples contain comments such as `Example: primary key.` before the
+  declaration. The production scanner should only enter PK handling after a
+  relation body has already been accepted and the stream is positioned at a
+  candidate clause.
+- The Milestone 0 probe supports the planned opaque-expression strategy:
+  tracking `()`, `[]`, and `{}` delimiter depth until the next zero-depth
+  newline is enough for the three sampled upstream forms, including tuple and
+  unit expressions.
 
 ## Decision Log
 
@@ -630,33 +645,38 @@ flipped, and the roadmap item can be closed.
    kind axis forced every consumer to learn two patterns for one concept; the
    upstream archive is unlikely to ever reserve `internal`, so the hedge bought
    no future value.
-3. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
+3. Proceed past Milestone 0 using delimiter-depth opaque primary-key clause
+   preservation. The spike showed that the expression boundary can be found
+   without expression parsing for the sampled upstream declarations. The
+   production implementation must avoid comment false positives by only
+   looking for `primary key` after a relation body has parsed successfully.
+4. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
    in Commit 5b, and user-facing docs in Commit 5c, rather than bundling them.
    Partial reviewer pushback on any slice does not bounce the others.
-4. Keep `is_input()` and `is_output()` in this milestone, annotated as
+5. Keep `is_input()` and `is_output()` in this milestone, annotated as
    derived. **Rejected alternative:** deprecate or remove them now under
    ADR-002. Reason for rejection: phase `2.7` has not yet locked the public API
    and phase 4 lint rules already use them; churning them twice (now and at
    freeze time) is wasted effort.
-5. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
+6. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
    **Rejected alternative:** expose `fields() -> Option<...>` and
    `element_type() -> Option<...>` directly. Reason for rejection: exhaustive
    `match` is the cheapest way to guarantee that a future third body form (e.g.
    union) cannot silently slip past consumers.
-6. Include the `&` ref-relation form (delta D4) in this milestone.
+7. Include the `&` ref-relation form (delta D4) in this milestone.
    **Rejected alternative:** defer to a follow-up. Reason for rejection: it is
    the only delta that adds surface area; landing it alongside D1–D3 keeps the
    spec-reconciliation commit cohesive.
-7. Defer typed access to spec-form (lambda-style) primary keys; only
+8. Defer typed access to spec-form (lambda-style) primary keys; only
    preserve their text in the CST. Record follow-up as `2.6.6.1`. The Milestone
    0 spike gates this decision.
-8. Enforce D-REL-006 (primary key only on `input` relations) inside
+9. Enforce D-REL-006 (primary key only on `input` relations) inside
    this milestone, not as a follow-up. Deferring it would prevent conformance
    register item `13` from flipping to `implemented`.
-9. Promote `proptest` from optional (Milestone 6) to required
+10. Promote `proptest` from optional (Milestone 6) to required
    (Milestone 3). Hand-picked accepts cover ~17 % of the role × kind × body ×
    ref × pk space; an ADR-001-frozen contract needs better.
-10. Recommend ADR-002 for the role/kind/body modelling and the
+11. Recommend ADR-002 for the role/kind/body modelling and the
     spec-delta reconciliation, explicitly cross-referencing ADR-001.
 
 ## Outcomes & Retrospective
