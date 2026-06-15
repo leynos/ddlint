@@ -59,6 +59,7 @@ pub(super) fn parse_tokens(
     all_errors.extend(transformer_errors);
     all_errors.extend(apply_errors);
     all_errors.extend(rule_errors);
+    all_errors.extend(lexer_errors(tokens));
 
     let span_result = ParsedSpans::builder()
         .attributes(attribute_spans)
@@ -82,6 +83,14 @@ pub(super) fn parse_tokens(
     };
 
     (spans, all_errors)
+}
+
+fn lexer_errors(tokens: &[(SyntaxKind, Span)]) -> Vec<chumsky::error::Simple<SyntaxKind>> {
+    tokens
+        .iter()
+        .filter(|(kind, _)| *kind == SyntaxKind::N_ERROR)
+        .map(|(_, span)| chumsky::error::Simple::custom(span.clone(), "unrecognized token"))
+        .collect()
 }
 
 /// Return a sorted, merged copy of the provided spans.

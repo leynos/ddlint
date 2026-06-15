@@ -14,8 +14,8 @@ use rstest::rstest;
 #[case("#[hot]\ninput relation R(x: u32)")]
 #[case("#[cold]\noutput relation R(x: u32)")]
 #[case("#[cold]\nrelation R(x: u32)")]
-#[case("#[hot]\nstream relation R(x: u32)")]
-#[case("#[hot]\nmultiset relation R(x: u32)")]
+#[case("#[hot]\nstream R(x: u32)")]
+#[case("#[hot]\nmultiset R(x: u32)")]
 #[case("#[cold]\nextern function f()")]
 #[case("#[cold]\nextern type Handle")]
 fn attribute_on_permitted_item_no_error(#[case] src: &str) {

@@ -210,6 +210,7 @@ pub(super) fn balanced_block(
 }
 
 /// As [`balanced_block`] but requires at least one token inside the delimiters.
+#[cfg(test)]
 pub(super) fn balanced_block_nonempty(
     open: SyntaxKind,
     close: SyntaxKind,

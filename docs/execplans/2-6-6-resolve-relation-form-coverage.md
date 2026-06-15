@@ -594,7 +594,29 @@ flipped, and the roadmap item can be closed.
       `stream` and `multiset` remain `K_STREAM` and `K_MULTISET`. Added
       attribute scanner coverage for `input`, `output`, bare `relation`,
       `stream`, and `multiset` relation targets.
-- [ ] (YYYY-MM-DD) Landed Milestone 2 (scanner refactor + diagnostics).
+- [x] (2026-06-16) Landed Milestone 2 (scanner refactor + diagnostics).
+      Replaced the keyword-only relation span scanner with a cursor parser
+      that accepts role/kind/ref preambles, record bodies, bracket bodies, and
+      opaque primary-key expressions. Added the relation form matrix and
+      recovery diagnostics in `src/parser/tests/relations.rs`; updated
+      attribute unit and behavioural fixtures to the canonical `stream R(...)`
+      and `multiset R(...)` forms. Split cursor helpers into
+      `src/parser/span_scanners/relations/cursor.rs` and preamble parsing into
+      `src/parser/span_scanners/relations/preamble.rs` to keep source files
+      under the 400-line limit. Focused parser coverage passed with
+      `cargo test parser::tests --lib`; final deterministic gates passed:
+      `make fmt`, `make check-fmt`, `make markdownlint`, `make nixie`,
+      `make lint`, and `CI=1 make test`. CodeRabbit then reported four
+      concerns: preamble cognitive complexity, missing internal helper docs in
+      `preamble.rs` and `cursor.rs`, and an implicit delimiter contract. Fixed
+      them by extracting `PreambleState`, documenting the `pub(super)` helper
+      surface, and guarding invalid close delimiters with D-REL-007; all
+      gates passed again after the fixes.
+      A follow-up CodeRabbit pass found that the delimiter-contract
+      `debug_assert!` still left a silent release fallback. The branch now
+      returns D-REL-007 instead of using `unreachable!()`, preserving the
+      repository's no-production-panics policy while making contract violations
+      non-silent. A third CodeRabbit pass completed with zero findings.
 - [ ] (YYYY-MM-DD) Landed Milestone 3 (typed AST surface + proptest).
 - [ ] (YYYY-MM-DD) Landed Milestone 4 (primary-key decision).
 - [ ] (YYYY-MM-DD) Landed Milestone 5a (spec deltas D1–D5).
@@ -641,6 +663,33 @@ flipped, and the roadmap item can be closed.
   `internal` was already absent from `KEYWORDS`, and
   `src/parser/span_scanners/attributes.rs` already accepted `K_INPUT`,
   `K_OUTPUT`, `K_RELATION`, `K_STREAM`, and `K_MULTISET`.
+- The original test matrix row for a role-less primary-key relation conflicted
+  with D-REL-006 and the upstream delta that restricts primary keys to `input`
+  relations. The implementation follows D-REL-006: role-less relations are
+  implicit internal relations, so primary-key clauses on them are rejected.
+- The scanner refactor exceeded the single-file limit when implemented in one
+  module. Extracting balanced-block and trivia cursor helpers into
+  `src/parser/span_scanners/relations/cursor.rs`, then extracting preamble
+  parsing into `src/parser/span_scanners/relations/preamble.rs`, kept the
+  scanner files below the 400-line limit (`relations.rs` 365 lines,
+  `relations/cursor.rs` 206 lines, `relations/preamble.rs` 194 lines).
+- The CST builder already wraps lexer `N_ERROR` tokens as error nodes, but the
+  parser did not report a corresponding diagnostic unless another scanner also
+  failed nearby. Milestone 2 now appends parser-level lexer diagnostics after
+  scanner diagnostics so invalid-token parses fail deterministically without
+  changing the precedence of more specific rule diagnostics.
+- `tests/attribute_placement.rs` still used the old `stream relation` and
+  `multiset relation` forms. Updating those behavioural fixtures to
+  `stream R(...)` and `multiset R(...)` aligned them with the Milestone 2
+  grammar and made the full `CI=1 make test` gate pass.
+- CodeRabbit's complexity finding was correct: `parse_preamble` had become a
+  compact but nested state machine. Extracting `PreambleState` preserved the
+  diagnostic order and cursor advancement while making D-REL-001 through
+  D-REL-003 validation points easier to inspect.
+- The second CodeRabbit pass recommended `unreachable!()` for an invalid close
+  delimiter in `consume_open_for_close`. That would have introduced a
+  production panic, so the implementation instead returns D-REL-007 from the
+  invalid-contract arm.
 
 ## Decision Log
 
@@ -663,33 +712,52 @@ flipped, and the roadmap item can be closed.
 4. Keep Milestone 1 as coverage-only groundwork. The audit confirmed the
    intended tokenizer and attribute-target behaviour already exists, so adding
    production code would only churn stable surfaces.
-5. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
+5. Treat role-less primary-key declarations as invalid under D-REL-006. The
+   matrix row that listed them as accepted was superseded by the explicit
+   upstream-conformance decision that primary keys are input-only.
+6. Split cursor movement and balanced-block scanning out of `relations.rs`
+   rather than keeping the whole scanner in one file. This preserves the
+   file-size constraint and keeps grammar policy separate from token walking.
+7. Surface lexer `N_ERROR` tokens as parser diagnostics after scanner
+   diagnostics. The CST already preserves error nodes; appending diagnostics
+   makes invalid-token parses fail deterministically while preserving existing
+   first-error expectations from more specific scanners.
+8. Treat `relations/cursor.rs` and `relations/preamble.rs` as internal
+   interfaces that need Rustdoc despite `pub(super)` visibility. CodeRabbit's
+   helper-doc findings match the project rule that internally facing
+   conventions should be documented for maintainers.
+9. Return a parser diagnostic rather than panicking when
+   `consume_open_for_close` is called with a non-closing delimiter. **Rejected
+   alternative:** use `unreachable!()` as suggested by CodeRabbit. Reason for
+   rejection: this repository forbids production panics; D-REL-007 is a
+   non-silent failure path that preserves that policy.
+10. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
    in Commit 5b, and user-facing docs in Commit 5c, rather than bundling them.
    Partial reviewer pushback on any slice does not bounce the others.
-6. Keep `is_input()` and `is_output()` in this milestone, annotated as
+11. Keep `is_input()` and `is_output()` in this milestone, annotated as
    derived. **Rejected alternative:** deprecate or remove them now under
    ADR-002. Reason for rejection: phase `2.7` has not yet locked the public API
    and phase 4 lint rules already use them; churning them twice (now and at
    freeze time) is wasted effort.
-7. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
+12. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
    **Rejected alternative:** expose `fields() -> Option<...>` and
    `element_type() -> Option<...>` directly. Reason for rejection: exhaustive
    `match` is the cheapest way to guarantee that a future third body form (e.g.
    union) cannot silently slip past consumers.
-8. Include the `&` ref-relation form (delta D4) in this milestone.
+13. Include the `&` ref-relation form (delta D4) in this milestone.
    **Rejected alternative:** defer to a follow-up. Reason for rejection: it is
    the only delta that adds surface area; landing it alongside D1–D3 keeps the
    spec-reconciliation commit cohesive.
-9. Defer typed access to spec-form (lambda-style) primary keys; only
+14. Defer typed access to spec-form (lambda-style) primary keys; only
    preserve their text in the CST. Record follow-up as `2.6.6.1`. The Milestone
    0 spike gates this decision.
-10. Enforce D-REL-006 (primary key only on `input` relations) inside
+15. Enforce D-REL-006 (primary key only on `input` relations) inside
    this milestone, not as a follow-up. Deferring it would prevent conformance
    register item `13` from flipping to `implemented`.
-11. Promote `proptest` from optional (Milestone 6) to required
+16. Promote `proptest` from optional (Milestone 6) to required
    (Milestone 3). Hand-picked accepts cover ~17 % of the role × kind × body ×
    ref × pk space; an ADR-001-frozen contract needs better.
-12. Recommend ADR-002 for the role/kind/body modelling and the
+17. Recommend ADR-002 for the role/kind/body modelling and the
     spec-delta reconciliation, explicitly cross-referencing ADR-001.
 
 ## Outcomes & Retrospective

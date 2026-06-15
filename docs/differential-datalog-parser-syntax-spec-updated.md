@@ -150,8 +150,8 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
   `docs/roadmap.md` item `2.6.3`.
 - **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
   literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
-  likewise scheduled work; see `docs/parser-conformance-register.md` item 10
-  and `docs/roadmap.md` item `2.6.3`.
+  likewise scheduled work; see `docs/parser-conformance-register.md` item 10 and
+  `docs/roadmap.md` item `2.6.3`.
 
 ______________________________________________________________________
 
@@ -160,22 +160,27 @@ ______________________________________________________________________
 Higher rows bind tighter. All binary operators are left‑associative unless
 noted.
 
-| Precedence | Operators / Forms                                      | Associativity |
-| ---------- | ------------------------------------------------------ | ------------- |
-| 14         | Postfix call `f(…)`, index `e[expr]`, field `e.name`   | left          |
-| 13         | Unary prefix: `- e`, `! e`, `~ e`, `& e`               | right         |
-| 12         | `*`, `/`, `%`                                          | left          |
-| 11         | `+`, `-`, `++` (concatenation)                         | left          |
-| 10         | Shifts `<<`, `>>`                                      | left          |
-| 9          | Bitwise `&`                                            | left          |
-| 8          | Bitwise `^`                                            | left          |
-| 7          | Bitwise or (`&#124;`)                                  | left          |
-| 6          | Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`          | non‑assoc     |
-| 5          | Logical `and`                                          | left          |
-| 4          | Logical `or`                                           | left          |
-| 3          | Implication `=>`                                       | right         |
-| 2          | Conditional expression `if … then … else …`            | n/a           |
-| 1          | Assignment forms inside statements (see §6)            | right         |
+<!-- markdownlint-disable MD013 --><!-- Operator table alignment is
+intentional. -->
+
+| Precedence | Operators / Forms                                    | Associativity |
+| ---------- | ---------------------------------------------------- | ------------- |
+| 14         | Postfix call `f(…)`, index `e[expr]`, field `e.name` | left          |
+| 13         | Unary prefix: `- e`, `! e`, `~ e`, `& e`             | right         |
+| 12         | `*`, `/`, `%`                                        | left          |
+| 11         | `+`, `-`, `++` (concatenation)                       | left          |
+| 10         | Shifts `<<`, `>>`                                    | left          |
+| 9          | Bitwise `&`                                          | left          |
+| 8          | Bitwise `^`                                          | left          |
+| 7          | Bitwise or (`&#124;`)                                | left          |
+| 6          | Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`        | non‑assoc     |
+| 5          | Logical `and`                                        | left          |
+| 4          | Logical `or`                                         | left          |
+| 3          | Implication `=>`                                     | right         |
+| 2          | Conditional expression `if … then … else …`          | n/a           |
+| 1          | Assignment forms inside statements (see §6)          | right         |
+
+<!-- markdownlint-enable MD013 -->
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
 and are recognized as operators. `&` in row 13 is expression-only; head
@@ -565,7 +570,8 @@ ______________________________________________________________________
 This section maps grammar constructs to representative AST node names to aid
 porting and testing.
 
-<!-- markdownlint-disable MD013 --><!-- AST shape line stays intact for copy/paste. -->
+<!-- markdownlint-disable MD013 --><!-- AST shape line stays intact for
+copy/paste. -->
 
 - **Program:**
   `DatalogProgram { imports, typedefs, functions, transformers, relations, indexes, rules, applys }`.
@@ -584,8 +590,8 @@ porting and testing.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.
 - **Atom:** `Atom { ref?, delay?, diff?, name, args, bracketForm? }`.
-- **Rule-body semantic helper term:** `RuleBodyTerm::{Expression, Assignment,
-  Aggregation, ForLoop}`.
+- **Rule-body semantic helper term:**
+  `RuleBodyTerm::{Expression, Assignment, Aggregation, ForLoop}`.
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.
@@ -691,9 +697,14 @@ transformer foo(x: T): Out // error: transformer declarations must be extern
 
 - **Missing transformer output signature:**
 
+<!-- markdownlint-disable MD013 --><!-- Example keeps the diagnostic comment on
+one line. -->
+
 ```ddlog
 extern transformer foo(x: T): // error: transformer declarations require ':' followed by at least one output identifier
 ```
+
+<!-- markdownlint-enable MD013 -->
 
 - **Attribute on index:**
 

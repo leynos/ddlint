@@ -4,7 +4,9 @@
 
 use super::helpers::{parse_relation, pretty_print};
 use crate::parser::ast::AstNode;
-use crate::test_util::assert_delimiter_error;
+use crate::test_util::{
+    assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
+};
 use rstest::{fixture, rstest};
 
 #[fixture]
@@ -18,8 +20,8 @@ fn output_relation_no_pk() -> &'static str {
 }
 
 #[fixture]
-fn internal_relation_compound_pk() -> &'static str {
-    "relation UserSession(user_id: u32, session_id: string, start_time: u64) primary key (user_id, session_id)"
+fn internal_relation_no_pk() -> &'static str {
+    "relation UserSession(user_id: u32, session_id: string, start_time: u64)"
 }
 
 #[fixture]
@@ -36,12 +38,12 @@ fn relation_unbalanced_parentheses() -> &'static str {
 #[case::input(input_relation_pk(), true, false, "User", vec![("user_id", "u32"), ("username", "string")], Some(vec!["user_id"]))]
 #[case::output(output_relation_no_pk(), false, true, "Alert", vec![("message", "string"), ("timestamp", "u64")], None)]
 #[case::internal(
-    internal_relation_compound_pk(),
+    internal_relation_no_pk(),
     false,
     false,
     "UserSession",
     vec![("user_id", "u32"), ("session_id", "string"), ("start_time", "u64")],
-    Some(vec!["user_id", "session_id"]),
+    None,
 )]
 fn parses_relations(
     #[case] src: &str,
@@ -88,6 +90,64 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
     // opening delimiter position. This preserves branch behaviour while still
     // asserting the unclosed ')' is detected.
     let len = relation_unbalanced_parentheses.len();
-    assert_delimiter_error(parsed.errors(), "right paren", 0, len);
+    assert_parse_error(parsed.errors(), "unclosed ')'", len, len);
     assert!(parsed.root().relations().is_empty());
+}
+
+#[rstest]
+#[case::bare_record("R()")]
+#[case::bare_bracket("R[u32]")]
+#[case::input_record_pk("input R(id: u32) primary key (id)")]
+#[case::output_record("output R(id: u32)")]
+#[case::input_kind_record_pk("input relation R(id: u32) primary key (id)")]
+#[case::output_kind_record("output relation R(id: u32)")]
+#[case::kind_bracket("relation R[u32]")]
+#[case::input_stream_record("input stream R(id: u32)")]
+#[case::output_stream_bracket("output stream R[u32]")]
+#[case::bare_stream_record("stream R(id: u32)")]
+#[case::input_multiset_record_pk("input multiset R(id: u32) primary key (id)")]
+#[case::bare_multiset_record("multiset R(id: u32)")]
+#[case::output_multiset_bracket("output multiset R[u32]")]
+#[case::input_ref_record("input & R(id: u32)")]
+#[case::output_relation_ref_bracket("output relation & R[u32]")]
+#[case::commented_preamble("input /* role */\nstream /* kind */\nR(id: u32)")]
+fn parses_relation_form_matrix(#[case] src: &str) {
+    let parsed = crate::parse(src);
+    assert_no_parse_errors(parsed.errors());
+    assert_eq!(parsed.root().relations().len(), 1, "source: {src}");
+}
+
+#[rstest]
+#[case::kind_before_role("relation input R(id: u32)\noutput R(id: u32)", "D-REL-001", 1)]
+#[case::two_roles("input output R(id: u32)\noutput R(id: u32)", "D-REL-002", 1)]
+#[case::two_kinds("stream multiset R(id: u32)\noutput R(id: u32)", "D-REL-003", 1)]
+#[case::bracket_primary_key("input R[u32] primary key (id)\noutput R(id: u32)", "D-REL-004", 2)]
+#[case::empty_bracket("input R[]\noutput R(id: u32)", "D-REL-005", 1)]
+#[case::non_input_primary_key(
+    "output R(id: u32) primary key (id)\ninput R(id: u32)",
+    "D-REL-006",
+    2
+)]
+#[case::malformed_primary_key("input R(id: u32) primary value\noutput R(id: u32)", "D-REL-007", 1)]
+#[case::bracket_wrapped_primary_key(
+    "input R(id: u32) [primary key (id) id]\noutput R(id: u32)",
+    "D-REL-008",
+    2
+)]
+fn rejects_invalid_relation_forms(
+    #[case] src: &str,
+    #[case] expected_error: &str,
+    #[case] expected_relations: usize,
+) {
+    let parsed = crate::parse(src);
+    assert_custom_parse_error_contains(parsed.errors(), expected_error);
+    assert_eq!(parsed.root().relations().len(), expected_relations);
+}
+
+#[test]
+fn bare_rule_and_fact_are_not_relation_declarations() {
+    let parsed = crate::parse("R(x) :- S(x).\nFact(1).");
+    assert_no_parse_errors(parsed.errors());
+    assert!(parsed.root().relations().is_empty());
+    assert_eq!(parsed.root().rules().len(), 2);
 }
