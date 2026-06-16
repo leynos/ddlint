@@ -32,9 +32,14 @@ parsing pipeline.
   need role predicates.
 - Uses `role_keyword_present()` and `kind_keyword_present()` when callers need
   source-fidelity rather than the defaulted semantic value.
+- Exposes declaration-level reference relations through `is_ref()`. Do not
+  infer ref status from raw `&` tokens in downstream callers.
 - Keeps `columns()` backwards compatible by returning an empty vector for
   bracket-form relations; use `body()` or `element_type()` when body shape
   matters.
+- Keeps `primary_key()` focused on the binder/list names. Spec-form trailing
+  primary-key expressions are preserved in the CST until roadmap follow-up
+  `2.6.6.1` introduces typed access.
 
 ### `src/parser/expression/pratt/postfix.rs`
 
@@ -66,6 +71,8 @@ parsing pipeline.
   helper-stage logic to `rule.rs`.
 - Prefer `Relation::role()` and `Relation::kind()` for new relation-aware
   logic. Use `is_input()` and `is_output()` only as predicate conveniences.
+- Prefer `Relation::body()` over combining `columns()` and `element_type()`
+  when code must branch on relation body shape.
 - Keep postfix dispatch in `postfix.rs`; add new postfix behaviour there only
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so

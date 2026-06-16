@@ -7,8 +7,8 @@
 
 - [Repository layout](./repository-layout.md): Map of the repository tree,
   path responsibilities, and placement rules for contributors.
-- [Users' guide](./users-guide.md): User-facing guide for applying `ddlint`
-  today.
+- [Users' guide](./users-guide.md): User-visible syntax support and parser
+  diagnostics for accepted DDlog source.
 - [Documentation style guide](./documentation-style-guide.md): Authoring
   conventions for Markdown structure, spelling, formatting, diagrams, roadmaps,
   Request for Comments (RFCs), and Architectural Decision Records (ADRs).

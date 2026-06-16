@@ -544,7 +544,7 @@ documentation completeness, and ADR-002.
 - [ ] `tests/relation_form_grammar.rs` exercises the public `parse()`
       entry point.
 - [x] `docs/parser-conformance-register.md` item `13` is `implemented`.
-- [ ] `docs/differential-datalog-parser-syntax-spec-updated.md` §5.5
+- [x] `docs/differential-datalog-parser-syntax-spec-updated.md` §5.5
       updated with deltas D1–D5;
       `docs/parser-implementation-notes.md`, `docs/ddlint-design.md`,
       `docs/users-guide.md`, and `docs/developers-guide.md` updated.
@@ -666,7 +666,13 @@ flipped, and the roadmap item can be closed.
       doc gates passed (`make fmt`, `make check-fmt`, `make markdownlint`, and
       `make nixie`), then the follow-up CodeRabbit pass completed with zero
       findings.
-- [ ] (YYYY-MM-DD) Landed Milestone 5c (user-facing docs).
+- [x] (2026-06-16) Landed Milestone 5c (user-facing docs). Added
+      `docs/users-guide.md` with accepted relation declaration forms and
+      D-REL-001 through D-REL-008 diagnostics, linked it from
+      `docs/contents.md`, and extended `docs/developers-guide.md` with
+      relation ref, body, and primary-key helper conventions. Deterministic
+      doc gates passed (`make fmt`, `make check-fmt`, `make markdownlint`, and
+      `make nixie`), then CodeRabbit completed with zero findings.
 - [ ] (YYYY-MM-DD) Landed Milestone 6 (verification + close-out).
 
 ## Surprises & Discoveries
