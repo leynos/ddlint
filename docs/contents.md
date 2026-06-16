@@ -61,6 +61,8 @@
 - [Architectural decision record 001: parser crate split for multi-consumer use](./adr-001-parser-crate-split.md):
   Proposed decision record for parser crate boundaries and implementation
   structure.
+- [Architectural decision record 002: relation role and kind modelling](./adr-002-relation-role-kind-modelling.md):
+  Decision record for typed relation role, kind, ref, and body accessors.
 
 ## Execution plans
 

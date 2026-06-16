@@ -548,7 +548,7 @@ documentation completeness, and ADR-002.
       updated with deltas D1–D5;
       `docs/parser-implementation-notes.md`, `docs/ddlint-design.md`,
       `docs/users-guide.md`, and `docs/developers-guide.md` updated.
-- [ ] `docs/adr-002-relation-role-kind-modelling.md` added.
+- [x] `docs/adr-002-relation-role-kind-modelling.md` added.
 - [x] Roadmap follow-up `2.6.6.1` recorded for typed primary-key
       expression access.
 - [ ] `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
@@ -656,7 +656,16 @@ flipped, and the roadmap item can be closed.
       and typed AST surface. Deterministic doc gates passed (`make fmt`,
       `make check-fmt`, `make markdownlint`, and `make nixie`), then
       CodeRabbit completed with zero findings.
-- [ ] (YYYY-MM-DD) Landed Milestone 5b (ADR-002).
+- [x] (2026-06-16) Landed Milestone 5b (ADR-002). Added
+      `docs/adr-002-relation-role-kind-modelling.md` documenting the
+      enum-plus-predicate role/kind choice, `RelationBody`, the compatibility
+      role predicates, the primary-key expression deferral, and the ADR-001
+      syntax-layer boundary. Linked ADR-002 from `docs/ddlint-design.md` and
+      `docs/contents.md`. CodeRabbit requested the standard ADR template
+      sections and a side-by-side options table; both were added. Deterministic
+      doc gates passed (`make fmt`, `make check-fmt`, `make markdownlint`, and
+      `make nixie`), then the follow-up CodeRabbit pass completed with zero
+      findings.
 - [ ] (YYYY-MM-DD) Landed Milestone 5c (user-facing docs).
 - [ ] (YYYY-MM-DD) Landed Milestone 6 (verification + close-out).
 
