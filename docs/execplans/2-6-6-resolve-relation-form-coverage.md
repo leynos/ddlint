@@ -543,7 +543,7 @@ documentation completeness, and ADR-002.
 - [ ] Round-trip tests still pass; CST text equals input text.
 - [ ] `tests/relation_form_grammar.rs` exercises the public `parse()`
       entry point.
-- [ ] `docs/parser-conformance-register.md` item `13` is `implemented`.
+- [x] `docs/parser-conformance-register.md` item `13` is `implemented`.
 - [ ] `docs/differential-datalog-parser-syntax-spec-updated.md` §5.5
       updated with deltas D1–D5;
       `docs/parser-implementation-notes.md`, `docs/ddlint-design.md`,
@@ -647,7 +647,15 @@ flipped, and the roadmap item can be closed.
       Deterministic gates passed (`make fmt`, `make check-fmt`,
       `make markdownlint`, `make nixie`, `make lint`, and
       `CI=1 make test`), then CodeRabbit completed with zero findings.
-- [ ] (YYYY-MM-DD) Landed Milestone 5a (spec deltas D1–D5).
+- [x] (2026-06-16) Landed Milestone 5a (spec deltas D1–D5). Updated syntax
+      spec §5.5 to drop `internal` as a keyword, drop mandatory relation
+      semicolons, add declaration `&`, model bracket bodies, and document
+      input-only spec-form primary keys without bracket wrapping. Flipped
+      conformance-register item `13` to `implemented` and expanded
+      `docs/parser-implementation-notes.md` with the relation preamble scanner
+      and typed AST surface. Deterministic doc gates passed (`make fmt`,
+      `make check-fmt`, `make markdownlint`, and `make nixie`), then
+      CodeRabbit completed with zero findings.
 - [ ] (YYYY-MM-DD) Landed Milestone 5b (ADR-002).
 - [ ] (YYYY-MM-DD) Landed Milestone 5c (user-facing docs).
 - [ ] (YYYY-MM-DD) Landed Milestone 6 (verification + close-out).

@@ -157,11 +157,21 @@ This register tracks parser behaviour against the syntax specification.
 ### 13. Relation forms and role/kind grammar
 
 - Topic: relation declaration variants.
-- Current behaviour (code): scanner supports `input relation`,
-  `output relation`, and bare `relation` forms
-  (`src/parser/span_scanners/relations.rs`).
-- Spec/target behaviour: section 5.5 documents broader role/kind variants.
-- Decision status: `scheduled`.
+- Current behaviour (code): scanner accepts optional role, optional kind,
+  optional `&`, record bodies, bracket element-type bodies, and opaque
+  primary-key suffixes (`src/parser/span_scanners/relations.rs`). The typed AST
+  exposes `RelationRole`, `RelationKind`, `RelationBody`, keyword-presence
+  flags, `is_ref()`, and compatibility `primary_key()` binder/list access
+  (`src/parser/ast/relation.rs`). Regression coverage includes the relation
+  form matrix and property tests (`src/parser/tests/relations.rs`,
+  `src/parser/tests/relation_proptest.rs`).
+- Spec/target behaviour: matches section 5.5. Absence of a role means internal;
+  `internal` is not reserved. Absence of a kind means `relation`. Primary keys
+  are accepted only on `input` record relations; bracket-wrapped primary-key
+  clauses are rejected with a deterministic diagnostic. Typed access to the
+  trailing primary-key expression is deferred to roadmap item `2.6.6.1`, while
+  the CST preserves the text.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.6`.
 
 ### 14. Legacy token compatibility policy

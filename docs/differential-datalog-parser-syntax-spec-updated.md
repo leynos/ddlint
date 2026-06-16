@@ -253,22 +253,35 @@ Notes:
 
 ### 5.5 Relations
 
-Two equivalent forms:
+Relation declarations may specify an optional role, optional relation kind,
+optional reference marker, and either a record-style field list or a bracketed
+element type.
 
 ```ebnf
-RelationDecl ::= Role? Kind? UcName '(' Fields? ')' PrimaryKey? ';'
-               | Role? Kind? UcName '[' Type ']' ';'
-Role         ::= 'input' | 'output' | 'internal'
+RelationDecl ::= Role? Kind? '&'? UcName Body PrimaryKey?
+Body         ::= '(' Fields? ')' | '[' Type ']'
+Role         ::= 'input' | 'output'
 Kind         ::= 'relation' | 'stream' | 'multiset'
-Fields       ::= Field (',' Field)*
+Fields       ::= Field (',' Field)* ','?
 Field        ::= LcName ':' Type
-PrimaryKey   ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'
+PrimaryKey   ::= 'primary' 'key' '(' LcName ')' Expr
 ```
 
 Notes:
 
-- The first form synthesizes a record type for `UcName` with the listed fields.
-- `&UcName` in rule **heads** triggers special semantics (see §7.3).
+- The record body synthesizes a record type for `UcName` with the listed
+  fields.
+- The bracket body declares a relation over an existing element type.
+- Absence of `Role` means an internal relation. `internal` is not a reserved
+  keyword.
+- Absence of `Kind` means `relation`.
+- `PrimaryKey` is valid only on `input` relations with record bodies.
+- The parser preserves the `PrimaryKey` expression as CST text. Typed access to
+  that expression is deferred; AST helpers currently expose the binder/list
+  names from the parenthesized portion.
+- Bracket-wrapped primary-key clauses (`[primary key ...]`) are rejected.
+- `&UcName` in declarations marks a reference relation. `&UcName` in rule
+  **heads** triggers special semantics (see §7.3).
 - `Role`/`Kind` affect runtime semantics but not parse shape.
 
 ### 5.6 Indexes
@@ -585,7 +598,8 @@ copy/paste. -->
   where `outputs` is the ordered list of `Ident` values parsed from
   `TransformerOutputs`.
 - **Apply:** `Apply { transformer, inputs, outputs }`.
-- **RelationDecl:** `Relation { role, kind, name, typeOrFields, primaryKey? }`.
+- **RelationDecl:**
+  `Relation { role, kind, ref?, name, body: Fields | ElementType, primaryKey? }`.
 - **IndexDecl:** `Index { name, fields: [(name, type)], on: Atom }`.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.

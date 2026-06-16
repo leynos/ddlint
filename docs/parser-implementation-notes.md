@@ -299,6 +299,13 @@ Important invariants:
   shorthand `index Name on Relation(columns)` with a targeted diagnostic, and
   the `Index` wrapper exposes `fields()` plus normalized `on_target()` access
   instead of relation/column helpers tied to the old shorthand.
+- Relation declarations use a cursor-based preamble scanner that accepts
+  optional role (`input`/`output`), optional kind (`relation`/`stream`/
+  `multiset`), optional `&`, and either a record body or bracketed element
+  type. The AST wrapper exposes the same axes through `RelationRole`,
+  `RelationKind`, `RelationBody`, keyword-presence predicates, and `is_ref()`.
+  Existing `is_input()` and `is_output()` helpers are retained as derived
+  compatibility conveniences.
 - Relation declarations preserve spec-form primary-key clauses such as
   `primary key (row) (row.id)` as opaque CST text after the binder list.
   `Relation::primary_key()` intentionally exposes only the names inside the
