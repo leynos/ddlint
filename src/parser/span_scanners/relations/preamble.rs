@@ -101,7 +101,7 @@ impl PreambleState {
                 advance_preamble(tokens, cursor);
                 Ok(())
             }
-            PreamblePart::Name => Ok(()),
+            PreamblePart::Name | PreamblePart::Ref => Ok(()),
             PreamblePart::Other(found) => Err(Box::new(Simple::expected_input_found(
                 span.clone(),
                 [Some(SyntaxKind::T_IDENT)],
@@ -119,7 +119,7 @@ impl PreambleState {
             match preamble_part(*kind) {
                 PreamblePart::Role(role) => self.consume_role(role, span, tokens, cursor)?,
                 PreamblePart::Kind => self.consume_kind(span, tokens, cursor)?,
-                PreamblePart::Name | PreamblePart::Other(_) => break,
+                PreamblePart::Name | PreamblePart::Ref | PreamblePart::Other(_) => break,
             }
         }
         Ok(())
@@ -172,6 +172,7 @@ fn custom_error(span: &Span, message: &'static str) -> Simple<SyntaxKind> {
 enum PreamblePart {
     Role(RelationRole),
     Kind,
+    Ref,
     Name,
     Other(SyntaxKind),
 }
@@ -183,6 +184,7 @@ fn preamble_part(kind: SyntaxKind) -> PreamblePart {
         SyntaxKind::K_RELATION | SyntaxKind::K_STREAM | SyntaxKind::K_MULTISET => {
             PreamblePart::Kind
         }
+        SyntaxKind::T_AMP => PreamblePart::Ref,
         SyntaxKind::T_IDENT => PreamblePart::Name,
         other => PreamblePart::Other(other),
     }

@@ -3,7 +3,7 @@
 //! Validates parsing for input, output, and internal relations.
 
 use super::helpers::{parse_relation, pretty_print};
-use crate::parser::ast::AstNode;
+use crate::parser::ast::{AstNode, RelationBody, RelationKind, RelationRole};
 use crate::test_util::{
     assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
 };
@@ -32,6 +32,19 @@ fn multiline_relation() -> &'static str {
 #[fixture]
 fn relation_unbalanced_parentheses() -> &'static str {
     "relation Foo(x: u32"
+}
+
+fn fields(items: &[(&str, &str)]) -> RelationBody {
+    RelationBody::Fields(
+        items
+            .iter()
+            .map(|(name, ty)| ((*name).into(), (*ty).into()))
+            .collect(),
+    )
+}
+
+fn element_type(ty: &str) -> RelationBody {
+    RelationBody::ElementType(ty.into())
 }
 
 #[rstest]
@@ -95,26 +108,184 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
 }
 
 #[rstest]
-#[case::bare_record("R()")]
-#[case::bare_bracket("R[u32]")]
-#[case::input_record_pk("input R(id: u32) primary key (id)")]
-#[case::output_record("output R(id: u32)")]
-#[case::input_kind_record_pk("input relation R(id: u32) primary key (id)")]
-#[case::output_kind_record("output relation R(id: u32)")]
-#[case::kind_bracket("relation R[u32]")]
-#[case::input_stream_record("input stream R(id: u32)")]
-#[case::output_stream_bracket("output stream R[u32]")]
-#[case::bare_stream_record("stream R(id: u32)")]
-#[case::input_multiset_record_pk("input multiset R(id: u32) primary key (id)")]
-#[case::bare_multiset_record("multiset R(id: u32)")]
-#[case::output_multiset_bracket("output multiset R[u32]")]
-#[case::input_ref_record("input & R(id: u32)")]
-#[case::output_relation_ref_bracket("output relation & R[u32]")]
-#[case::commented_preamble("input /* role */\nstream /* kind */\nR(id: u32)")]
-fn parses_relation_form_matrix(#[case] src: &str) {
+#[rstest]
+#[case::bare_record(
+    "R()",
+    RelationRole::Internal,
+    false,
+    RelationKind::Relation,
+    false,
+    false,
+    fields(&[])
+)]
+#[case::bare_bracket(
+    "R[u32]",
+    RelationRole::Internal,
+    false,
+    RelationKind::Relation,
+    false,
+    false,
+    element_type("u32")
+)]
+#[case::input_record_pk(
+    "input R(id: u32) primary key (id)",
+    RelationRole::Input,
+    true,
+    RelationKind::Relation,
+    false,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::output_record(
+    "output R(id: u32)",
+    RelationRole::Output,
+    true,
+    RelationKind::Relation,
+    false,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::input_kind_record_pk(
+    "input relation R(id: u32) primary key (id)",
+    RelationRole::Input,
+    true,
+    RelationKind::Relation,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::output_kind_record(
+    "output relation R(id: u32)",
+    RelationRole::Output,
+    true,
+    RelationKind::Relation,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::kind_bracket(
+    "relation R[u32]",
+    RelationRole::Internal,
+    false,
+    RelationKind::Relation,
+    true,
+    false,
+    element_type("u32")
+)]
+#[case::input_stream_record(
+    "input stream R(id: u32)",
+    RelationRole::Input,
+    true,
+    RelationKind::Stream,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::output_stream_bracket(
+    "output stream R[u32]",
+    RelationRole::Output,
+    true,
+    RelationKind::Stream,
+    true,
+    false,
+    element_type("u32")
+)]
+#[case::bare_stream_record(
+    "stream R(id: u32)",
+    RelationRole::Internal,
+    false,
+    RelationKind::Stream,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::input_multiset_record_pk(
+    "input multiset R(id: u32) primary key (id)",
+    RelationRole::Input,
+    true,
+    RelationKind::Multiset,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::bare_multiset_record(
+    "multiset R(id: u32)",
+    RelationRole::Internal,
+    false,
+    RelationKind::Multiset,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+#[case::output_multiset_bracket(
+    "output multiset R[u32]",
+    RelationRole::Output,
+    true,
+    RelationKind::Multiset,
+    true,
+    false,
+    element_type("u32")
+)]
+#[case::input_ref_record(
+    "input & R(id: u32)",
+    RelationRole::Input,
+    true,
+    RelationKind::Relation,
+    false,
+    true,
+    fields(&[("id", "u32")])
+)]
+#[case::bare_ref_record(
+    "& R(id: u32)",
+    RelationRole::Internal,
+    false,
+    RelationKind::Relation,
+    false,
+    true,
+    fields(&[("id", "u32")])
+)]
+#[case::output_relation_ref_bracket(
+    "output relation & R[u32]",
+    RelationRole::Output,
+    true,
+    RelationKind::Relation,
+    true,
+    true,
+    element_type("u32")
+)]
+#[case::commented_preamble(
+    "input /* role */\nstream /* kind */\nR(id: u32)",
+    RelationRole::Input,
+    true,
+    RelationKind::Stream,
+    true,
+    false,
+    fields(&[("id", "u32")])
+)]
+fn parses_relation_form_matrix(
+    #[case] src: &str,
+    #[case] role: RelationRole,
+    #[case] role_keyword_present: bool,
+    #[case] kind: RelationKind,
+    #[case] kind_keyword_present: bool,
+    #[case] is_ref: bool,
+    #[case] body: RelationBody,
+) {
     let parsed = crate::parse(src);
     assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().relations().len(), 1, "source: {src}");
+    let rel = parsed
+        .root()
+        .relations()
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("relation missing for source: {src}"));
+    assert_eq!(rel.role(), role);
+    assert_eq!(rel.role_keyword_present(), role_keyword_present);
+    assert_eq!(rel.kind(), kind);
+    assert_eq!(rel.kind_keyword_present(), kind_keyword_present);
+    assert_eq!(rel.is_ref(), is_ref);
+    assert_eq!(rel.body(), body);
 }
 
 #[rstest]

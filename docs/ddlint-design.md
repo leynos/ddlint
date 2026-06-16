@@ -235,6 +235,15 @@ older shorthand `index Name on Relation(columns)` with a targeted diagnostic,
 and exposes the typed field list plus normalized `on` target directly from the
 CST-backed `Index` wrapper.
 
+Relation declarations use the same CST-backed boundary. The `Relation` wrapper
+models the declaration preamble with `RelationRole` (`Input`, `Output`, or
+defaulted `Internal`), `RelationKind` (`Relation`, `Stream`, or `Multiset`), and
+`RelationBody` (`Fields` or `ElementType`). The `role()` and `kind()` methods
+are the canonical typed accessors; `role_keyword_present()` and
+`kind_keyword_present()` preserve whether the source explicitly wrote the
+default keyword. Existing `is_input()` and `is_output()` helpers remain as
+derived ergonomics for lint rules that only need role predicates.
+
 ### 2.1. Defining the DDlog `SyntaxKind`
 
 Following the established `rowan` pattern, the grammar of the DDlog language

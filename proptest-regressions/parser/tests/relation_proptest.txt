@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 0a4a4ea4b472b027e3d2db37dbdefdd5b1a59f6c131fbce14d0b3fa522a9e01c # shrinks to generated = GeneratedRelation { role: Absent, kind: Absent, body: Record, is_ref: true, has_primary_key: false }

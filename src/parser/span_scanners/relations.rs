@@ -82,6 +82,7 @@ pub(crate) fn collect_relation_spans(
         SyntaxKind::K_RELATION => handle_candidate,
         SyntaxKind::K_STREAM => handle_candidate,
         SyntaxKind::K_MULTISET => handle_candidate,
+        SyntaxKind::T_AMP => handle_candidate,
         SyntaxKind::T_IDENT => handle_candidate,
     });
 

@@ -22,6 +22,20 @@ parsing pipeline.
 - Keeps rule-body classification separate from the public `Rule` wrapper so
   `rule.rs` stays focused on the surface API.
 
+
+### `src/parser/ast/relation.rs`
+
+- Owns the typed relation declaration surface for role, kind, ref marker, and
+  body form.
+- Treats `role()` and `kind()` as the canonical APIs for new code.
+  `is_input()` and `is_output()` are derived helpers kept for callers that only
+  need role predicates.
+- Uses `role_keyword_present()` and `kind_keyword_present()` when callers need
+  source-fidelity rather than the defaulted semantic value.
+- Keeps `columns()` backwards compatible by returning an empty vector for
+  bracket-form relations; use `body()` or `element_type()` when body shape
+  matters.
+
 ### `src/parser/expression/pratt/postfix.rs`
 
 - Owns postfix dispatch for the Pratt parser.
@@ -50,11 +64,12 @@ parsing pipeline.
   expression parser.
 - Keep rule-body classification in `classification.rs` rather than adding
   helper-stage logic to `rule.rs`.
+- Prefer `Relation::role()` and `Relation::kind()` for new relation-aware
+  logic. Use `is_input()` and `is_output()` only as predicate conveniences.
 - Keep postfix dispatch in `postfix.rs`; add new postfix behaviour there only
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
-
 ## Spelling policy
 
 The lint and Markdown gates run pinned `typos` 1.48.0 with British English and

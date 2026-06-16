@@ -95,9 +95,8 @@ Both axes now use the enum-plus-predicate shape. See Decision Log entry 2 for
 the rationale.
 
 The `'&'` ref marker is recognised by the scanner and exposed as
-`Relation::is_ref()`. The bracket body carries a single element type borrowed
-from the underlying CST as `Option<&str>` (matching the centralized
-Span→TextRange helper landed in commit `9b15cba`). Bracket bodies cannot
+`Relation::is_ref()`. The bracket body carries a single element type as an owned
+`String` because the type may span multiple CST tokens. Bracket bodies cannot
 combine with a `PrimaryKey` clause.
 
 Spec-form lambda-style primary keys (`primary key (id) Expr`) are recognised at
@@ -235,11 +234,11 @@ placement, comment-laden preambles, and recovery after a malformed preamble.
   `Relation::kind() -> RelationKind`,
   `Relation::kind_keyword_present() -> bool`, `Relation::is_ref() -> bool`,
   `Relation::body() -> RelationBody`,
-  `Relation::element_type() -> Option<&str>`. Keep `is_input()` / `is_output()`
-  as derived helpers backed by `role()`; do not deprecate yet (phase `2.8` owns
-  API freeze). Annotate both helpers with a rustdoc comment along the lines of
-  "Derived from `role()`; prefer `role()` in new code." so the transitional
-  intent is visible at the call site.
+  `Relation::element_type() -> Option<String>`. Keep `is_input()` /
+  `is_output()` as derived helpers backed by `role()`; do not deprecate yet
+  (phase `2.8` owns API freeze). Annotate both helpers with a rustdoc comment
+  along the lines of "Derived from `role()`; prefer `role()` in new code." so
+  the transitional intent is visible at the call site.
 - Bracket form `Name[Type]` modelled as
   `pub enum RelationBody { Fields(Vec<(String, String)>), ElementType(String) }`.
   `columns()` continues to return an empty vector for the bracket form for
@@ -403,7 +402,9 @@ re-express `is_input()` / `is_output()` via `role()`);
 and body form); `src/parser/tests/relations.rs` (extend the existing matrix
 with AST accessor columns per the test-matrix ownership rule above).
 
-New files: none.
+New files: `src/parser/ast/relation/inspect.rs`,
+`src/parser/tests/relation_proptest.rs`, and the checked-in proptest regression
+seed under `proptest-regressions/parser/tests/relation_proptest.txt`.
 
 Tests added:
 
@@ -617,7 +618,24 @@ flipped, and the roadmap item can be closed.
       returns D-REL-007 instead of using `unreachable!()`, preserving the
       repository's no-production-panics policy while making contract violations
       non-silent. A third CodeRabbit pass completed with zero findings.
-- [ ] (YYYY-MM-DD) Landed Milestone 3 (typed AST surface + proptest).
+- [x] (2026-06-16) Landed Milestone 3 (typed AST surface + proptest).
+      Added `RelationRole`, `RelationKind`, and `RelationBody` to
+      `src/parser/ast/relation.rs`, exposed role/kind keyword-presence
+      predicates, ref-marker access, body access, and bracket element-type
+      access, and re-expressed `is_input()` / `is_output()` through `role()`.
+      Extended the relation matrix to assert AST accessors and added
+      `src/parser/tests/relation_proptest.rs` over role × kind × body × ref ×
+      pk combinations. The property found a real scanner gap for bare
+      `& R(...)`; the scanner now dispatches line-start `&` and the regression
+      seed is checked in under `proptest-regressions/`. Updated
+      `docs/ddlint-design.md` and `docs/developers-guide.md` with the relation
+      AST conventions. Deterministic gates passed before each CodeRabbit
+      review: `make fmt`, `make check-fmt`, `make markdownlint`, `make nixie`,
+      `make lint`, and `CI=1 make test`. CodeRabbit reported documentation
+      gaps in the relation inspection helpers, an Oxford-spelling conflict in
+      a comment, a dead branch in the proptest, and an import simplification.
+      Fixed the valid issues; the spelling conflict was resolved by avoiding
+      the disputed word. A final CodeRabbit pass completed with zero findings.
 - [ ] (YYYY-MM-DD) Landed Milestone 4 (primary-key decision).
 - [ ] (YYYY-MM-DD) Landed Milestone 5a (spec deltas D1–D5).
 - [ ] (YYYY-MM-DD) Landed Milestone 5b (ADR-002).
@@ -690,6 +708,22 @@ flipped, and the roadmap item can be closed.
   delimiter in `consume_open_for_close`. That would have introduced a
   production panic, so the implementation instead returns D-REL-007 from the
   invalid-contract arm.
+- The Milestone 3 `proptest` generator discovered that `& R(id: u32)` was
+  valid under the planned `Role? Kind? '&'? UcName Body` grammar but was not a
+  scanner candidate. Dispatching line-start `T_AMP` and allowing the preamble
+  parser to stop before `&` fixed the gap.
+- `Relation::element_type()` returns `Option<String>` rather than
+  `Option<&str>`. Bracket element types can span multiple CST tokens, so an
+  owned string avoids returning a borrowed value assembled from temporary token
+  text.
+- CodeRabbit suggested replacing the proptest's dead missing-relation branch
+  with `expect()`, but `make lint` proved that `expect_used` is denied in that
+  macro-expanded test context. Replacing the branch with `remove(0)` after the
+  length assertion cleared both the review concern and the lint gate.
+- CodeRabbit gave contradictory spelling advice on "parenthesized" versus
+  "parenthesised". The repository instructions require Oxford spelling, but the
+  final comment avoids the disputed word entirely so the style question does
+  not keep resurfacing in reviews.
 
 ## Decision Log
 
@@ -731,33 +765,44 @@ flipped, and the roadmap item can be closed.
    alternative:** use `unreachable!()` as suggested by CodeRabbit. Reason for
    rejection: this repository forbids production panics; D-REL-007 is a
    non-silent failure path that preserves that policy.
-10. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
+10. Support bare ref relations (`& R(...)`) in the scanner. The grammar permits
+    the `&` marker after an absent role and absent kind; `proptest` found this
+    gap once the role × kind × ref space was generated.
+11. Return an owned `String` from `Relation::element_type()`. **Rejected
+    alternative:** return `Option<&str>` as the original plan stated. Reason
+    for rejection: bracket element types may be composed from several CST
+    tokens, and the wrapper has no stable single borrowed slice to return.
+12. Avoid `expect()` in `relation_proptest.rs` despite CodeRabbit's suggestion.
+    Clippy's `expect_used` lint applies in the property test expansion, so the
+    implementation removes the single relation from the vector after asserting
+    its length instead.
+13. Apply spec deltas D1–D5 to the local spec doc in Commit 5a, ADR-002
    in Commit 5b, and user-facing docs in Commit 5c, rather than bundling them.
    Partial reviewer pushback on any slice does not bounce the others.
-11. Keep `is_input()` and `is_output()` in this milestone, annotated as
+14. Keep `is_input()` and `is_output()` in this milestone, annotated as
    derived. **Rejected alternative:** deprecate or remove them now under
    ADR-002. Reason for rejection: phase `2.7` has not yet locked the public API
    and phase 4 lint rules already use them; churning them twice (now and at
    freeze time) is wasted effort.
-12. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
+15. Retain `RelationBody` as a two-variant enum (`Fields | ElementType`).
    **Rejected alternative:** expose `fields() -> Option<...>` and
    `element_type() -> Option<...>` directly. Reason for rejection: exhaustive
    `match` is the cheapest way to guarantee that a future third body form (e.g.
    union) cannot silently slip past consumers.
-13. Include the `&` ref-relation form (delta D4) in this milestone.
+16. Include the `&` ref-relation form (delta D4) in this milestone.
    **Rejected alternative:** defer to a follow-up. Reason for rejection: it is
    the only delta that adds surface area; landing it alongside D1–D3 keeps the
    spec-reconciliation commit cohesive.
-14. Defer typed access to spec-form (lambda-style) primary keys; only
+17. Defer typed access to spec-form (lambda-style) primary keys; only
    preserve their text in the CST. Record follow-up as `2.6.6.1`. The Milestone
    0 spike gates this decision.
-15. Enforce D-REL-006 (primary key only on `input` relations) inside
+18. Enforce D-REL-006 (primary key only on `input` relations) inside
    this milestone, not as a follow-up. Deferring it would prevent conformance
    register item `13` from flipping to `implemented`.
-16. Promote `proptest` from optional (Milestone 6) to required
+19. Promote `proptest` from optional (Milestone 6) to required
    (Milestone 3). Hand-picked accepts cover ~17 % of the role × kind × body ×
    ref × pk space; an ADR-001-frozen contract needs better.
-17. Recommend ADR-002 for the role/kind/body modelling and the
+20. Recommend ADR-002 for the role/kind/body modelling and the
     spec-delta reconciliation, explicitly cross-referencing ADR-001.
 
 ## Outcomes & Retrospective
