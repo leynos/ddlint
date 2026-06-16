@@ -222,7 +222,7 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
   syntax specification. See docs/parser-conformance-register.md item 11.
 - [x] 2.6.5. Align transformer declaration grammar, including output signature
   requirements. See docs/parser-conformance-register.md item 12.
-- [ ] 2.6.6. Resolve relation form coverage (role/kind/bracket variants) and
+- [x] 2.6.6. Resolve relation form coverage (role/kind/bracket variants) and
   document supported forms explicitly. See docs/parser-conformance-register.md
   item 13.
 - [ ] 2.6.6.1. Add typed AST access for spec-form relation primary-key

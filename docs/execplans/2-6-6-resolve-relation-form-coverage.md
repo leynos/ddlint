@@ -525,23 +525,23 @@ documentation completeness, and ADR-002.
 
 ## Definition of done
 
-- [ ] Milestone 0 PK-preservation spike passes for all three fixtures.
-- [ ] Tokenizer audit confirms no keyword churn; `internal` remains
+- [x] Milestone 0 PK-preservation spike passes for all three fixtures.
+- [x] Tokenizer audit confirms no keyword churn; `internal` remains
       `T_IDENT`.
-- [ ] Attribute scanner accepts the relation-keyword set used by the new
+- [x] Attribute scanner accepts the relation-keyword set used by the new
       preamble parser.
-- [ ] Scanner accepts all 16 valid (role, kind, body, ref) combinations
+- [x] Scanner accepts all 16 valid (role, kind, body, ref) combinations
       from the matrix.
-- [ ] Scanner rejects the seven invalid combinations with the documented
+- [x] Scanner rejects the seven invalid combinations with the documented
       diagnostics and per-diagnostic recovery state.
-- [ ] Typed AST exposes `role()`, `role_keyword_present()`, `kind()`,
+- [x] Typed AST exposes `role()`, `role_keyword_present()`, `kind()`,
       `kind_keyword_present()`, `is_ref()`, `body()`, and
       `element_type()`; legacy `is_input()` / `is_output()` preserved
       and documented as derived.
-- [ ] `proptest` over the role × kind × body × ref × pk space passes
+- [x] `proptest` over the role × kind × body × ref × pk space passes
       the round-trip + accessor-preservation property.
-- [ ] Round-trip tests still pass; CST text equals input text.
-- [ ] `tests/relation_form_grammar.rs` exercises the public `parse()`
+- [x] Round-trip tests still pass; CST text equals input text.
+- [x] `tests/relation_form_grammar.rs` exercises the public `parse()`
       entry point.
 - [x] `docs/parser-conformance-register.md` item `13` is `implemented`.
 - [x] `docs/differential-datalog-parser-syntax-spec-updated.md` §5.5
@@ -551,9 +551,9 @@ documentation completeness, and ADR-002.
 - [x] `docs/adr-002-relation-role-kind-modelling.md` added.
 - [x] Roadmap follow-up `2.6.6.1` recorded for typed primary-key
       expression access.
-- [ ] `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
+- [x] `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
       `make lint`, and `CI=1 make test` all pass.
-- [ ] `docs/roadmap.md` item `2.6.6` marked done.
+- [x] `docs/roadmap.md` item `2.6.6` marked done.
 
 ## Validation commands
 
@@ -673,7 +673,19 @@ flipped, and the roadmap item can be closed.
       relation ref, body, and primary-key helper conventions. Deterministic
       doc gates passed (`make fmt`, `make check-fmt`, `make markdownlint`, and
       `make nixie`), then CodeRabbit completed with zero findings.
-- [ ] (YYYY-MM-DD) Landed Milestone 6 (verification + close-out).
+- [x] (2026-06-16) Landed Milestone 6 (verification + close-out). Added
+      `tests/relation_form_grammar.rs` to exercise the public `parse()` entry
+      point for canonical record, bracket/ref, multi-line, and primary-key
+      rejection forms. The focused test passed with
+      `cargo test --test relation_form_grammar`. The full deterministic gate
+      sequence then passed: `make fmt`, `make markdownlint`, `make nixie`,
+      `make check-fmt`, `make lint`, and `CI=1 make test`. Marked roadmap
+      item `2.6.6` complete while leaving follow-up `2.6.6.1` open.
+      CodeRabbit reported duplicated relation-extraction boilerplate in the
+      new integration test; refactored the accepted-form cases through an
+      `rstest` fixture and revalidated the focused test before rerunning the
+      full gate sequence. The follow-up CodeRabbit review completed with zero
+      findings.
 
 ## Surprises & Discoveries
 
@@ -761,6 +773,12 @@ flipped, and the roadmap item can be closed.
   already preserves same-line opaque primary-key expressions after the binder
   block; the missing piece was regression coverage and documentation of the
   typed-access boundary.
+- `make fmt` rewrites several pre-existing Markdown files outside this task's
+  scope. Each milestone restored that unrelated formatter churn and kept only
+  the intentional files, so commits remain reviewable and atomic.
+- The public `parse()` integration test can share relation extraction through
+  an `rstest` fixture because `Relation` owns a cloned Rowan syntax node rather
+  than borrowing the `Parsed` wrapper.
 
 ## Decision Log
 
@@ -844,9 +862,29 @@ flipped, and the roadmap item can be closed.
 
 ## Outcomes & Retrospective
 
-To be completed once the milestones land. Capture: the final accepted grammar,
-the final typed AST signatures, the set of diagnostic strings, and any deferred
-follow-ups (notably `2.6.6.1` for typed primary-key expression access).
+Roadmap item `2.6.6` is complete. The parser now accepts relation declarations
+with optional `input` / `output` role, optional `relation` / `stream` /
+`multiset` kind, optional `&`, and either record or bracket body form. The
+accepted grammar matches the reconciled syntax specification in
+`docs/differential-datalog-parser-syntax-spec-updated.md` §5.5, and
+conformance-register item `13` is implemented.
+
+The typed AST surface now exposes `RelationRole`, `RelationKind`,
+`RelationBody`, `role()`, `role_keyword_present()`, `kind()`,
+`kind_keyword_present()`, `is_ref()`, `body()`, and `element_type()`.
+Compatibility helpers `is_input()`, `is_output()`, `columns()`, and
+`primary_key()` remain available; `primary_key()` deliberately exposes the
+binder/list names only.
+
+The stable relation diagnostics are D-REL-001 through D-REL-008 as listed in
+the diagnostic table above. Tests cover valid role × kind × body × ref forms,
+the documented rejection states, public `parse()` behaviour, and a bounded
+`proptest` matrix for accessor preservation and round-trip text.
+
+Follow-up `2.6.6.1` remains open for typed AST access to spec-form primary-key
+expressions. This milestone preserves those expressions as opaque CST text so
+round-trip behaviour is lossless while avoiding a larger expression ownership
+change.
 
 ## References & resources
 
