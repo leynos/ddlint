@@ -91,7 +91,12 @@ impl Relation {
         inspect::inspect_preamble(&self.syntax)
     }
 
-    /// Primary key column names if specified.
+    /// Primary key binder or column names if specified.
+    ///
+    /// Spec-form primary keys may include an opaque expression after the
+    /// binder list. Typed expression access is deferred to roadmap follow-up
+    /// `2.6.6.1`; this helper keeps returning the names from the parenthesized
+    /// binder/list for compatibility.
     #[must_use]
     pub fn primary_key(&self) -> Option<Vec<String>> {
         use super::parse_utils::primary_key_clause;

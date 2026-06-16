@@ -171,8 +171,8 @@ conformance register.
   nested iterable/guard pairs, then the terminal atom-like body as the rule
   head.
 - Unsupported terminal body statement forms emit a targeted diagnostic:
-  "top-level \`for\` body must end in an atom-like expression (for example
-  \`Rel(args)\`)".
+  "top-level \`for\` body must end in an atom-like expression (for example \`
+  Rel(args)\`)".
 
 ## Rule-body integration and term extraction
 
@@ -299,6 +299,11 @@ Important invariants:
   shorthand `index Name on Relation(columns)` with a targeted diagnostic, and
   the `Index` wrapper exposes `fields()` plus normalized `on_target()` access
   instead of relation/column helpers tied to the old shorthand.
+- Relation declarations preserve spec-form primary-key clauses such as
+  `primary key (row) (row.id)` as opaque CST text after the binder list.
+  `Relation::primary_key()` intentionally exposes only the names inside the
+  parenthesized binder/list for compatibility with existing callers. Typed
+  access to the trailing expression is deferred to roadmap follow-up `2.6.6.1`.
 - Transformer declarations require
   `extern transformer <lowercase-name>(params...): output(, output)*`.
   Transformer identifiers must be lowercase (start with a lowercase letter or
@@ -306,8 +311,8 @@ Important invariants:
   rejects capitalized names (e.g., `Foo`) as invalid.
 - The span scanner keeps non-`extern` rejection separate from the
   output-signature check and emits the targeted diagnostic
-  `transformer declarations require ':' followed by at least one output
-  identifier` when the colon or first output identifier is missing.
+  `transformer declarations require ':' followed by at least one output identifier`
+  when the colon or first output identifier is missing.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.

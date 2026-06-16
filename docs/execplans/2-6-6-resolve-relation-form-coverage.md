@@ -549,7 +549,7 @@ documentation completeness, and ADR-002.
       `docs/parser-implementation-notes.md`, `docs/ddlint-design.md`,
       `docs/users-guide.md`, and `docs/developers-guide.md` updated.
 - [ ] `docs/adr-002-relation-role-kind-modelling.md` added.
-- [ ] Roadmap follow-up `2.6.6.1` recorded for typed primary-key
+- [x] Roadmap follow-up `2.6.6.1` recorded for typed primary-key
       expression access.
 - [ ] `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
       `make lint`, and `CI=1 make test` all pass.
@@ -636,7 +636,17 @@ flipped, and the roadmap item can be closed.
       a comment, a dead branch in the proptest, and an import simplification.
       Fixed the valid issues; the spelling conflict was resolved by avoiding
       the disputed word. A final CodeRabbit pass completed with zero findings.
-- [ ] (YYYY-MM-DD) Landed Milestone 4 (primary-key decision).
+- [x] (2026-06-16) Landed Milestone 4 (primary-key decision). Confirmed that
+      Milestone 2 already implemented the scanner-side D-REL-004, D-REL-006,
+      D-REL-008, and opaque primary-key suffix preservation. Added
+      `preserves_spec_form_primary_key_text` to pin the remaining contract:
+      `primary key (row) (row.author, row.title)` round-trips in CST text while
+      `Relation::primary_key()` continues to expose only `row`. Documented the
+      deferred typed expression accessor in `src/parser/ast/relation.rs`,
+      `docs/parser-implementation-notes.md`, and roadmap follow-up `2.6.6.1`.
+      Deterministic gates passed (`make fmt`, `make check-fmt`,
+      `make markdownlint`, `make nixie`, `make lint`, and
+      `CI=1 make test`), then CodeRabbit completed with zero findings.
 - [ ] (YYYY-MM-DD) Landed Milestone 5a (spec deltas D1–D5).
 - [ ] (YYYY-MM-DD) Landed Milestone 5b (ADR-002).
 - [ ] (YYYY-MM-DD) Landed Milestone 5c (user-facing docs).
@@ -724,6 +734,10 @@ flipped, and the roadmap item can be closed.
   "parenthesised". The repository instructions require Oxford spelling, but the
   final comment avoids the disputed word entirely so the style question does
   not keep resurfacing in reviews.
+- Milestone 4 did not need new scanner code. The relation suffix scanner
+  already preserves same-line opaque primary-key expressions after the binder
+  block; the missing piece was regression coverage and documentation of the
+  typed-access boundary.
 
 ## Decision Log
 
