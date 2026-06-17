@@ -8,3 +8,4 @@ __pycache__/
 .pytest_cache/
 .typos-oxendict-base.json
 .typos-oxendict-base.toml
+.memdb/
