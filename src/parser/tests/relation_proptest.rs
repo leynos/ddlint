@@ -39,24 +39,6 @@ struct GeneratedRelation {
 }
 
 impl GeneratedRelation {
-    fn new(
-        role: GeneratedRole,
-        kind: GeneratedKind,
-        body: GeneratedBody,
-        is_ref: bool,
-        wants_primary_key: bool,
-    ) -> Self {
-        let has_primary_key =
-            wants_primary_key && role == GeneratedRole::Input && body == GeneratedBody::Record;
-        Self {
-            role,
-            kind,
-            body,
-            is_ref,
-            has_primary_key,
-        }
-    }
-
     fn source(&self) -> String {
         let mut parts = Vec::new();
         if let Some(role) = self.role.keyword() {
@@ -136,7 +118,15 @@ fn generated_relation_strategy() -> impl Strategy<Value = GeneratedRelation> {
         any::<bool>(),
     )
         .prop_map(|(role, kind, body, is_ref, wants_primary_key)| {
-            GeneratedRelation::new(role, kind, body, is_ref, wants_primary_key)
+            let has_primary_key =
+                wants_primary_key && role == GeneratedRole::Input && body == GeneratedBody::Record;
+            GeneratedRelation {
+                role,
+                kind,
+                body,
+                is_ref,
+                has_primary_key,
+            }
         })
 }
 
