@@ -82,7 +82,7 @@ fn semantic_model(#[default("")] source: &str) -> super::SemanticModel {
 #[case("User", DeclarationKind::Relation)]
 fn collects_program_scope_declarations(
     #[with(concat!(
-        "typedef UserId = u32\n",
+        "type UserId = u32\n",
         "function project(id: UserId): UserId {}\n",
         "input relation User(id: UserId)"
     ))]

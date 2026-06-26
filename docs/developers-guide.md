@@ -113,6 +113,11 @@ parsing pipeline.
   (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
 - Keep typed consumer-facing relation metadata in `ast/relation.rs`, and
   inspection-only CST traversal in `ast/relation/inspect.rs`.
+- Route reserved-token diagnostics through `src/parser/reserved_tokens.rs`.
+  That module owns the parser-internal messages and the `rejection_for`
+  predicate for unsupported legacy tokens. The canonical public policy table
+  lives in `docs/differential-datalog-parser-syntax-spec-updated.md` section
+  `9.1`; avoid duplicating it in code comments or local scanner modules.
 
 ## Contributor workflow
 

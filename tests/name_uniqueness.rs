@@ -10,8 +10,8 @@ use rstest::rstest;
 #[test]
 fn mixed_program_no_duplicates() {
     let src = concat!(
-        "typedef A = u32\n",
-        "typedef B = string\n",
+        "type A = u32\n",
+        "type B = string\n",
         "input relation R(x: u32)\n",
         "output relation S(y: string)\n",
         "index IR(x: u32) on R[x]\n",
@@ -27,7 +27,7 @@ fn mixed_program_no_duplicates() {
 }
 
 #[rstest]
-#[case("typedef A = u32\ntypedef A = string", "duplicate", "A")]
+#[case("type A = u32\ntype A = string", "duplicate", "A")]
 #[case(
     "input relation R(x: u32)\noutput relation R(y: string)\n",
     "duplicate",
@@ -64,8 +64,8 @@ fn duplicate_detected(#[case] src: &str, #[case] expected_word: &str, #[case] ex
 #[test]
 fn multiple_duplicate_categories_all_reported() {
     let src = concat!(
-        "typedef A = u32\n",
-        "typedef A = string\n",
+        "type A = u32\n",
+        "type A = string\n",
         "index I(x: u32) on R[x]\n",
         "index I(y: string) on S[y]\n",
         "import foo\n",
@@ -80,7 +80,7 @@ fn multiple_duplicate_categories_all_reported() {
     assert_eq!(
         dup_errors.len(),
         3,
-        "expected three duplicate errors (typedef, index, import): {dup_errors:?}"
+        "expected three duplicate errors (type, index, import): {dup_errors:?}"
     );
 }
 

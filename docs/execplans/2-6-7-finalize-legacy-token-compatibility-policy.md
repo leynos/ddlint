@@ -4,8 +4,8 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: IN PROGRESS — implementation resumed after human approval to exceed the
-original file-count tolerance
+Status: IN PROGRESS — implementation is gated; CodeRabbit review and any
+follow-up fixes remain
 
 ## Purpose / big picture
 
@@ -243,19 +243,21 @@ scope tolerance below, stop and escalate.
   enforcement site, recorded the workspace audit counts, committed to a linter
   / sema regression test, added a `CHANGELOG.md` update, and recorded the
   rejected lex-stage-rejection alternative in the Decision Log.
-- [ ] Add red tests in `src/parser/tests/reserved_tokens.rs` for each
-  reject path and regression tests for the preserved `as` and `#[...]` uses.
-- [ ] Implement the reserved-token diagnostic module and update the four
-  scanners (`typedefs.rs`, the Pratt expression layer, the top-level span
+- [x] (2026-06-26) Add red tests in `src/parser/tests/reserved_tokens.rs` for
+  each reject path and regression tests for the preserved `as` and `#[...]`
+  uses.
+- [x] (2026-06-26) Implement the reserved-token diagnostic module and update the
+  four scanners (`typedefs.rs`, the Pratt expression layer, the top-level span
   scanner, and the type-position scanners), routing every reject site through
   the shared predicate.
-- [ ] Update active documentation: spec sections `2.3`, `5.2`, and `9.1`;
-  the conformance register; parser-implementation-notes; ddlint-design; users'
-  guide; developers' guide.
-- [ ] Run `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
+- [x] (2026-06-26) Update active documentation: spec sections `2.3`, `5.2`, and
+  `9.1`; the conformance register; parser-implementation-notes; ddlint-design;
+  users' guide; developers' guide.
+- [x] (2026-06-26) Run `make fmt`, `make markdownlint`, `make nixie`,
+      `make check-fmt`,
   `make lint`, and `CI=1 make test`, capturing each log under `/tmp`.
-- [ ] Mark roadmap item `2.6.7` done and close the conformance register entry
-  as `implemented`.
+- [x] (2026-06-26) Mark roadmap item `2.6.7` done and close the conformance
+  register entry as `implemented`.
 - [x] (2026-06-16) Resumed implementation on branch
   `2-6-7-finalize-legacy-token-compatibility-policy`, loaded `leta`,
   `execplans`, `rust-router`, `rust-unit-testing`, and `rust-errors`, and
@@ -274,6 +276,23 @@ scope tolerance below, stop and escalate.
 - [x] (2026-06-26) Ran the initial documentation gates for the resumed execplan
   update. `make fmt` established a one-time Markdown formatting baseline across
   existing documents; `make markdownlint` and `make nixie` then passed.
+- [x] (2026-06-26) Observed the red stage with `cargo test reserved_tokens`: ten
+  reserved-token policy tests failed for the expected missing diagnostics or
+  missing `type` support.
+- [x] (2026-06-26) Added `src/parser/reserved_tokens.rs`, rejected unsupported
+  tokens through the top-level parser and Pratt expression path, switched
+  regular type-definition support from `typedef` to `type`, migrated owned
+  examples and fixtures from `typedef` / `bit<N>`, and added
+  `tests/reserved_token_rejection.rs`.
+- [x] (2026-06-26) Verified the focused suites:
+  `cargo test reserved_tokens`, `cargo test --lib parser::tests`, and
+  `cargo test --test reserved_token_rejection` all passed.
+- [x] (2026-06-26) Fixed stale `typedef` fixtures in attribute-placement and
+  name-uniqueness tests after the first full `CI=1 make test` run exposed
+  deterministic failures. The attribute scanner now treats `type` as the valid
+  target and `typedef` as a rejected legacy keyword.
+- [x] (2026-06-26) Final implementation gates passed with logs captured under
+  `/tmp/2-6-7-final-make-{fmt,markdownlint,nixie,check-fmt,lint,test}.log`.
 
 ## Surprises & Discoveries
 
@@ -332,6 +351,20 @@ scope tolerance below, stop and escalate.
 - On 2026-06-26, the required `make fmt` gate normalized Markdown wrapping and
   table spacing in existing documents beyond this plan. This formatter baseline
   is mechanical and is recorded separately from parser-policy scope.
+- The implementation revealed that the existing scanner accepted `typedef` but
+  did not collect modern `type` aliases. The green implementation therefore
+  both rejects `typedef` and makes `type Foo = ...` produce the existing
+  `TypeDef` AST wrapper.
+- The `make markdownlint` target invokes `markdownlint`, while the repository
+  only had `.markdownlint-cli2.jsonc`. Adding `.markdownlint.jsonc` with the
+  same rule settings made the target honour the documented "do not wrap tables"
+  rule instead of reporting table rows from the formatter baseline as `MD013`
+  paragraph violations.
+- Full-suite validation found two stale `typedef` assumptions outside the new
+  reserved-token tests: attribute placement still treated `typedef` as a
+  permitted target, and name-uniqueness duplicate fixtures expected a second
+  `typedef` declaration to build a `TypeDef` node. Both were migrated to modern
+  `type` where the test was not itself about legacy-token rejection.
 
 ## Decision Log
 
@@ -414,10 +447,36 @@ scope tolerance below, stop and escalate.
   example, and documentation edits inside the raised scope. Rationale: the
   formatter baseline is required by the repository gate and does not widen the
   grammar or diagnostic policy under implementation.
+- Decision: create `docs/users-guide.md` and `CHANGELOG.md` instead of treating
+  parser migration notes as user-facing release notes. Rationale: both files
+  were absent, and creating explicit homes keeps the legacy-token migration
+  visible without changing the purpose of older parser migration documents.
+- Decision: add `.markdownlint.jsonc` mirroring the existing
+  `.markdownlint-cli2.jsonc` rule configuration. Rationale: the Makefile uses
+  the `markdownlint` CLI directly, and this config file lets the required gate
+  enforce the repository's documented Markdown rules consistently.
 
 ## Outcomes & Retrospective
 
-To be completed once implementation lands and gates pass.
+Implementation now matches the closed policy matrix in spec section `9.1`.
+`typedef`, legacy type names, bare `#`, and `<=>` produce deterministic parser
+diagnostics through `src/parser/reserved_tokens.rs`; `type`, `import X as Y`,
+and `#[...]` remain accepted. The owned examples and parser/linter fixtures
+were migrated away from legacy `typedef` and `bit<N>` syntax.
+
+The final deterministic gates passed on 2026-06-26:
+
+- `make fmt`
+- `make markdownlint`
+- `make nixie`
+- `make check-fmt`
+- `make lint`
+- `CI=1 make test`
+
+The main implementation lesson was that `typedef` compatibility had leaked into
+tests whose purpose was not compatibility: attribute placement and
+name-uniqueness both needed fixture updates so they exercise the modern grammar
+rather than depending on a legacy alias.
 
 ## Context and orientation
 
