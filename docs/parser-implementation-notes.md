@@ -171,8 +171,8 @@ conformance register.
   nested iterable/guard pairs, then the terminal atom-like body as the rule
   head.
 - Unsupported terminal body statement forms emit a targeted diagnostic:
-  "top-level \`for\` body must end in an atom-like expression (for example
-  \`Rel(args)\`)".
+  "top-level \`for\` body must end in an atom-like expression (for example \`
+  Rel(args)\`)".
 
 ## Rule-body integration and term extraction
 
@@ -306,8 +306,8 @@ Important invariants:
   rejects capitalized names (e.g., `Foo`) as invalid.
 - The span scanner keeps non-`extern` rejection separate from the
   output-signature check and emits the targeted diagnostic
-  `transformer declarations require ':' followed by at least one output
-  identifier` when the colon or first output identifier is missing.
+  `transformer declarations require ':' followed by at least one output identifier`
+  when the colon or first output identifier is missing.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.

@@ -100,8 +100,8 @@ Observable success is:
 
 - Risk: adding first-class default-level metadata could ripple through existing
   tests and future API expectations. Severity: medium. Likelihood: medium.
-  Mitigation: add the new metadata as an additive API with a sensible default
-  on `Rule`, then update only the tests that should assert on specific levels.
+  Mitigation: add the new metadata as an additive API with a sensible default on
+  `Rule`, then update only the tests that should assert on specific levels.
 
 - Risk: macro-generated handler bodies may trip strict Clippy rules in tests
   and examples. Severity: low. Likelihood: medium. Mitigation: keep generated
@@ -343,8 +343,8 @@ Add a behavioural test file such as
 [tests/linter_declare_lint_macro.rs](tests/linter_declare_lint_macro.rs). Use
 `ddlint::declare_lint!` to define one or two test-only rules in the test
 module, parse an existing fixture such as
-[examples/hello_join.dl](examples/hello_join.dl), and run the rules through
-both `CstRuleStore` and `Runner`.
+[examples/hello_join.dl](examples/hello_join.dl), and run the rules through both
+`CstRuleStore` and `Runner`.
 
 The behavioural suite should prove these outcomes:
 

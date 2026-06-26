@@ -1,9 +1,8 @@
 # Implement top-level `for` desugaring into rules
 
-This ExecPlan (execution plan) is a living document. The sections
-`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
-`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
-proceeds.
+This ExecPlan (execution plan) is a living document. The sections `Constraints`,
+`Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
+and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
 Status: COMPLETE
 
@@ -263,6 +262,17 @@ existing parser behaviour:
 
 If a validation command fails, fix the failure and re-run that command, then
 re-run the full required validation sequence.
+
+
+## Artefacts and notes
+
+Capture the following in PR notes or local logs:
+
+- before/after test output for the new top-level `for` cases,
+- one example source and its emitted semantic rule list,
+- one unsupported-form diagnostic example with span evidence.
+
+Keep snippets short and focused on proving behavioural change.
 
 ## Artefacts and notes
 

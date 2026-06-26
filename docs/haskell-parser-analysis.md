@@ -4,8 +4,8 @@ This document summarizes the design of the parser implemented in
 `Language.DifferentialDatalog.Parse`. The original code is written in Haskell
 using Parsec. This overview highlights token definitions, entry points, major
 grammar rules, and the Abstract Syntax Tree (AST) structures they construct.
-The notes provide a reference for porting the parser to Rust using `chumsky`
-and `rowan` as described in the other design documents.
+The notes provide a reference for porting the parser to Rust using `chumsky` and
+`rowan` as described in the other design documents.
 
 ## Token definitions
 
@@ -146,9 +146,9 @@ spec = do
 ### Declarations
 
 `decl` recognizes one of several declaration forms, each constructing a
-specific syntax tree node (`Import`, `TypeDef`, `Relation`, `Index`,
-`Function`, `Transformer`, `Rule` or `Apply`). Attributes encountered before
-the item are attached to the resulting node when applicable.
+specific syntax tree node (`Import`, `TypeDef`, `Relation`, `Index`, `Function`,
+`Transformer`, `Rule` or `Apply`). Attributes encountered before the item are
+attached to the resulting node when applicable.
 
 ```haskell
 decl =  do attrs <- attributes

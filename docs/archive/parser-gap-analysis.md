@@ -8,11 +8,11 @@
   `src/parser/tests`, `tests/*`).
 - The **surface language** in the spec is **wider** than what’s implemented
   today. Notable gaps: rich string forms & interning, width-qualified numeric
-  literals, collection literals (map/vector) + their desugarings,
-  `group_by`/`Aggregate` extraction, by-ref heads, multi-head rules with `@`
-  locations on heads, and some item forms (`apply`, transformer extern-only
-  guard). Several **deviations** also exist (e.g., `{ expr }` as an expression
-  grouping, and how unqualified `name(…)` calls are parsed).
+  literals, collection literals (map/vector) + their desugarings, `group_by`/
+  `Aggregate` extraction, by-ref heads, multi-head rules with `@` locations on
+  heads, and some item forms (`apply`, transformer extern-only guard). Several
+  **deviations** also exist (e.g., `{ expr }` as an expression grouping, and
+  how unqualified `name(…)` calls are parsed).
 - Most gaps are tractable, but two require **design choices**: (1) whether to
   keep `{ expr }` as grouping (not in spec) and (2) whether to change call
   parsing to obey the spec’s “only fully qualified calls are parsed as calls”

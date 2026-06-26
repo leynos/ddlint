@@ -89,8 +89,8 @@ validation steps pass.
 Implemented `apply` parsing with CST/AST coverage, added diagnostics for
 non-extern transformers, updated the syntax spec and roadmap entry, and added
 unit and behavioural tests. Validation gates (`make check-fmt`, `make lint`,
-`make test`, plus Markdown tooling) all passed. Future work can build on the
-new `Apply` AST wrapper and root accessor without additional parsing changes.
+`make test`, plus Markdown tooling) all passed. Future work can build on the new
+`Apply` AST wrapper and root accessor without additional parsing changes.
 
 ## Context and orientation
 
@@ -251,6 +251,13 @@ All steps are safe to re-run. If a span scanner change corrupts CST output,
 revert to the last passing tests and re-apply modifications incrementally. When
 validation fails, fix the specific failure and re-run the failed command only,
 then re-run the full validation set before marking the work complete.
+
+
+## Artefacts and notes
+
+Keep test fixtures small and place any long sample programmes under `tests/`
+for readability. Ensure any new diagnostic text is stable and asserted in unit
+tests.
 
 ## Artefacts and notes
 

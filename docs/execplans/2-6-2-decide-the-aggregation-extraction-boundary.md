@@ -1,9 +1,8 @@
 # Decide the aggregation extraction boundary
 
-This ExecPlan (execution plan) is a living document. The sections
-`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
-`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
-proceeds.
+This ExecPlan (execution plan) is a living document. The sections `Constraints`,
+`Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
+and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
 Status: COMPLETE
 
@@ -132,8 +131,8 @@ feature than the conformance-alignment task captured here.
   the parser performs `group_by` extraction and legacy `Aggregate` lowering,
   section 6.1 says the parser extracts `group_by` into an explicit `RHSGroupBy`
   node bound to `__group`, and section 13 says this lowering should stay in the
-  parser or immediately after. No corresponding `RHSGroupBy` node or
-  parse-stage `__group` rewrite exists in the code.
+  parser or immediately after. No corresponding `RHSGroupBy` node or parse-stage
+  `__group` rewrite exists in the code.
 
 - The current implementation already has a stable semantic helper boundary.
   `src/parser/ast/rule.rs` classifies aggregations inside `Rule::body_terms()`,
@@ -319,8 +318,8 @@ The planned edits are safe to re-run. If the new behavioural tests reveal an
 existing parser-level aggregation side effect that contradicts this plan:
 
 1. Stop implementation.
-2. Record the contradiction in the `Decision Log` and `Surprises &
-   Discoveries` sections.
+2. Record the contradiction in the `Decision Log` and `Surprises & Discoveries`
+   sections.
 3. Re-scope the work as a parser-architecture change rather than a conformance
    alignment task.
 

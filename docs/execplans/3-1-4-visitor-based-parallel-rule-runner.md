@@ -23,8 +23,8 @@ Observable success is:
 - Parallel rule execution produces identical diagnostics to sequential dispatch
   (verified by behavioural tests against the existing `run_store_over_cst`
   pattern in `tests/linter_rule_store.rs`).
-- Diagnostics are sorted deterministically by `(span.start, span.end,
-  rule_name)` regardless of thread scheduling.
+- Diagnostics are sorted deterministically by
+  `(span.start, span.end, rule_name)` regardless of thread scheduling.
 - Unit and behavioural tests cover empty stores, single rules, multiple rules,
   overlapping target kinds, empty target kinds, config-aware rules, ordering
   determinism, and `Send + Sync` conformance.
@@ -187,8 +187,7 @@ Files modified (8, within tolerance of 8):
 - `Cargo.toml` (edit): added `rayon = "1.10"`.
 - `src/linter/runner.rs` (new): `Runner` struct, parallel dispatch, unit
   tests.
-- `src/linter/mod.rs` (edit): added `mod runner;` and `pub use
-  runner::Runner;`.
+- `src/linter/mod.rs` (edit): added `mod runner;` and `pub use runner::Runner;`.
 - `tests/linter_runner/main.rs` (new): behavioural tests and helpers.
 - `tests/linter_runner/rules.rs` (new): shared test rule stubs.
 - `docs/ddlint-design.md` (edit): documented `Runner` contract in section 3.1.
@@ -221,8 +220,8 @@ module lives at `src/linter/` and currently contains three files:
   tests.
 
 The CST is built on `rowan` 0.15. `SyntaxKind` is defined in `src/language.rs`
-as a `#[repr(u16)]` enum with ~173 variants. The `DdlogLanguage` newtype
-bridges `SyntaxKind` into rowan's type system.
+as a `#[repr(u16)]` enum with ~173 variants. The `DdlogLanguage` newtype bridges
+`SyntaxKind` into rowan's type system.
 
 Key types for the runner:
 
