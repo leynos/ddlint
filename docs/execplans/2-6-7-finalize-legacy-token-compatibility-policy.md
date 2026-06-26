@@ -4,8 +4,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: IN PROGRESS — implementation is gated; CodeRabbit review and any
-follow-up fixes remain
+Status: COMPLETE — implementation, validation, and CodeRabbit review are done
 
 ## Purpose / big picture
 
@@ -293,6 +292,8 @@ scope tolerance below, stop and escalate.
   target and `typedef` as a rejected legacy keyword.
 - [x] (2026-06-26) Final implementation gates passed with logs captured under
   `/tmp/2-6-7-final-make-{fmt,markdownlint,nixie,check-fmt,lint,test}.log`.
+- [x] (2026-06-26) Ran `coderabbit review --agent` after pushing commit
+  `405e5e1`; CodeRabbit completed with `findings: 0`.
 
 ## Surprises & Discoveries
 
@@ -472,6 +473,8 @@ The final deterministic gates passed on 2026-06-26:
 - `make check-fmt`
 - `make lint`
 - `CI=1 make test`
+
+CodeRabbit reviewed the pushed implementation commit and reported zero findings.
 
 The main implementation lesson was that `typedef` compatibility had leaked into
 tests whose purpose was not compatibility: attribute placement and
