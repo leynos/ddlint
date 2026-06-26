@@ -23,7 +23,7 @@ use crate::{Span, SyntaxKind};
 /// use ddlint::parse;
 /// use ddlint::parser::validators::name_uniqueness::validate_name_uniqueness;
 ///
-/// let parsed = parse("typedef A = u32\ntypedef A = string");
+/// let parsed = parse("type A = u32\ntype A = string");
 /// let errors = validate_name_uniqueness(parsed.root());
 /// assert_eq!(errors.len(), 1);
 /// ```
@@ -167,8 +167,8 @@ mod tests {
     #[test]
     fn no_duplicates_no_errors() {
         let src = concat!(
-            "typedef A = u32\n",
-            "typedef B = string\n",
+            "type A = u32\n",
+            "type B = string\n",
             "input relation R(x: u32)\n",
             "index I(x: u32) on R[x]\n",
         );
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case("typedef A = u32\ntypedef A = string", "duplicate type name 'A'")]
+    #[case("type A = u32\ntype A = string", "duplicate type name 'A'")]
     #[case(
         "input relation R(x: u32)\noutput relation R(y: string)\n",
         "duplicate relation name 'R'"
@@ -213,8 +213,8 @@ mod tests {
 
     #[test]
     fn malformed_item_skipped() {
-        // A typedef without a name should not cause a false positive
-        let src = "typedef = u32\ntypedef A = string";
+        // A type without a name should not cause a false positive
+        let src = "type = u32\ntype A = string";
         let parsed = parse(src);
         let errors = super::validate_name_uniqueness(parsed.root());
         assert!(

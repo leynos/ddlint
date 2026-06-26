@@ -62,3 +62,28 @@ assert!(diagnostics.is_empty());
 
 `ddlint` uses the `log` API for parser warnings. Initialize a logger in your
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
+
+
+# Users' guide
+
+This guide records user-visible behaviour for DDlog source files parsed by
+`ddlint`.
+
+
+## Legacy DDlog tokens
+
+The parser keeps legacy token kinds in the lexer so diagnostics can point to
+the exact source span, but unsupported legacy syntax is rejected during parsing.
+
+- Use `type Foo = ...` instead of `typedef Foo = ...`.
+- Use sized integer types such as `i64`, `u64`, and `u32` instead of `bigint`
+  or `bit<N>`.
+- Use `f64` instead of `double`.
+- Use `f32` instead of `float`.
+- Use signed sized integer types such as `i32` instead of `signed<N>`.
+- Remove `<=>`; it was reserved upstream but has no DDlog semantics in
+  `ddlint`.
+- Use `#[...]` for attributes. A bare `#` is rejected.
+
+`as` remains valid in supported grammar positions, including import aliases
+such as `import foo::bar as baz`.

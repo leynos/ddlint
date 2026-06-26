@@ -308,6 +308,12 @@ Important invariants:
   output-signature check and emits the targeted diagnostic
   `transformer declarations require ':' followed by at least one output identifier`
   when the colon or first output identifier is missing.
+- Reserved-token compatibility diagnostics are centralized in
+  `src/parser/reserved_tokens.rs`. The lexer keeps legacy token kinds such as
+  `K_TYPEDEF`, `K_BIGINT`, and `T_SPACESHIP` so parser recovery can report
+  exact spans, while parser scanners and the Pratt expression layer reject
+  unsupported uses through `reserved_tokens::rejection_for` and
+  `reserved_tokens::reserved_token_error`.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.

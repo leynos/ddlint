@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use chumsky::error::Simple;
 
 use crate::parser::ast::{Expr, StringLiteral};
+use crate::parser::reserved_tokens::rejection_for;
 use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
@@ -91,9 +92,13 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let expr = parser.parse_expr(0);
     if let Some(expr_val) = expr {
         for (kind, sp) in parser.ts.drain_unexpected_tokens() {
-            parser
-                .ts
-                .push_error(sp, format!("unexpected token: {kind:?}"));
+            if let Some(message) = rejection_for(kind) {
+                parser.ts.push_reserved_error(sp, message);
+            } else {
+                parser
+                    .ts
+                    .push_error(sp, format!("unexpected token: {kind:?}"));
+            }
         }
         if !parser.ts.has_errors() {
             return Ok(expr_val);

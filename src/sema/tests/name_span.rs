@@ -53,7 +53,7 @@ fn find_symbol<'a>(
     "project"
 )]
 #[case(
-    "typedef UserId = u64",
+    "type UserId = u64",
     "UserId",
     DeclarationKind::Type,
     SymbolOrigin::TypeDeclaration,

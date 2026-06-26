@@ -167,11 +167,14 @@ This register tracks parser behaviour against the syntax specification.
 ### 14. Legacy token compatibility policy
 
 - Topic: `typedef`, `as`, legacy type names, `#`, `<=>` policy completion.
-- Current behaviour (code): tokenizer still recognizes these tokens and parser
-  treatment is mixed (`src/tokenizer.rs`).
-- Spec/target behaviour: section 9.1 records compatibility intent but not a
-  fully closed policy matrix.
-- Decision status: `scheduled`.
+- Current behaviour (code): tokenizer recognises these tokens, and
+  `src/parser/reserved_tokens.rs` single-sources parser diagnostics for
+  unsupported uses. `type`, `import X as Y`, and `#[...]` remain accepted.
+- Spec/target behaviour: section 9.1 records the closed policy matrix.
+  `typedef`, legacy type names, bare `#`, and `<=>` are rejected with
+  deterministic diagnostics; `as` and attribute `#` keep their supported
+  grammar roles.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.7`.
 
 ### 15. Brace-group extension `{ expr }`

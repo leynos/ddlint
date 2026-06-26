@@ -341,7 +341,7 @@ fn rule_treated_as_line_start_after_newline_trivia() {
 fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
     let src = concat!(
         "import foo::bar\n",
-        "typedef T = string\n",
+        "type T = string\n",
         "input relation Log(id: u32) primary key (id)\n",
         "index I_Log(id: u32) on Log[id]\n",
         "function f(): u32 { return 1; }\n",

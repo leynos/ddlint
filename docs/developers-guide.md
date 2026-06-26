@@ -54,7 +54,11 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
-
+- Route reserved-token diagnostics through `src/parser/reserved_tokens.rs`.
+  That module owns the parser-internal messages and the `rejection_for`
+  predicate for unsupported legacy tokens. The canonical public policy table
+  lives in `docs/differential-datalog-parser-syntax-spec-updated.md` section
+  `9.1`; avoid duplicating it in code comments or local scanner modules.
 ## Spelling policy
 
 The lint and Markdown gates run pinned `typos` 1.48.0 with British English and

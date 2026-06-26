@@ -8,7 +8,7 @@ use rstest::rstest;
 #[case("#[inline]\nfunction f() {}\n", None)]
 #[case("#[hot]\ninput relation R(x: u32)\n", None)]
 #[case("#[cold]\nextern function f()\n", None)]
-#[case("#[cold]\ntypedef T = u32\n", Some("#[cold]"))]
+#[case("#[cold]\ntype T = u32\n", Some("#[cold]"))]
 fn collect_attribute_spans_valid_on_permitted_item(
     #[case] src: &str,
     #[case] expected_text: Option<&str>,
@@ -45,7 +45,7 @@ fn collect_attribute_spans_rejected_on_forbidden_item(#[case] src: &str) {
 
 #[test]
 fn collect_attribute_spans_stacked() {
-    let src = "#[a]\n#[b]\ntypedef T = u32\n";
+    let src = "#[a]\n#[b]\ntype T = u32\n";
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);
     assert_eq!(spans.len(), 2);
@@ -70,7 +70,7 @@ fn collect_attribute_spans_unclosed_bracket() {
 
 #[test]
 fn collect_attribute_spans_hash_without_bracket() {
-    let src = "# typedef T = u32\n";
+    let src = "# type T = u32\n";
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);
     assert!(spans.is_empty());
