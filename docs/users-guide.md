@@ -93,6 +93,30 @@ fn parse_sources(sources: &[&str]) {
 }
 ```
 
+
+# Users' guide
+
+This guide records user-visible behaviour for DDlog source files parsed by
+`ddlint`.
+
+
+## Legacy DDlog tokens
+
+The parser keeps legacy token kinds in the lexer so diagnostics can point to
+the exact source span, but unsupported legacy syntax is rejected during parsing.
+
+- Use `type Foo = ...` instead of `typedef Foo = ...`.
+- Use sized integer types such as `i64`, `u64`, and `u32` instead of `bigint`
+  or `bit<N>`.
+- Use `f64` instead of `double`.
+- Use `f32` instead of `float`.
+- Use signed sized integer types such as `i32` instead of `signed<N>`.
+- Remove `<=>`; it was reserved upstream but has no DDlog semantics in
+  `ddlint`.
+- Use `#[...]` for attributes. A bare `#` is rejected.
+
+`as` remains valid in supported grammar positions, including import aliases
+such as `import foo::bar as baz`.
 ## Relation declarations
 
 Relation declarations may combine an optional role, optional kind, optional

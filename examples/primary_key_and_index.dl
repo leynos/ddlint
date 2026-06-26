@@ -1,5 +1,5 @@
 /* Explicit record type relation, primary key, and a simple index */
-typedef Person = Person{
+type Person = Person{
     name: string,
     nationality: string,
     occupation: string

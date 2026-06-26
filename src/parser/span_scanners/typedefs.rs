@@ -14,10 +14,14 @@ pub(crate) fn collect_typedef_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
-    fn handle_typedef(st: &mut State<'_>, span: Span) {
+    fn handle_type(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
         st.push_line_span(start);
+    }
+
+    fn handle_typedef(st: &mut State<'_>, _span: Span) {
+        st.skip_line();
     }
 
     fn handle_extern(st: &mut State<'_>, span: Span) {
@@ -40,6 +44,7 @@ pub(crate) fn collect_typedef_spans(
 
     token_dispatch!(st, {
         SyntaxKind::K_TYPEDEF => handle_typedef,
+        SyntaxKind::K_TYPE => handle_type,
         SyntaxKind::K_EXTERN => handle_extern,
     });
 

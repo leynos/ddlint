@@ -7,6 +7,7 @@ use std::iter::Peekable;
 
 use chumsky::error::Simple;
 
+use crate::parser::reserved_tokens::reserved_token_error;
 use crate::{Span, SyntaxKind};
 
 pub(super) struct TokenStream<'a, I>
@@ -92,6 +93,10 @@ where
 
     pub(super) fn push_error(&mut self, span: Span, msg: impl Into<String>) {
         self.errors.push(Simple::custom(span, msg.into()));
+    }
+
+    pub(super) fn push_reserved_error(&mut self, span: Span, msg: &'static str) {
+        self.errors.push(reserved_token_error(span, msg));
     }
 
     pub(super) fn slice(&self, span: &Span) -> String {
