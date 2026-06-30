@@ -7,6 +7,8 @@
 
 - [Repository layout](./repository-layout.md): Map of the repository tree,
   path responsibilities, and placement rules for contributors.
+- [Users' guide](./users-guide.md): User-facing guide for applying `ddlint`
+  today.
 - [Documentation style guide](./documentation-style-guide.md): Authoring
   conventions for Markdown structure, spelling, formatting, diagrams, roadmaps,
   Request for Comments (RFCs), and Architectural Decision Records (ADRs).
@@ -56,8 +58,8 @@
 
 ## Decision records
 
-- [Architectural decision record 001: parser crate split](./adr-001-parser-crate-split.md):
-  Accepted decision record for parser crate boundaries and implementation
+- [Architectural decision record 001: parser crate split for multi-consumer use](./adr-001-parser-crate-split.md):
+  Proposed decision record for parser crate boundaries and implementation
   structure.
 
 ## Execution plans

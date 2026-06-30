@@ -83,6 +83,8 @@ survive beyond one implementation branch.
 - `docs/contents.md`: Index for the documentation set.
 - `docs/documentation-style-guide.md`: Documentation authoring and formatting
   rules.
+- `docs/repository-layout.md`: Reference for major documentation paths,
+  including document roles and ownership responsibilities.
 - `docs/ddlint-design.md`: Primary design document for `ddlint`.
 - `docs/developers-guide.md`: Maintainer workflow and implementation guidance.
 - `docs/roadmap.md`: Delivery roadmap and task sequencing.
