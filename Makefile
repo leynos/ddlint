@@ -1,5 +1,5 @@
-.PHONY: help all clean test build release lint fmt check-fmt markdownlint \
-        nixie tools
+.PHONY: help all clean test build release check lint typecheck fmt check-fmt \
+        markdownlint nixie tools
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
@@ -13,7 +13,7 @@ release: target/release/$(APP) ## Build release binary
 
 all: release ## Default target builds release binary
 
-check: check-fmt lint test
+check: check-fmt typecheck lint test
 
 clean: ## Remove build artifacts
 	$(CARGO) clean
@@ -26,6 +26,10 @@ target/%/$(APP): ## Build binary in debug or release mode
 
 lint: ## Run Clippy with warnings denied
 	$(CARGO) clippy $(CLIPPY_FLAGS)
+
+typecheck: ## Typecheck all workspace targets and features
+	CARGO_CACHE_RUSTC_INFO=0 $(CARGO) check --workspace --all-targets \
+		--all-features $(BUILD_JOBS)
 # Macro ensuring a tool exists in PATH
 define ensure_tool
 $(if $(shell command -v $(1) >/dev/null 2>&1 && echo y),,\
