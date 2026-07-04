@@ -64,12 +64,6 @@ assert!(diagnostics.is_empty());
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
 
 
-# Users' guide
-
-This guide records user-visible behaviour for DDlog source files parsed by
-`ddlint`.
-
-
 ## Legacy DDlog tokens
 
 The parser keeps legacy token kinds in the lexer so diagnostics can point to
