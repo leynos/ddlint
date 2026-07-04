@@ -58,7 +58,6 @@
 - **Style:** All documentation must adhere to the
   [documentation style guide](docs/documentation-style-guide.md).
 
-
 ## Change quality & committing
 
 - **Atomicity:** Aim for small, focused, atomic changes. Each change (and
