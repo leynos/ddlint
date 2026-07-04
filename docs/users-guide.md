@@ -64,12 +64,6 @@ assert!(diagnostics.is_empty());
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
 
 
-# Users' guide
-
-This guide describes user-visible parser behaviour and diagnostics for DDlog
-source accepted by `ddlint`.
-
-
 ## Relation declarations
 
 Relation declarations may combine an optional role, optional kind, optional
@@ -106,7 +100,6 @@ input relation Book(row: BookRow) primary key (row) (row.author, row.title)
 
 The current typed AST exposes the binder/list names from `primary key (...)`.
 Typed access to the trailing expression is deferred to roadmap item `2.6.6.1`.
-
 
 ## Relation diagnostics
 
