@@ -2,6 +2,7 @@
 
 - [Documentation contents](./contents.md): Index for the current documentation
   set and the recommended starting point for repository orientation.
+
 ## Core project documents
 
 - [Changelog](../CHANGELOG.md): User-facing release notes and migration
