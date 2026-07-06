@@ -3,3 +3,4 @@ target/
 Cargo.lock
 .crush/
 .grepai/
+__pycache__/
