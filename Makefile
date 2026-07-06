@@ -1,5 +1,5 @@
 .PHONY: help all clean test build release check lint typecheck fmt check-fmt \
-        markdownlint nixie tools
+        markdownlint nixie tools test-workflow-contracts
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
@@ -20,6 +20,9 @@ clean: ## Remove build artifacts
 
 test: ## Run tests with warnings treated as errors
 	RUSTFLAGS="-D warnings" $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
+
+test-workflow-contracts: ## Validate the mutation-testing caller contract
+	uv run --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
 
 target/%/$(APP): ## Build binary in debug or release mode
 	$(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
