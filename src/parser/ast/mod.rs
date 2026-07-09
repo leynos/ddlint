@@ -254,6 +254,7 @@ pub use type_def::TypeDef;
 #[cfg(test)]
 mod tests {
 
+    //! Tests for AST node accessors.
     mod identifier_span;
     mod precedence;
 

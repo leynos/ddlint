@@ -45,8 +45,10 @@ impl AsRef<str> for StringBody {
 pub fn lit_num(n: impl Into<NumericText>) -> Expr {
     let text: NumericText = n.into();
     let src = text.as_ref();
-    let literal = parse_numeric_literal(src)
-        .unwrap_or_else(|err| panic!("failed to parse numeric literal '{src}': {}", err.message()));
+    let literal = match parse_numeric_literal(src) {
+        Ok(literal) => literal,
+        Err(err) => panic!("failed to parse numeric literal '{src}': {}", err.message()),
+    };
     Expr::Literal(Literal::Number(literal))
 }
 

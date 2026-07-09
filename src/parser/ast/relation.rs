@@ -143,6 +143,7 @@ impl_ast_node!(Relation);
 #[cfg(test)]
 mod tests {
 
+    //! Tests for relation node parsing.
     use crate::{parse, test_util::span_text};
 
     #[test]

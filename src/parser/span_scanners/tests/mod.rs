@@ -54,20 +54,17 @@ fn assert_rule_span_collection(src: &str, config: &RuleSpanAssertConfig<'_>) {
         "{}",
         config.count_message
     );
-    let span = if config.select_last {
-        rule_spans
-            .last()
-            .cloned()
-            .unwrap_or_else(|| panic!("expected at least one rule span"))
+    let selected = if config.select_last {
+        rule_spans.last()
     } else {
-        rule_spans
-            .first()
-            .cloned()
-            .unwrap_or_else(|| panic!("expected at least one rule span"))
+        rule_spans.first()
     };
-    let rule_text = src
-        .get(span.clone())
-        .unwrap_or_else(|| panic!("rule span {span:?} out of bounds"));
+    let Some(span) = selected.cloned() else {
+        panic!("expected at least one rule span");
+    };
+    let Some(rule_text) = src.get(span.clone()) else {
+        panic!("rule span {span:?} out of bounds");
+    };
     let checked = if config.trim_before_check {
         rule_text.trim_start()
     } else {
@@ -199,10 +196,9 @@ fn collect_rule_spans_handles_adjacent_exclusions() {
     let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &exclusions);
     assert!(errors.is_empty());
     assert_eq!(rule_spans.len(), 1, "second rule should remain");
-    let remaining = rule_spans
-        .first()
-        .and_then(|sp| src.get(sp.clone()))
-        .unwrap_or_else(|| panic!("remaining rule span out of bounds"));
+    let Some(remaining) = rule_spans.first().and_then(|sp| src.get(sp.clone())) else {
+        panic!("remaining rule span out of bounds");
+    };
     assert!(
         remaining.starts_with("R2("),
         "unexpected remaining rule: {remaining}"

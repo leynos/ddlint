@@ -181,6 +181,19 @@ fn parse_top_level_for_statement(
     (None, last_errors.unwrap_or(fallback))
 }
 
+/// Return `true` when the token at `span` is a top-level terminating dot.
+fn is_terminating_dot(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    kind: SyntaxKind,
+    span: &Span,
+    depth: &DelimiterDepth,
+) -> bool {
+    kind == SyntaxKind::T_DOT
+        && depth.is_top_level()
+        && is_top_level_for_statement_terminator_dot(tokens, src, span.start)
+}
+
 fn find_top_level_dot(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -189,10 +202,7 @@ fn find_top_level_dot(
     let mut depth = DelimiterDepth::default();
     for (idx, (kind, span)) in tokens.iter().enumerate().skip(start_idx) {
         depth.update(*kind);
-        if *kind == SyntaxKind::T_DOT
-            && depth.is_top_level()
-            && is_top_level_for_statement_terminator_dot(tokens, src, span.start)
-        {
+        if is_terminating_dot(tokens, src, *kind, span, &depth) {
             return Some((span.clone(), idx));
         }
     }

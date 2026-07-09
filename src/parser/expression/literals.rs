@@ -29,31 +29,39 @@ where
     /// ```
     pub(super) fn parse_literal(&mut self, kind: SyntaxKind, span: &Span) -> Option<Expr> {
         match kind {
-            SyntaxKind::T_NUMBER => match parse_numeric_literal(&self.ts.slice(span)) {
-                Ok(number) => Some(Expr::Literal(Literal::Number(number))),
-                Err(err) => {
-                    self.ts.push_error(span.clone(), err.message());
-                    None
-                }
-            },
-            SyntaxKind::T_STRING => {
-                // Check cache first
-                if let Some(cached) = self.string_literal_cache.remove(&span.start) {
-                    return Some(Expr::Literal(Literal::String(cached)));
-                }
-
-                // Cache miss: parse as before
-                match StringLiteral::parse(&self.ts.slice(span)) {
-                    Ok(s) => Some(Expr::Literal(Literal::String(s))),
-                    Err(msg) => {
-                        self.ts.push_error(span.clone(), msg.to_string());
-                        None
-                    }
-                }
-            }
+            SyntaxKind::T_NUMBER => self.parse_number_literal(span),
+            SyntaxKind::T_STRING => self.parse_string_literal(span),
             SyntaxKind::K_TRUE => Some(Expr::Literal(Literal::Bool(true))),
             SyntaxKind::K_FALSE => Some(Expr::Literal(Literal::Bool(false))),
             _ => None,
+        }
+    }
+
+    /// Parse a numeric literal token, recording a diagnostic on failure.
+    fn parse_number_literal(&mut self, span: &Span) -> Option<Expr> {
+        match parse_numeric_literal(&self.ts.slice(span)) {
+            Ok(number) => Some(Expr::Literal(Literal::Number(number))),
+            Err(err) => {
+                self.ts.push_error(span.clone(), err.message());
+                None
+            }
+        }
+    }
+
+    /// Parse a string literal token, reusing the cache when possible.
+    fn parse_string_literal(&mut self, span: &Span) -> Option<Expr> {
+        // Check cache first
+        if let Some(cached) = self.string_literal_cache.remove(&span.start) {
+            return Some(Expr::Literal(Literal::String(cached)));
+        }
+
+        // Cache miss: parse as before
+        match StringLiteral::parse(&self.ts.slice(span)) {
+            Ok(s) => Some(Expr::Literal(Literal::String(s))),
+            Err(msg) => {
+                self.ts.push_error(span.clone(), msg.to_string());
+                None
+            }
         }
     }
 }

@@ -154,12 +154,12 @@ fn classify_aggregation_with_tracking(
     }
 
     let mut iter = args.into_iter();
-    let first = iter
-        .next()
-        .unwrap_or_else(|| unreachable!("len pre-checked as 2; first arg missing"));
-    let second = iter
-        .next()
-        .unwrap_or_else(|| unreachable!("len pre-checked as 2; second arg missing"));
+    let (Some(first), Some(second)) = (iter.next(), iter.next()) else {
+        // Unreachable: the arity is pre-checked as 2 above; decline the
+        // term rather than panic if the invariant is ever broken.
+        debug_assert!(false, "len pre-checked as 2; arguments missing");
+        return None;
+    };
     let (project, key) = match source {
         AggregationSource::GroupBy => (first, second),
         AggregationSource::LegacyAggregate => (second, first),
@@ -278,6 +278,7 @@ fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple
 
 #[cfg(test)]
 mod tests {
+    //! Tests for rule body classification.
     use super::*;
     use chumsky::error::SimpleReason;
 

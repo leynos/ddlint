@@ -6,22 +6,22 @@ use super::{Expr, RuleBodyTerm, RuleForLoop};
 use crate::parse;
 
 mod helpers {
+    //! Shared helpers for rule parsing tests.
     use super::*;
     use crate::parser::ast::Pattern;
 
     /// Parse source, extract the first rule's flattened body terms, and assert
     /// that all terms are Expression variants with the expected count.
-    #[expect(clippy::expect_used, reason = "test helper for clearer failures")]
     pub(super) fn assert_flattened_terms(src: &str, expected_len: usize) -> Vec<RuleBodyTerm> {
         let parsed = parse(src);
         crate::test_util::assert_no_parse_errors(parsed.errors());
-        let rule = parsed
-            .root()
-            .rules()
-            .first()
-            .cloned()
-            .expect("rule missing");
-        let terms = rule.flattened_body_terms().expect("should parse");
+        let Some(rule) = parsed.root().rules().first().cloned() else {
+            panic!("rule missing");
+        };
+        let terms = match rule.flattened_body_terms() {
+            Ok(terms) => terms,
+            Err(errs) => panic!("should parse: {errs:?}"),
+        };
         assert_eq!(terms.len(), expected_len);
         for (i, term) in terms.iter().enumerate() {
             assert!(

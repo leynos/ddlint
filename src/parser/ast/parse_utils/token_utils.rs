@@ -135,6 +135,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    //! Tests for token utility helpers.
     use super::*;
     use crate::SyntaxKind;
     use crate::parser::parse;
@@ -142,8 +143,7 @@ mod tests {
 
     fn token_of_kind(src: &str, kind: SyntaxKind) -> rowan::SyntaxToken<DdlogLanguage> {
         let parsed = parse(src);
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        parsed
+        let Some(token) = parsed
             .root()
             .syntax()
             .descendants_with_tokens()
@@ -151,7 +151,10 @@ mod tests {
                 SyntaxElement::Token(t) if t.kind() == kind => Some(t),
                 _ => None,
             })
-            .expect("token missing")
+        else {
+            panic!("token missing");
+        };
+        token
     }
 
     #[test]

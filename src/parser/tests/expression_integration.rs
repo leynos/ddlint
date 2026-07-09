@@ -1,3 +1,5 @@
+//! Integration tests for expression parsing.
+
 use crate::test_util::assert_no_parse_errors;
 use crate::{SyntaxKind, parse};
 

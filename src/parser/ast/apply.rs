@@ -97,6 +97,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    //! Tests for apply node parsing.
     use crate::parse;
 
     #[test]

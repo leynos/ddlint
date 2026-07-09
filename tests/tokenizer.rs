@@ -23,6 +23,7 @@ fn single_tokens(#[case] source: &str, #[case] expected: Vec<SyntaxKind>) {
 }
 
 mod expect_used {
+    //! Tests exercising expect-style tokenizer assertions.
     #![expect(clippy::expect_used, reason = "tests assert exact behaviour")]
 
     use super::*;

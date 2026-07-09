@@ -9,8 +9,10 @@ use ddlint::test_util::pat;
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
-    let literal = parse_numeric_literal(n)
-        .unwrap_or_else(|err| panic!("failed to parse numeric literal '{n}': {}", err.message()));
+    let literal = match parse_numeric_literal(n) {
+        Ok(literal) => literal,
+        Err(err) => panic!("failed to parse numeric literal '{n}': {}", err.message()),
+    };
     Expr::Literal(Literal::Number(literal))
 }
 

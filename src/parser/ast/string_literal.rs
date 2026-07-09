@@ -94,29 +94,35 @@ impl StringLiteral {
         let (interned, prefix, rest) = parse_prefix(text);
 
         match prefix {
-            StringPrefix::Raw { interpolated } => {
-                let body = rest
-                    .strip_suffix("|]")
-                    .ok_or("unterminated raw string literal")?;
-                Ok(Self {
-                    body: body.to_string(),
-                    kind: StringKind::Raw { interpolated },
-                    interned,
-                })
-            }
-            StringPrefix::Standard => {
-                let content = rest.strip_prefix('"').ok_or("expected '\"'")?;
-                let body = content
-                    .strip_suffix('"')
-                    .ok_or("unterminated string literal")?;
-                let interpolated = contains_unescaped_interpolation(body);
-                Ok(Self {
-                    body: body.to_string(),
-                    kind: StringKind::Standard { interpolated },
-                    interned,
-                })
-            }
+            StringPrefix::Raw { interpolated } => Self::parse_raw(rest, interpolated, interned),
+            StringPrefix::Standard => Self::parse_standard(rest, interned),
         }
+    }
+
+    /// Parse the remainder of a raw string literal after its prefix.
+    fn parse_raw(rest: &str, interpolated: bool, interned: bool) -> Result<Self, &'static str> {
+        let body = rest
+            .strip_suffix("|]")
+            .ok_or("unterminated raw string literal")?;
+        Ok(Self {
+            body: body.to_string(),
+            kind: StringKind::Raw { interpolated },
+            interned,
+        })
+    }
+
+    /// Parse the remainder of a standard quoted string literal.
+    fn parse_standard(rest: &str, interned: bool) -> Result<Self, &'static str> {
+        let content = rest.strip_prefix('"').ok_or("expected '\"'")?;
+        let body = content
+            .strip_suffix('"')
+            .ok_or("unterminated string literal")?;
+        let interpolated = contains_unescaped_interpolation(body);
+        Ok(Self {
+            body: body.to_string(),
+            kind: StringKind::Standard { interpolated },
+            interned,
+        })
     }
 
     /// True when the literal includes interpolation markers.
@@ -132,25 +138,31 @@ impl StringLiteral {
     #[must_use]
     pub fn to_source(&self) -> String {
         match self.kind {
-            StringKind::Standard { .. } => {
-                let rendered = format!("{:?}", self.body);
-                if self.interned {
-                    format!("i{rendered}")
-                } else {
-                    rendered
-                }
-            }
-            StringKind::Raw { interpolated } => {
-                let mut prefix = String::new();
-                if self.interned {
-                    prefix.push('i');
-                }
-                if interpolated {
-                    prefix.push('$');
-                }
-                format!("{prefix}[|{}|]", self.body)
-            }
+            StringKind::Standard { .. } => self.standard_source(),
+            StringKind::Raw { interpolated } => self.raw_source(interpolated),
         }
+    }
+
+    /// Render a standard quoted literal, applying the interning prefix.
+    fn standard_source(&self) -> String {
+        let rendered = format!("{:?}", self.body);
+        if self.interned {
+            format!("i{rendered}")
+        } else {
+            rendered
+        }
+    }
+
+    /// Render a raw literal, applying interning and interpolation prefixes.
+    fn raw_source(&self, interpolated: bool) -> String {
+        let mut prefix = String::new();
+        if self.interned {
+            prefix.push('i');
+        }
+        if interpolated {
+            prefix.push('$');
+        }
+        format!("{prefix}[|{}|]", self.body)
     }
 
     /// Render the literal for `Expr::to_sexpr` output.

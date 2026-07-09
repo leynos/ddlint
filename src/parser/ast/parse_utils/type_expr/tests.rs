@@ -1,3 +1,5 @@
+//! Tests for type expression parsing.
+
 use super::super::errors::{Delim, ParseError};
 use super::super::outputs::skip_to_top_level_colon;
 use super::*;
@@ -27,8 +29,9 @@ fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<Ddlo
 fn return_type_for(#[default("function t() {}")] src: &str) -> Option<String> {
     let parsed = parse(src);
     let functions = parsed.root().functions();
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let func = functions.first().expect("function missing");
+    let Some(func) = functions.first() else {
+        panic!("function missing");
+    };
     let mut iter = func.syntax().children_with_tokens().peekable();
     let mut depth = 0usize;
     for e in &mut iter {

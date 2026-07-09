@@ -4,18 +4,17 @@ use super::super::{AstNode, find_identifier_span, find_identifier_span_in_range}
 use crate::{parse, test_util::span_text};
 
 fn first_rule(source: &str) -> super::super::Rule {
-    parse(source)
-        .root()
-        .rules()
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| panic!("expected a parsed rule in `{source}`"))
+    let Some(rule) = parse(source).root().rules().into_iter().next() else {
+        panic!("expected a parsed rule in `{source}`");
+    };
+    rule
 }
 
 fn required_offset(source: &str, needle: &str) -> usize {
-    source
-        .find(needle)
-        .unwrap_or_else(|| panic!("expected `{needle}` in `{source}`"))
+    let Some(offset) = source.find(needle) else {
+        panic!("expected `{needle}` in `{source}`");
+    };
+    offset
 }
 
 #[test]

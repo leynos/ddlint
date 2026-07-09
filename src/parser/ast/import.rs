@@ -56,6 +56,7 @@ impl_ast_node!(Import);
 #[cfg(test)]
 mod tests {
 
+    //! Tests for import node parsing.
     use crate::parse;
     #[test]
     fn parses_simple_import() {

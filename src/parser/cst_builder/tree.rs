@@ -171,6 +171,7 @@ fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, te
 
 #[cfg(test)]
 mod tests {
+    //! Tests for CST tree construction.
     use super::*;
     use crate::parser::ast::Root;
     use crate::parser::ast::rule::text_range_to_span;

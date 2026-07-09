@@ -6,12 +6,13 @@ use super::{DeclarationKind, parse_ok, symbols_named};
 use crate::sema::SymbolOrigin;
 
 fn span_text<'a>(source: &'a str, span: &crate::Span) -> &'a str {
-    source.get(span.start..span.end).unwrap_or_else(|| {
+    let Some(text) = source.get(span.start..span.end) else {
         panic!(
             "invalid UTF-8 boundary for span {}..{} in `{source}`",
             span.start, span.end
         )
-    })
+    };
+    text
 }
 
 fn find_symbol<'a>(
@@ -20,10 +21,13 @@ fn find_symbol<'a>(
     kind: DeclarationKind,
     origin: SymbolOrigin,
 ) -> &'a super::super::Symbol {
-    symbols_named(model, name, kind)
+    let Some(symbol) = symbols_named(model, name, kind)
         .into_iter()
         .find(|symbol| symbol.origin() == origin)
-        .unwrap_or_else(|| panic!("missing symbol `{name}` with origin {origin:?}"))
+    else {
+        panic!("missing symbol `{name}` with origin {origin:?}");
+    };
+    symbol
 }
 
 #[rstest]

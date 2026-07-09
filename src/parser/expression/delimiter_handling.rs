@@ -77,42 +77,42 @@ where
         let kind = token.kind;
         let span = &token.span;
 
-        match kind {
-            SyntaxKind::T_RPAREN => {
-                if context.use_for_paren {
-                    let other_open = state.brace_depth > 0 || state.bracket_depth > 0;
-                    let (new_depth, new_end) =
-                        self.handle_close_paren(span, state.paren_depth, other_open)?;
-                    state.paren_depth = new_depth;
-                    state.end = Some(new_end);
-                } else {
-                    let new_end = self.handle_close_delimiter(
-                        span,
-                        &mut state.paren_depth,
-                        context.unmatched_paren_msg,
-                    )?;
-                    state.end = Some(new_end);
-                }
-            }
-            SyntaxKind::T_RBRACE => {
-                let new_end = self.handle_close_delimiter(
-                    span,
-                    &mut state.brace_depth,
-                    context.unmatched_brace_msg,
-                )?;
-                state.end = Some(new_end);
-            }
-            SyntaxKind::T_RBRACKET => {
-                let new_end = self.handle_close_delimiter(
-                    span,
-                    &mut state.bracket_depth,
-                    context.unmatched_bracket_msg,
-                )?;
-                state.end = Some(new_end);
-            }
-            _ => unreachable!("process_closing_delimiter called with non-closing delimiter"),
+        if kind == SyntaxKind::T_RPAREN {
+            return self.process_closing_paren(span, state, context);
         }
 
+        let (depth, message) = match kind {
+            SyntaxKind::T_RBRACE => (&mut state.brace_depth, context.unmatched_brace_msg),
+            SyntaxKind::T_RBRACKET => (&mut state.bracket_depth, context.unmatched_bracket_msg),
+            _ => unreachable!("process_closing_delimiter called with non-closing delimiter"),
+        };
+        let new_end = self.handle_close_delimiter(span, depth, message)?;
+        state.end = Some(new_end);
+
+        Some(())
+    }
+
+    /// Handle a closing parenthesis, honouring for-loop context rules.
+    fn process_closing_paren(
+        &mut self,
+        span: &Span,
+        state: &mut DelimiterState,
+        context: &PatternContext,
+    ) -> Option<()> {
+        if context.use_for_paren {
+            let other_open = state.brace_depth > 0 || state.bracket_depth > 0;
+            let (new_depth, new_end) =
+                self.handle_close_paren(span, state.paren_depth, other_open)?;
+            state.paren_depth = new_depth;
+            state.end = Some(new_end);
+        } else {
+            let new_end = self.handle_close_delimiter(
+                span,
+                &mut state.paren_depth,
+                context.unmatched_paren_msg,
+            )?;
+            state.end = Some(new_end);
+        }
         Some(())
     }
 

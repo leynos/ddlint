@@ -123,6 +123,7 @@ impl Default for CstRuleStore {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for the lint store.
     use rstest::{fixture, rstest};
 
     use super::*;

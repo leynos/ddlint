@@ -4,6 +4,18 @@ use super::Name;
 use crate::parser::ast::{Expr, MatchArm, Pattern};
 use crate::parser::pattern::parse_pattern;
 
+/// Parse `src` as a pattern, panicking with a diagnostic on failure.
+///
+/// Test builders take pattern source text for brevity; an unparsable
+/// pattern is a defect in the test itself, so the panic is the verdict.
+#[track_caller]
+fn parse_pattern_or_panic(src: &str) -> Pattern {
+    match parse_pattern(src) {
+        Ok(pattern) => pattern,
+        Err(errs) => panic!("failed to parse pattern {src:?}: {errs:?}"),
+    }
+}
+
 /// Construct a variable [`Expr::Variable`].
 ///
 /// Accepts any type convertible into [`Name`].
@@ -148,8 +160,7 @@ pub fn for_loop(
     body: Expr,
 ) -> Expr {
     let pattern_src = pattern.into();
-    let pattern = parse_pattern(&pattern_src)
-        .unwrap_or_else(|errs| panic!("failed to parse pattern {pattern_src:?}: {errs:?}"));
+    let pattern = parse_pattern_or_panic(&pattern_src);
     Expr::ForLoop {
         pattern,
         iterable: Box::new(iterable),
@@ -222,15 +233,14 @@ pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) {
 #[must_use]
 pub fn match_arm(pattern: impl Into<String>, body: Expr) -> MatchArm {
     let pattern_src = pattern.into();
-    let pattern = parse_pattern(&pattern_src)
-        .unwrap_or_else(|errs| panic!("failed to parse pattern {pattern_src:?}: {errs:?}"));
+    let pattern = parse_pattern_or_panic(&pattern_src);
     MatchArm { pattern, body }
 }
 
 /// Parse and construct a [`Pattern`] node for tests.
 #[must_use]
 pub fn pat(src: &str) -> Pattern {
-    parse_pattern(src).unwrap_or_else(|errs| panic!("failed to parse pattern {src:?}: {errs:?}"))
+    parse_pattern_or_panic(src)
 }
 
 /// Construct a `match` expression from a scrutinee and a list of arms.
