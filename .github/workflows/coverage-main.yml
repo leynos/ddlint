@@ -1,13 +1,18 @@
-name: CI
+name: Coverage (main)
+
+# CodeScene accepts `cs-coverage upload` only for analysed branches, so
+# main-branch coverage is uploaded here on push; pull requests run the
+# changed-line gate (`cs-coverage check`) in ci.yml instead. This
+# workflow also advances the coverage ratchet baseline: caches saved on
+# main are readable by every pull-request run, so the baseline written
+# here is the one PR ratchet checks compare against.
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
 
 jobs:
-  build-test:
+  coverage-upload:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -18,21 +23,8 @@ jobs:
       CODESCENE_CLI_SHA256: ${{ vars.CODESCENE_CLI_SHA256 || '' }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       - name: Setup Rust
         uses: leynos/shared-actions/.github/actions/setup-rust@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
-      - name: Format
-        run: make check-fmt
-      - name: Lint
-        run: make lint
-      - name: Setup uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
-        with:
-          python-version: '3.13'
-          enable-cache: true
-      - name: Workflow contract tests
-        run: make test-workflow-contracts
       - name: Generate coverage
         uses: leynos/shared-actions/.github/actions/generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
         with:
@@ -40,12 +32,10 @@ jobs:
           format: lcov
           use-cargo-nextest: 'false'
           with-ratchet: 'true'
-      - name: Check coverage against CodeScene gates
+      - name: Upload coverage data to CodeScene
         if: env.CS_ACCESS_TOKEN
         uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
         with:
           format: lcov
-          mode: check
-          project-url: https://api.codescene.io/v2/projects/69278
           access-token: ${{ env.CS_ACCESS_TOKEN }}
           installer-checksum: ${{ env.CODESCENE_CLI_SHA256 }}
