@@ -1,9 +1,8 @@
 # Implement symbol-table and scope-resolution passes (roadmap 3.3.1)
 
-This ExecPlan (execution plan) is a living document. The sections
-`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
-`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
-proceeds.
+This ExecPlan (execution plan) is a living document. The sections `Constraints`,
+`Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
+and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
 Status: COMPLETE
 
@@ -69,7 +68,7 @@ section currently describes parser recovery and the parser/linter relationship,
 not symbol tables. The practical design basis for this milestone is therefore:
 
 - the roadmap text in `docs/roadmap.md` items `3.3.1` through `3.3.4`;
-- the initial lint catalog in `docs/ddlint-design.md §3.3`; and
+- the initial lint catalogue in `docs/ddlint-design.md §3.3`; and
 - the semantic-layer and provenance invariants in
   `docs/parser-implementation-notes.md`.
 

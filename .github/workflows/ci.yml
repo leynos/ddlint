@@ -22,15 +22,15 @@ jobs:
           fetch-depth: 0
       - name: Setup Rust
         uses: leynos/shared-actions/.github/actions/setup-rust@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
-      - name: Format
-        run: make check-fmt
-      - name: Lint
-        run: make lint
       - name: Setup uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
         with:
           python-version: '3.13'
           enable-cache: true
+      - name: Format
+        run: make check-fmt
+      - name: Lint
+        run: make lint
       - name: Workflow contract tests
         run: make test-workflow-contracts
       - name: Generate coverage

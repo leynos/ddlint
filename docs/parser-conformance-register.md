@@ -167,7 +167,7 @@ This register tracks parser behaviour against the syntax specification.
 ### 14. Legacy token compatibility policy
 
 - Topic: `typedef`, `as`, legacy type names, `#`, `<=>` policy completion.
-- Current behaviour (code): tokenizer still recognises these tokens and parser
+- Current behaviour (code): tokenizer still recognizes these tokens and parser
   treatment is mixed (`src/tokenizer.rs`).
 - Spec/target behaviour: section 9.1 records compatibility intent but not a
   fully closed policy matrix.

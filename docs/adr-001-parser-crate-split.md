@@ -377,7 +377,7 @@ Exit criteria:
 - Whether dependency extraction belongs in `ddlog-sema` or a separate
   `ddlog-plan` crate.
 - Final ownership boundary for planner integration artefacts (`pliron` dialect,
-  rewrite rules, canonicaliser, and hash policy).
+  rewrite rules, canonicalizer, and hash policy).
 - Compatibility window for deprecated facade APIs after consumer migration.
 
 ## Architectural rationale

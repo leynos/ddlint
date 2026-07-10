@@ -4,3 +4,7 @@ Cargo.lock
 .crush/
 .grepai/
 __pycache__/
+.coverage
+.pytest_cache/
+.typos-oxendict-base.json
+.typos-oxendict-base.toml
