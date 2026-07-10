@@ -299,8 +299,8 @@ enum SyntaxKind {
 
 To complete the integration with `rowan`, the `rowan::Language` trait must be
 implemented for a newtype that wraps the project’s `SyntaxKind`. This trait
-acts as the bridge, with its `kind_from_raw` and `kind_to_raw` methods using
-the `FromPrimitive` and `ToPrimitive` implementations to connect the specific
+acts as the bridge, with its `kind_from_raw` and `kind_to_raw` methods using the
+`FromPrimitive` and `ToPrimitive` implementations to connect the specific
 DDlog grammar to the generic `rowan` machinery.[^2]
 
 ### 2.2. Parser implementation strategy: leveraging `chumsky`
@@ -386,8 +386,8 @@ and simply skipping over the `N_ERROR` nodes.
 This elevates the user experience from frustrating to empowering. The developer
 receives immediate feedback not only on the syntax error they just introduced
 but also on all the correct code in the rest of the file. A typo in one rule no
-longer blinds the linter to a logical error in another. This makes the choice
-of `chumsky` not merely an implementation detail of the parser, but a strategic
+longer blinds the linter to a logical error in another. This makes the choice of
+`chumsky` not merely an implementation detail of the parser, but a strategic
 investment in the core usability and value proposition of the entire linting
 tool. It enables the linter to function as a helpful "co-pilot" during
 development, rather than a rigid "gatekeeper" that only runs after the fact.
@@ -455,7 +455,7 @@ The core contracts are:
   projections, aggregations, recursion boundaries, and semantic facts such as
   keys, relation kinds, and stratification.
 - Determinism: semantic traversal, exported collections, and planner-handoff
-  serialisation must have stable ordering suitable for dependency analysis,
+  serialization must have stable ordering suitable for dependency analysis,
   canonical planning, and cache-key derivation.
 - Compatibility facade discipline: migration shims belong only in
   `ddlog-parser`, and every shim must carry a deprecation target release and a
@@ -478,7 +478,7 @@ The true power, and the resulting utility, of a linter are derived from its set
 of rules. A well-designed rule ecosystem is one that is easy for contributors
 to extend, simple for users to configure, and logically organized. This section
 details the anatomy of a lint rule, the tools for its creation, and the initial
-catalog of rules to be implemented.
+catalogue of rules to be implemented.
 
 ### 3.1. Anatomy of a lint rule
 
@@ -496,7 +496,7 @@ needing to read its source code.
 
 The `CstRule` trait contains the analytical logic. Its methods, such as
 `check_node(&self, node: &SyntaxNode, ctx: &RuleCtx, diagnostics: &mut Vec<LintDiagnostic>)`,
- will be called by the runner during the CST traversal. Inside these methods,
+will be called by the runner during the CST traversal. Inside these methods,
 the rule will inspect the provided `SyntaxNode`, use the `RuleCtx` to access
 file-level information or configuration, and append any discovered issues to
 the diagnostics sink. This design keeps the logic for each rule encapsulated
@@ -611,8 +611,8 @@ connects the store, context, and rule traits into a functioning execution
 pipeline.  It dispatches rule evaluations across a `rayon` thread pool for
 concurrent execution.  Because `rowan`'s `SyntaxNode` and `SyntaxToken` are
 `!Send + !Sync` (they use `Rc` and thread-local allocators), the runner employs
-a per-rule parallelism strategy: each `rayon` task clones the shared
-`GreenNode` (`Send + Sync + Clone`), constructs a thread-local red tree via
+a per-rule parallelism strategy: each `rayon` task clones the shared `GreenNode`
+(`Send + Sync + Clone`), constructs a thread-local red tree via
 `Root::from_green()`, and walks it independently.  Diagnostics are sorted by
 `(span.start, span.end, rule_name)` before being returned, ensuring
 deterministic output regardless of thread scheduling.  The implementation lives
@@ -779,12 +779,12 @@ existing rule surface. Provenance is retained through coarse source spans on
 declarations and on the enclosing literal or rule site for rule-local facts,
 with precise identifier-token spans captured additively when CST access exists.
 
-### 3.3. Initial lint rule catalog
+### 3.3. Initial lint rule catalogue
 
 To provide clear scope for the initial implementation phases and to deliver
-immediate value to users, the following catalog of rules is proposed. This list
-prioritizes correctness checks, followed by performance hints, and stylistic
-suggestions, establishing a solid foundation of essential lints.
+immediate value to users, the following catalogue of rules is proposed. This
+list prioritizes correctness checks, followed by performance hints, and
+stylistic suggestions, establishing a solid foundation of essential lints.
 
 Table: DDLint rule catalogue and metadata.
 
@@ -966,8 +966,8 @@ token in the CST.
 
 ### 5.2. The autofixing mechanism
 
-For rules that are marked as `Autofixable` in the rule catalog, the linter will
-be able to not only report the problem but also apply a suggested fix
+For rules that are marked as `Autofixable` in the rule catalogue, the linter
+will be able to not only report the problem but also apply a suggested fix
 automatically when run with the `--fix` flag.
 
 The implementation of this feature must be carefully designed to work with the
@@ -1195,7 +1195,8 @@ scalable linter engine, the rule management system, and the user-facing CLI.
   4. Build the full CLI using `clap`[^9], implementing the `explain` and `rules`
      subcommands and all specified flags.
 
-  5. Implement the initial set of "correctness" rules from the catalog, such as
+  5. Implement the initial set of "correctness" rules from the catalogue, such
+     as
      `unused-relation` and `recursive-negation`.
 
   6. Establish the full testing infrastructure, writing snapshot tests with
@@ -1220,7 +1221,7 @@ of issues.
     output generated by the `miette` library.[^5]
 
   2. Implement the autofixing infrastructure as described in the design. Add
-     automatic fixes for all rules marked as `Autofixable` in the catalog, with
+     automatic fixes for all rules marked as `Autofixable` in the catalogue, with
      corresponding "dual snapshot" tests.
 
   3. Expand the `chumsky` parser to cover the complete DDlog language
@@ -1228,7 +1229,7 @@ of issues.
      major syntactic constructs.
 
   4. Implement the remaining "performance" and "style" rule sets from the
-     catalog.
+     catalogue.
 
   5. Write comprehensive user documentation covering installation,
      configuration, all CLI commands, and details for every implemented rule.

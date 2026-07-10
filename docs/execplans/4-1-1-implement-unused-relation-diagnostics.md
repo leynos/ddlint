@@ -1,9 +1,8 @@
 # Implement `unused-relation` diagnostics
 
-This ExecPlan (execution plan) is a living document. The sections
-`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
-`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
-proceeds.
+This ExecPlan (execution plan) is a living document. The sections `Constraints`,
+`Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
+and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
 Status: Implemented
 
@@ -14,7 +13,7 @@ correctness catalogue. After this change, `ddlint` exports an `unused-relation`
 lint rule (`UnusedRelationRule`) that callers must explicitly register in a
 `CstRuleStore` before running the `Runner`. Once registered, the rule emits an
 `unused-relation` warning for each declared relation that has no resolved
-read-like uses anywhere in the analyzed program.
+read-like uses anywhere in the analysed program.
 
 For this milestone, "read from" means a resolved relation-position use in a
 rule body, a `for` iterable, or a `for` guard. A relation named in a rule head
@@ -153,8 +152,8 @@ would therefore under-report unused relations by treating writes as reads.
 - Decision: expose the first production rule as a normal exported rule type
   that tests register explicitly in `CstRuleStore`, rather than inventing a
   global default ruleset now. Rationale: the current repository has no shipped
-  rule-catalogue registration surface, and adding one would broaden scope
-  beyond `4.1.1`. Date/Author: 2026-03-21 / Codex.
+  rule-catalogue registration surface, and adding one would broaden scope beyond
+  `4.1.1`. Date/Author: 2026-03-21 / Codex.
 
 ## Proposed design
 
@@ -225,8 +224,8 @@ so relation uses carry enough provenance to distinguish reads from writes. Keep
 the existing `UseKind::Relation` and `UseKind::Variable` split; this milestone
 only needs extra origin metadata, not a new top-level use-kind taxonomy.
 
-Adjust semantic-model unit tests in `src/sema/tests.rs` and behavioural tests
-in `tests/semantic_scope_resolution.rs` so they assert the new provenance
+Adjust semantic-model unit tests in `src/sema/tests.rs` and behavioural tests in
+`tests/semantic_scope_resolution.rs` so they assert the new provenance
 contract. At minimum, add coverage proving:
 
 - a relation in a rule head is recorded as a write;

@@ -15,7 +15,7 @@ user-facing behaviour.
 
 ## Parse a program
 
-`parse` performs tokenisation, CST construction, top-level `for` rule
+`parse` performs tokenization, CST construction, top-level `for` rule
 extraction, and parser-level validation before returning `Parsed`.
 
 ```rust

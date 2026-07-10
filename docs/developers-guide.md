@@ -1,8 +1,8 @@
 # Developer guide
 
-This guide records the parser module structure introduced by issue `#223`.
-It is intentionally narrow and documents ownership boundaries rather than the
-full parsing pipeline.
+This guide records the parser module structure introduced by issue `#223`. It
+is intentionally narrow and documents ownership boundaries rather than the full
+parsing pipeline.
 
 ## Parser module structure
 
@@ -54,3 +54,16 @@ full parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
+
+## Spelling policy
+
+The lint and Markdown gates run pinned `typos` 1.48.0 with British English and
+Oxford `-ize` conventions. Before checking maintained Markdown, the generator
+refreshes the shared estate dictionary into an untracked local cache only when
+the authority is newer, then merges `typos.local.toml`. The generated
+`typos.toml` is reviewed and committed so a clean, network-restricted checkout
+can still enforce the last known-good policy.
+
+Add repository-only proper names or quoted upstream terms to
+`typos.local.toml`; never edit generated entries in `typos.toml` by hand. The
+gate also runs the helper's Python 3.13 tests with at least 90% line coverage.
