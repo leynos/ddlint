@@ -478,9 +478,9 @@ If formatting or Markdown validation changes files unexpectedly, rerun
 edit generated formatting by hand unless the formatter cannot express the
 required layout.
 
-## Artifacts and notes
+## Artefacts and notes
 
-The most important implementation artifact should be a compact macro example in
+The most important implementation artefact should be a compact macro example in
 `docs/ddlint-design.md` that mirrors the final public API. Keep it small enough
 to read in a terminal. A representative final example should resemble:
 

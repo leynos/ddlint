@@ -270,7 +270,7 @@ land scoped-identifier parsing independently, then re-apply call/apply split
 with tests in smaller commits. If a gate fails, fix the specific failure,
 re-run the failed target, then re-run full gates.
 
-## Artifacts and notes
+## Artefacts and notes
 
 Keep command logs under `/tmp/ddlint-*.log` and summarize relevant pass/fail
 lines in the implementation handoff. Prefer focused fixture additions over
