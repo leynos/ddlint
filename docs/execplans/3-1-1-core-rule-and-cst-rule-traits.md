@@ -329,7 +329,7 @@ If trait signatures must change after tests are written, update tests and
 `docs/ddlint-design.md` in the same change so contracts and documentation stay
 in sync.
 
-## Artifacts and notes
+## Artefacts and notes
 
 Keep command logs under `/tmp/ddlint-*.log` and summarize pass/fail outcomes in
 implementation notes or commit body.

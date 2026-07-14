@@ -334,7 +334,7 @@ old exports and introducing the new context types behind additive constructors,
 then migrate call sites incrementally. Re-run the failing gate first, then
 re-run all gates.
 
-## Artifacts and notes
+## Artefacts and notes
 
 Store gate logs in `/tmp/ddlint-*.log` and summarize pass/fail lines in the
 implementation handoff. Keep new tests concise and fixture-based.
