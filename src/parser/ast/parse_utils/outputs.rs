@@ -81,6 +81,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    //! Tests for parse output helpers.
     use super::*;
     use crate::parser::ast::AstNode;
     use crate::parser::parse;

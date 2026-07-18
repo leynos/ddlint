@@ -50,6 +50,7 @@ declare_lint! {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for the unused variable rule.
     use crate::linter::testing::run_rule;
     use rstest::rstest;
 

@@ -32,6 +32,42 @@ pub(crate) fn rule_body_literal_spans(
     split_literals(tokens, body_start, body_end)
 }
 
+/// Delimiter nesting depths tracked while walking a token slice.
+#[derive(Default)]
+struct DelimiterDepths {
+    paren: usize,
+    brace: usize,
+    bracket: usize,
+}
+
+impl DelimiterDepths {
+    /// Adjust the depths if `kind` opens or closes a delimiter.
+    fn update(&mut self, kind: SyntaxKind) {
+        match kind {
+            SyntaxKind::T_LPAREN => self.paren += 1,
+            SyntaxKind::T_RPAREN => {
+                debug_assert!(self.paren > 0, "unbalanced parentheses");
+                self.paren = self.paren.saturating_sub(1);
+            }
+            SyntaxKind::T_LBRACE => self.brace += 1,
+            SyntaxKind::T_RBRACE => {
+                debug_assert!(self.brace > 0, "unbalanced braces");
+                self.brace = self.brace.saturating_sub(1);
+            }
+            SyntaxKind::T_LBRACKET => self.bracket += 1,
+            SyntaxKind::T_RBRACKET => {
+                debug_assert!(self.bracket > 0, "unbalanced brackets");
+                self.bracket = self.bracket.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+
+    fn at_top_level(&self) -> bool {
+        self.paren == 0 && self.brace == 0 && self.bracket == 0
+    }
+}
+
 fn locate_body_bounds(
     tokens: &[(SyntaxKind, Span)],
     start_idx: usize,
@@ -40,41 +76,15 @@ fn locate_body_bounds(
     let mut idx = start_idx;
     let mut body_start = None;
     let mut body_end = None;
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
+    let mut depths = DelimiterDepths::default();
 
     while let Some((kind, span)) = tokens.get(idx) {
         if span.start >= end {
             break;
         }
 
-        match kind {
-            SyntaxKind::T_LPAREN => paren_depth += 1,
-            SyntaxKind::T_RPAREN => {
-                debug_assert!(
-                    paren_depth > 0,
-                    "unbalanced parentheses in locate_body_bounds"
-                );
-                paren_depth = paren_depth.saturating_sub(1);
-            }
-            SyntaxKind::T_LBRACE => brace_depth += 1,
-            SyntaxKind::T_RBRACE => {
-                debug_assert!(brace_depth > 0, "unbalanced braces in locate_body_bounds");
-                brace_depth = brace_depth.saturating_sub(1);
-            }
-            SyntaxKind::T_LBRACKET => bracket_depth += 1,
-            SyntaxKind::T_RBRACKET => {
-                debug_assert!(
-                    bracket_depth > 0,
-                    "unbalanced brackets in locate_body_bounds"
-                );
-                bracket_depth = bracket_depth.saturating_sub(1);
-            }
-            _ => {}
-        }
-
-        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
+        depths.update(*kind);
+        let at_top_level = depths.at_top_level();
 
         match kind {
             SyntaxKind::T_IMPLIES if at_top_level => body_start = Some(idx + 1),
@@ -97,12 +107,24 @@ fn locate_body_bounds(
     }
 }
 
+/// Close the literal opened at `literal_start`, pushing its trimmed span.
+fn flush_literal(
+    tokens: &[(SyntaxKind, Span)],
+    literal_start: &mut Option<usize>,
+    end_idx: usize,
+    spans: &mut Vec<Span>,
+) {
+    if let Some(start_idx) = literal_start.take()
+        && let Some(sp) = trim_literal_span(tokens, start_idx, end_idx)
+    {
+        spans.push(sp);
+    }
+}
+
 fn split_literals(tokens: &[(SyntaxKind, Span)], start: usize, end: usize) -> Vec<Span> {
     let mut spans = Vec::new();
     let mut literal_start = None;
-    let mut paren_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut bracket_depth = 0usize;
+    let mut depths = DelimiterDepths::default();
 
     let mut idx = start;
     while idx < end {
@@ -114,42 +136,16 @@ fn split_literals(tokens: &[(SyntaxKind, Span)], start: usize, end: usize) -> Ve
             literal_start = Some(idx);
         }
 
-        match kind {
-            SyntaxKind::T_LPAREN => paren_depth += 1,
-            SyntaxKind::T_RPAREN => {
-                debug_assert!(paren_depth > 0, "unbalanced parentheses in split_literals");
-                paren_depth = paren_depth.saturating_sub(1);
-            }
-            SyntaxKind::T_LBRACE => brace_depth += 1,
-            SyntaxKind::T_RBRACE => {
-                debug_assert!(brace_depth > 0, "unbalanced braces in split_literals");
-                brace_depth = brace_depth.saturating_sub(1);
-            }
-            SyntaxKind::T_LBRACKET => bracket_depth += 1,
-            SyntaxKind::T_RBRACKET => {
-                debug_assert!(bracket_depth > 0, "unbalanced brackets in split_literals");
-                bracket_depth = bracket_depth.saturating_sub(1);
-            }
-            _ => {}
-        }
+        depths.update(*kind);
 
-        let at_top_level = paren_depth == 0 && brace_depth == 0 && bracket_depth == 0;
-        if at_top_level
-            && matches!(kind, SyntaxKind::T_COMMA)
-            && let Some(start_idx) = literal_start.take()
-            && let Some(sp) = trim_literal_span(tokens, start_idx, idx)
-        {
-            spans.push(sp);
+        if depths.at_top_level() && matches!(kind, SyntaxKind::T_COMMA) {
+            flush_literal(tokens, &mut literal_start, idx, &mut spans);
         }
 
         idx += 1;
     }
 
-    if let Some(start_idx) = literal_start
-        && let Some(sp) = trim_literal_span(tokens, start_idx, end)
-    {
-        spans.push(sp);
-    }
+    flush_literal(tokens, &mut literal_start, end, &mut spans);
 
     spans
 }

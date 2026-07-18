@@ -52,6 +52,7 @@ declare_lint! {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for the unused relation rule.
     use crate::linter::testing::run_rule;
     use rstest::rstest;
 

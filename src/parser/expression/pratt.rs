@@ -46,16 +46,11 @@ impl StructLiteralState {
     }
 
     fn deactivate(&mut self) {
-        #[expect(
-            clippy::expect_used,
-            reason = "struct literal guard depth must not underflow"
-        )]
-        let remaining = self
-            .active
-            .checked_sub(1)
-            .expect("struct literal guard underflow");
-        self.active = remaining;
-        if remaining == 0 {
+        // The guard depth must not underflow; saturate rather than panic if
+        // the scopes are ever unbalanced.
+        debug_assert!(self.active > 0, "struct literal guard underflow");
+        self.active = self.active.saturating_sub(1);
+        if self.active == 0 {
             self.suspension = 0;
         }
     }
@@ -69,15 +64,13 @@ impl StructLiteralState {
     }
 
     fn resume(&mut self) {
-        #[expect(
-            clippy::expect_used,
-            reason = "struct literal guard suspension depth must not underflow"
-        )]
-        let remaining = self
-            .suspension
-            .checked_sub(1)
-            .expect("struct literal guard suspension underflow");
-        self.suspension = remaining;
+        // The suspension depth must not underflow; saturate rather than
+        // panic if the scopes are ever unbalanced.
+        debug_assert!(
+            self.suspension > 0,
+            "struct literal guard suspension underflow"
+        );
+        self.suspension = self.suspension.saturating_sub(1);
     }
 
     fn allows_struct_literal(&self) -> bool {

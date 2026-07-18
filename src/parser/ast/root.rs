@@ -123,6 +123,7 @@ impl Root {
 #[cfg(test)]
 mod tests {
 
+    //! Tests for root node accessors.
     use crate::parse;
 
     #[test]

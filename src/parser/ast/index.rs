@@ -194,6 +194,7 @@ impl_ast_node!(Index);
 #[cfg(test)]
 mod tests {
 
+    //! Tests for index node parsing.
     use crate::parse;
 
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]

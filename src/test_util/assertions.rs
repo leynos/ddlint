@@ -29,12 +29,14 @@ where
     let Err(err) = result else {
         panic!("expected panic");
     };
-    err.downcast_ref::<String>()
+    let Some(message) = err
+        .downcast_ref::<String>()
         .cloned()
         .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_string()))
-        .unwrap_or_else(|| {
-            panic!("expected panic payload to be String or &str, got unknown type");
-        })
+    else {
+        panic!("expected panic payload to be String or &str, got unknown type");
+    };
+    message
 }
 
 /// Assert that a parser produced no errors.
@@ -72,7 +74,6 @@ pub fn assert_no_parse_errors<E: std::fmt::Debug>(errors: &[E]) {
 /// `Parsed::errors()` or `Parsed::semantic_rules()`, or if no rule exists.
 #[track_caller]
 #[must_use]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_first_rule_without_parse_stage_aggregation_errors(
     parsed: &crate::Parsed,
 ) -> crate::ast::Rule {
@@ -85,12 +86,10 @@ pub fn assert_first_rule_without_parse_stage_aggregation_errors(
         parsed.semantic_rules().is_empty(),
         "rule-body aggregations must not produce parse-time semantic rules"
     );
-    parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing")
+    let Some(rule) = parsed.root().rules().first().cloned() else {
+        panic!("rule missing");
+    };
+    rule
 }
 
 /// Assert that the parser produced exactly one error matching
@@ -110,7 +109,6 @@ pub fn assert_first_rule_without_parse_stage_aggregation_errors(
 /// Panics if `errors` is empty. It also panics when the message fails to
 /// match. The same applies if the span differs.
 #[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 pub fn assert_parse_error(
     errors: &[Simple<SyntaxKind>],
     expected_pattern: impl Into<ErrorPattern>,
@@ -119,7 +117,9 @@ pub fn assert_parse_error(
 ) {
     let pattern: ErrorPattern = expected_pattern.into();
     assert_eq!(errors.len(), 1, "expected one error, got {errors:?}");
-    let error = errors.first().expect("error missing");
+    let Some(error) = errors.first() else {
+        panic!("error missing");
+    };
     let rendered = format!("{error:?}");
     let rendered_normalised = normalise_tokens(&rendered);
     let pattern_normalised = match &pattern {
@@ -236,13 +236,14 @@ pub fn find_matching_error(errors: &[Simple<SyntaxKind>], pattern: &ErrorPattern
 }
 
 #[track_caller]
-#[expect(clippy::expect_used, reason = "test helpers use expect for clarity")]
 fn assert_delimiter_error_impl<'a>(
     errors: &'a [Simple<SyntaxKind>],
     expected_pattern: &ErrorPattern,
     span: Range<usize>,
 ) -> &'a Simple<SyntaxKind> {
-    let error = errors.first().expect("error missing");
+    let Some(error) = errors.first() else {
+        panic!("error missing");
+    };
     let rendered = format!("{error:?}");
     let rendered_normalised = normalise_tokens(&rendered);
     let pattern_normalised = match expected_pattern {

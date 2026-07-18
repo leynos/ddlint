@@ -1,3 +1,5 @@
+//! Tests for parameter parsing helpers.
+
 use super::super::errors::{Delim, ParseError};
 use super::*;
 use crate::SyntaxKind;
@@ -99,16 +101,15 @@ where
     let elements = tokens_for(src);
     let (_result, errors) = parser(elements.clone());
     assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let angle_span = elements
-        .iter()
-        .find_map(|e| match e {
-            SyntaxElement::Token(t) if t.kind() == SyntaxKind::T_LT => Some(t.text_range()),
-            _ => None,
-        })
-        .expect("angle token missing");
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-    let err = errors.first().expect("no error");
+    let Some(angle_span) = elements.iter().find_map(|e| match e {
+        SyntaxElement::Token(t) if t.kind() == SyntaxKind::T_LT => Some(t.text_range()),
+        _ => None,
+    }) else {
+        panic!("angle token missing");
+    };
+    let Some(err) = errors.first() else {
+        panic!("no error");
+    };
     match err {
         ParseError::UnclosedDelimiter {
             delimiter: '>',

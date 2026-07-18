@@ -116,10 +116,6 @@ fn consume_attribute(st: &mut State<'_>) -> Option<Span> {
 /// After gathering one or more `#[…]` spans, peeks at the next
 /// non-whitespace token to determine the target item. If the target is not
 /// a permitted attribute host, emits a diagnostic.
-#[expect(
-    clippy::expect_used,
-    reason = "attr_spans is guaranteed non-empty after the early-return guard"
-)]
 fn handle_hash(st: &mut State<'_>, _span: Span) {
     let mut attr_spans: Vec<Span> = Vec::new();
 
@@ -127,6 +123,7 @@ fn handle_hash(st: &mut State<'_>, _span: Span) {
     let Some(first) = consume_attribute(st) else {
         return;
     };
+    let first_start = first.start;
     attr_spans.push(first);
 
     // Consume any consecutive attributes (stacked #[a] #[b] …)
@@ -156,16 +153,9 @@ fn handle_hash(st: &mut State<'_>, _span: Span) {
     if is_valid {
         st.spans.extend(attr_spans);
     } else {
-        // SAFETY: `attr_spans` is guaranteed non-empty — we early-return
-        // above if the first `consume_attribute` fails.
-        let first_start = attr_spans
-            .first()
-            .expect("attr_spans must be non-empty after successful consume")
-            .start;
-        let last_end = attr_spans
-            .last()
-            .expect("attr_spans must be non-empty after successful consume")
-            .end;
+        // `attr_spans` is guaranteed non-empty — the first attribute is
+        // pushed above — so the fallback end is never used in practice.
+        let last_end = attr_spans.last().map_or(first_start, |span| span.end);
         st.extra.push(Simple::custom(
             first_start..last_end,
             "attribute not permitted on this item",

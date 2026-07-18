@@ -9,7 +9,14 @@ use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
-type ScanResult<T> = Result<T, Box<Simple<SyntaxKind>>>;
+#[path = "indexes_support.rs"]
+mod support;
+
+use support::{
+    ScanResult, TypeDepths, adjust_type_depths, consume_kind, consume_kind_or_invalid,
+    current_span, expected_closing_for, expected_eof, is_trivia, skip_trivia,
+    update_delimiter_stack,
+};
 
 pub(crate) const MISSING_INDEX_FIELD_LIST: &str =
     "index declarations require a typed field list `(name: Type, ...)` before `on`";
@@ -139,20 +146,6 @@ fn parse_index_fields(
     }
 }
 
-#[derive(Default)]
-struct TypeDepths {
-    paren: usize,
-    bracket: usize,
-    brace: usize,
-    angle: usize,
-}
-
-impl TypeDepths {
-    fn at_top_level(&self) -> bool {
-        self.paren == 0 && self.bracket == 0 && self.brace == 0 && self.angle == 0
-    }
-}
-
 fn parse_type_expr(tokens: &[(SyntaxKind, Span)], src: &str, cursor: &mut usize) -> ScanResult<()> {
     let mut consumed = false;
     let mut depths = TypeDepths::default();
@@ -250,153 +243,26 @@ fn parse_balanced_arguments(
     let Some((open_kind, open_span)) = tokens.get(*cursor) else {
         return Err(Box::new(expected_eof(src, SyntaxKind::T_LPAREN)));
     };
-    let expected_close = match open_kind {
-        SyntaxKind::T_LPAREN => SyntaxKind::T_RPAREN,
-        SyntaxKind::T_LBRACKET => SyntaxKind::T_RBRACKET,
-        SyntaxKind::T_LBRACE => SyntaxKind::T_RBRACE,
-        _ => {
-            return Err(Box::new(Simple::custom(
-                open_span.clone(),
-                "expected index target arguments",
-            )));
-        }
+    let Some(expected_close) = expected_closing_for(*open_kind) else {
+        return Err(Box::new(Simple::custom(
+            open_span.clone(),
+            "expected index target arguments",
+        )));
     };
 
     let mut stack = vec![expected_close];
     *cursor += 1;
 
     while let Some((kind, span)) = tokens.get(*cursor) {
-        match kind {
-            SyntaxKind::T_LPAREN => stack.push(SyntaxKind::T_RPAREN),
-            SyntaxKind::T_LBRACKET => stack.push(SyntaxKind::T_RBRACKET),
-            SyntaxKind::T_LBRACE => stack.push(SyntaxKind::T_RBRACE),
-            SyntaxKind::T_LT => stack.push(SyntaxKind::T_GT),
-            SyntaxKind::T_SHL => {
-                stack.push(SyntaxKind::T_GT);
-                stack.push(SyntaxKind::T_GT);
-            }
-            SyntaxKind::T_RPAREN
-            | SyntaxKind::T_RBRACKET
-            | SyntaxKind::T_RBRACE
-            | SyntaxKind::T_GT
-            | SyntaxKind::T_SHR => {
-                let closes = if *kind == SyntaxKind::T_SHR { 2 } else { 1 };
-                for _ in 0..closes {
-                    match stack.pop() {
-                        Some(expected) if matches_closing_token(*kind, expected) => {}
-                        Some(expected) => {
-                            return Err(Box::new(Simple::custom(
-                                span.clone(),
-                                format!(
-                                    "expected '{}' before '{}'",
-                                    token_display(expected),
-                                    token_display(*kind)
-                                ),
-                            )));
-                        }
-                        None => break,
-                    }
-                }
-                if stack.is_empty() {
-                    *cursor += 1;
-                    return Ok(span.end);
-                }
-            }
-            _ => {}
-        }
+        update_delimiter_stack(&mut stack, *kind, span)?;
         *cursor += 1;
+        if stack.is_empty() {
+            return Ok(span.end);
+        }
     }
 
     Err(Box::new(Simple::custom(
         src.len()..src.len(),
         format!("unclosed '{}'", token_display(expected_close)),
     )))
-}
-
-fn consume_kind(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    cursor: &mut usize,
-    expected: SyntaxKind,
-) -> ScanResult<usize> {
-    match tokens.get(*cursor) {
-        Some((found, span)) if *found == expected => {
-            *cursor += 1;
-            Ok(span.end)
-        }
-        Some((found, span)) => Err(Box::new(Simple::expected_input_found(
-            span.clone(),
-            [Some(expected)],
-            Some(*found),
-        ))),
-        None => Err(Box::new(expected_eof(src, expected))),
-    }
-}
-
-fn consume_kind_or_invalid(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    cursor: &mut usize,
-    expected: SyntaxKind,
-) -> ScanResult<usize> {
-    match tokens.get(*cursor) {
-        Some((found, span)) if *found == expected => {
-            *cursor += 1;
-            Ok(span.end)
-        }
-        Some((_, span)) => Err(Box::new(Simple::custom(
-            span.clone(),
-            INVALID_INDEX_FIELD_LIST,
-        ))),
-        None => Err(Box::new(Simple::custom(
-            src.len()..src.len(),
-            INVALID_INDEX_FIELD_LIST,
-        ))),
-    }
-}
-
-fn skip_trivia(tokens: &[(SyntaxKind, Span)], cursor: &mut usize) {
-    while let Some((kind, _)) = tokens.get(*cursor) {
-        if !is_trivia(*kind) {
-            break;
-        }
-        *cursor += 1;
-    }
-}
-
-fn is_trivia(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-}
-
-fn adjust_type_depths(kind: SyntaxKind, depths: &mut TypeDepths) {
-    match kind {
-        SyntaxKind::T_LPAREN => depths.paren += 1,
-        SyntaxKind::T_RPAREN => depths.paren = depths.paren.saturating_sub(1),
-        SyntaxKind::T_LBRACKET => depths.bracket += 1,
-        SyntaxKind::T_RBRACKET => depths.bracket = depths.bracket.saturating_sub(1),
-        SyntaxKind::T_LBRACE => depths.brace += 1,
-        SyntaxKind::T_RBRACE => depths.brace = depths.brace.saturating_sub(1),
-        SyntaxKind::T_LT => depths.angle += 1,
-        SyntaxKind::T_GT => depths.angle = depths.angle.saturating_sub(1),
-        SyntaxKind::T_SHL => depths.angle += 2,
-        SyntaxKind::T_SHR => depths.angle = depths.angle.saturating_sub(2),
-        _ => {}
-    }
-}
-
-fn matches_closing_token(found: SyntaxKind, expected: SyntaxKind) -> bool {
-    match found {
-        SyntaxKind::T_SHR => expected == SyntaxKind::T_GT,
-        _ => found == expected,
-    }
-}
-
-fn current_span(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> Span {
-    tokens
-        .get(cursor)
-        .map_or(src.len()..src.len(), |(_, span)| span.clone())
-}
-
-fn expected_eof(src: &str, expected: SyntaxKind) -> Simple<SyntaxKind> {
-    Simple::expected_input_found(src.len()..src.len(), [Some(expected)], None)
 }

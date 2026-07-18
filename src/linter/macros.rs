@@ -195,6 +195,7 @@ macro_rules! declare_lint {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for the linter rule macros.
     use rowan::NodeOrToken;
     use rstest::{fixture, rstest};
 

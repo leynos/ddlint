@@ -15,6 +15,11 @@ use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
+#[path = "rules_support.rs"]
+mod support;
+
+use support::is_at_line_start;
+
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
     let ws = inline_ws().repeated().ignored();
 
@@ -199,63 +204,6 @@ fn for_binding_complete(
         .ignored()
 }
 
-/// Return `true` if `span` begins a new logical line in the source.
-///
-/// Multiple rules on one physical line are recognised by treating a preceding
-/// `.` as a line start boundary. Otherwise, only trivia containing a newline
-/// counts; inline whitespace or comments keep the current line “open” so
-/// continuations are not misclassified.
-fn is_at_line_start(st: &State<'_>, span: &Span) -> bool {
-    if st.stream.cursor() == 0 {
-        return true;
-    }
-
-    line_start_boundary(
-        st.stream.tokens(),
-        st.stream.src(),
-        st.stream.cursor(),
-        span.start,
-    )
-}
-
-fn line_start_boundary(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    mut cursor: usize,
-    span_start: usize,
-) -> bool {
-    while cursor > 0 {
-        cursor -= 1;
-        let Some((kind, prev_span)) = tokens.get(cursor) else {
-            break;
-        };
-        if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
-            if range_contains_newline(src, prev_span.clone()) {
-                return true;
-            }
-            continue;
-        }
-
-        if slice_contains_newline(src, prev_span.end, span_start) {
-            return true;
-        }
-        if *kind == SyntaxKind::T_DOT {
-            return true;
-        }
-        return false;
-    }
-
-    true
-}
-
-fn range_contains_newline(src: &str, range: std::ops::Range<usize>) -> bool {
-    src.get(range).is_some_and(|text| text.contains('\n'))
-}
-
-fn slice_contains_newline(src: &str, start: usize, end: usize) -> bool {
-    range_contains_newline(src, start..end)
-}
-
 fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span>) {
     if !is_at_line_start(st, &span) {
         st.stream.advance();
@@ -345,6 +293,24 @@ fn skip_top_level_for_statement(
     }
 }
 
+/// Advance `exclude_idx` past exclusions ending before `span`, then return
+/// the end of an exclusion overlapping `span`, if any.
+fn overlapping_exclusion_end(
+    exclusions: &[Span],
+    exclude_idx: &mut usize,
+    span: &Span,
+) -> Option<usize> {
+    while let Some(ex) = exclusions.get(*exclude_idx) {
+        if ex.end > span.start {
+            break;
+        }
+        *exclude_idx += 1;
+    }
+    let ex = exclusions.get(*exclude_idx)?;
+    let overlaps = span.start < ex.end && ex.start < span.end;
+    overlaps.then_some(ex.end)
+}
+
 pub(crate) fn collect_rule_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
@@ -364,18 +330,8 @@ pub(crate) fn collect_rule_spans(
     while let Some(&(kind, ref span_ref)) = st.stream.peek() {
         let span = span_ref.clone();
 
-        while let Some(ex) = exclusions.get(exclude_idx) {
-            if ex.end > span.start {
-                break;
-            }
-            exclude_idx += 1;
-        }
-
-        if let Some(ex) = exclusions.get(exclude_idx)
-            && span.start < ex.end
-            && ex.start < span.end
-        {
-            st.stream.skip_until(ex.end);
+        if let Some(end) = overlapping_exclusion_end(exclusions, &mut exclude_idx, &span) {
+            st.stream.skip_until(end);
             continue;
         }
 

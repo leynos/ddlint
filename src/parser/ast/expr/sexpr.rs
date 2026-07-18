@@ -157,6 +157,7 @@ fn format_match(scrutinee: &Expr, arms: &[MatchArm]) -> String {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for s-expression rendering.
     use super::*;
     use crate::parser::ast::{BinaryOp, Literal};
 

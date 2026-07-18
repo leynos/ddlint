@@ -82,6 +82,7 @@ impl_ast_node!(Function);
 #[cfg(test)]
 mod tests {
 
+    //! Tests for function node parsing.
     use crate::{parse, test_util::span_text};
 
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]

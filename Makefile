@@ -10,6 +10,7 @@ MDLINT ?= markdownlint
 NIXIE ?= nixie
 TYPOS_VERSION ?= 1.48.0
 TYPOS := uv tool run typos@$(TYPOS_VERSION)
+WHITAKER ?= whitaker
 
 build: target/debug/$(APP) ## Build debug binary
 release: target/release/$(APP) ## Build release binary
@@ -32,8 +33,9 @@ test-workflow-contracts: ## Validate the mutation-testing caller contract
 target/%/$(APP): ## Build binary in debug or release mode
 	$(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
 
-lint: ## Run Clippy with warnings denied
+lint: ## Run Clippy and the Whitaker Dylint suite with warnings denied
 	$(CARGO) clippy $(CLIPPY_FLAGS)
+	RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
 	+$(MAKE) spelling
 
 typecheck: ## Typecheck all workspace targets and features

@@ -140,6 +140,7 @@ fn check_function_uniqueness(errors: &mut Vec<Simple<SyntaxKind>>, root: &Root) 
 
 #[cfg(test)]
 mod tests {
+    //! Tests for name uniqueness validation.
     use crate::parse;
     use rstest::rstest;
 

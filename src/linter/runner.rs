@@ -150,6 +150,7 @@ fn sort_diagnostics(diagnostics: &mut [LintDiagnostic]) {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for the lint runner.
     use rowan::TextRange;
     use rstest::{fixture, rstest};
 

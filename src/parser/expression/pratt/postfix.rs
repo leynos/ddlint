@@ -161,6 +161,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    //! Tests for postfix expression parsing.
     use chumsky::error::SimpleReason;
 
     use crate::SyntaxKind;

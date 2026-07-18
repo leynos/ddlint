@@ -48,6 +48,7 @@ impl_ast_node!(Transformer);
 #[cfg(test)]
 mod tests {
 
+    //! Tests for transformer node parsing.
     use crate::parse;
 
     #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]

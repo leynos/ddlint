@@ -65,11 +65,10 @@ where
             if is_tuple {
                 Some(Expr::Tuple(items))
             } else {
-                #[expect(
-                    clippy::expect_used,
-                    reason = "parser invariant: group contains exactly one item"
-                )]
-                let item = items.pop().expect("expected one item in group");
+                // Parser invariant: the group contains exactly one item, so
+                // `pop` always succeeds; propagate `None` rather than panic
+                // if the invariant is ever broken.
+                let item = items.pop()?;
                 Some(Expr::Group(Box::new(item)))
             }
         })

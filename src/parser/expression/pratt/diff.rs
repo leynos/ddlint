@@ -58,6 +58,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    //! Tests for token stream differencing.
     use super::*;
     use chumsky::error::SimpleReason;
 

@@ -46,6 +46,7 @@ impl_ast_node!(TypeDef);
 #[cfg(test)]
 mod tests {
 
+    //! Tests for type definition parsing.
     use crate::{parse, test_util::span_text};
 
     #[test]

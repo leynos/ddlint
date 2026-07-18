@@ -62,12 +62,13 @@ pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// ```
 #[must_use]
 pub fn span_text<'a>(source: &'a str, span: &Span) -> &'a str {
-    source.get(span.start..span.end).unwrap_or_else(|| {
+    let Some(text) = source.get(span.start..span.end) else {
         panic!(
             "invalid UTF-8 boundary for span {}..{} in `{source}`",
             span.start, span.end
         )
-    })
+    };
+    text
 }
 
 /// Typed wrapper for variable and function names.

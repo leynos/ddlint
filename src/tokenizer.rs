@@ -212,8 +212,13 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
     let mut out = Vec::with_capacity(estimated_tokens);
     while let Some(result) = lexer.next() {
         let span = lexer.span();
-        #[expect(clippy::expect_used, reason = "invalid span indicates lexer bug")]
-        let text = src.get(span.clone()).expect("lexer produced invalid span");
+        let Some(text) = src.get(span.clone()) else {
+            // An invalid span indicates a lexer bug; emit an error token
+            // rather than panic.
+            debug_assert!(false, "lexer produced invalid span");
+            out.push((SyntaxKind::N_ERROR, span));
+            continue;
+        };
         let Ok(token) = result else {
             out.push((SyntaxKind::N_ERROR, span));
             continue;
@@ -308,6 +313,7 @@ pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 
 #[cfg(test)]
 mod tests {
+    //! Tests for the tokenizer.
     use super::*;
 
     #[test]
