@@ -1,5 +1,8 @@
 # Differential datalog linter (ddlint)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](
+https://deepwiki.com/leynos/ddlint)
+
 This is a generated project using [Copier](https://copier.readthedocs.io/).
 
 ## Logging
