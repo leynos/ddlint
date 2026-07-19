@@ -308,9 +308,12 @@ Important invariants:
   compatibility conveniences.
 - Relation declarations preserve spec-form primary-key clauses such as
   `primary key (row) (row.id)` as opaque CST text after the binder list.
+
   `Relation::primary_key()` intentionally exposes only the names inside the
-  parenthesized binder/list for compatibility with existing callers. Typed
-  access to the trailing expression is deferred to roadmap follow-up `2.6.6.1`.
+  parenthesized binder/list for compatibility with existing callers.
+
+  Typed access to the trailing expression is deferred to roadmap follow-up
+  `2.6.6.1`.
 - Transformer declarations require
   `extern transformer <lowercase-name>(params...): output(, output)*`.
   Transformer identifiers must be lowercase (start with a lowercase letter or

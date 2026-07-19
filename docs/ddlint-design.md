@@ -240,11 +240,11 @@ models the declaration preamble with `RelationRole` (`Input`, `Output`, or
 defaulted `Internal`), `RelationKind` (`Relation`, `Stream`, or `Multiset`), and
 `RelationBody` (`Fields` or `ElementType`). The `role()` and `kind()` methods
 are the canonical typed accessors; `role_keyword_present()` and
-`kind_keyword_present()` preserve whether the source explicitly wrote the
-default keyword. Existing `is_input()` and `is_output()` helpers remain as
-derived ergonomics for lint rules that only need role predicates. ADR-002
-records this syntax-layer modelling decision and its boundary with the semantic
-layer expected by ADR-001.
+`kind_keyword_present()` preserve explicit role and kind keyword presence.
+Existing `is_input()` and `is_output()` helpers remain as derived ergonomics
+for lint rules that only need role predicates. ADR-002 records this syntax-
+layer modelling decision and its boundary with the semantic layer expected by
+ADR-001.
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 

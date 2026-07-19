@@ -1,10 +1,7 @@
-//! Parsers for relation declarations and clauses.
+//! Chumsky helpers for parsing relation primary-key clauses.
 //!
-//! These helpers parse relation column lists and `primary key` clauses using
-//! `chumsky`, allowing callers to validate structure without manual token
-//! juggling.
-//! They are shared by the span scanner and AST helpers to keep behaviour
-//! consistent.
+//! The relation AST uses these helpers to validate and preserve compatible
+//! primary-key binder lists while the span scanner owns declaration recovery.
 
 use chumsky::prelude::*;
 

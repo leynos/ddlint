@@ -29,13 +29,19 @@ enum GeneratedBody {
     Bracket,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum GeneratedPrimaryKey {
+    Single,
+    Compound,
+}
+
 #[derive(Debug, Clone)]
 struct GeneratedRelation {
     role: GeneratedRole,
     kind: GeneratedKind,
     body: GeneratedBody,
     is_ref: bool,
-    has_primary_key: bool,
+    primary_key: Option<GeneratedPrimaryKey>,
 }
 
 impl GeneratedRelation {
@@ -51,15 +57,31 @@ impl GeneratedRelation {
             parts.push("&");
         }
         parts.push(match self.body {
-            GeneratedBody::Record => "R(id: u32)",
+            GeneratedBody::Record => "R(id: u32, status: string)",
             GeneratedBody::Bracket => "R[Vec<u32>]",
         });
 
         let mut source = parts.join(" ");
-        if self.has_primary_key {
-            source.push_str(" primary key (id)");
+        if let Some(primary_key) = self.primary_key {
+            source.push_str(primary_key.source());
         }
         source
+    }
+}
+
+impl GeneratedPrimaryKey {
+    fn source(self) -> &'static str {
+        match self {
+            Self::Single => " primary key (id)",
+            Self::Compound => " primary key (id, status)",
+        }
+    }
+
+    fn expected(self) -> Vec<String> {
+        match self {
+            Self::Single => vec!["id".into()],
+            Self::Compound => vec!["id".into(), "status".into()],
+        }
     }
 }
 
@@ -115,17 +137,20 @@ fn generated_relation_strategy() -> impl Strategy<Value = GeneratedRelation> {
         ],
         prop_oneof![Just(GeneratedBody::Record), Just(GeneratedBody::Bracket)],
         any::<bool>(),
-        any::<bool>(),
+        prop_oneof![
+            Just(GeneratedPrimaryKey::Single),
+            Just(GeneratedPrimaryKey::Compound),
+        ],
     )
-        .prop_map(|(role, kind, body, is_ref, wants_primary_key)| {
-            let has_primary_key =
-                wants_primary_key && role == GeneratedRole::Input && body == GeneratedBody::Record;
+        .prop_map(|(role, kind, body, is_ref, primary_key)| {
+            let primary_key = (role == GeneratedRole::Input && body == GeneratedBody::Record)
+                .then_some(primary_key);
             GeneratedRelation {
                 role,
                 kind,
                 body,
                 is_ref,
-                has_primary_key,
+                primary_key,
             }
         })
 }
@@ -154,7 +179,10 @@ proptest! {
             GeneratedBody::Record => {
                 prop_assert_eq!(
                     relation.body(),
-                    RelationBody::Fields(vec![("id".into(), "u32".into())])
+                    RelationBody::Fields(vec![
+                        ("id".into(), "u32".into()),
+                        ("status".into(), "string".into()),
+                    ])
                 );
                 prop_assert_eq!(relation.element_type(), None);
             }
@@ -166,9 +194,7 @@ proptest! {
             }
         }
 
-        let expected_primary_key = generated
-            .has_primary_key
-            .then(|| vec!["id".to_string()]);
+        let expected_primary_key = generated.primary_key.map(GeneratedPrimaryKey::expected);
         prop_assert_eq!(relation.primary_key(), expected_primary_key);
     }
 }

@@ -188,24 +188,24 @@ not, neighbour declaration boundary preserved).
 Drive a parameterized matrix in `src/parser/tests/relations.rs`. Each row is one
 `#[case(...)]`. Body forms abbreviate as `()` for record and `[]` for bracket.
 
-| #   | Role   | Kind     | Body | Ref | Primary key | Expected |
-| --- | ------ | -------- | ---- | --- | ----------- | -------- |
-| 1   | absent | absent   | `()` | no  | absent      | accept   |
-| 2   | absent | absent   | `()` | no  | present     | accept   |
-| 3   | absent | absent   | `[]` | no  | absent      | accept   |
-| 4   | input  | absent   | `()` | no  | present     | accept   |
-| 5   | output | absent   | `()` | no  | absent      | accept   |
-| 6   | input  | relation | `()` | no  | present     | accept   |
-| 7   | output | relation | `()` | no  | absent      | accept   |
-| 8   | absent | relation | `[]` | no  | absent      | accept   |
-| 9   | input  | stream   | `()` | no  | absent      | accept   |
-| 10  | output | stream   | `[]` | no  | absent      | accept   |
-| 11  | absent | stream   | `()` | no  | absent      | accept   |
-| 12  | input  | multiset | `()` | no  | present     | accept   |
-| 13  | absent | multiset | `()` | no  | absent      | accept   |
-| 14  | output | multiset | `[]` | no  | absent      | accept   |
-| 15  | input  | absent   | `()` | yes | absent      | accept   |
-| 16  | output | relation | `[]` | yes | absent      | accept   |
+| #   | Role   | Kind     | Body | Ref | Primary key | Expected         |
+| --- | ------ | -------- | ---- | --- | ----------- | ---------------- |
+| 1   | absent | absent   | `()` | no  | absent      | accept           |
+| 2   | absent | absent   | `()` | no  | present     | reject D-REL-006 |
+| 3   | absent | absent   | `[]` | no  | absent      | accept           |
+| 4   | input  | absent   | `()` | no  | present     | accept           |
+| 5   | output | absent   | `()` | no  | absent      | accept           |
+| 6   | input  | relation | `()` | no  | present     | accept           |
+| 7   | output | relation | `()` | no  | absent      | accept           |
+| 8   | absent | relation | `[]` | no  | absent      | accept           |
+| 9   | input  | stream   | `()` | no  | absent      | accept           |
+| 10  | output | stream   | `[]` | no  | absent      | accept           |
+| 11  | absent | stream   | `()` | no  | absent      | accept           |
+| 12  | input  | multiset | `()` | no  | present     | accept           |
+| 13  | absent | multiset | `()` | no  | absent      | accept           |
+| 14  | output | multiset | `[]` | no  | absent      | accept           |
+| 15  | input  | absent   | `()` | no  | present     | accept           |
+| 16  | output | relation | `[]` | yes | absent      | accept           |
 
 Rejection rows (literal source on the left, expected diagnostic on the right):
 
@@ -219,9 +219,10 @@ Rejection rows (literal source on the left, expected diagnostic on the right):
 | 22  | `output R(x: u32) primary key (x)`    | reject D-REL-006 |
 | 23  | `input R(x: u32) [primary key (x) x]` | reject D-REL-008 |
 
-Total: 23 parameterized cases. Add four further behavioural cases in
-`tests/relation_form_grammar.rs` covering multi-line declarations, attribute
-placement, comment-laden preambles, and recovery after a malformed preamble.
+Total: 23 parameterized cases. That is 15 accept rows and 8 reject rows. Add
+four further behavioural cases in `tests/relation_form_grammar.rs` covering
+multi-line declarations, attribute placement, comment-laden preambles, and
+recovery after a malformed preamble.
 
 ## Decisions to be made and documented
 
@@ -416,7 +417,7 @@ Tests added:
   generated valid declaration, `parse()` succeeds, CST text equals input text,
   and `role()` / `kind()` / `*_keyword_present()` / `is_ref()` / `body()` match
   the generator inputs. The proptest is required, not optional: hand-picked
-  accepts cover ~17% of the space, which is insufficient for an ADR-001-frozen
+  accepts cover ~16% of the space, which is insufficient for an ADR-001-frozen
   contract.
 
 Docs updates: `docs/ddlint-design.md` adds a short subsection naming the new
@@ -855,7 +856,7 @@ flipped, and the roadmap item can be closed.
    this milestone, not as a follow-up. Deferring it would prevent conformance
    register item `13` from flipping to `implemented`.
 19. Promote `proptest` from optional (Milestone 6) to required
-   (Milestone 3). Hand-picked accepts cover ~17 % of the role × kind × body ×
+   (Milestone 3). Hand-picked accepts cover ~16 % of the role × kind × body ×
    ref × pk space; an ADR-001-frozen contract needs better.
 20. Recommend ADR-002 for the role/kind/body modelling and the
     spec-delta reconciliation, explicitly cross-referencing ADR-001.

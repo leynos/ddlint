@@ -125,7 +125,6 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
 }
 
 #[rstest]
-#[rstest]
 #[case::bare_record(
     "R()",
     RelationRole::Internal,

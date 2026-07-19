@@ -52,41 +52,43 @@ pub(crate) fn collect_relation_spans(
     src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
+    let mut context = RelationScanContext::default();
+    let mut observed = 0usize;
 
-    let handle_candidate = |st: &mut State<'_>, span: Span| {
-        if !is_line_start(st.stream.tokens(), st.stream.src(), st.stream.cursor()) {
+    while let Some(&(kind, ref span_ref)) = st.stream.peek() {
+        let span = span_ref.clone();
+        if is_relation_candidate(kind) {
+            handle_candidate(&mut st, span, context.is_top_level_line_start());
+        } else {
             st.stream.advance();
-            return;
         }
-
-        let start = span.start;
-        match parse_relation_decl(st.stream.tokens(), st.stream.src(), st.stream.cursor()) {
-            Ok(Some(parsed)) => {
-                st.spans.push(start..parsed.end);
-                if let Some(error) = parsed.error {
-                    st.extra.push(error);
-                }
-                st.stream.skip_until(parsed.recovery_end);
-            }
-            Ok(None) => st.stream.advance(),
-            Err(error) => {
-                st.extra.push(*error);
-                st.skip_line();
-            }
-        }
-    };
-
-    token_dispatch!(st, {
-        SyntaxKind::K_INPUT => handle_candidate,
-        SyntaxKind::K_OUTPUT => handle_candidate,
-        SyntaxKind::K_RELATION => handle_candidate,
-        SyntaxKind::K_STREAM => handle_candidate,
-        SyntaxKind::K_MULTISET => handle_candidate,
-        SyntaxKind::T_AMP => handle_candidate,
-        SyntaxKind::T_IDENT => handle_candidate,
-    });
+        observe_scanned_tokens(&mut context, tokens, src, &mut observed, st.stream.cursor());
+    }
 
     st.into_parts()
+}
+
+fn handle_candidate(st: &mut State<'_>, span: Span, is_top_level_line_start: bool) {
+    if !is_top_level_line_start {
+        st.stream.advance();
+        return;
+    }
+
+    let start = span.start;
+    match parse_relation_decl(st.stream.tokens(), st.stream.src(), st.stream.cursor()) {
+        Ok(Some(parsed)) => {
+            st.spans.push(start..parsed.end);
+            if let Some(error) = parsed.error {
+                st.extra.push(error);
+            }
+            st.stream.skip_until(parsed.recovery_end);
+        }
+        Ok(None) => st.stream.advance(),
+        Err(error) => {
+            st.extra.push(*error);
+            st.skip_line();
+        }
+    }
 }
 
 fn parse_relation_decl(
@@ -116,7 +118,7 @@ fn parse_relation_decl(
     let body_end = parse_body(tokens, src, &mut cursor, body)?;
 
     let has_preamble = preamble.role.is_some() || preamble.has_kind;
-    if body == BodyForm::Record && is_bare_rule_or_fact(tokens, src, &mut cursor, has_preamble) {
+    if is_bare_rule_or_fact(tokens, src, &mut cursor, has_preamble) {
         return Ok(None);
     }
 
@@ -286,37 +288,68 @@ fn skip_trivia_and_check_newline(
     saw_newline
 }
 
-fn is_line_start(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> bool {
-    let mut index = cursor;
-    while index > 0 {
-        index -= 1;
-        let Some((kind, span)) = tokens.get(index) else {
-            return true;
-        };
-        if token_text(src, span).is_some_and(|text| text.contains('\n')) {
-            return previous_non_trivia(tokens, index).is_none_or(|previous| {
-                !matches!(
-                    previous,
-                    SyntaxKind::K_ON
-                        | SyntaxKind::T_COLON
-                        | SyntaxKind::T_COMMA
-                        | SyntaxKind::T_IMPLIES
-                )
-            });
-        }
-        if !is_trivia(*kind) {
-            return false;
-        }
-    }
-    true
+#[derive(Default)]
+struct RelationScanContext {
+    delimiters: Vec<SyntaxKind>,
+    previous_non_trivia: Option<SyntaxKind>,
+    saw_newline_since_non_trivia: bool,
 }
 
-fn previous_non_trivia(tokens: &[(SyntaxKind, Span)], before: usize) -> Option<SyntaxKind> {
-    tokens
-        .iter()
-        .take(before)
-        .rev()
-        .find_map(|(kind, _)| (!is_trivia(*kind)).then_some(*kind))
+impl RelationScanContext {
+    fn is_top_level_line_start(&self) -> bool {
+        self.delimiters.is_empty()
+            && self.previous_non_trivia.is_none_or(|previous| {
+                self.saw_newline_since_non_trivia
+                    && !matches!(
+                        previous,
+                        SyntaxKind::K_ON
+                            | SyntaxKind::T_COLON
+                            | SyntaxKind::T_COMMA
+                            | SyntaxKind::T_IMPLIES
+                    )
+            })
+    }
+
+    fn observe(&mut self, kind: SyntaxKind, span: &Span, src: &str) {
+        if is_trivia(kind) {
+            self.saw_newline_since_non_trivia |=
+                token_text(src, span).is_some_and(|text| text.contains('\n'));
+            return;
+        }
+
+        adjust_stack(kind, &mut self.delimiters);
+        self.previous_non_trivia = Some(kind);
+        self.saw_newline_since_non_trivia = false;
+    }
+}
+
+fn is_relation_candidate(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::K_INPUT
+            | SyntaxKind::K_OUTPUT
+            | SyntaxKind::K_RELATION
+            | SyntaxKind::K_STREAM
+            | SyntaxKind::K_MULTISET
+            | SyntaxKind::T_AMP
+            | SyntaxKind::T_IDENT
+    )
+}
+
+fn observe_scanned_tokens(
+    context: &mut RelationScanContext,
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    observed: &mut usize,
+    end: usize,
+) {
+    while *observed < end {
+        let Some((kind, span)) = tokens.get(*observed) else {
+            break;
+        };
+        context.observe(*kind, span, src);
+        *observed += 1;
+    }
 }
 
 fn starts_primary_key(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> bool {

@@ -134,33 +134,50 @@ This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
 project:
 
-- Run `make check-fmt`, `make lint`, and `make test` before committing. These
-  targets wrap the following commands, so contributors understand the exact
-  behaviour and policy enforced:
+- Run `make check-fmt`, `make fmt`, `make lint`, and `make test` before
+  committing. These targets wrap the following commands, so contributors
+  understand the exact behaviour and policy enforced:
   - `make check-fmt` executes:
 
     ```sh
-    cargo fmt --workspace -- --check
+    $(CARGO) fmt --all -- --check
     ```
 
     validating formatting across the entire workspace without modifying files.
+  - `make fmt` executes:
+
+    ```sh
+    $(CARGO) fmt --all
+    mdformat-all
+    ```
+
+    formatting Rust and Markdown sources.
   - `make lint` executes:
 
     ```sh
-    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    $(CARGO) clippy $(CLIPPY_FLAGS)
+    RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
+    +$(MAKE) spelling
     ```
 
-    linting every target with all features enabled and denying all Clippy
-    warnings.
+    linting every target with all features enabled, denying all warnings, and
+    running the spelling gate.
+  - `make spelling` executes:
+
+    ```sh
+    uv run scripts/generate_typos_config.py
+    git ls-files -z '*.md' | xargs -0 -r $(TYPOS) --config typos.toml --force-exclude
+    ```
+
+    enforcing en-GB-oxendict spelling in Markdown prose.
   - `make test` executes:
 
     ```sh
-    cargo test --workspace
+    RUSTFLAGS="-D warnings" $(CARGO) test --all-targets --all-features \
+      $(BUILD_JOBS)
     ```
 
-    running the full workspace test suite. Use `make fmt`
-    (`cargo fmt --workspace`) to apply formatting fixes reported by the
-    formatter check.
+    running the full workspace test suite with warnings treated as errors.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.

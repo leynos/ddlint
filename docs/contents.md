@@ -80,6 +80,8 @@
   Plan for index declaration grammar alignment.
 - [2.6.5 align transformer declaration grammar](./execplans/2-6-5-align-transformer-declaration-grammar.md):
   Plan for transformer declaration grammar alignment.
+- [2.6.6 resolve relation form coverage](./execplans/2-6-6-resolve-relation-form-coverage.md):
+  Plan for relation form coverage and modelling alignment.
 - [3.1.1 core rule and CST rule traits](./execplans/3-1-1-core-rule-and-cst-rule-traits.md):
   Plan for lint rule trait foundations.
 - [3.1.2 rule context struct](./execplans/3-1-2-rule-context-struct.md):

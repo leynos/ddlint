@@ -1,4 +1,9 @@
-//! CST inspection helpers for relation declarations.
+//! CST inspection helpers backing the [`Relation`](super::Relation) wrapper.
+//!
+//! These helpers locate the relation preamble and body delimiter so the wrapper
+//! can expose the relation name and bracket element type without duplicating
+//! token traversal. They stop before a body delimiter when a malformed node
+//! lacks a name, preventing body identifiers from becoming synthetic names.
 
 use crate::{DdlogLanguage, SyntaxKind};
 
@@ -70,6 +75,7 @@ pub(super) fn inspect_preamble(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Rel
                 preamble.name = Some(token.text().to_string());
                 break;
             }
+            SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET => break,
             _ => {}
         }
     }
@@ -131,8 +137,10 @@ fn elements_after_name(
         if is_trivia(&element) {
             continue;
         }
-        if element.kind() == SyntaxKind::T_IDENT {
-            found_name = true;
+        match element.kind() {
+            SyntaxKind::T_IDENT => found_name = true,
+            SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET => break,
+            _ => {}
         }
     }
     elements

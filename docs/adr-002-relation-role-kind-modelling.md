@@ -52,7 +52,7 @@ side-by-side reviewability. -->
 
 <!-- markdownlint-enable MD013 -->
 
-## Decision Outcome / Proposed Direction
+## Decision outcome / proposed direction
 
 Adopt **Option B**.
 
@@ -62,22 +62,23 @@ The syntax-layer `Relation` wrapper exposes:
 - `RelationKind::{Relation, Stream, Multiset}`;
 - `RelationBody::{Fields, ElementType}`;
 - `role()` and `kind()` as canonical typed accessors;
-- `role_keyword_present()` and `kind_keyword_present()` for lossless default
-  fidelity;
+- `role_keyword_present()` and `kind_keyword_present()` for lossless keyword-
+  presence fidelity;
 - `is_ref()` for declaration-level reference relations;
 - `body()` and `element_type()` for body-form inspection; and
 - derived `is_input()` and `is_output()` helpers for compatibility.
 
 `Internal` means no role keyword was present. The parser does not reserve an
-`internal` keyword. `Relation` means no kind keyword was present unless
-`kind_keyword_present()` returns true.
+`internal` keyword. `RelationKind::Relation` is the default when no kind
+keyword was present. `kind_keyword_present()` means the source explicitly wrote
+`relation`.
 
 `Relation::primary_key()` keeps returning the names from the parenthesized
 binder/list portion of the suffix. Spec-form trailing primary-key expressions
 are preserved in CST text, but typed expression access is deferred to roadmap
 follow-up `2.6.6.1`.
 
-## Goals and Non-Goals
+## Goals and non-goals
 
 Goals:
 
@@ -92,7 +93,7 @@ Non-goals:
 - type-check relation semantics beyond parser-level diagnostics, or
 - expose typed access to primary-key expressions in this ADR.
 
-## Known Risks and Limitations
+## Known risks and limitations
 
 - `Relation::element_type()` allocates because bracket element types may span
   several CST tokens.
@@ -101,7 +102,7 @@ Non-goals:
 - `Relation::primary_key()` exposes only binder/list names; callers that need
   the trailing expression must wait for `2.6.6.1`.
 
-## Architectural Rationale
+## Architectural rationale
 
 The enum-plus-predicate shape keeps the syntax layer precise without confusing
 implicit defaults with explicit source keywords. It also gives the future
@@ -109,7 +110,7 @@ semantic layer a clear extraction source: semantic modelling can consume
 `role()`, `kind()`, `is_ref()`, and `body()` directly while still using CST
 spans for diagnostics and provenance.
 
-## Outstanding Decisions
+## Outstanding decisions
 
 - Roadmap item `2.6.6.1` must decide the typed shape for primary-key expression
   access.
