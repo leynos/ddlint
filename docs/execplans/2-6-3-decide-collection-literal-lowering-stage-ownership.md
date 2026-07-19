@@ -1,9 +1,8 @@
 # Decide collection literal lowering stage ownership
 
-This ExecPlan (execution plan) is a living document. The sections
-`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
-`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
-proceeds.
+This ExecPlan (execution plan) is a living document. The sections `Constraints`,
+`Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
+and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
 Status: COMPLETE
 
@@ -288,8 +287,8 @@ consistently.
   name later lowering as future work instead of stating that desugaring already
   happens.
 - If the new behavioural tests reveal ambiguity in `parse()` or
-  `Parsed::semantic_rules()` documentation, tighten the relevant doc comments
-  in `src/parser/mod.rs` and `src/parser/cst_builder/mod.rs`.
+  `Parsed::semantic_rules()` documentation, tighten the relevant doc comments in
+  `src/parser/mod.rs` and `src/parser/cst_builder/mod.rs`.
 - Do not introduce any new lowering code unless the tests expose a genuine
   mismatch between documentation and observable behaviour.
 

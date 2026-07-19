@@ -89,8 +89,8 @@ validation steps pass.
 Implemented `apply` parsing with CST/AST coverage, added diagnostics for
 non-extern transformers, updated the syntax spec and roadmap entry, and added
 unit and behavioural tests. Validation gates (`make check-fmt`, `make lint`,
-`make test`, plus Markdown tooling) all passed. Future work can build on the
-new `Apply` AST wrapper and root accessor without additional parsing changes.
+`make test`, plus Markdown tooling) all passed. Future work can build on the new
+`Apply` AST wrapper and root accessor without additional parsing changes.
 
 ## Context and orientation
 

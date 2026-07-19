@@ -94,12 +94,12 @@ but that asymmetry forced every consumer to learn two patterns for one concept.
 Both axes now use the enum-plus-predicate shape. See Decision Log entry 2 for
 the rationale.
 
-The `'&'` ref marker is recognised by the scanner and exposed as
+The `'&'` ref marker is recognized by the scanner and exposed as
 `Relation::is_ref()`. The bracket body carries a single element type as an owned
 `String` because the type may span multiple CST tokens. Bracket bodies cannot
 combine with a `PrimaryKey` clause.
 
-Spec-form lambda-style primary keys (`primary key (id) Expr`) are recognised at
+Spec-form lambda-style primary keys (`primary key (id) Expr`) are recognized at
 scan time and their verbatim token text is preserved in the CST; typed access
 to the expression body is deferred behind roadmap follow-up `2.6.6.1`. **Before
 any scanner refactor lands, run the Milestone 0 spike below to confirm that the
@@ -126,7 +126,7 @@ outcome the milestone exists to deliver.
   public surface. Layer the new typed accessors on top; do not remove the
   legacy ones until phase `2.8`.
 - Add both unit tests and behavioural tests before considering the task
-  done. Use `rstest` for parameterised matrices and `rstest-bdd` for any
+  done. Use `rstest` for parameterized matrices and `rstest-bdd` for any
   behavioural scenarios that need step-style coverage.
 - Consider `proptest` for the role × kind × body-form combinatoric
   matrix; if used, keep the property simple (round-trip plus role/kind
@@ -185,7 +185,7 @@ not, neighbour declaration boundary preserved).
 
 ## Test matrix
 
-Drive a parameterised matrix in `src/parser/tests/relations.rs`. Each row is one
+Drive a parameterized matrix in `src/parser/tests/relations.rs`. Each row is one
 `#[case(...)]`. Body forms abbreviate as `()` for record and `[]` for bracket.
 
 | #   | Role   | Kind     | Body | Ref | Primary key | Expected |
@@ -219,7 +219,7 @@ Rejection rows (literal source on the left, expected diagnostic on the right):
 | 22  | `output R(x: u32) primary key (x)`    | reject D-REL-006 |
 | 23  | `input R(x: u32) [primary key (x) x]` | reject D-REL-008 |
 
-Total: 23 parameterised cases. Add four further behavioural cases in
+Total: 23 parameterized cases. Add four further behavioural cases in
 `tests/relation_form_grammar.rs` covering multi-line declarations, attribute
 placement, comment-laden preambles, and recovery after a malformed preamble.
 
@@ -248,7 +248,7 @@ placement, comment-laden preambles, and recovery after a malformed preamble.
 - Primary-key conformance: scanner continues to accept the existing
   `primary key (id, ...)` shape unchanged; spec-form bracket-wrapped primary
   keys are rejected with D-REL-008; the upstream lambda-style
-  `primary key (id) Expr` body is recognised as opaque text in this milestone,
+  `primary key (id) Expr` body is recognized as opaque text in this milestone,
   with typed access deferred. Track follow-up as roadmap item `2.6.6.1`. The
   opaque-text boundary is gated by the Milestone 0 spike below.
 - Tokenizer: no new keyword for `internal` (upstream does not reserve
@@ -320,7 +320,7 @@ Activities:
 - Lift three representative upstream programs containing
   `primary key (id) <expr>` clauses (e.g. `redist.dl`, tutorial examples) into
   `tests/fixtures/relation_pk_spike/`.
-- Write a throwaway scanner-level probe that recognises the clause as
+- Write a throwaway scanner-level probe that recognizes the clause as
   balanced bracket/paren text terminated at the next top-level newline outside
   any open delimiter, and asserts the source-text round-trip.
 - Confirm that the next declaration boundary is reachable without
@@ -384,7 +384,7 @@ Tests added (in `src/parser/tests/relations.rs`):
 Test-matrix ownership rule: Milestone 2 authors `parses_relation_form_matrix`
 asserting accept/reject + diagnostic + CST recovery. Milestone 3 extends the
 same rows with AST accessor assertions (`role()`, `kind()`, etc.). The two
-passes share the same `#[rstest]` table by parameterising on a
+passes share the same `#[rstest]` table by parameterizing on a
 `RelationExpectation` struct.
 
 Docs updates: none in this milestone.
@@ -428,8 +428,8 @@ CodeRabbit gate: PR must reference the ADR-002 draft.
 
 ### Milestone 4 — Primary-key conformance decision
 
-Files touched: `src/parser/span_scanners/relations.rs` (recognise the spec-form
-bracket-wrapped primary key clause only to reject it with D-REL-008; recognise
+Files touched: `src/parser/span_scanners/relations.rs` (recognize the spec-form
+bracket-wrapped primary key clause only to reject it with D-REL-008; recognize
 the upstream lambda-style body as opaque text preserved in the CST);
 `src/parser/ast/relation.rs` (extend `primary_key()` semantics to continue
 returning record-form key column names; add a guarded TODO pointing at follow-up
@@ -705,7 +705,7 @@ flipped, and the roadmap item can be closed.
 - `N_RELATION_ROLE` and `N_RELATION_SEMANTICS` already exist as reserved
   variants but are not produced anywhere. They remain reserved for a future CST
   refinement.
-- The relation scanner uses a `chumsky`-based span recogniser whereas
+- The relation scanner uses a `chumsky`-based span recognizer whereas
   the index scanner uses a hand-rolled cursor walker. Aligning on the
   index-scanner style for the new preamble parser keeps complexity predictable
   and matches the pattern landed in `2.6.4`.
@@ -766,7 +766,7 @@ flipped, and the roadmap item can be closed.
   macro-expanded test context. Replacing the branch with `remove(0)` after the
   length assertion cleared both the review concern and the lint gate.
 - CodeRabbit gave contradictory spelling advice on "parenthesized" versus
-  "parenthesised". The repository instructions require Oxford spelling, but the
+  "parenthesized". The repository instructions require Oxford spelling, but the
   final comment avoids the disputed word entirely so the style question does
   not keep resurfacing in reviews.
 - Milestone 4 did not need new scanner code. The relation suffix scanner

@@ -869,9 +869,9 @@ The core workflow of property-based testing is:
    matching a regex, or complex, custom data structures).
 
 3. **Test and Shrink:** The test runner executes the property function hundreds
-   or thousands of times with different generated inputs. If an assertion
-   fails, `proptest` begins a shrinking process, iteratively simplifying the
-   failing input to find a minimal counterexample.
+   or thousands of times with different generated inputs. If an assertion fails,
+   `proptest` begins a shrinking process, iteratively simplifying the failing
+   input to find a minimal counterexample.
 
 For parsers, this approach is invaluable because it uncovers obscure bugs that
 would be nearly impossible to find with handwritten tests.

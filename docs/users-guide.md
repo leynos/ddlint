@@ -63,7 +63,6 @@ assert!(diagnostics.is_empty());
 `ddlint` uses the `log` API for parser warnings. Initialize a logger in your
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
 
-
 ## Relation declarations
 
 Relation declarations may combine an optional role, optional kind, optional

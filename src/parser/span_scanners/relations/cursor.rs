@@ -25,7 +25,7 @@ pub(super) fn parse_balanced_block(
     consume_open_for_close(tokens, src, cursor, close)?;
     let mut stack = vec![close];
     while let Some((kind, span)) = tokens.get(*cursor) {
-        if !is_trivia(*kind) && stack.len() == 1 && *kind != close {
+        if is_outermost_content(*kind, &stack, close) {
             *has_content = true;
         }
         adjust_stack(*kind, &mut stack);
@@ -38,6 +38,14 @@ pub(super) fn parse_balanced_block(
         src.len()..src.len(),
         format!("unclosed '{}'", token_display(close)),
     )))
+}
+
+/// Return whether `kind` contributes content to the outermost balanced block.
+fn is_outermost_content(kind: SyntaxKind, stack: &[SyntaxKind], close: SyntaxKind) -> bool {
+    matches!(
+        (is_trivia(kind), stack.len(), kind == close),
+        (false, 1, false)
+    )
 }
 
 /// Consume a token with the expected syntax kind.

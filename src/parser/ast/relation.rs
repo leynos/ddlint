@@ -1,3 +1,46 @@
+//!
+//! AST wrapper for relation declarations.
+//!
+//! This module exposes [`Relation`], a thin wrapper over a `rowan` syntax node
+//! representing a `relation` declaration in a `DDlog` program. The wrapper
+//! provides convenient accessors for the relation name, its `input`/`output`
+//! markers, relation kind, body form, declared columns and optional primary
+//! key.
+//!
+//! # Examples
+//!
+//! ```rust,no_run
+//! # use ddlint::parse;
+//! # use ddlint::parser::ast::Relation;
+//! # fn first_relation(src: &str) -> Relation {
+//! #     parse(src)
+//! #         .root()
+//! #         .relations()
+//! #         .into_iter()
+//! #         .next()
+//! #         .expect("relation missing")
+//! # }
+//! let rel = first_relation("input relation R(x: u32, y: string) primary key (x)");
+//!
+//! assert_eq!(rel.name().as_deref(), Some("R"));
+//! assert!(rel.is_input());
+//! assert_eq!(
+//!     rel.columns(),
+//!     vec![
+//!         ("x".into(), "u32".into()),
+//!         ("y".into(), "string".into()),
+//!     ]
+//! );
+//! assert_eq!(rel.primary_key(), Some(vec!["x".into()]));
+//! ```
+
+mod inspect;
+
+use super::AstNode;
+use crate::{DdlogLanguage, SyntaxKind};
+
+/// Typed wrapper for a relation declaration.
+#[derive(Debug, Clone)]
 pub struct Relation {
     pub(crate) syntax: rowan::SyntaxNode<DdlogLanguage>,
 }
@@ -146,6 +189,11 @@ impl_ast_node!(Relation);
 
 #[cfg(test)]
 mod tests {
+    //! Tests for relation AST accessors.
+
+    use super::*;
+    use crate::{parse, test_util::span_text};
+
     #[test]
     fn relation_name() {
         let parsed = parse("input relation R(x: u32)");
@@ -244,44 +292,8 @@ mod tests {
     }
 }
 
-//!
-//! AST wrapper for relation declarations.
-//!
-//! This module exposes [`Relation`], a thin wrapper over a `rowan` syntax node
-//! representing a `relation` declaration in a `DDlog` program. The wrapper
-//! provides convenient accessors for the relation name, its `input`/`output`
-//! markers, relation kind, body form, declared columns and optional primary
-//! key.
-//!
-//! # Examples
-//!
-//! ```rust,no_run
-//! # use ddlint::parse;
-//! # use ddlint::parser::ast::Relation;
-//! # fn first_relation(src: &str) -> Relation {
-//! #     parse(src)
-//! #         .root()
-//! #         .relations()
-//! #         .into_iter()
-//! #         .next()
-//! #         .expect("relation missing")
-//! # }
-//! let rel = first_relation("input relation R(x: u32, y: string) primary key (x)");
-//!
-//! assert_eq!(rel.name().as_deref(), Some("R"));
-//! assert!(rel.is_input());
-//! assert_eq!(
-//!     rel.columns(),
-//!     vec![
-//!         ("x".into(), "u32".into()),
-//!         ("y".into(), "string".into()),
-//!     ]
-//! );
-//! assert_eq!(rel.primary_key(), Some(vec!["x".into()]));
-//! ```
-
-mod inspect;
-
+/// Kind of relation declared by a relation preamble.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RelationKind {
     /// Plain relation, either explicit `relation` or defaulted.
     Relation,
@@ -291,6 +303,8 @@ pub enum RelationKind {
     Multiset,
 }
 
+/// Role of a relation declaration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RelationRole {
     /// Relation declared with the `input` keyword.
     Input,
@@ -300,6 +314,8 @@ pub enum RelationRole {
     Internal,
 }
 
+/// Body form used by a relation declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelationBody {
     /// Record relation body containing named fields.
     Fields(Vec<(String, String)>),
