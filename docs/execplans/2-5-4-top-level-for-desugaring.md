@@ -263,17 +263,6 @@ existing parser behaviour:
 If a validation command fails, fix the failure and re-run that command, then
 re-run the full required validation sequence.
 
-
-## Artefacts and notes
-
-Capture the following in PR notes or local logs:
-
-- before/after test output for the new top-level `for` cases,
-- one example source and its emitted semantic rule list,
-- one unsupported-form diagnostic example with span evidence.
-
-Keep snippets short and focused on proving behavioural change.
-
 ## Artefacts and notes
 
 Capture the following in PR notes or local logs:

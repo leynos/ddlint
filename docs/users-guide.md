@@ -63,7 +63,6 @@ assert!(diagnostics.is_empty());
 `ddlint` uses the `log` API for parser warnings. Initialize a logger in your
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
 
-
 ## Legacy DDlog tokens
 
 The parser keeps legacy token kinds in the lexer so diagnostics can point to
