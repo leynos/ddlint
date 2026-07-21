@@ -93,7 +93,6 @@ fn parse_sources(sources: &[&str]) {
 }
 ```
 
-
 ## Legacy DDlog tokens
 
 The parser keeps legacy token kinds in the lexer so diagnostics can point to
