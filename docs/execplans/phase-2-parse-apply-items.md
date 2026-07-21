@@ -252,7 +252,6 @@ revert to the last passing tests and re-apply modifications incrementally. When
 validation fails, fix the specific failure and re-run the failed command only,
 then re-run the full validation set before marking the work complete.
 
-
 ## Artefacts and notes
 
 Keep test fixtures small and place any long sample programmes under `tests/`
