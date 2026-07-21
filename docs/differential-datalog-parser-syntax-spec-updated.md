@@ -264,7 +264,7 @@ Role         ::= 'input' | 'output'
 Kind         ::= 'relation' | 'stream' | 'multiset'
 Fields       ::= Field (',' Field)* ','?
 Field        ::= LcName ':' Type
-PrimaryKey   ::= 'primary' 'key' '(' LcName (',' LcName)* ')' Expr
+PrimaryKey   ::= 'primary' 'key' '(' LcName (',' LcName)* ')' Expr?
 ```
 
 Notes:
@@ -276,9 +276,9 @@ Notes:
   keyword.
 - Absence of `Kind` means `relation`.
 - `PrimaryKey` is valid only on `input` relations with record bodies.
-- The parser preserves the `PrimaryKey` expression as CST text. Typed access to
-  that expression is deferred; AST helpers currently expose the binder/list
-  names from the parenthesized portion.
+- The trailing `PrimaryKey` expression is optional. When present, the parser
+  preserves it as CST text; typed access is deferred, and AST helpers currently
+  expose the binder/list names from the parenthesized portion.
 - Bracket-wrapped primary-key clauses (`[primary key ...]`) are rejected.
 - `&UcName` in declarations marks a reference relation. `&UcName` in rule
   **heads** triggers special semantics (see §7.3).

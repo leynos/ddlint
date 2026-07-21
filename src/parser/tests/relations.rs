@@ -352,8 +352,4 @@ fn malformed_preamble_delimiters_are_not_relations(#[case] src: &str) {
         relations.is_empty(),
         "delimiter-before-name input should not yield a relation: {src}"
     );
-    for rel in relations {
-        assert_ne!(rel.name().as_deref(), Some("id"), "leaked name for: {src}");
-        assert_ne!(rel.name().as_deref(), Some("u32"), "leaked name for: {src}");
-    }
 }

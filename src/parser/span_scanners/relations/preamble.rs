@@ -45,8 +45,8 @@ use chumsky::{Error, error::Simple};
 
 use crate::{Span, SyntaxKind};
 
-use super::ScanResult;
 use super::cursor::skip_trivia;
+use super::{ScanResult, custom_error};
 
 const D_REL_001: &str =
     "D-REL-001: relation role keyword (input/output) must precede the kind keyword";
@@ -204,10 +204,6 @@ impl PreambleState {
             has_kind: self.has_kind,
         }
     }
-}
-
-fn custom_error(span: &Span, message: &'static str) -> Simple<SyntaxKind> {
-    Simple::custom(span.clone(), message)
 }
 
 enum PreamblePart {
