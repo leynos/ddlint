@@ -22,7 +22,7 @@ independent declaration axes:
 Before roadmap item `2.6.6`, the scanner accepted only a narrow subset of this
 surface and the typed `Relation` wrapper exposed only `is_input()` and
 `is_output()`. That forced callers to infer kind, defaulting, ref status, and
-body form from raw CST tokens.
+body form from raw concrete syntax tree (CST) tokens.
 
 ADR-001 defines a future split between the lossless syntax layer and the owned
 semantic layer. Relation modelling therefore needs a syntax-layer API that is

@@ -107,6 +107,8 @@ The parser emits deterministic diagnostics for invalid relation forms:
 <!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay intact
 for reviewability. -->
 
+Table 1. Relation diagnostics.
+
 | Code      | Cause                                        | Message                                                                                |
 | --------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
 | D-REL-001 | Kind keyword before role keyword             | `relation role keyword (input/output) must precede the kind keyword`                   |

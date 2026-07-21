@@ -64,7 +64,7 @@ sequenceDiagram
    `GreenNodeBuilder` from `rowan`.
 3. For syntactic errors, emit an `N_ERROR` node and recover by skipping to a
    known synchronization point, as recommended by the design document
-   ([design document](docs/ddlint-design-and-road-map.md#L124-L139)).
+   ([design document](../ddlint-design.md)).
 
 The parser's final output is the AST root together with a `GreenNode` that
 contains the full CST.

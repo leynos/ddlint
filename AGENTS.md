@@ -134,9 +134,9 @@ This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
 project:
 
-- Run `make fmt`, `make check-fmt`, `make lint`, and `make test` before
-  committing. These targets wrap the following commands, so contributors
-  understand the exact behaviour and policy enforced:
+- Run `make fmt`, `make check-fmt`, `make lint`, `make test`, and
+  `make markdownlint` before committing. These targets wrap the following
+  commands, so contributors understand the exact behaviour and policy enforced:
   - `make check-fmt` executes:
 
     ```sh

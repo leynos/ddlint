@@ -45,6 +45,8 @@ materially change what the parser should accept.
 <!-- markdownlint-disable MD013 MD060 --><!-- Table rows are intentionally kept
 intact for reviewability. -->
 
+Table: upstream-spec deltas.
+
 | #   | Local spec §5.5                                              | Upstream DDlog (authoritative)                                                                                 | Recommended action                                                                                                                                                                              |
 | --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | `Role ::= 'input' \| 'output' \| 'internal'`                 | No `internal` keyword; "internal" is the *absence* of `input`/`output`                                         | Update spec: drop `internal` from the keyword list; treat absence of a role keyword as the implicit internal role. AST exposes this via `RelationRole::Internal` plus `role_keyword_present()`. |
@@ -137,8 +139,9 @@ outcome the milestone exists to deliver.
   and, where the typed AST surface is substantive, add an ADR.
 - File-size limit ≤ 400 lines per source file (`AGENTS.md`).
 - All comments and docs in en-GB Oxford spelling.
-- Caret-only dependency requirements; no panics in non-test code; lints
-  not silenced except as a tightly-scoped last resort.
+- Dependency requirements must be implicitly caret-compatible, with explicit
+  `^` caret prefixes forbidden by the Cargo policy; no panics in non-test code;
+  lints not silenced except as a tightly-scoped last resort.
 - Use Make targets for validation and run long commands with
   `set -o pipefail` and `tee`.
 
@@ -166,6 +169,8 @@ outcome the milestone exists to deliver.
 <!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay on one
 row for stable review. -->
 
+Table: relation diagnostics and recovery.
+
 | Rejected form                                         | Diagnostic ID | Message                                                                                | Recovery                                                    |
 | ----------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Kind keyword before role keyword                      | D-REL-001     | `relation role keyword (input/output) must precede the kind keyword`                   | consume both preamble keywords, then skip to next newline   |
@@ -188,6 +193,8 @@ not, neighbour declaration boundary preserved).
 Drive a parameterized matrix in `src/parser/tests/relations.rs`. Each row is one
 `#[case(...)]`. Body forms abbreviate as `()` for record and `[]` for bracket.
 
+Table: accepted relation forms.
+
 | #   | Role   | Kind     | Body | Ref | Primary key | Expected         |
 | --- | ------ | -------- | ---- | --- | ----------- | ---------------- |
 | 1   | absent | absent   | `()` | no  | absent      | accept           |
@@ -208,6 +215,8 @@ Drive a parameterized matrix in `src/parser/tests/relations.rs`. Each row is one
 | 16  | output | relation | `[]` | yes | absent      | accept           |
 
 Rejection rows (literal source on the left, expected diagnostic on the right):
+
+Table: rejected relation forms.
 
 | #   | Source                                | Expected         |
 | --- | ------------------------------------- | ---------------- |
@@ -694,8 +703,8 @@ flipped, and the roadmap item can be closed.
 - The existing parser test labelled "internal" in
   `src/parser/tests/relations.rs` actually exercises the bare
   `relation UserSession(...)` form, not an explicit `internal` keyword. This
-  matches upstream (no `internal` keyword) and informs the
-  `Option<RelationRole>` AST choice.
+  matches upstream (no `internal` keyword) and informs the AST's
+  `RelationRole::Internal` plus `role_keyword_present()` model.
 - The local spec doc §5.5 lists `internal` as a keyword and wraps the
   `PrimaryKey` clause in brackets. Both diverge from upstream DDlog
   (`vmware-archive/differential-datalog`, Parse.hs as of 2022-07-23). The

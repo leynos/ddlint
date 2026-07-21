@@ -207,13 +207,13 @@ fn parse_primary_key_clause(
     skip_trivia(tokens, cursor);
     consume_text(tokens, src, cursor, "key")?;
     skip_trivia(tokens, cursor);
+    // Capture the clause span before `parse_balanced_block` advances the cursor
+    // so an empty-clause D-REL-007 anchors at the `()`, not the next token.
+    let empty_key_span = current_span(tokens, src, *cursor);
     let mut has_column = false;
     let mut end = parse_balanced_block(tokens, src, cursor, SyntaxKind::T_RPAREN, &mut has_column)?;
     if !has_column {
-        return Err(Box::new(custom_error(
-            &current_span(tokens, src, *cursor),
-            D_REL_007,
-        )));
+        return Err(Box::new(custom_error(&empty_key_span, D_REL_007)));
     }
     skip_inline_trivia(tokens, src, cursor);
     if next_token_is_same_line_expression(tokens, src, *cursor) {

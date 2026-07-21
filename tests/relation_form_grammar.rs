@@ -53,13 +53,13 @@ fn canonical_bracket_relation_preserves_role_kind_and_ref(
 
 #[rstest]
 fn multiline_relation_preamble_parses(
-    #[with(
-        "input\n\
-         multiset\n\
-         Metrics(\n\
-             id: u32,\n\
-         )"
-    )]
+    #[with(concat!(
+        "input\n",
+        "multiset\n",
+        "Metrics(\n",
+        "id: u32,\n",
+        ")"
+    ))]
     parsed_relation: Relation,
 ) {
     let relation = parsed_relation;
