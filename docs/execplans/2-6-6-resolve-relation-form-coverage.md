@@ -498,8 +498,8 @@ Activities:
   - multi-line and attribute-prefixed forms.
 - `proptest` over the role × kind × body-form generator with
   the property "round-trip text equals input and parsed `role()`/`kind()` match
-  the input keywords". This proptest is required, not optional (see
-  Milestone 3).
+  the input keywords". This proptest is required, not optional (see Milestone
+  3).
 - After gates pass, mark `docs/roadmap.md` item `2.6.6` done.
 
 CodeRabbit gate: final review focuses on conformance register status,

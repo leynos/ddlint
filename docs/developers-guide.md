@@ -40,6 +40,28 @@ parsing pipeline.
   primary-key expressions are preserved in the CST until roadmap follow-up
   `2.6.6.1` introduces typed access.
 
+### `src/parser/span_scanners/relations.rs`
+
+- Owns top-level relation-candidate discovery in the token stream.
+- Applies delimiter-depth-aware line-start filtering so only genuine top-level
+  declarations are treated as candidates.
+- Scans the relation body and the primary-key suffix.
+- Disambiguates relation declarations from bare rules and facts.
+- Handles relation-span recovery and emits the `D-REL-*` diagnostics.
+
+### `src/parser/span_scanners/relations/cursor.rs`
+
+- Owns the scanner-local cursor and trivia navigation.
+- Provides balanced delimiter traversal, token and span access, and
+  delimiter-stack maintenance shared by the relation scanner.
+
+### `src/parser/span_scanners/relations/preamble.rs`
+
+- Owns only the optional role/kind preamble parsing.
+- Validates role-before-kind ordering and role/kind uniqueness (`D-REL-001`
+  through `D-REL-003`).
+- Does not parse relation names, bodies, reference markers, or primary keys.
+
 ### `src/parser/expression/pratt/postfix.rs`
 
 - Owns postfix dispatch for the Pratt parser.
@@ -76,6 +98,26 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
+- Keep relation-candidate discovery, body parsing, suffix parsing, and recovery
+  in `relations.rs`.
+- Keep reusable cursor mechanics — trivia navigation, balanced traversal, and
+  delimiter-stack maintenance — in `relations/cursor.rs`.
+- Keep role/kind ordering and uniqueness validation in `relations/preamble.rs`.
+- Keep typed post-parse relation accessors in `ast/relation.rs` and
+  inspection-only CST traversal in `ast/relation/inspect.rs`.
+
+## Contributor workflow
+
+Run these gates in order before committing:
+
+1. `make fmt`
+2. `make check-fmt`
+3. `make lint`
+4. `make test`
+
+`make lint` includes the spelling gate. When a change touches maintained
+Markdown, also validate it with `make markdownlint`. See `AGENTS.md` for the
+underlying command details.
 
 ## Spelling policy
 
