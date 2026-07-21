@@ -338,3 +338,22 @@ fn bare_rule_and_fact_are_not_relation_declarations() {
     assert!(parsed.root().relations().is_empty());
     assert_eq!(parsed.root().rules().len(), 2);
 }
+
+#[rstest]
+#[case::paren_before_name("(id: u32)")]
+#[case::bracket_before_name("[u32]")]
+fn malformed_preamble_delimiters_are_not_relations(#[case] src: &str) {
+    // A body delimiter appearing before any relation name is not a relation
+    // candidate: no relation declaration is produced and no identifier inside
+    // the delimited body leaks out as a relation name.
+    let parsed = crate::parse(src);
+    let relations = parsed.root().relations();
+    assert!(
+        relations.is_empty(),
+        "delimiter-before-name input should not yield a relation: {src}"
+    );
+    for rel in relations {
+        assert_ne!(rel.name().as_deref(), Some("id"), "leaked name for: {src}");
+        assert_ne!(rel.name().as_deref(), Some("u32"), "leaked name for: {src}");
+    }
+}

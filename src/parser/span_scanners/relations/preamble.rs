@@ -1,4 +1,45 @@
 //! Relation role and kind preamble parsing.
+//!
+//! This module parses **only** the optional relation preamble: the leading
+//! role keyword (`input`/`output`) and kind keyword (`relation`/`stream`/
+//! `multiset`) that may appear before a relation name. It does not parse the
+//! relation name, the record or bracket body, the `&` ref marker, or the
+//! primary-key clause; those belong to the parent scanner in
+//! [`super`](super) (`src/parser/span_scanners/relations.rs`), which owns
+//! candidate discovery, body and suffix parsing, span collection, and error
+//! recovery. Preamble scanning stops as soon as it reaches the relation name
+//! or any token that cannot begin a preamble.
+//!
+//! # Ordering and duplication rules
+//!
+//! A role keyword must precede a kind keyword; a kind keyword followed by a
+//! role keyword raises `D-REL-001`. At most one role keyword is permitted
+//! (`D-REL-002`) and at most one kind keyword is permitted (`D-REL-003`).
+//!
+//! # Cursor and trivia policy
+//!
+//! Preamble scanning advances the shared token cursor using the
+//! whitespace/comment trivia policy supplied by
+//! [`super::cursor`](super::cursor) (`src/parser/span_scanners/relations/cursor.rs`),
+//! specifically [`skip_trivia`], which steps over whitespace and comments
+//! including newlines.
+//!
+//! # Returned state
+//!
+//! [`parse_preamble`] returns a [`Preamble`] recording the optional role and
+//! whether a kind keyword was present. The parent scanner consumes this state
+//! to validate primary-key eligibility (only `input` relations may declare a
+//! primary key, `D-REL-006`) and to disambiguate a relation declaration from a
+//! bare rule or fact.
+//!
+//! # Two `RelationRole` types
+//!
+//! The [`RelationRole`] defined here is scanner-local and has only `Input` and
+//! `Output` variants; the absence of a role keyword is represented as
+//! `Option::None`. It is distinct from the typed AST
+//! [`RelationRole`](crate::parser::ast::RelationRole), which additionally
+//! carries an implicit `Internal` variant used post-parse when no role keyword
+//! is present.
 
 use chumsky::{Error, error::Simple};
 

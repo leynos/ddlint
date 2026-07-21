@@ -193,6 +193,7 @@ mod tests {
 
     use super::*;
     use crate::{parse, test_util::span_text};
+    use rstest::rstest;
 
     #[test]
     fn relation_name() {
@@ -251,6 +252,23 @@ mod tests {
         assert_eq!(rel.kind(), RelationKind::Relation);
         assert!(!rel.kind_keyword_present());
         assert!(!rel.is_ref());
+    }
+
+    #[rstest]
+    #[case::paren_before_name("(x: u32)")]
+    #[case::bracket_before_name("[u32]")]
+    fn malformed_preamble_delimiters_do_not_leak_body_names(#[case] src: &str) {
+        // A body delimiter before any relation name is not a relation
+        // candidate, so no relation declaration surfaces a body identifier as
+        // its name. This guards the delimiter cut-off in `inspect`.
+        let parsed = parse(src);
+        for rel in parsed.root().relations() {
+            assert_eq!(
+                rel.name(),
+                None,
+                "body identifier leaked as relation name for source: {src}",
+            );
+        }
     }
 
     #[test]

@@ -26,7 +26,7 @@ const D_REL_005: &str =
     "D-REL-005: bracket-form relations require a single element type between '[' and ']'";
 const D_REL_006: &str = "D-REL-006: primary key clauses are only valid on input relations";
 pub(super) const D_REL_007: &str = "D-REL-007: unexpected or malformed primary key clause";
-const D_REL_008: &str = "D-REL-008: bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']";
+const D_REL_008: &str = "D-REL-008: bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']'";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BodyForm {
@@ -143,7 +143,8 @@ fn parse_body(
             D_REL_005,
         )));
     }
-    skip_trivia(tokens, cursor);
+    // Keep trailing trivia: the newline after the body must stay visible to
+    // `is_bare_rule_or_fact` so newline-separated declarations stay distinct.
     Ok(end)
 }
 

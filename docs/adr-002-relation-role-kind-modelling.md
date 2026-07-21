@@ -71,7 +71,7 @@ The syntax-layer `Relation` wrapper exposes:
 `Internal` means no role keyword was present. The parser does not reserve an
 `internal` keyword. `RelationKind::Relation` is the default when no kind
 keyword was present. `kind_keyword_present()` means the source explicitly wrote
-`relation`.
+one of `relation`, `stream`, or `multiset`.
 
 `Relation::primary_key()` keeps returning the names from the parenthesized
 binder/list portion of the suffix. Spec-form trailing primary-key expressions

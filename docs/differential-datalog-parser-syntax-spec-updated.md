@@ -264,7 +264,7 @@ Role         ::= 'input' | 'output'
 Kind         ::= 'relation' | 'stream' | 'multiset'
 Fields       ::= Field (',' Field)* ','?
 Field        ::= LcName ':' Type
-PrimaryKey   ::= 'primary' 'key' '(' LcName ')' Expr
+PrimaryKey   ::= 'primary' 'key' '(' LcName (',' LcName)* ')' Expr
 ```
 
 Notes:

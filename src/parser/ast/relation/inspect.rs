@@ -176,3 +176,62 @@ where
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    //! Regression tests for the delimiter guard that stops preamble scanning
+    //! before a body delimiter when a malformed node lacks a relation name.
+
+    use super::super::Relation;
+    use super::{elements_after_name, inspect_preamble};
+    use crate::{DdlogLanguage, SyntaxKind};
+    use rowan::{GreenNodeBuilder, Language as _, SyntaxNode};
+
+    /// Build a synthetic `N_RELATION_DECL` node from raw `(kind, text)` tokens.
+    ///
+    /// The span scanner never emits a relation candidate whose body delimiter
+    /// precedes the name, so the guard is exercised by constructing the node
+    /// directly rather than routing malformed source through `parse`.
+    fn relation_node(tokens: &[(SyntaxKind, &str)]) -> SyntaxNode<DdlogLanguage> {
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(DdlogLanguage::kind_to_raw(SyntaxKind::N_RELATION_DECL));
+        for (kind, text) in tokens {
+            builder.token(DdlogLanguage::kind_to_raw(*kind), text);
+        }
+        builder.finish_node();
+        SyntaxNode::new_root(builder.finish())
+    }
+
+    /// Assert the guard keeps a body identifier from leaking out as the
+    /// relation name when a body delimiter precedes any name token.
+    fn assert_delimiter_guard(node: SyntaxNode<DdlogLanguage>) {
+        assert_eq!(inspect_preamble(&node).name, None);
+        assert!(
+            elements_after_name(&node).is_empty(),
+            "no body elements should be returned without a name",
+        );
+        let rel = Relation { syntax: node };
+        assert_eq!(rel.name(), None);
+    }
+
+    #[test]
+    fn paren_before_name_does_not_expose_body_identifier() {
+        assert_delimiter_guard(relation_node(&[
+            (SyntaxKind::T_LPAREN, "("),
+            (SyntaxKind::T_IDENT, "x"),
+            (SyntaxKind::T_COLON, ":"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_IDENT, "u32"),
+            (SyntaxKind::T_RPAREN, ")"),
+        ]));
+    }
+
+    #[test]
+    fn bracket_before_name_does_not_expose_body_identifier() {
+        assert_delimiter_guard(relation_node(&[
+            (SyntaxKind::T_LBRACKET, "["),
+            (SyntaxKind::T_IDENT, "u32"),
+            (SyntaxKind::T_RBRACKET, "]"),
+        ]));
+    }
+}

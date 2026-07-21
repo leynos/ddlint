@@ -4,7 +4,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: DRAFT (post design review)
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -204,7 +204,7 @@ Drive a parameterized matrix in `src/parser/tests/relations.rs`. Each row is one
 | 12  | input  | multiset | `()` | no  | present     | accept           |
 | 13  | absent | multiset | `()` | no  | absent      | accept           |
 | 14  | output | multiset | `[]` | no  | absent      | accept           |
-| 15  | input  | absent   | `()` | no  | present     | accept           |
+| 15  | input  | absent   | `[]` | no  | absent      | accept           |
 | 16  | output | relation | `[]` | yes | absent      | accept           |
 
 Rejection rows (literal source on the left, expected diagnostic on the right):
@@ -496,9 +496,10 @@ Activities:
   - bracket+primary-key rejection (D-REL-004);
   - bracket-wrapped primary-key rejection (D-REL-008);
   - multi-line and attribute-prefixed forms.
-- Optional `proptest` over the role × kind × body-form generator with
+- `proptest` over the role × kind × body-form generator with
   the property "round-trip text equals input and parsed `role()`/`kind()` match
-  the input keywords". If complexity is prohibitive, defer.
+  the input keywords". This proptest is required, not optional (see
+  Milestone 3).
 - After gates pass, mark `docs/roadmap.md` item `2.6.6` done.
 
 CodeRabbit gate: final review focuses on conformance register status,
@@ -531,9 +532,9 @@ documentation completeness, and ADR-002.
       `T_IDENT`.
 - [x] Attribute scanner accepts the relation-keyword set used by the new
       preamble parser.
-- [x] Scanner accepts all 16 valid (role, kind, body, ref) combinations
+- [x] Scanner accepts all 15 valid (role, kind, body, ref) combinations
       from the matrix.
-- [x] Scanner rejects the seven invalid combinations with the documented
+- [x] Scanner rejects the eight invalid combinations with the documented
       diagnostics and per-diagnostic recovery state.
 - [x] Typed AST exposes `role()`, `role_keyword_present()`, `kind()`,
       `kind_keyword_present()`, `is_ref()`, `body()`, and

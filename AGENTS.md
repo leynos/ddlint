@@ -134,7 +134,7 @@ This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
 project:
 
-- Run `make check-fmt`, `make fmt`, `make lint`, and `make test` before
+- Run `make fmt`, `make check-fmt`, `make lint`, and `make test` before
   committing. These targets wrap the following commands, so contributors
   understand the exact behaviour and policy enforced:
   - `make check-fmt` executes:
@@ -165,11 +165,17 @@ project:
   - `make spelling` executes:
 
     ```sh
+    PYTHONPATH=scripts uv run --python 3.13 \
+      --with pytest==9.0.2 --with pytest-cov==7.0.0 \
+      python -m pytest scripts/tests/test_typos_rollout.py \
+      --cov=generate_typos_config --cov=typos_rollout \
+      --cov=typos_rollout_cache --cov-fail-under=90
     uv run scripts/generate_typos_config.py
     git ls-files -z '*.md' | xargs -0 -r $(TYPOS) --config typos.toml --force-exclude
     ```
 
-    enforcing en-GB-oxendict spelling in Markdown prose.
+    validating the shared spelling-policy helper before generating the typos
+    configuration and enforcing en-GB-oxendict spelling in Markdown prose.
   - `make test` executes:
 
     ```sh
