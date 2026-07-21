@@ -233,7 +233,10 @@ the syntax-layer contract before crate extraction: the parser now accepts only
 the canonical spec-form `index Name(field: Type, ...) on Atom`, rejects the
 older shorthand `index Name on Relation(columns)` with a targeted diagnostic,
 and exposes the typed field list plus normalized `on` target directly from the
-CST-backed `Index` wrapper.
+CST-backed `Index` wrapper. Legacy compatibility tokens follow the same
+parser-contract rule: `src/parser/reserved_tokens.rs` single-sources
+diagnostics for tokens that stay lexed for span precision but have no supported
+grammar semantics.
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 

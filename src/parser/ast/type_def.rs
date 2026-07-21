@@ -1,14 +1,14 @@
 //!
 //! AST wrapper for type definitions in `DDlog`.
 //!
-//! This module exposes the `TypeDef` struct for both regular `typedef` and
+//! This module exposes the `TypeDef` struct for both regular `type` and
 //! `extern type` declarations. It enables extraction of the type name, and
 //! whether the declaration is marked as `extern`.
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
 
-/// Typed wrapper for a `typedef` or `extern type` declaration.
+/// Typed wrapper for a `type` or `extern type` declaration.
 #[derive(Debug, Clone)]
 pub struct TypeDef {
     pub(crate) syntax: rowan::SyntaxNode<DdlogLanguage>,
@@ -59,14 +59,14 @@ mod tests {
             .type_defs()
             .first()
             .cloned()
-            .expect("typedef missing");
+            .expect("type missing");
         assert_eq!(td.name().as_deref(), Some("Handle"));
         assert!(td.is_extern());
     }
 
     #[test]
     fn regular_typedef_parsed() {
-        let parsed = parse("typedef UserId = u64");
+        let parsed = parse("type UserId = u64");
         crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let td = parsed
@@ -74,14 +74,14 @@ mod tests {
             .type_defs()
             .first()
             .cloned()
-            .expect("typedef missing");
+            .expect("type missing");
         assert_eq!(td.name().as_deref(), Some("UserId"));
         assert!(!td.is_extern());
     }
 
     #[test]
     fn typedef_name_span_points_to_declaration_identifier() {
-        let source = "typedef UserId = UserId";
+        let source = "type UserId = UserId";
         let parsed = parse(source);
         crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
@@ -90,13 +90,13 @@ mod tests {
             .type_defs()
             .first()
             .cloned()
-            .expect("typedef missing");
+            .expect("type missing");
 
         let span = td
             .name_span()
-            .unwrap_or_else(|| panic!("missing typedef name_span in `{source}`"));
+            .unwrap_or_else(|| panic!("missing type name_span in `{source}`"));
 
         assert_eq!(span_text(source, &span), "UserId");
-        assert_eq!(span.start, "typedef ".len());
+        assert_eq!(span.start, "type ".len());
     }
 }

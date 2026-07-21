@@ -1,5 +1,5 @@
 /* Transitive closure while excluding certain nodes */
-typedef node_t = u64
+type node_t = u64
 
 input relation Edge(from: node_t, to: node_t)
 input relation Exclude(node: node_t)

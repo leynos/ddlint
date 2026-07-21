@@ -54,6 +54,11 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
+- Route reserved-token diagnostics through `src/parser/reserved_tokens.rs`.
+  That module owns the parser-internal messages and the `rejection_for`
+  predicate for unsupported legacy tokens. The canonical public policy table
+  lives in `docs/differential-datalog-parser-syntax-spec-updated.md` section
+  `9.1`; avoid duplicating it in code comments or local scanner modules.
 
 ## Spelling policy
 
@@ -70,15 +75,15 @@ gate also runs the helper's Python 3.13 tests with at least 90% line coverage.
 
 ## Workflow pins and Dependabot
 
-Dependabot owns the upgrade of GitHub Actions and reusable workflows,
-including calls into `leynos/shared-actions`. Contract tests that assert a
-caller's exact commit SHA create a lockstep dependency: every time
-Dependabot opens a bump PR, the test fails until a human edits the pinned
-constant to match. That defeats the purpose of automated dependency updates
-and turns a routine bump into a manual chore.
+Dependabot owns the upgrade of GitHub Actions and reusable workflows, including
+calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
+commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
+the test fails until a human edits the pinned constant to match. That defeats
+the purpose of automated dependency updates and turns a routine bump into a
+manual chore.
 
-Contract tests may still verify the *shape* of a reusable-workflow caller.
-They must not verify the specific SHA value.
+Contract tests may still verify the *shape* of a reusable-workflow caller. They
+must not verify the specific SHA value.
 
 - Do assert the workflow references the correct reusable workflow path.
 - Do assert the ref is pinned to a full 40-character commit SHA, not a
@@ -100,5 +105,5 @@ def test_uses_pinned_full_sha(caller_step):
 ```
 
 If a workflow's behaviour genuinely depends on a feature only present from a
-particular commit onwards, express that as a comment or a changelog note,
-not as a test assertion on the SHA string.
+particular commit onwards, express that as a comment or a changelog note, not
+as a test assertion on the SHA string.

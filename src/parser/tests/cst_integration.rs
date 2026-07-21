@@ -9,7 +9,7 @@ use super::helpers::{count_nodes_by_kind, pretty_print};
 fn parse_builds_cst_for_all_top_level_categories() {
     let src = concat!(
         "import foo::bar\n",
-        "typedef UserId = u64\n",
+        "type UserId = u64\n",
         "input relation User(id: UserId, name: string) primary key (id)\n",
         "index Idx_User_name(name: string) on User[name]\n",
         "function greet(name: string): string {\n",

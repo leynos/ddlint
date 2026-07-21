@@ -8,6 +8,7 @@
 use crate::{Span, SyntaxKind};
 
 use super::ParsedSpans;
+use super::reserved_tokens::collect_reserved_token_errors;
 use super::span_scanners::{
     collect_apply_spans, collect_attribute_spans, collect_function_spans, collect_import_spans,
     collect_index_spans, collect_relation_spans, collect_rule_spans, collect_transformer_spans,
@@ -49,6 +50,7 @@ pub(super) fn parse_tokens(
     let non_rule_spans = merge_spans(non_rule_spans);
 
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
+    let reserved_errors = collect_reserved_token_errors(tokens, src, &expr_spans);
 
     let mut all_errors = attribute_errors;
     all_errors.extend(errors);
@@ -59,6 +61,7 @@ pub(super) fn parse_tokens(
     all_errors.extend(transformer_errors);
     all_errors.extend(apply_errors);
     all_errors.extend(rule_errors);
+    all_errors.extend(reserved_errors);
 
     let span_result = ParsedSpans::builder()
         .attributes(attribute_spans)

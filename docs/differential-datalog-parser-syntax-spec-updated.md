@@ -96,13 +96,16 @@ The following **keywords** and **reserved operators** cannot be used as
 identifiers (final list should be kept 1:1 with the lexer):
 
 - **Keywords:** `type`, `function`, `extern`, `transformer`, `input`, `output`,
-  `internal`,`relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`,`break`,`continue`.
+  `internal`, `relation`, `stream`, `multiset`, `index`, `on`, `primary`, `key`,
+  `apply`, `match`, `if`, `else`, `for`, `in`, `then`, `skip`, `true`, `false`,
+  `var`, `mut`, `return`, `break`, `continue`, and `as`.
 - **Special tokens:** `@`, `:-`, `,`, `;`, `:`, `::`, `.`, `&`, `'` (diff
   marker), `-<` (delay introducer), `=>` (implies), brackets and braces
-  `()[]{}`.
+  `()[]{}`, and `#` when it starts an attribute prefix `#[...]`.
 
-Reserved but not part of the grammar: `#`, `<=>`. Implementations must reject
-their use with a clear diagnostic.
+Reserved but not part of the grammar: `<=>` and bare `#` tokens not followed by
+`[` as an attribute prefix. Implementations must reject their use with a clear
+diagnostic.
 
 #### 2.3.1 Host‑language keyword reservation
 
@@ -150,8 +153,8 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
   `docs/roadmap.md` item `2.6.3`.
 - **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
   literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
-  likewise scheduled work; see `docs/parser-conformance-register.md` item 10
-  and `docs/roadmap.md` item `2.6.3`.
+  likewise scheduled work; see `docs/parser-conformance-register.md` item 10 and
+  `docs/roadmap.md` item `2.6.3`.
 
 ______________________________________________________________________
 
@@ -160,22 +163,22 @@ ______________________________________________________________________
 Higher rows bind tighter. All binary operators are left‑associative unless
 noted.
 
-| Precedence | Operators / Forms                                      | Associativity |
-| ---------- | ------------------------------------------------------ | ------------- |
-| 14         | Postfix call `f(…)`, index `e[expr]`, field `e.name`   | left          |
-| 13         | Unary prefix: `- e`, `! e`, `~ e`, `& e`               | right         |
-| 12         | `*`, `/`, `%`                                          | left          |
-| 11         | `+`, `-`, `++` (concatenation)                         | left          |
-| 10         | Shifts `<<`, `>>`                                      | left          |
-| 9          | Bitwise `&`                                            | left          |
-| 8          | Bitwise `^`                                            | left          |
-| 7          | Bitwise or (`&#124;`)                                  | left          |
-| 6          | Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`          | non‑assoc     |
-| 5          | Logical `and`                                          | left          |
-| 4          | Logical `or`                                           | left          |
-| 3          | Implication `=>`                                       | right         |
-| 2          | Conditional expression `if … then … else …`            | n/a           |
-| 1          | Assignment forms inside statements (see §6)            | right         |
+| Precedence | Operators / Forms                                    | Associativity |
+| ---------- | ---------------------------------------------------- | ------------- |
+| 14         | Postfix call `f(…)`, index `e[expr]`, field `e.name` | left          |
+| 13         | Unary prefix: `- e`, `! e`, `~ e`, `& e`             | right         |
+| 12         | `*`, `/`, `%`                                        | left          |
+| 11         | `+`, `-`, `++` (concatenation)                       | left          |
+| 10         | Shifts `<<`, `>>`                                    | left          |
+| 9          | Bitwise `&`                                          | left          |
+| 8          | Bitwise `^`                                          | left          |
+| 7          | Bitwise or (`&#124;`)                                | left          |
+| 6          | Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`        | non‑assoc     |
+| 5          | Logical `and`                                        | left          |
+| 4          | Logical `or`                                         | left          |
+| 3          | Implication `=>`                                     | right         |
+| 2          | Conditional expression `if … then … else …`          | n/a           |
+| 1          | Assignment forms inside statements (see §6)          | right         |
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
 and are recognized as operators. `&` in row 13 is expression-only; head
@@ -204,7 +207,7 @@ Attribute     ::= '#[' AttrBody ']'
 ### 5.2 Imports and types
 
 ```ebnf
-Import   ::= 'import' ScopedPath ';'
+Import   ::= 'import' ScopedPath ('as' LcName)? ';'
 Typedef  ::= 'type' UcName TypeParams? '=' Type ';'
 Type     ::= UcName TypeArgs? | TupleType | MapType | VecType | Primitive
 
@@ -532,19 +535,63 @@ ______________________________________________________________________
 ## 9.1 Legacy and compatibility tokens
 
 Implementations may encounter historical tokens from older DDlog parsers. This
-spec defines their treatment to aid migration:
+spec defines their treatment to aid migration. The lexer keeps the token kinds
+so diagnostics can point at the exact source span; unsupported uses are
+rejected by the parser.
 
 - `Aggregate(…)`: accepted and normalized during rule-body semantic
   extraction to the same canonical `(project, key)` aggregation contract used
   for `group_by(project, key)`; linters may emit a deprecation diagnostic.
 - `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
   binds instead. If used as keywords, reject with a targeted message.
-- `typedef`: not supported; use `type` definitions. Emit an error with a fix
-  hint.
-- Legacy type names such as `bigint`, `bit`, `double`, `float`, `signed`:
-  not in the grammar. Use sized integer types (`iN`/`uN`), and `f32`/`f64` for
-  floating‑point.
-- `as`: not a keyword in the updated grammar; reject its use as a keyword.
+- `typedef`: rejected.
+
+  ```plaintext
+  `typedef` is a legacy DDlog keyword; use `type` instead
+  ```
+
+- `as`: accepted as the import alias keyword and expression cast operator.
+- `bigint`: rejected.
+
+  ```plaintext
+  `bigint` is a legacy type name; use a sized integer such as `i64` or `u64`
+  ```
+
+- `bit`: rejected.
+
+  ```plaintext
+  `bit` is a legacy type name; use an unsigned sized integer such as `u32`
+  ```
+
+- `double`: rejected.
+
+  ```plaintext
+  `double` is a legacy type name; use `f64`
+  ```
+
+- `float`: rejected.
+
+  ```plaintext
+  `float` is a legacy type name; use `f32`
+  ```
+
+- `signed`: rejected.
+
+  ```plaintext
+  `signed` is a legacy type name; use a signed sized integer such as `i32`
+  ```
+
+- `#`: accepted only as `#[...]`; bare uses are rejected.
+
+  ```plaintext
+  `#` is reserved; only `#[...]` attribute syntax is accepted
+  ```
+
+- `<=>`: rejected.
+
+  ```plaintext
+  `<=>` was reserved upstream but has no semantics in DDlog; remove it
+  ```
 
 Rationale and resolution status for the aggregation boundary:
 
@@ -565,8 +612,8 @@ ______________________________________________________________________
 This section maps grammar constructs to representative AST node names to aid
 porting and testing.
 
-- **Program:** `DatalogProgram { imports, typedefs, functions, transformers,
-  relations, indexes, rules, applys }`.
+- **Program:** `DatalogProgram` with `imports`, `typedefs`, `functions`,
+  `transformers`, `relations`, `indexes`, `rules`, and `applys`.
 - **Typedef:** `TypeDef { name, params, body }`.
 - **Function:** `FuncDef { name, params, ret, body }`, collated into
   `FuncGroup` by name.
@@ -579,8 +626,8 @@ porting and testing.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.
 - **Atom:** `Atom { ref?, delay?, diff?, name, args, bracketForm? }`.
-- **Rule-body semantic helper term:** `RuleBodyTerm::{Expression, Assignment,
-  Aggregation, ForLoop}`.
+- **Rule-body semantic helper term:**
+  `RuleBodyTerm::{Expression, Assignment, Aggregation, ForLoop}`.
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.

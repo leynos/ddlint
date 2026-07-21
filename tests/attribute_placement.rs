@@ -9,7 +9,7 @@ use ddlint::test_util::assert_no_parse_errors;
 use rstest::rstest;
 
 #[rstest]
-#[case("#[cold]\ntypedef T = u32")]
+#[case("#[cold]\ntype T = u32")]
 #[case("#[inline]\nfunction f() {}")]
 #[case("#[hot]\ninput relation R(x: u32)")]
 #[case("#[hot]\noutput relation R(x: u32)")]
@@ -18,13 +18,13 @@ use rstest::rstest;
 #[case("#[hot]\nmultiset relation R(x: u32)")]
 #[case("#[cold]\nextern function f()")]
 #[case("#[cold]\nextern type Handle")]
-#[case("#[a]\n#[b]\ntypedef T = u32")]
+#[case("#[a]\n#[b]\ntype T = u32")]
 fn valid_attribute_placement(#[case] src: &str) {
     let parsed = parse(src);
     assert_no_parse_errors(parsed.errors());
 }
 
-/// Spec §12: attributes are only permitted on typedef, function, and
+/// Spec §12: attributes are only permitted on type, function, and
 /// relation declarations.
 #[rstest]
 #[case("#[cold]\nindex Ix(a: T) on A(a)")]
