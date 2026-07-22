@@ -122,13 +122,14 @@ Run these gates in order before committing:
 2. `make check-fmt`
 3. `make lint`
 4. `make test`
+5. `make markdownlint`
+6. `make nixie`
 
 This is the required pre-commit sequence, matching `AGENTS.md`.
 
 `make lint` includes the spelling gate, and `make markdownlint` also invokes
-the spelling gate for changed Markdown. When a change touches maintained
-Markdown, validate it with `make markdownlint`, and run `make nixie` when that
-Markdown contains Mermaid diagrams.
+the spelling gate for tracked Markdown. `make markdownlint` lints the tracked
+Markdown sources and `make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` validates the spelling-policy helper before regenerating the
 generated `typos` configuration and checking tracked Markdown for
