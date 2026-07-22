@@ -179,22 +179,24 @@ proptest! {
             GeneratedBody::Record => {
                 prop_assert_eq!(
                     relation.body(),
-                    RelationBody::Fields(vec![
+                    Ok(RelationBody::Fields(vec![
                         ("id".into(), "u32".into()),
                         ("status".into(), "string".into()),
-                    ])
+                    ]))
                 );
-                prop_assert_eq!(relation.element_type(), None);
+                prop_assert_eq!(relation.element_type(), Ok(None));
             }
             GeneratedBody::Bracket => {
-                prop_assert_eq!(relation.body(), RelationBody::ElementType("Vec<u32>".into()));
-                prop_assert_eq!(relation.columns(), Vec::<(String, String)>::new());
-                let element_type = relation.element_type();
-                prop_assert_eq!(element_type.as_deref(), Some("Vec<u32>"));
+                prop_assert_eq!(
+                    relation.body(),
+                    Ok(RelationBody::ElementType("Vec<u32>".into()))
+                );
+                prop_assert_eq!(relation.columns(), Ok(Vec::<(String, String)>::new()));
+                prop_assert_eq!(relation.element_type(), Ok(Some("Vec<u32>".to_string())));
             }
         }
 
         let expected_primary_key = generated.primary_key.map(GeneratedPrimaryKey::expected);
-        prop_assert_eq!(relation.primary_key(), expected_primary_key);
+        prop_assert_eq!(relation.primary_key(), Ok(expected_primary_key));
     }
 }

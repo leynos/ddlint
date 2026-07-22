@@ -88,9 +88,9 @@ impl<'a> RelationSpec<'a> {
             r.is_ref() => self.is_ref,
             r.is_input() => self.role == RelationRole::Input,
             r.is_output() => self.role == RelationRole::Output,
-            self.body.as_ref().map(|_| r.body()) => self.body,
-            r.columns() => pair_vec(&self.columns),
-            r.primary_key() => self.pk.map(|v| str_vec(&v))
+            self.body.as_ref().map(|_| r.body()) => self.body.clone().map(Ok),
+            r.columns() => Ok(pair_vec(&self.columns)),
+            r.primary_key() => Ok(self.pk.map(|v| str_vec(&v)))
         );
     }
 }

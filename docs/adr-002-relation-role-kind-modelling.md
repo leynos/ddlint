@@ -65,7 +65,9 @@ The syntax-layer `Relation` wrapper exposes:
 - `role_keyword_present()` and `kind_keyword_present()` for lossless keyword-
   presence fidelity;
 - `is_ref()` for declaration-level reference relations;
-- `body()` and `element_type()` for body-form inspection; and
+- `body()`, `element_type()`, and `columns()` for body-form inspection,
+  returning `Result<_, RelationParseErrors>` so malformed or missing bodies are
+  explicit errors rather than an empty field list; and
 - derived `is_input()` and `is_output()` helpers for compatibility.
 
 `Internal` means no role keyword was present. The parser does not reserve an
@@ -73,10 +75,12 @@ The syntax-layer `Relation` wrapper exposes:
 keyword was present. `kind_keyword_present()` means the source explicitly wrote
 one of `relation`, `stream`, or `multiset`.
 
-`Relation::primary_key()` keeps returning the names from the parenthesized
-binder/list portion of the suffix. Spec-form trailing primary-key expressions
-are preserved in CST text, but typed expression access is deferred to roadmap
-follow-up `2.6.6.1`.
+`Relation::primary_key()` returns
+`Result<Option<Vec<String>>, RelationParseErrors>`: `Ok(None)` when no clause
+is present, `Ok(Some(..))` with the names from the parenthesized binder/list,
+and `Err(..)` when a clause is present but malformed. Spec-form trailing
+primary-key expressions are preserved in CST text, but typed expression access
+is deferred to roadmap follow-up `2.6.6.1`.
 
 ## Goals and non-goals
 

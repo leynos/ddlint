@@ -30,9 +30,12 @@ fn canonical_record_relation_preserves_role_kind_and_primary_key(
     assert!(relation.kind_keyword_present());
     assert_eq!(
         relation.body(),
-        RelationBody::Fields(vec![("id".to_string(), "OrderId".to_string())])
+        Ok(RelationBody::Fields(vec![(
+            "id".to_string(),
+            "OrderId".to_string()
+        )]))
     );
-    assert_eq!(relation.primary_key(), Some(vec!["id".to_string()]));
+    assert_eq!(relation.primary_key(), Ok(Some(vec!["id".to_string()])));
 }
 
 #[rstest]
@@ -47,7 +50,7 @@ fn canonical_bracket_relation_preserves_role_kind_and_ref(
     assert!(relation.is_ref());
     assert_eq!(
         relation.body(),
-        RelationBody::ElementType("Event".to_string())
+        Ok(RelationBody::ElementType("Event".to_string()))
     );
 }
 

@@ -74,9 +74,9 @@ fn parses_relations(
         .into_iter()
         .map(|(n, t)| (n.into(), t.into()))
         .collect();
-    assert_eq!(rel.columns(), cols);
+    assert_eq!(rel.columns(), Ok(cols));
     let pk: Option<Vec<String>> = primary_key.map(|v| v.into_iter().map(String::from).collect());
-    assert_eq!(rel.primary_key(), pk);
+    assert_eq!(rel.primary_key(), Ok(pk));
 }
 
 #[rstest]
@@ -86,12 +86,12 @@ fn multiline_relation_parsed(multiline_relation: &str) {
     assert_eq!(rel.name().as_deref(), Some("Log"));
     assert_eq!(
         rel.columns(),
-        vec![
+        Ok(vec![
             ("id".into(), "u32".into()),
             ("message".into(), "string".into())
-        ]
+        ])
     );
-    assert_eq!(rel.primary_key(), Some(vec!["id".into()]));
+    assert_eq!(rel.primary_key(), Ok(Some(vec!["id".into()])));
     assert_eq!(pretty_print(rel.syntax()), multiline_relation);
 }
 
@@ -108,7 +108,7 @@ fn preserves_spec_form_primary_key_text() {
         .next()
         .unwrap_or_else(|| panic!("relation missing for source: {source}"));
 
-    assert_eq!(rel.primary_key(), Some(vec!["row".into()]));
+    assert_eq!(rel.primary_key(), Ok(Some(vec!["row".into()])));
     assert_eq!(pretty_print(rel.syntax()), source);
 }
 
@@ -301,7 +301,7 @@ fn parses_relation_form_matrix(
     assert_eq!(rel.kind(), kind);
     assert_eq!(rel.kind_keyword_present(), kind_keyword_present);
     assert_eq!(rel.is_ref(), is_ref);
-    assert_eq!(rel.body(), body);
+    assert_eq!(rel.body(), Ok(body));
 }
 
 #[rstest]

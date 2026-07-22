@@ -83,45 +83,44 @@ pub(super) fn inspect_preamble(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Rel
     preamble
 }
 
-/// Return the opening delimiter used by the relation body.
+/// Structured interpretation of a relation declaration's body.
 ///
-/// The delimiter is the first parenthesis or bracket token after the relation
-/// name: parentheses introduce a field list, while brackets introduce an
-/// element type. `None` represents a malformed or incomplete declaration where
-/// no body delimiter was found.
-pub(super) fn body_open_kind(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Option<SyntaxKind> {
-    elements_after_name(syntax)
-        .into_iter()
-        .filter(|element| !is_trivia(element))
-        .find_map(|element| match element {
-            rowan::NodeOrToken::Token(token)
-                if matches!(token.kind(), SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET) =>
-            {
-                Some(token.kind())
-            }
-            _ => None,
-        })
+/// Distinguishes a valid record body, a valid bracket body (with the extracted
+/// element type), a bracket body that is unclosed or unbalanced, and a
+/// declaration with no `(`/`[` body delimiter at all. Callers use this to
+/// surface explicit errors instead of silently treating malformed syntax as an
+/// empty record body.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum BodyInspection {
+    /// Valid record body introduced by `(`.
+    Record,
+    /// Valid bracket body with the extracted element type text.
+    Bracket(String),
+    /// A `[` body delimiter whose contents are unclosed or unbalanced.
+    MalformedBracket,
+    /// No `(` or `[` body delimiter follows the relation name.
+    MissingDelimiter,
 }
 
-/// Extract the element type text from a bracket-delimited relation body.
+/// Inspect the body that immediately follows the relation name.
 ///
-/// Bodies that use parentheses return `None`, as do unbalanced bracket bodies.
-/// Nested brackets are supported by collecting text from the opening bracket
-/// through the matching closing bracket.
-pub(super) fn bracket_element_type(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Option<String> {
+/// The relation grammar places the body directly after the name, so the first
+/// non-trivia element after the name must be the body delimiter. Parentheses
+/// introduce a record field list; brackets introduce an element type. Anything
+/// else, or no element at all, is reported as
+/// [`BodyInspection::MissingDelimiter`], and a bracket whose contents never
+/// close is reported as [`BodyInspection::MalformedBracket`].
+pub(super) fn inspect_body(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> BodyInspection {
     let mut elements = elements_after_name(syntax).into_iter();
-    for element in elements.by_ref() {
-        if is_trivia(&element) {
-            continue;
-        }
-        if element.kind() == SyntaxKind::T_LBRACKET {
-            return collect_bracket_element_text(elements);
-        }
-        if element.kind() == SyntaxKind::T_LPAREN {
-            return None;
-        }
+    let Some(delimiter) = elements.by_ref().find(|element| !is_trivia(element)) else {
+        return BodyInspection::MissingDelimiter;
+    };
+    match delimiter.kind() {
+        SyntaxKind::T_LPAREN => BodyInspection::Record,
+        SyntaxKind::T_LBRACKET => collect_bracket_element_text(elements)
+            .map_or(BodyInspection::MalformedBracket, BodyInspection::Bracket),
+        _ => BodyInspection::MissingDelimiter,
     }
-    None
 }
 
 fn elements_after_name(
@@ -183,7 +182,7 @@ mod tests {
     //! before a body delimiter when a malformed node lacks a relation name.
 
     use super::super::Relation;
-    use super::{elements_after_name, inspect_preamble};
+    use super::{BodyInspection, elements_after_name, inspect_body, inspect_preamble};
     use crate::{DdlogLanguage, SyntaxKind};
     use rowan::{GreenNodeBuilder, Language as _, SyntaxNode};
 
@@ -233,5 +232,79 @@ mod tests {
             (SyntaxKind::T_IDENT, "u32"),
             (SyntaxKind::T_RBRACKET, "]"),
         ]));
+    }
+
+    #[test]
+    fn unclosed_bracket_body_is_error() {
+        // `R[u32` — a bracket body that never closes.
+        let node = relation_node(&[
+            (SyntaxKind::K_RELATION, "relation"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_IDENT, "R"),
+            (SyntaxKind::T_LBRACKET, "["),
+            (SyntaxKind::T_IDENT, "u32"),
+        ]);
+        assert_eq!(inspect_body(&node), BodyInspection::MalformedBracket);
+        let rel = Relation { syntax: node };
+        assert!(rel.element_type().is_err());
+        assert!(rel.body().is_err());
+        assert!(rel.columns().is_err());
+    }
+
+    #[test]
+    fn record_body_with_invalid_column_list_is_error() {
+        // `R(x:)` — a column name with no type in the record body.
+        let node = relation_node(&[
+            (SyntaxKind::T_IDENT, "R"),
+            (SyntaxKind::T_LPAREN, "("),
+            (SyntaxKind::T_IDENT, "x"),
+            (SyntaxKind::T_COLON, ":"),
+            (SyntaxKind::T_RPAREN, ")"),
+        ]);
+        assert_eq!(inspect_body(&node), BodyInspection::Record);
+        let rel = Relation { syntax: node };
+        assert!(rel.columns().is_err());
+        assert!(rel.body().is_err());
+        // The delimiter is a valid record `(`, so element type is `Ok(None)`.
+        assert_eq!(rel.element_type(), Ok(None));
+    }
+
+    #[test]
+    fn malformed_primary_key_binder_list_is_error() {
+        // `R(x: u32) primary key (` — an unclosed primary-key binder list.
+        let node = relation_node(&[
+            (SyntaxKind::T_IDENT, "R"),
+            (SyntaxKind::T_LPAREN, "("),
+            (SyntaxKind::T_IDENT, "x"),
+            (SyntaxKind::T_COLON, ":"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_IDENT, "u32"),
+            (SyntaxKind::T_RPAREN, ")"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_IDENT, "primary"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_IDENT, "key"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_LPAREN, "("),
+        ]);
+        assert_eq!(inspect_body(&node), BodyInspection::Record);
+        let rel = Relation { syntax: node };
+        assert!(rel.primary_key().is_err());
+    }
+
+    #[test]
+    fn missing_body_delimiter_is_error() {
+        // `relation R` — a name with no `(`/`[` body delimiter.
+        let node = relation_node(&[
+            (SyntaxKind::K_RELATION, "relation"),
+            (SyntaxKind::T_WHITESPACE, " "),
+            (SyntaxKind::T_IDENT, "R"),
+        ]);
+        assert_eq!(inspect_body(&node), BodyInspection::MissingDelimiter);
+        let rel = Relation { syntax: node };
+        assert!(rel.body().is_err());
+        assert!(rel.columns().is_err());
+        assert!(rel.element_type().is_err());
+        assert!(rel.primary_key().is_err());
     }
 }

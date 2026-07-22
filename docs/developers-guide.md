@@ -33,12 +33,17 @@ parsing pipeline.
   source-fidelity rather than the defaulted semantic value.
 - Exposes declaration-level reference relations through `is_ref()`. Do not
   infer ref status from raw `&` tokens in downstream callers.
-- Keeps `columns()` backwards compatible by returning an empty vector for
-  bracket-form relations; use `body()` or `element_type()` when body shape
-  matters.
-- Keeps `primary_key()` focused on the binder/list names. Spec-form trailing
-  primary-key expressions are preserved in the CST until roadmap follow-up
-  `2.6.6.1` introduces typed access.
+- Exposes `body()`, `element_type()`, `columns()`, and `primary_key()` as
+  fallible queries returning `Result<_, RelationParseErrors>`. A valid record
+  body yields `Ok(RelationBody::Fields(..))` with `element_type()` as
+  `Ok(None)`; a valid bracket body yields `Ok(RelationBody::ElementType(..))`
+  with `columns()` as `Ok(Vec::new())`. Malformed or missing bodies return
+  `Err(..)` rather than an empty `Fields` vector, so direct AST querying stays
+  reliable for malformed or synthetic nodes.
+- Keeps `primary_key()` focused on the binder/list names (`Ok(None)` when
+  absent). Spec-form trailing primary-key expressions are preserved in the CST
+  until roadmap follow-up `2.6.6.1` introduces typed access. `Parsed::errors()`
+  remains the parser-level diagnostic channel.
 
 ### `src/parser/span_scanners/relations.rs`
 

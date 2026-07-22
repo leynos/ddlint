@@ -26,18 +26,32 @@
 //! assert!(rel.is_input());
 //! assert_eq!(
 //!     rel.columns(),
-//!     vec![
+//!     Ok(vec![
 //!         ("x".into(), "u32".into()),
 //!         ("y".into(), "string".into()),
-//!     ]
+//!     ])
 //! );
-//! assert_eq!(rel.primary_key(), Some(vec!["x".into()]));
+//! assert_eq!(rel.primary_key(), Ok(Some(vec!["x".into()])));
 //! ```
 
 mod inspect;
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
+
+/// Public error surface for malformed relation bodies, column lists, and
+/// primary-key clauses.
+///
+/// Mirrors [`IndexFieldParseErrors`](super::index::IndexFieldParseErrors): a
+/// vector of formatted diagnostic strings rather than raw
+/// `chumsky::error::Simple<SyntaxKind>` values. `Parsed::errors()` remains the
+/// primary parser-level diagnostic channel; these `Result` values make direct
+/// AST querying reliable even for malformed or synthetic CST nodes.
+pub type RelationParseErrors = Vec<String>;
+
+const MALFORMED_BRACKET_BODY: &str =
+    "relation bracket body is unclosed or has an unbalanced element type";
+const MISSING_BODY_DELIMITER: &str = "relation declaration is missing a '(' or '[' body delimiter";
 
 /// Typed wrapper for a relation declaration.
 #[derive(Debug, Clone)]
@@ -90,18 +104,46 @@ impl Relation {
     }
 
     /// Body form for this relation.
-    #[must_use]
-    pub fn body(&self) -> RelationBody {
-        self.element_type().map_or_else(
-            || RelationBody::Fields(self.columns()),
-            RelationBody::ElementType,
-        )
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RelationParseErrors`] when the body cannot be structurally
+    /// interpreted: an unclosed or unbalanced bracket body, a record body whose
+    /// column list is malformed, or a declaration with no `(`/`[` delimiter. A
+    /// malformed or missing body is never reported as an empty record body.
+    pub fn body(&self) -> Result<RelationBody, RelationParseErrors> {
+        match inspect::inspect_body(&self.syntax) {
+            inspect::BodyInspection::Record => Ok(RelationBody::Fields(self.columns()?)),
+            inspect::BodyInspection::Bracket(element) => Ok(RelationBody::ElementType(element)),
+            inspect::BodyInspection::MalformedBracket => {
+                Err(vec![MALFORMED_BRACKET_BODY.to_string()])
+            }
+            inspect::BodyInspection::MissingDelimiter => {
+                Err(vec![MISSING_BODY_DELIMITER.to_string()])
+            }
+        }
     }
 
     /// Element type for bracket-form relations.
-    #[must_use]
-    pub fn element_type(&self) -> Option<String> {
-        inspect::bracket_element_type(&self.syntax)
+    ///
+    /// `Ok(None)` means the relation has a valid record body (not malformed
+    /// bracket syntax); `Ok(Some(_))` carries the bracket element type.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RelationParseErrors`] for an unclosed/unbalanced bracket body
+    /// or a declaration with no `(`/`[` delimiter.
+    pub fn element_type(&self) -> Result<Option<String>, RelationParseErrors> {
+        match inspect::inspect_body(&self.syntax) {
+            inspect::BodyInspection::Record => Ok(None),
+            inspect::BodyInspection::Bracket(element) => Ok(Some(element)),
+            inspect::BodyInspection::MalformedBracket => {
+                Err(vec![MALFORMED_BRACKET_BODY.to_string()])
+            }
+            inspect::BodyInspection::MissingDelimiter => {
+                Err(vec![MISSING_BODY_DELIMITER.to_string()])
+            }
+        }
     }
 
     /// Derived from [`Self::role()`]; prefer `role()` in new code.
@@ -117,17 +159,34 @@ impl Relation {
     }
 
     /// Columns as pairs of (name, type).
-    #[must_use]
-    pub fn columns(&self) -> Vec<(String, String)> {
-        if inspect::body_open_kind(&self.syntax) == Some(SyntaxKind::T_LBRACKET) {
-            return Vec::new();
+    ///
+    /// A valid bracket body has no columns and returns `Ok(Vec::new())`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RelationParseErrors`] when a record body's `name: Type` list
+    /// cannot be interpreted, or when the body is a malformed bracket or is
+    /// missing its delimiter. A failed bracket extraction is never treated as
+    /// an empty record body.
+    pub fn columns(&self) -> Result<Vec<(String, String)>, RelationParseErrors> {
+        match inspect::inspect_body(&self.syntax) {
+            inspect::BodyInspection::Bracket(_) => Ok(Vec::new()),
+            inspect::BodyInspection::Record => {
+                let (pairs, errors) =
+                    super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
+                if errors.is_empty() {
+                    Ok(pairs)
+                } else {
+                    Err(errors.into_iter().map(|error| error.to_string()).collect())
+                }
+            }
+            inspect::BodyInspection::MalformedBracket => {
+                Err(vec![MALFORMED_BRACKET_BODY.to_string()])
+            }
+            inspect::BodyInspection::MissingDelimiter => {
+                Err(vec![MISSING_BODY_DELIMITER.to_string()])
+            }
         }
-        let (pairs, errors) =
-            super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
-        if !errors.is_empty() {
-            log::debug!("Parsing errors in relation columns: {errors:?}");
-        }
-        pairs
     }
 
     fn preamble(&self) -> inspect::RelationPreamble {
@@ -136,179 +195,92 @@ impl Relation {
 
     /// Primary key binder or column names if specified.
     ///
-    /// Spec-form primary keys may include an opaque expression after the
-    /// binder list. Typed expression access is deferred to roadmap follow-up
-    /// `2.6.6.1`; this helper keeps returning the names from the parenthesized
-    /// binder/list for compatibility.
-    #[must_use]
-    pub fn primary_key(&self) -> Option<Vec<String>> {
+    /// `Ok(None)` means no primary-key clause is present. Spec-form primary keys
+    /// may include an opaque expression after the binder list. Typed expression
+    /// access is deferred to roadmap follow-up `2.6.6.1`; this helper returns
+    /// the names from the parenthesized binder/list.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RelationParseErrors`] when a `primary key` clause is present
+    /// but its binder list cannot be interpreted, or when the relation body is
+    /// malformed or missing so the columns cannot be skipped.
+    pub fn primary_key(&self) -> Result<Option<Vec<String>>, RelationParseErrors> {
         use super::parse_utils::primary_key_clause;
         use crate::tokenize_with_trivia;
         use chumsky::Parser as _;
 
+        match inspect::inspect_body(&self.syntax) {
+            // A bracket body cannot carry a primary key; report no clause.
+            inspect::BodyInspection::Bracket(_) => return Ok(None),
+            inspect::BodyInspection::MalformedBracket => {
+                return Err(vec![MALFORMED_BRACKET_BODY.to_string()]);
+            }
+            inspect::BodyInspection::MissingDelimiter => {
+                return Err(vec![MISSING_BODY_DELIMITER.to_string()]);
+            }
+            inspect::BodyInspection::Record => {}
+        }
+
         let mut iter = self.syntax.children_with_tokens().peekable();
         Self::skip_to_end_of_columns(&mut iter)?;
         let rest = iter
-            .clone()
             .map(|e| match e {
                 rowan::NodeOrToken::Token(t) => t.text().to_string(),
                 rowan::NodeOrToken::Node(n) => n.text().to_string(),
             })
             .collect::<String>();
-        if rest.is_empty() {
-            return None;
-        }
         let tokens = tokenize_with_trivia(&rest);
+        // No `primary` keyword after the columns means there is no clause; a
+        // trailing newline or comment must not be misread as a malformed one.
+        if first_non_trivia_text(&tokens, &rest) != Some("primary") {
+            return Ok(None);
+        }
         let stream = chumsky::Stream::from_iter(0..rest.len(), tokens.into_iter());
         let parser = primary_key_clause(&rest);
         let (res, errs) = parser.parse_recovery(stream);
-        if !errs.is_empty() {
-            log::debug!("failed to parse primary key clause: {errs:?}");
+        if errs.is_empty() {
+            Ok(res)
+        } else {
+            Err(errs.iter().map(|err| format!("{err:?}")).collect())
         }
-        res
     }
 
     /// Skip over the column declaration list and stop on the closing `)`.
-    fn skip_to_end_of_columns<I>(iter: &mut std::iter::Peekable<I>) -> Option<()>
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RelationParseErrors`] when the parenthesized column list is
+    /// absent or unclosed, so the primary-key suffix cannot be located.
+    fn skip_to_end_of_columns<I>(
+        iter: &mut std::iter::Peekable<I>,
+    ) -> Result<(), RelationParseErrors>
     where
         I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
     {
         // Consume the first parenthesised list and discard content.
         super::skip_whitespace_and_comments(iter);
-        if let Err(err) =
-            super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
-        {
-            log::debug!("failed to skip relation columns: {err}");
-            return None;
-        }
-        Some(())
+        super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
+            .map(|_| ())
+            .map_err(|err| vec![err.to_string()])
     }
+}
+
+/// Return the source text of the first non-trivia token, if any.
+fn first_non_trivia_text<'a>(
+    tokens: &[(SyntaxKind, crate::Span)],
+    src: &'a str,
+) -> Option<&'a str> {
+    tokens
+        .iter()
+        .find(|(kind, _)| !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
+        .and_then(|(_, span)| src.get(span.clone()))
 }
 
 impl_ast_node!(Relation);
 
 #[cfg(test)]
-mod tests {
-    //! Tests for relation AST accessors.
-
-    use super::*;
-    use crate::{parse, test_util::span_text};
-    use rstest::rstest;
-
-    #[test]
-    fn relation_name() {
-        let parsed = parse("input relation R(x: u32)");
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let rel = parsed
-            .root()
-            .relations()
-            .first()
-            .cloned()
-            .expect("relation missing");
-        assert_eq!(rel.name().as_deref(), Some("R"));
-        assert!(rel.is_input());
-        assert_eq!(rel.role(), RelationRole::Input);
-        assert!(rel.role_keyword_present());
-        assert_eq!(rel.kind(), RelationKind::Relation);
-        assert!(rel.kind_keyword_present());
-    }
-
-    #[test]
-    fn relation_name_span_points_to_declaration_identifier() {
-        let source = "input relation Source(Source: u32)";
-        let parsed = parse(source);
-        crate::test_util::assert_no_parse_errors(parsed.errors());
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let rel = parsed
-            .root()
-            .relations()
-            .first()
-            .cloned()
-            .expect("relation missing");
-
-        let span = rel
-            .name_span()
-            .unwrap_or_else(|| panic!("missing relation name_span in `{source}`"));
-
-        assert_eq!(span_text(source, &span), "Source");
-        assert_eq!(span.start, "input relation ".len());
-    }
-
-    #[test]
-    fn relation_preamble_defaults_for_bare_relation() {
-        let parsed = parse("R(x: u32)");
-        crate::test_util::assert_no_parse_errors(parsed.errors());
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let rel = parsed
-            .root()
-            .relations()
-            .first()
-            .cloned()
-            .expect("relation missing");
-
-        assert_eq!(rel.name().as_deref(), Some("R"));
-        assert_eq!(rel.role(), RelationRole::Internal);
-        assert!(!rel.role_keyword_present());
-        assert_eq!(rel.kind(), RelationKind::Relation);
-        assert!(!rel.kind_keyword_present());
-        assert!(!rel.is_ref());
-    }
-
-    #[rstest]
-    #[case::paren_before_name("(x: u32)")]
-    #[case::bracket_before_name("[u32]")]
-    fn malformed_preamble_delimiters_do_not_leak_body_names(#[case] src: &str) {
-        // A body delimiter before any relation name is not a relation
-        // candidate, so no relation declaration surfaces a body identifier as
-        // its name. This guards the delimiter cut-off in `inspect`.
-        let parsed = parse(src);
-        for rel in parsed.root().relations() {
-            assert_eq!(
-                rel.name(),
-                None,
-                "body identifier leaked as relation name for source: {src}",
-            );
-        }
-    }
-
-    #[test]
-    fn relation_kind_and_ref_are_exposed() {
-        let parsed = parse("output stream & Events(event: Event)");
-        crate::test_util::assert_no_parse_errors(parsed.errors());
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let rel = parsed
-            .root()
-            .relations()
-            .first()
-            .cloned()
-            .expect("relation missing");
-
-        assert_eq!(rel.role(), RelationRole::Output);
-        assert_eq!(rel.kind(), RelationKind::Stream);
-        assert!(rel.kind_keyword_present());
-        assert!(rel.is_ref());
-    }
-
-    #[test]
-    fn bracket_body_exposes_element_type() {
-        let parsed = parse("input multiset Items[Map<string, Vec<u32>>]");
-        crate::test_util::assert_no_parse_errors(parsed.errors());
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
-        let rel = parsed
-            .root()
-            .relations()
-            .first()
-            .cloned()
-            .expect("relation missing");
-
-        assert_eq!(rel.columns(), Vec::<(String, String)>::new());
-        assert_eq!(rel.element_type().as_deref(), Some("Map<string, Vec<u32>>"));
-        assert_eq!(
-            rel.body(),
-            RelationBody::ElementType("Map<string, Vec<u32>>".into())
-        );
-    }
-}
+mod tests;
 
 /// Kind of relation declared by a relation preamble.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
