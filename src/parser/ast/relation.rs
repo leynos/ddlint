@@ -112,15 +112,9 @@ impl Relation {
     /// column list is malformed, or a declaration with no `(`/`[` delimiter. A
     /// malformed or missing body is never reported as an empty record body.
     pub fn body(&self) -> Result<RelationBody, RelationParseErrors> {
-        match inspect::inspect_body(&self.syntax) {
-            inspect::BodyInspection::Record => Ok(RelationBody::Fields(self.columns()?)),
-            inspect::BodyInspection::Bracket(element) => Ok(RelationBody::ElementType(element)),
-            inspect::BodyInspection::MalformedBracket => {
-                Err(vec![MALFORMED_BRACKET_BODY.to_string()])
-            }
-            inspect::BodyInspection::MissingDelimiter => {
-                Err(vec![MISSING_BODY_DELIMITER.to_string()])
-            }
+        match self.inspected_element_type()? {
+            Some(element) => Ok(RelationBody::ElementType(element)),
+            None => Ok(RelationBody::Fields(self.columns()?)),
         }
     }
 
@@ -134,6 +128,19 @@ impl Relation {
     /// Returns [`RelationParseErrors`] for an unclosed/unbalanced bracket body
     /// or a declaration with no `(`/`[` delimiter.
     pub fn element_type(&self) -> Result<Option<String>, RelationParseErrors> {
+        self.inspected_element_type()
+    }
+
+    /// Interpret the body delimiter, the single owner of the
+    /// [`inspect::inspect_body`] match shared by [`Self::body`] and
+    /// [`Self::element_type`].
+    ///
+    /// `Ok(None)` marks a valid record body, `Ok(Some(_))` a valid bracket
+    /// element type, and `Err(..)` a malformed bracket or missing delimiter.
+    /// It deliberately does not inspect record columns, so a valid record
+    /// delimiter with a malformed column list still yields `Ok(None)` here;
+    /// column validation is [`Self::columns`]'s responsibility.
+    fn inspected_element_type(&self) -> Result<Option<String>, RelationParseErrors> {
         match inspect::inspect_body(&self.syntax) {
             inspect::BodyInspection::Record => Ok(None),
             inspect::BodyInspection::Bracket(element) => Ok(Some(element)),
