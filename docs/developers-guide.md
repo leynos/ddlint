@@ -121,8 +121,9 @@ Run these gates in order before committing:
 4. `make test`
 
 `make lint` includes the spelling gate. When a change touches maintained
-Markdown, also validate it with `make markdownlint`. See `AGENTS.md` for the
-underlying command details.
+Markdown, also validate it with `make markdownlint`, and run `make nixie` when
+that Markdown contains Mermaid diagrams. See `AGENTS.md` for the underlying
+command details.
 
 ## Spelling policy
 

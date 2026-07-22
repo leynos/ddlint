@@ -276,6 +276,9 @@ Notes:
   keyword.
 - Absence of `Kind` means `relation`.
 - `PrimaryKey` is valid only on `input` relations with record bodies.
+- The `PrimaryKey` binder list accepts one or more comma-separated `LcName`
+  binders. Upstream DDlog accepts a single lambda-style binder; this grammar
+  additionally accepts compound binders.
 - The trailing `PrimaryKey` expression is optional. When present, the parser
   preserves it as CST text; typed access is deferred, and AST helpers currently
   expose the binder/list names from the parenthesized portion.

@@ -141,16 +141,13 @@ impl Relation {
     /// delimiter with a malformed column list still yields `Ok(None)` here;
     /// column validation is [`Self::columns`]'s responsibility.
     fn inspected_element_type(&self) -> Result<Option<String>, RelationParseErrors> {
-        match inspect::inspect_body(&self.syntax) {
-            inspect::BodyInspection::Record => Ok(None),
-            inspect::BodyInspection::Bracket(element) => Ok(Some(element)),
-            inspect::BodyInspection::MalformedBracket => {
-                Err(vec![MALFORMED_BRACKET_BODY.to_string()])
-            }
-            inspect::BodyInspection::MissingDelimiter => {
-                Err(vec![MISSING_BODY_DELIMITER.to_string()])
-            }
-        }
+        let inspection = inspect::inspect_body(&self.syntax);
+        body_inspection_error(&inspection)?;
+        Ok(match inspection {
+            inspect::BodyInspection::Bracket(element) => Some(element),
+            // `Record`; the error variants were rejected above.
+            _ => None,
+        })
     }
 
     /// Derived from [`Self::role()`]; prefer `role()` in new code.
@@ -176,23 +173,18 @@ impl Relation {
     /// missing its delimiter. A failed bracket extraction is never treated as
     /// an empty record body.
     pub fn columns(&self) -> Result<Vec<(String, String)>, RelationParseErrors> {
-        match inspect::inspect_body(&self.syntax) {
-            inspect::BodyInspection::Bracket(_) => Ok(Vec::new()),
-            inspect::BodyInspection::Record => {
-                let (pairs, errors) =
-                    super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
-                if errors.is_empty() {
-                    Ok(pairs)
-                } else {
-                    Err(errors.into_iter().map(|error| error.to_string()).collect())
-                }
-            }
-            inspect::BodyInspection::MalformedBracket => {
-                Err(vec![MALFORMED_BRACKET_BODY.to_string()])
-            }
-            inspect::BodyInspection::MissingDelimiter => {
-                Err(vec![MISSING_BODY_DELIMITER.to_string()])
-            }
+        let inspection = inspect::inspect_body(&self.syntax);
+        body_inspection_error(&inspection)?;
+        if matches!(inspection, inspect::BodyInspection::Bracket(_)) {
+            return Ok(Vec::new());
+        }
+        // `Record` body: parse the `name: Type` list.
+        let (pairs, errors) =
+            super::parse_utils::parse_name_type_pairs(self.syntax.children_with_tokens());
+        if errors.is_empty() {
+            Ok(pairs)
+        } else {
+            Err(errors.into_iter().map(|error| error.to_string()).collect())
         }
     }
 
@@ -217,18 +209,14 @@ impl Relation {
         use crate::tokenize_with_trivia;
         use chumsky::Parser as _;
 
-        match inspect::inspect_body(&self.syntax) {
+        let inspection = inspect::inspect_body(&self.syntax);
+        body_inspection_error(&inspection)?;
+        if matches!(inspection, inspect::BodyInspection::Bracket(_)) {
             // A bracket body cannot carry a primary key; report no clause.
-            inspect::BodyInspection::Bracket(_) => return Ok(None),
-            inspect::BodyInspection::MalformedBracket => {
-                return Err(vec![MALFORMED_BRACKET_BODY.to_string()]);
-            }
-            inspect::BodyInspection::MissingDelimiter => {
-                return Err(vec![MISSING_BODY_DELIMITER.to_string()]);
-            }
-            inspect::BodyInspection::Record => {}
+            return Ok(None);
         }
 
+        // `Record` body from here.
         let mut iter = self.syntax.children_with_tokens().peekable();
         Self::skip_to_end_of_columns(&mut iter)?;
         let rest = iter
@@ -249,7 +237,7 @@ impl Relation {
         if errs.is_empty() {
             Ok(res)
         } else {
-            Err(errs.iter().map(|err| format!("{err:?}")).collect())
+            Err(errs.iter().map(render_parse_error).collect())
         }
     }
 
@@ -282,6 +270,58 @@ fn first_non_trivia_text<'a>(
         .iter()
         .find(|(kind, _)| !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
         .and_then(|(_, span)| src.get(span.clone()))
+}
+
+/// Map the error-carrying body inspections to their diagnostics.
+///
+/// Returns `Err` for a malformed bracket or a missing delimiter, and `Ok(())`
+/// for the structurally valid record and bracket bodies, letting the accessors
+/// short-circuit before handling their own `Record`/`Bracket` success cases.
+fn body_inspection_error(inspection: &inspect::BodyInspection) -> Result<(), RelationParseErrors> {
+    match inspection {
+        inspect::BodyInspection::MalformedBracket => Err(vec![MALFORMED_BRACKET_BODY.to_string()]),
+        inspect::BodyInspection::MissingDelimiter => Err(vec![MISSING_BODY_DELIMITER.to_string()]),
+        inspect::BodyInspection::Record | inspect::BodyInspection::Bracket(_) => Ok(()),
+    }
+}
+
+/// Render a chumsky `Simple` parse error as a human-readable diagnostic.
+///
+/// `SyntaxKind` has no `Display`, so `Simple`'s own `Display` is unavailable;
+/// this uses the `reason`/`expected`/`found` accessors with token symbols to
+/// avoid emitting `Debug` struct dumps into [`RelationParseErrors`].
+fn render_parse_error(err: &chumsky::error::Simple<SyntaxKind>) -> String {
+    use chumsky::error::SimpleReason;
+
+    match err.reason() {
+        SimpleReason::Custom(message) => message.clone(),
+        SimpleReason::Unclosed { delimiter, .. } => {
+            format!("unclosed {}", display_kind(*delimiter))
+        }
+        SimpleReason::Unexpected => {
+            let found = err
+                .found()
+                .map_or_else(|| "end of input".to_string(), |kind| display_kind(*kind));
+            let mut expected: Vec<String> = err
+                .expected()
+                .filter_map(|kind| kind.as_ref().map(|kind| display_kind(*kind)))
+                .collect();
+            expected.sort();
+            if expected.is_empty() {
+                format!("unexpected {found}")
+            } else {
+                format!("expected {} but found {found}", expected.join(" or "))
+            }
+        }
+    }
+}
+
+/// Render a single [`SyntaxKind`] as a token symbol, falling back to its name.
+fn display_kind(kind: SyntaxKind) -> String {
+    match crate::parser::lexer_helpers::token_display(kind) {
+        "" => format!("{kind:?}"),
+        symbol => format!("`{symbol}`"),
+    }
 }
 
 impl_ast_node!(Relation);

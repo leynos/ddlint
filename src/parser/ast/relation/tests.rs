@@ -68,16 +68,13 @@ fn relation_preamble_defaults_for_bare_relation() {
 #[case::bracket_before_name("[u32]")]
 fn malformed_preamble_delimiters_do_not_leak_body_names(#[case] src: &str) {
     // A body delimiter before any relation name is not a relation
-    // candidate, so no relation declaration surfaces a body identifier as
-    // its name. This guards the delimiter cut-off in `inspect`.
+    // candidate, so no relation declaration is emitted at all — not even a
+    // nameless one. This guards the delimiter cut-off in `inspect`.
     let parsed = parse(src);
-    for rel in parsed.root().relations() {
-        assert_eq!(
-            rel.name(),
-            None,
-            "body identifier leaked as relation name for source: {src}",
-        );
-    }
+    assert!(
+        parsed.root().relations().is_empty(),
+        "malformed preamble emitted a relation for source: {src}",
+    );
 }
 
 #[test]

@@ -178,8 +178,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    //! Regression tests for the delimiter guard that stops preamble scanning
-    //! before a body delimiter when a malformed node lacks a relation name.
+    //! Regression tests for relation body inspection. These cover the
+    //! delimiter guard that stops preamble scanning before a body delimiter
+    //! when a malformed node lacks a relation name, plus the error-carrying
+    //! body forms: malformed or unclosed bracket bodies, invalid `name: Type`
+    //! column lists, malformed primary-key binder lists, and missing body
+    //! delimiters.
 
     use super::super::Relation;
     use super::{BodyInspection, elements_after_name, inspect_body, inspect_preamble};
