@@ -47,25 +47,28 @@ parsing pipeline.
 
 ### `src/parser/span_scanners/relations.rs`
 
-- Owns top-level relation-candidate discovery in the token stream.
+- Owns top-level relation-candidate discovery, declaration orchestration,
+  record and bracket body parsing, primary-key validation,
+  relation-versus-rule/fact disambiguation, span collection, and recovery.
 - Applies delimiter-depth-aware line-start filtering so only genuine top-level
-  declarations are treated as candidates.
-- Scans the relation body and the primary-key suffix.
-- Disambiguates relation declarations from bare rules and facts.
-- Handles relation-span recovery and emits the `D-REL-*` diagnostics.
+  declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
+- Produces relation declaration spans for CST construction;
+  `src/parser/ast/relation.rs` then exposes the typed AST accessors over the
+  resulting nodes.
 
 ### `src/parser/span_scanners/relations/cursor.rs`
 
-- Owns the scanner-local cursor and trivia navigation.
-- Provides balanced delimiter traversal, token and span access, and
-  delimiter-stack maintenance shared by the relation scanner.
+- Owns shared cursor movement, trivia handling, token inspection, and
+  balanced-delimiter traversal (including delimiter-stack maintenance) for the
+  relation scanner.
+- Holds no grammar decisions; those remain in `relations.rs`.
 
 ### `src/parser/span_scanners/relations/preamble.rs`
 
-- Owns only the optional role/kind preamble parsing.
-- Validates role-before-kind ordering and role/kind uniqueness (`D-REL-001`
-  through `D-REL-003`).
-- Does not parse relation names, bodies, reference markers, or primary keys.
+- Parses only the optional role/kind preamble keywords and enforces
+  `D-REL-001`, `D-REL-002`, and `D-REL-003`.
+- Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
+  and recovery in `relations.rs`.
 
 ### `src/parser/expression/pratt/postfix.rs`
 
@@ -103,12 +106,12 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
-- Keep relation-candidate discovery, body parsing, suffix parsing, and recovery
-  in `relations.rs`.
-- Keep reusable cursor mechanics — trivia navigation, balanced traversal, and
-  delimiter-stack maintenance — in `relations/cursor.rs`.
-- Keep role/kind ordering and uniqueness validation in `relations/preamble.rs`.
-- Keep typed post-parse relation accessors in `ast/relation.rs` and
+- Keep scanner grammar and recovery decisions — candidate discovery, body and
+  suffix parsing, and span collection — in `relations.rs`.
+- Keep cursor movement and balanced-block mechanics in `relations/cursor.rs`.
+- Keep role/kind preamble parsing and its ordering/duplication diagnostics
+  (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
+- Keep typed consumer-facing relation metadata in `ast/relation.rs`, and
   inspection-only CST traversal in `ast/relation/inspect.rs`.
 
 ## Contributor workflow
@@ -120,10 +123,17 @@ Run these gates in order before committing:
 3. `make lint`
 4. `make test`
 
-`make lint` includes the spelling gate. When a change touches maintained
-Markdown, also validate it with `make markdownlint`, and run `make nixie` when
-that Markdown contains Mermaid diagrams. See `AGENTS.md` for the underlying
-command details.
+This is the required pre-commit sequence, matching `AGENTS.md`.
+
+`make lint` includes the spelling gate, and `make markdownlint` also invokes
+the spelling gate for changed Markdown. When a change touches maintained
+Markdown, validate it with `make markdownlint`, and run `make nixie` when that
+Markdown contains Mermaid diagrams.
+
+`make spelling` validates the spelling-policy helper before regenerating the
+generated `typos` configuration and checking tracked Markdown for
+en-GB-oxendict spelling. See `AGENTS.md` for the underlying command
+implementations; this guide does not duplicate them.
 
 ## Spelling policy
 
