@@ -96,7 +96,7 @@ The following **keywords** and **reserved operators** cannot be used as
 identifiers (final list should be kept 1:1 with the lexer):
 
 - **Keywords:** `type`, `function`, `extern`, `transformer`, `input`, `output`,
-  `internal`,`relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`,`break`,`continue`.
+  `relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`,`break`,`continue`.
 - **Special tokens:** `@`, `:-`, `,`, `;`, `:`, `::`, `.`, `&`, `'` (diff
   marker), `-<` (delay introducer), `=>` (implies), brackets and braces
   `()[]{}`.
@@ -150,8 +150,8 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
   `docs/roadmap.md` item `2.6.3`.
 - **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
   literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
-  likewise scheduled work; see `docs/parser-conformance-register.md` item 10
-  and `docs/roadmap.md` item `2.6.3`.
+  likewise scheduled work; see `docs/parser-conformance-register.md` item 10 and
+  `docs/roadmap.md` item `2.6.3`.
 
 ______________________________________________________________________
 
@@ -160,22 +160,27 @@ ______________________________________________________________________
 Higher rows bind tighter. All binary operators are left‑associative unless
 noted.
 
-| Precedence | Operators / Forms                                      | Associativity |
-| ---------- | ------------------------------------------------------ | ------------- |
-| 14         | Postfix call `f(…)`, index `e[expr]`, field `e.name`   | left          |
-| 13         | Unary prefix: `- e`, `! e`, `~ e`, `& e`               | right         |
-| 12         | `*`, `/`, `%`                                          | left          |
-| 11         | `+`, `-`, `++` (concatenation)                         | left          |
-| 10         | Shifts `<<`, `>>`                                      | left          |
-| 9          | Bitwise `&`                                            | left          |
-| 8          | Bitwise `^`                                            | left          |
-| 7          | Bitwise or (`&#124;`)                                  | left          |
-| 6          | Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`          | non‑assoc     |
-| 5          | Logical `and`                                          | left          |
-| 4          | Logical `or`                                           | left          |
-| 3          | Implication `=>`                                       | right         |
-| 2          | Conditional expression `if … then … else …`            | n/a           |
-| 1          | Assignment forms inside statements (see §6)            | right         |
+<!-- markdownlint-disable MD013 --><!-- Operator table alignment is
+intentional. -->
+
+| Precedence | Operators / Forms                                    | Associativity |
+| ---------- | ---------------------------------------------------- | ------------- |
+| 14         | Postfix call `f(…)`, index `e[expr]`, field `e.name` | left          |
+| 13         | Unary prefix: `- e`, `! e`, `~ e`, `& e`             | right         |
+| 12         | `*`, `/`, `%`                                        | left          |
+| 11         | `+`, `-`, `++` (concatenation)                       | left          |
+| 10         | Shifts `<<`, `>>`                                    | left          |
+| 9          | Bitwise `&`                                          | left          |
+| 8          | Bitwise `^`                                          | left          |
+| 7          | Bitwise or (`&#124;`)                                | left          |
+| 6          | Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`        | non‑assoc     |
+| 5          | Logical `and`                                        | left          |
+| 4          | Logical `or`                                         | left          |
+| 3          | Implication `=>`                                     | right         |
+| 2          | Conditional expression `if … then … else …`          | n/a           |
+| 1          | Assignment forms inside statements (see §6)          | right         |
+
+<!-- markdownlint-enable MD013 -->
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
 and are recognized as operators. `&` in row 13 is expression-only; head
@@ -248,22 +253,38 @@ Notes:
 
 ### 5.5 Relations
 
-Two equivalent forms:
+Relation declarations may specify an optional role, optional relation kind,
+optional reference marker, and either a record-style field list or a bracketed
+element type.
 
 ```ebnf
-RelationDecl ::= Role? Kind? UcName '(' Fields? ')' PrimaryKey? ';'
-               | Role? Kind? UcName '[' Type ']' ';'
-Role         ::= 'input' | 'output' | 'internal'
+RelationDecl ::= Role? Kind? '&'? UcName Body PrimaryKey?
+Body         ::= '(' Fields? ')' | '[' Type ']'
+Role         ::= 'input' | 'output'
 Kind         ::= 'relation' | 'stream' | 'multiset'
-Fields       ::= Field (',' Field)*
+Fields       ::= Field (',' Field)* ','?
 Field        ::= LcName ':' Type
-PrimaryKey   ::= '[' 'primary' 'key' '(' LcName ')' Expr ']'
+PrimaryKey   ::= 'primary' 'key' '(' LcName (',' LcName)* ')' Expr?
 ```
 
 Notes:
 
-- The first form synthesizes a record type for `UcName` with the listed fields.
-- `&UcName` in rule **heads** triggers special semantics (see §7.3).
+- The record body synthesizes a record type for `UcName` with the listed
+  fields.
+- The bracket body declares a relation over an existing element type.
+- Absence of `Role` means an internal relation. `internal` is not a reserved
+  keyword.
+- Absence of `Kind` means `relation`.
+- `PrimaryKey` is valid only on `input` relations with record bodies.
+- The `PrimaryKey` binder list accepts one or more comma-separated `LcName`
+  binders. Upstream DDlog accepts a single lambda-style binder; this grammar
+  additionally accepts compound binders.
+- The trailing `PrimaryKey` expression is optional. When present, the parser
+  preserves it as CST text; typed access is deferred, and AST helpers currently
+  expose the binder/list names from the parenthesized portion.
+- Bracket-wrapped primary-key clauses (`[primary key ...]`) are rejected.
+- `&UcName` in declarations marks a reference relation. `&UcName` in rule
+  **heads** triggers special semantics (see §7.3).
 - `Role`/`Kind` affect runtime semantics but not parse shape.
 
 ### 5.6 Indexes
@@ -565,8 +586,14 @@ ______________________________________________________________________
 This section maps grammar constructs to representative AST node names to aid
 porting and testing.
 
-- **Program:** `DatalogProgram { imports, typedefs, functions, transformers,
-  relations, indexes, rules, applys }`.
+<!-- markdownlint-disable MD013 --><!-- AST shape line stays intact for
+copy/paste. -->
+
+- **Program:**
+  `DatalogProgram { imports, typedefs, functions, transformers, relations, indexes, rules, applys }`.
+
+<!-- markdownlint-enable MD013 -->
+
 - **Typedef:** `TypeDef { name, params, body }`.
 - **Function:** `FuncDef { name, params, ret, body }`, collated into
   `FuncGroup` by name.
@@ -574,13 +601,14 @@ porting and testing.
   where `outputs` is the ordered list of `Ident` values parsed from
   `TransformerOutputs`.
 - **Apply:** `Apply { transformer, inputs, outputs }`.
-- **RelationDecl:** `Relation { role, kind, name, typeOrFields, primaryKey? }`.
+- **RelationDecl:**
+  `Relation { role, kind, ref?, name, body: Fields | ElementType, primaryKey? }`.
 - **IndexDecl:** `Index { name, fields: [(name, type)], on: Atom }`.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.
 - **Atom:** `Atom { ref?, delay?, diff?, name, args, bracketForm? }`.
-- **Rule-body semantic helper term:** `RuleBodyTerm::{Expression, Assignment,
-  Aggregation, ForLoop}`.
+- **Rule-body semantic helper term:**
+  `RuleBodyTerm::{Expression, Assignment, Aggregation, ForLoop}`.
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.
@@ -686,9 +714,14 @@ transformer foo(x: T): Out // error: transformer declarations must be extern
 
 - **Missing transformer output signature:**
 
+<!-- markdownlint-disable MD013 --><!-- Example keeps the diagnostic comment on
+one line. -->
+
 ```ddlog
 extern transformer foo(x: T): // error: transformer declarations require ':' followed by at least one output identifier
 ```
+
+<!-- markdownlint-enable MD013 -->
 
 - **Attribute on index:**
 

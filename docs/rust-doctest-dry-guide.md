@@ -14,8 +14,8 @@ the power and the inherent limitations of doctests.
 ### 1.1 The "separate crate" paradigm
 
 At its heart, `rustdoc` treats each documentation test not as a snippet of code
-running within the library's own context, but as an entirely separate,
-temporary crate.[^1] When a developer executes
+running within the library's own context, but as an entirely separate, temporary
+crate.[^1] When a developer executes
 
 `cargo test --doc`, `rustdoc` initiates a multi-stage process for every code
 block found in the documentation comments[^3]:
@@ -403,10 +403,10 @@ builds.[^13]
 pub struct UnixSocket;
 ```
 
-This `any` directive ensures the struct is compiled either when the target OS
-is `unix` OR when `rustdoc` is running. This correctly makes the item visible
-in the generated HTML. However, it is crucial to understand that this **does
-not** make the doctest for `UnixSocket` pass on non-Unix platforms.
+This `any` directive ensures the struct is compiled either when the target OS is
+`unix` OR when `rustdoc` is running. This correctly makes the item visible in
+the generated HTML. However, it is crucial to understand that this **does not**
+make the doctest for `UnixSocket` pass on non-Unix platforms.
 
 This distinction highlights the "cfg duality." The `#[cfg(doc)]` attribute
 controls the *table of contents* of the documentation; it determines which
@@ -491,7 +491,7 @@ pub fn function_requiring_serde() { /*… */ }
 This will render a banner in the documentation for `function_requiring_serde`
 that reads, "This is only available when the `serde` feature is enabled." This
 attribute is purely for documentation generation, and it is independent of, but
-often used alongside, the conditional test execution patterns.[^14]
+often used alongside, the conditional test execution patterns.[^15]
 
 ## Doctests in the wider project ecosystem
 
@@ -572,13 +572,13 @@ real-world challenges when working with doctests.
 - **Developer Ergonomics in IDEs**: Writing code inside documentation comments
   can be a subpar experience. IDEs and tools like `rust-analyzer` often provide
   limited or no autocompletion, real-time error checking, or refactoring
-  support for code within a comment block.[^15] A common and effective workflow
+  support for code within a comment block.[^16] A common and effective workflow
   to mitigate this is to first write and debug the example as a standard
 
   `#[test]` function in a temporary file or test module. This allows the
   developer to leverage the full power of the IDE. Once the code is working
-  correctly, it can be copied into the doc comment, and the necessary
-  formatting (`///`, `#`, etc.) can be applied.[^15]
+  correctly, it can be copied into the doc comment, and the necessary formatting
+  (`///`, `#`, etc.) can be applied.[^16]
 
 ## Conclusion and recommendations
 
@@ -643,8 +643,6 @@ July 15, 2025, <https://doc.rust-lang.org/rustdoc/documentation-tests.html>
 [^11]: Compile_fail doc test ignored in cfg(test) - help - The Rust Programming
 Language Forum, accessed on July 15, 2025,
 <https://users.rust-lang.org/t/compile-fail-doc-test-ignored-in-cfg-test/124927>
- Accessed on July 15, 2025,
-<https://users.rust-lang.org/t/test-setup-for-doctests/50426>
 [^12]: quote_doctest - Rust - [Docs.rs](http://Docs.rs), accessed on July 15,
 2025, <https://docs.rs/quote-doctest>
 [^13]: Advanced features - The rustdoc boOK - Rust Documentation, accessed on
@@ -652,9 +650,9 @@ Language Forum, accessed on July 15, 2025,
 [^14]: Stack Overflow — Conditionally executing a module-level doctest,
 accessed on July 15, 2025,
 <https://stackoverflow.com/questions/50312190/how-can-i-conditionally-execute-a-module-level-doctest-based-on-a-feature-flag>
- Stack Overflow — Conditional compilation with doctests, accessed on July 15,
-2025,
+[^15]: Stack Overflow — Conditional compilation with doctests, accessed on
+July 15, 2025,
 <https://stackoverflow.com/questions/38292741/how-would-one-achieve-conditional-compilation-with-rust-projects-that-have-docte>
-[^15]: Reddit — Preferred approaches for doc tests, accessed on July 15,
+[^16]: Reddit — Preferred approaches for doc tests, accessed on July 15,
 2025,
 <https://www.reddit.com/r/rust/comments/ke438a/how_do_you_write_your_doc_tests/>

@@ -188,8 +188,8 @@ module is at `src/linter/`, now containing:
   tests.
 
 The CST is built on `rowan` 0.15. `SyntaxKind` is defined in `src/language.rs`
-as a `#[repr(u16)]` enum with ~173 variants (tokens `T_*`, keywords `K_*`,
-nodes `N_*`). It derives `Clone`, `Copy`, `Hash`, `Eq`, `PartialEq`, `Ord`,
+as a `#[repr(u16)]` enum with ~173 variants (tokens `T_*`, keywords `K_*`, nodes
+`N_*`). It derives `Clone`, `Copy`, `Hash`, `Eq`, `PartialEq`, `Ord`,
 `PartialOrd`, and `Debug`.
 
 The `CstRule` trait (from 3.1.1) declares
@@ -243,8 +243,7 @@ Fill in the method bodies:
 - `register(rule)`: wrap `Box` in `Arc`, iterate `rule.target_kinds()`, insert
   `Arc::clone(&rule)` into `by_kind.entry(kind).or_default()`, push the `Arc`
   into `rules`, return `&mut self`.
-- `rules_for_kind(kind)`: `self.by_kind.get(&kind).map_or(&[],
-  Vec::as_slice)`.
+- `rules_for_kind(kind)`: `self.by_kind.get(&kind).map_or(&[], Vec::as_slice)`.
 - `all_rules()`: `&self.rules`.
 - `len()`: `self.rules.len()`.
 - `is_empty()`: `self.rules.is_empty()`.
@@ -332,8 +331,8 @@ The new tests verify:
   entry.
 - Method chaining via `register` works.
 - `CstRuleStore` is `Send + Sync` (compile-time assertion).
-- Rule metadata (`name`, `group`, `docs`) is accessible through `Arc<dyn
-  CstRule>`.
+- Rule metadata (`name`, `group`, `docs`) is accessible through
+  `Arc<dyn CstRule>`.
 - (Behavioural) Store-based dispatch over a parsed DDlog file produces the same
   diagnostics as the manual `target_kinds().contains()` loop.
 - (Behavioural) Multiple rules with overlapping kinds are all dispatched.

@@ -59,6 +59,7 @@ pub(super) fn parse_tokens(
     all_errors.extend(transformer_errors);
     all_errors.extend(apply_errors);
     all_errors.extend(rule_errors);
+    all_errors.extend(lexer_errors(tokens));
 
     let span_result = ParsedSpans::builder()
         .attributes(attribute_spans)
@@ -84,6 +85,14 @@ pub(super) fn parse_tokens(
     (spans, all_errors)
 }
 
+fn lexer_errors(tokens: &[(SyntaxKind, Span)]) -> Vec<chumsky::error::Simple<SyntaxKind>> {
+    tokens
+        .iter()
+        .filter(|(kind, _)| *kind == SyntaxKind::N_ERROR)
+        .map(|(_, span)| chumsky::error::Simple::custom(span.clone(), "unrecognized token"))
+        .collect()
+}
+
 /// Return a sorted, merged copy of the provided spans.
 ///
 /// Adjacent or overlapping spans are coalesced to minimise skip checks during
@@ -101,4 +110,26 @@ pub(super) fn merge_spans(mut spans: Vec<Span>) -> Vec<Span> {
         merged.push(span);
     }
     merged
+}
+
+#[cfg(test)]
+mod tests {
+    //! Tests for top-level span-scan orchestration.
+
+    use super::parse_tokens;
+    use crate::SyntaxKind;
+    use crate::test_util::assert_parse_error;
+
+    #[test]
+    fn parse_tokens_reports_unrecognized_token_for_error_token() {
+        // A synthetic `N_ERROR` token exercises the `lexer_errors` path, which
+        // surfaces an "unrecognized token" diagnostic anchored at the token's
+        // span.
+        let src = "@";
+        let tokens = vec![(SyntaxKind::N_ERROR, 0..src.len())];
+
+        let (_spans, errors) = parse_tokens(&tokens, src);
+
+        assert_parse_error(&errors, "unrecognized token", 0, src.len());
+    }
 }

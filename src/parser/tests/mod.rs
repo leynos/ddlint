@@ -14,6 +14,7 @@ mod imports;
 mod indexes;
 mod numeric_literals;
 mod operator_precedence;
+mod relation_proptest;
 mod relations;
 mod round_trip;
 mod rules;

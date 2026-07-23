@@ -1,46 +1,12 @@
-//! Parsers for relation declarations and clauses.
+//! Chumsky helpers for parsing relation primary-key clauses.
 //!
-//! These helpers parse relation column lists and `primary key` clauses using
-//! `chumsky`, allowing callers to validate structure without manual token
-//! juggling.
-//! They are shared by the span scanner and AST helpers to keep behaviour
-//! consistent.
+//! The relation AST uses these helpers to validate and preserve compatible
+//! primary-key binder lists while the span scanner owns declaration recovery.
 
 use chumsky::prelude::*;
 
-use crate::parser::lexer_helpers::{balanced_block_nonempty, ident, inline_ws};
+use crate::parser::lexer_helpers::{ident, inline_ws};
 use crate::{Span, SyntaxKind};
-
-/// Parse a relation name followed by a non-empty column list.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use chumsky::Parser as _;
-/// let src = "User(id: u32)";
-/// let tokens = crate::tokenize_with_trivia(src);
-/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// assert!(relation_columns().parse(stream).is_ok());
-/// ```
-///
-/// ```rust,ignore
-/// use chumsky::Parser as _;
-/// let src = "User"; // Missing column list
-/// let tokens = crate::tokenize_with_trivia(src);
-/// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// assert!(relation_columns().parse(stream).is_err());
-/// ```
-pub(crate) fn relation_columns() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
-    let ws = inline_ws().repeated();
-    ident()
-        .padded_by(ws.clone())
-        .then(balanced_block_nonempty(
-            SyntaxKind::T_LPAREN,
-            SyntaxKind::T_RPAREN,
-        ))
-        .map_with_span(|_, sp: Span| sp)
-        .then_ignore(ws)
-}
 
 fn keyword<'a>(
     src: &'a str,

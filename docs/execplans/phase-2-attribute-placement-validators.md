@@ -1,9 +1,8 @@
 # Add validators for attribute placement and name uniqueness
 
-This Execution Plan (ExecPlan) is a living document. The sections
-`Constraints`, `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`,
-`Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work
-proceeds.
+This Execution Plan (ExecPlan) is a living document. The sections `Constraints`,
+`Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
+and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
 Status: COMPLETE
 
@@ -24,9 +23,9 @@ the parser currently ignores:
    functions with the same `(name, arity)` pair is rejected with a diagnostic
    pointing at the second definition.
 
-These two validators close the final open item in Phase 2 of the project
-roadmap (`docs/roadmap.md`, line 192). Once all quality gates pass, that
-roadmap entry is marked done and Phase 2 is complete.
+These two validators close the final open item in Phase 2 of the project roadmap
+(`docs/roadmap.md`, line 192). Once all quality gates pass, that roadmap entry
+is marked done and Phase 2 is complete.
 
 Observable success looks like this: running `make test` passes with new tests
 exercising every acceptance case. Running
@@ -259,8 +258,8 @@ In `src/parser/cst_builder/spans.rs`:
 ### Step 2 — Register `N_ATTRIBUTE` in the CST builder
 
 In `src/parser/cst_builder/tree.rs`, line 13: add
-`(ParsedSpans::attributes, SyntaxKind::N_ATTRIBUTE)` to `SPAN_CURSOR_KINDS`.
-The `SPAN_CURSOR_INLINE` constant on line 24 is derived from
+`(ParsedSpans::attributes, SyntaxKind::N_ATTRIBUTE)` to `SPAN_CURSOR_KINDS`. The
+`SPAN_CURSOR_INLINE` constant on line 24 is derived from
 `SPAN_CURSOR_KINDS.len()` and updates automatically.
 
 ### Step 3 — Create the attribute span scanner
@@ -306,8 +305,9 @@ In `src/parser/span_scanners/mod.rs`:
 In `src/parser/span_scanner.rs`:
 
 - Import `collect_attribute_spans` alongside the other scanners.
-- Call `let (attribute_spans, attribute_errors) =
-  collect_attribute_spans(tokens, src);` at the start of `parse_tokens()`.
+- Call
+  `let (attribute_spans, attribute_errors) = collect_attribute_spans(tokens, src);`
+  at the start of `parse_tokens()`.
 - Add `attribute_spans` to `non_rule_span_capacity` and `non_rule_spans`.
 - Add `.attributes(attribute_spans)` to the builder chain.
 - Extend `all_errors` with `attribute_errors`.
@@ -359,8 +359,9 @@ In `src/parser/mod.rs`:
 
 In `src/parser/span_scanners/tests.rs`, add test functions:
 
-- `collect_attribute_spans_valid_on_typedef`: source `"#[cold]\ntypedef T =
-  u32\n"`, expect one attribute span covering `#[cold]`, no errors.
+- `collect_attribute_spans_valid_on_typedef`: source
+  `"#[cold]\ntypedef T = u32\n"`, expect one attribute span covering `#[cold]`,
+  no errors.
 - `collect_attribute_spans_valid_on_function`: source
   `"#[inline]\nfunction f() {}\n"`, expect one attribute span, no errors.
 - `collect_attribute_spans_valid_on_relation`: source
@@ -387,10 +388,9 @@ Tests using `crate::parse()`:
 - `attribute_on_typedef_no_error`: parse `"#[cold]\ntypedef T = u32"`, assert
   `parsed.errors().is_empty()`.
 - `attribute_on_function_no_error`: parse `"#[inline]\nfunction f() {}"`.
-- `attribute_on_relation_no_error`: parse `"#[hot]\ninput relation R(x:
-  u32)"`.
-- `attribute_on_extern_function_no_error`: parse `"#[cold]\nextern function
-  f()"`.
+- `attribute_on_relation_no_error`: parse `"#[hot]\ninput relation R(x: u32)"`.
+- `attribute_on_extern_function_no_error`: parse
+  `"#[cold]\nextern function f()"`.
 - `attribute_on_index_emits_error`: parse `"#[cold]\nindex I on R(x)"`, assert
   exactly one error whose display contains "attribute".
 - `attribute_on_rule_emits_error`: parse `"#[cold]\nR(x) :- S(x)."`, assert

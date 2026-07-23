@@ -1,5 +1,7 @@
 //! Tests for specialised span scanners.
 
+mod relation_tests;
+
 use super::rules::rule_statement;
 use super::{
     collect_function_spans, collect_import_spans, collect_index_spans, collect_relation_spans,

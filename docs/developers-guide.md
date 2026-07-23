@@ -22,6 +22,54 @@ parsing pipeline.
 - Keeps rule-body classification separate from the public `Rule` wrapper so
   `rule.rs` stays focused on the surface API.
 
+### `src/parser/ast/relation.rs`
+
+- Owns the typed relation declaration surface for role, kind, ref marker, and
+  body form.
+- Treats `role()` and `kind()` as the canonical APIs for new code.
+  `is_input()` and `is_output()` are derived helpers kept for callers that only
+  need role predicates.
+- Uses `role_keyword_present()` and `kind_keyword_present()` when callers need
+  source-fidelity rather than the defaulted semantic value.
+- Exposes declaration-level reference relations through `is_ref()`. Do not
+  infer ref status from raw `&` tokens in downstream callers.
+- Exposes `body()`, `element_type()`, `columns()`, and `primary_key()` as
+  fallible queries returning `Result<_, RelationParseErrors>`. A valid record
+  body yields `Ok(RelationBody::Fields(..))` with `element_type()` as
+  `Ok(None)`; a valid bracket body yields `Ok(RelationBody::ElementType(..))`
+  with `columns()` as `Ok(Vec::new())`. Malformed or missing bodies return
+  `Err(..)` rather than an empty `Fields` vector, so direct AST querying stays
+  reliable for malformed or synthetic nodes.
+- Keeps `primary_key()` focused on the binder/list names (`Ok(None)` when
+  absent). Spec-form trailing primary-key expressions are preserved in the CST
+  until roadmap follow-up `2.6.6.1` introduces typed access. `Parsed::errors()`
+  remains the parser-level diagnostic channel.
+
+### `src/parser/span_scanners/relations.rs`
+
+- Owns top-level relation-candidate discovery, declaration orchestration,
+  record and bracket body parsing, primary-key validation,
+  relation-versus-rule/fact disambiguation, span collection, and recovery.
+- Applies delimiter-depth-aware line-start filtering so only genuine top-level
+  declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
+- Produces relation declaration spans for CST construction;
+  `src/parser/ast/relation.rs` then exposes the typed AST accessors over the
+  resulting nodes.
+
+### `src/parser/span_scanners/relations/cursor.rs`
+
+- Owns shared cursor movement, trivia handling, token inspection, and
+  balanced-delimiter traversal (including delimiter-stack maintenance) for the
+  relation scanner.
+- Holds no grammar decisions; those remain in `relations.rs`.
+
+### `src/parser/span_scanners/relations/preamble.rs`
+
+- Parses only the optional role/kind preamble keywords and enforces
+  `D-REL-001`, `D-REL-002`, and `D-REL-003`.
+- Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
+  and recovery in `relations.rs`.
+
 ### `src/parser/expression/pratt/postfix.rs`
 
 - Owns postfix dispatch for the Pratt parser.
@@ -50,10 +98,43 @@ parsing pipeline.
   expression parser.
 - Keep rule-body classification in `classification.rs` rather than adding
   helper-stage logic to `rule.rs`.
+- Prefer `Relation::role()` and `Relation::kind()` for new relation-aware
+  logic. Use `is_input()` and `is_output()` only as predicate conveniences.
+- Prefer `Relation::body()` over combining `columns()` and `element_type()`
+  when code must branch on relation body shape.
 - Keep postfix dispatch in `postfix.rs`; add new postfix behaviour there only
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
+- Keep scanner grammar and recovery decisions — candidate discovery, body and
+  suffix parsing, and span collection — in `relations.rs`.
+- Keep cursor movement and balanced-block mechanics in `relations/cursor.rs`.
+- Keep role/kind preamble parsing and its ordering/duplication diagnostics
+  (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
+- Keep typed consumer-facing relation metadata in `ast/relation.rs`, and
+  inspection-only CST traversal in `ast/relation/inspect.rs`.
+
+## Contributor workflow
+
+Run these gates in order before committing:
+
+1. `make fmt`
+2. `make check-fmt`
+3. `make lint`
+4. `make test`
+5. `make markdownlint`
+6. `make nixie`
+
+This is the required pre-commit sequence, matching `AGENTS.md`.
+
+`make lint` includes the spelling gate, and `make markdownlint` also invokes
+the spelling gate for tracked Markdown. `make markdownlint` lints the tracked
+Markdown sources, and `make nixie` validates the Mermaid diagrams within them.
+
+`make spelling` validates the spelling-policy helper before regenerating the
+generated `typos` configuration and checking tracked Markdown for
+en-GB-oxendict spelling. See `AGENTS.md` for the underlying command
+implementations; this guide does not duplicate them.
 
 ## Spelling policy
 
@@ -70,15 +151,15 @@ gate also runs the helper's Python 3.13 tests with at least 90% line coverage.
 
 ## Workflow pins and Dependabot
 
-Dependabot owns the upgrade of GitHub Actions and reusable workflows,
-including calls into `leynos/shared-actions`. Contract tests that assert a
-caller's exact commit SHA create a lockstep dependency: every time
-Dependabot opens a bump PR, the test fails until a human edits the pinned
-constant to match. That defeats the purpose of automated dependency updates
-and turns a routine bump into a manual chore.
+Dependabot owns the upgrade of GitHub Actions and reusable workflows, including
+calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
+commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
+the test fails until a human edits the pinned constant to match. That defeats
+the purpose of automated dependency updates and turns a routine bump into a
+manual chore.
 
-Contract tests may still verify the *shape* of a reusable-workflow caller.
-They must not verify the specific SHA value.
+Contract tests may still verify the *shape* of a reusable-workflow caller. They
+must not verify the specific SHA value.
 
 - Do assert the workflow references the correct reusable workflow path.
 - Do assert the ref is pinned to a full 40-character commit SHA, not a
@@ -100,5 +181,5 @@ def test_uses_pinned_full_sha(caller_step):
 ```
 
 If a workflow's behaviour genuinely depends on a feature only present from a
-particular commit onwards, express that as a comment or a changelog note,
-not as a test assertion on the SHA string.
+particular commit onwards, express that as a comment or a changelog note, not
+as a test assertion on the SHA string.

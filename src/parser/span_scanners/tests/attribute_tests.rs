@@ -7,6 +7,10 @@ use rstest::rstest;
 #[rstest]
 #[case("#[inline]\nfunction f() {}\n", None)]
 #[case("#[hot]\ninput relation R(x: u32)\n", None)]
+#[case("#[hot]\noutput relation R(x: u32)\n", None)]
+#[case("#[hot]\nrelation R(x: u32)\n", None)]
+#[case("#[hot]\nstream R(x: u32)\n", None)]
+#[case("#[hot]\nmultiset R(x: u32)\n", None)]
 #[case("#[cold]\nextern function f()\n", None)]
 #[case("#[cold]\ntypedef T = u32\n", Some("#[cold]"))]
 fn collect_attribute_spans_valid_on_permitted_item(

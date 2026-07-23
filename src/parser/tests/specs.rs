@@ -1,6 +1,6 @@
 //! Assertion builders for parser tests.
 
-use crate::ast::{Function, Index, Relation, Transformer};
+use crate::ast::{Function, Index, Relation, RelationBody, RelationKind, RelationRole, Transformer};
 
 fn pair_vec(items: &[(&str, &str)]) -> Vec<(String, String)> {
     items
@@ -23,21 +23,50 @@ pub(crate) use assert_entity;
 
 pub struct RelationSpec<'a> {
     name: &'a str,
-    input: bool,
-    output: bool,
+    role: RelationRole,
+    role_keyword_present: bool,
+    kind: RelationKind,
+    kind_keyword_present: bool,
+    is_ref: bool,
+    body: Option<RelationBody>,
     columns: Vec<(&'a str, &'a str)>,
     pk: Option<Vec<&'a str>>,
 }
 impl<'a> RelationSpec<'a> {
     pub fn new(name: &'a str) -> Self {
-        Self { name, input: false, output: false, columns: vec![], pk: None }
+        Self {
+            name,
+            role: RelationRole::Internal,
+            role_keyword_present: false,
+            kind: RelationKind::Relation,
+            kind_keyword_present: false,
+            is_ref: false,
+            body: None,
+            columns: vec![],
+            pk: None,
+        }
     }
     pub fn input(mut self) -> Self {
-        self.input = true;
+        self.role = RelationRole::Input;
+        self.role_keyword_present = true;
         self
     }
     pub fn output(mut self) -> Self {
-        self.output = true;
+        self.role = RelationRole::Output;
+        self.role_keyword_present = true;
+        self
+    }
+    pub fn kind(mut self, kind: RelationKind) -> Self {
+        self.kind = kind;
+        self.kind_keyword_present = true;
+        self
+    }
+    pub fn ref_(mut self) -> Self {
+        self.is_ref = true;
+        self
+    }
+    pub fn body(mut self, body: RelationBody) -> Self {
+        self.body = Some(body);
         self
     }
     pub fn column(mut self, name: &'a str, ty: &'a str) -> Self {
@@ -52,10 +81,16 @@ impl<'a> RelationSpec<'a> {
         assert_entity!(
             r,
             self,
-            r.is_input() => self.input,
-            r.is_output() => self.output,
-            r.columns() => pair_vec(&self.columns),
-            r.primary_key() => self.pk.map(|v| str_vec(&v))
+            r.role() => self.role,
+            r.role_keyword_present() => self.role_keyword_present,
+            r.kind() => self.kind,
+            r.kind_keyword_present() => self.kind_keyword_present,
+            r.is_ref() => self.is_ref,
+            r.is_input() => self.role == RelationRole::Input,
+            r.is_output() => self.role == RelationRole::Output,
+            self.body.as_ref().map(|_| r.body()) => self.body.clone().map(Ok),
+            r.columns() => Ok(pair_vec(&self.columns)),
+            r.primary_key() => Ok(self.pk.map(|v| str_vec(&v)))
         );
     }
 }

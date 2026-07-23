@@ -62,3 +62,62 @@ assert!(diagnostics.is_empty());
 
 `ddlint` uses the `log` API for parser warnings. Initialize a logger in your
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
+
+## Relation declarations
+
+Relation declarations may combine an optional role, optional kind, optional
+reference marker, and one body form:
+
+```ddlog
+R(id: u32)
+input relation User(id: u32) primary key (id)
+output stream Events[Event]
+multiset & Bag(item: Item)
+```
+
+The accepted shape is:
+
+```text
+Role? Kind? '&'? Name Body PrimaryKey?
+```
+
+`Role` may be `input` or `output`. When no role is present, the relation is
+internal. `internal` is not a keyword.
+
+`Kind` may be `relation`, `stream`, or `multiset`. When no kind is present,
+`relation` is assumed.
+
+`Body` is either a record field list, such as `(id: u32, name: string)`, or a
+bracketed element type, such as `[Event]`.
+
+Primary-key clauses are accepted only on `input` relations with record bodies.
+The parser preserves spec-form clauses such as:
+
+```ddlog
+input relation Book(row: BookRow) primary key (row) (row.author, row.title)
+```
+
+The current typed AST exposes the binder/list names from `primary key (...)`.
+Typed access to the trailing expression is deferred to roadmap item `2.6.6.1`.
+
+## Relation diagnostics
+
+The parser emits deterministic diagnostics for invalid relation forms:
+
+<!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay intact
+for reviewability. -->
+
+Table 1. Relation diagnostics.
+
+| Code      | Cause                                        | Message                                                                                 |
+| --------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
+| D-REL-001 | Kind keyword before role keyword             | `relation role keyword (input/output) must precede the kind keyword`                    |
+| D-REL-002 | More than one role keyword                   | `at most one role keyword (input, output) is permitted`                                 |
+| D-REL-003 | More than one kind keyword                   | `at most one kind keyword (relation, stream, multiset) is permitted`                    |
+| D-REL-004 | Bracket body with a primary-key clause       | `bracket-form relations cannot declare a primary key clause`                            |
+| D-REL-005 | Empty bracket body                           | `bracket-form relations require a single element type between '[' and ']'`              |
+| D-REL-006 | Primary-key clause on a non-`input` relation | `primary key clauses are only valid on input relations`                                 |
+| D-REL-007 | Stray or malformed `primary key` clause      | `unexpected or malformed primary key clause`                                            |
+| D-REL-008 | Bracket-wrapped primary-key clause           | `bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']'` |
+
+<!-- markdownlint-enable MD013 -->

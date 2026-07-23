@@ -7,8 +7,8 @@
 
 - [Repository layout](./repository-layout.md): Map of the repository tree,
   path responsibilities, and placement rules for contributors.
-- [Users' guide](./users-guide.md): User-facing guide for applying `ddlint`
-  today.
+- [Users' guide](./users-guide.md): User-visible syntax support and parser
+  diagnostics for accepted DDlog source.
 - [Documentation style guide](./documentation-style-guide.md): Authoring
   conventions for Markdown structure, spelling, formatting, diagrams, roadmaps,
   Request for Comments (RFCs), and Architectural Decision Records (ADRs).
@@ -61,6 +61,8 @@
 - [Architectural decision record 001: parser crate split for multi-consumer use](./adr-001-parser-crate-split.md):
   Proposed decision record for parser crate boundaries and implementation
   structure.
+- [Architectural decision record 002: relation role and kind modelling](./adr-002-relation-role-kind-modelling.md):
+  Decision record for typed relation role, kind, ref, and body accessors.
 
 ## Execution plans
 
@@ -78,6 +80,8 @@
   Plan for index declaration grammar alignment.
 - [2.6.5 align transformer declaration grammar](./execplans/2-6-5-align-transformer-declaration-grammar.md):
   Plan for transformer declaration grammar alignment.
+- [2.6.6 resolve relation form coverage](./execplans/2-6-6-resolve-relation-form-coverage.md):
+  Plan for relation form coverage and modelling alignment.
 - [3.1.1 core rule and CST rule traits](./execplans/3-1-1-core-rule-and-cst-rule-traits.md):
   Plan for lint rule trait foundations.
 - [3.1.2 rule context struct](./execplans/3-1-2-rule-context-struct.md):

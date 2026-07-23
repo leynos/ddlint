@@ -235,6 +235,17 @@ older shorthand `index Name on Relation(columns)` with a targeted diagnostic,
 and exposes the typed field list plus normalized `on` target directly from the
 CST-backed `Index` wrapper.
 
+Relation declarations use the same CST-backed boundary. The `Relation` wrapper
+models the declaration preamble with `RelationRole` (`Input`, `Output`, or
+defaulted `Internal`), `RelationKind` (`Relation`, `Stream`, or `Multiset`), and
+`RelationBody` (`Fields` or `ElementType`). The `role()` and `kind()` methods
+are the canonical typed accessors; `role_keyword_present()` and
+`kind_keyword_present()` preserve explicit role and kind keyword presence.
+Existing `is_input()` and `is_output()` helpers remain as derived ergonomics
+for lint rules that only need role predicates. ADR-002 records this syntax-
+layer modelling decision and its boundary with the semantic layer expected by
+ADR-001.
+
 ### 2.1. Defining the DDlog `SyntaxKind`
 
 Following the established `rowan` pattern, the grammar of the DDlog language
@@ -788,6 +799,9 @@ stylistic suggestions, establishing a solid foundation of essential lints.
 
 Table: DDLint rule catalogue and metadata.
 
+<!-- markdownlint-disable MD013 --><!-- Table rows stay intact for
+reviewability. -->
+
 | Rule Name              | Group       | Default Level | Autofixable | Description                                                                                                                                                                                                                                       |
 | ---------------------- | ----------- | ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | unused-relation        | correctness | warn          | No          | Detects declared relations with no resolved read-like uses in rule bodies, `for` iterables, or `for` guards; rule heads count only as writes.                                                                                                     |
@@ -798,6 +812,8 @@ Table: DDLint rule catalogue and metadata.
 | superfluous-group-by   | performance | warn          | Yes         | Detects group_by clauses where the aggregation is trivial (e.g., grouping by all variables) and can be removed.                                                                                                                                   |
 | consistent-casing      | style       | allow         | Yes         | Enforces a consistent casing style for relation and type identifiers (e.g., PascalCase) and variables (e.g., snake_case).                                                                                                                         |
 | no-magic-numbers       | style       | allow         | No          | Flags the use of unnamed numeric literals in rule bodies where a named constant might be clearer.                                                                                                                                                 |
+
+<!-- markdownlint-enable MD013 -->
 
 This table serves as a concrete work breakdown for the engineering team and
 clearly communicates the linter's initial capabilities and priorities to early
@@ -882,6 +898,9 @@ A clearly defined schema is essential for user documentation and for enabling
 features like IDE autocompletion. The `ddlint.toml` file will be structured to
 be simple and extensible. The following table specifies the initial schema.
 
+<!-- markdownlint-disable MD013 --><!-- Table rows stay intact for
+reviewability. -->
+
 | Key                       | Type             | Default                                            | Description                                                                                                                                                                 |
 | ------------------------- | ---------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | extends                   | String           | (none)                                             | A path to a base configuration file. Settings from the current file will override settings from the extended file.                                                          |
@@ -889,6 +908,8 @@ be simple and extensible. The following table specifies the initial schema.
 | [rules]                   | Table            | (empty)                                            | This section is the primary location for configuring individual rule severities and options.                                                                                |
 | [rules].`<rule-name>`     | String           | (rule default)                                     | Sets the severity for a rule. Valid values are "allow" (disables the rule), "hint", "warn", or "error". An error will cause the linter to exit with a non-zero status code. |
 | [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The `level` key accepts the same `RuleLevel` strings as the top-level rule entry, alongside rule-specific configuration keys.            |
+
+<!-- markdownlint-enable MD013 -->
 
 This schema provides a clear and powerful way for teams to tailor the linter's
 behaviour to project-specific needs, from disabling entire classes of rules to

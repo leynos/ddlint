@@ -36,8 +36,8 @@ convert the source text into a stream of `(SyntaxKind, Span)` pairs. Each span
 records byte offsets so that the resulting CST can precisely mirror the input.
 Whitespace together with comments should produce tokens, so they can be
 preserved. The current implementation opts for a small `logos` lexer because it
-keeps the token definitions declarative while still interoperating smoothly
-with `chumsky` parsers. Keyword lookups use a `phf::Map` for zero-cost perfect
+keeps the token definitions declarative while still interoperating smoothly with
+`chumsky` parsers. Keyword lookups use a `phf::Map` for zero-cost perfect
 hashing.
 
 ```mermaid
@@ -63,8 +63,8 @@ sequenceDiagram
 2. Wrap every recognized token into its `SyntaxKind` and push it into a
    `GreenNodeBuilder` from `rowan`.
 3. For syntactic errors, emit an `N_ERROR` node and recover by skipping to a
-   known synchronization point, as recommended by the design document ([design
-   document](docs/ddlint-design-and-road-map.md#L124-L139)).
+   known synchronization point, as recommended by the design document
+   ([design document](../ddlint-design.md)).
 
 The parser's final output is the AST root together with a `GreenNode` that
 contains the full CST.
