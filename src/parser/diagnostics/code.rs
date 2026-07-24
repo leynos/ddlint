@@ -9,6 +9,8 @@ use std::fmt;
 /// scanner families acquire more specific diagnostic codes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DiagnosticCategory {
+    /// The complete parser entry point.
+    Parser,
     /// Attribute span scanning.
     Attribute,
     /// Import span scanning.
@@ -42,6 +44,7 @@ impl DiagnosticCategory {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::Parser => "parser",
             Self::Attribute => "attribute",
             Self::Import => "import",
             Self::Typedef => "typedef",
@@ -120,6 +123,21 @@ impl DiagnosticCode {
             | Self::RelationBracketWrappedPrimaryKey => DiagnosticCategory::Relation,
         }
     }
+
+    pub(crate) fn from_message(message: &str) -> Option<Self> {
+        [
+            Self::RelationKindBeforeRole,
+            Self::RelationDuplicateRole,
+            Self::RelationDuplicateKind,
+            Self::RelationBracketPrimaryKey,
+            Self::RelationInvalidBracketElementType,
+            Self::RelationPrimaryKeyOnNonInput,
+            Self::RelationMalformedPrimaryKey,
+            Self::RelationBracketWrappedPrimaryKey,
+        ]
+        .into_iter()
+        .find(|code| message.starts_with(code.as_str()))
+    }
 }
 
 impl fmt::Display for DiagnosticCode {
@@ -149,9 +167,14 @@ mod tests {
         assert_eq!(code.as_str(), expected);
         assert_eq!(code.to_string(), expected);
         assert_eq!(code.category(), DiagnosticCategory::Relation);
+        assert_eq!(
+            DiagnosticCode::from_message(&format!("{expected}: message")),
+            Some(code)
+        );
     }
 
     #[rstest]
+    #[case(DiagnosticCategory::Parser, "parser")]
     #[case(DiagnosticCategory::Attribute, "attribute")]
     #[case(DiagnosticCategory::Import, "import")]
     #[case(DiagnosticCategory::Typedef, "typedef")]

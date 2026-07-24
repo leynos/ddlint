@@ -16,8 +16,11 @@ thiserror = { version = "1.0", default-features = false }
 derive_more = { version = "2.1", default-features = false, features = ["from", "as_ref"] }
 rayon = "1.10"
 smallvec = "1.15.1"
+metrics = { version = "0.24.6", default-features = false, optional = true }
+tracing = { version = "0.1.44", default-features = false, optional = true }
 
 [features]
+observability = ["dep:metrics", "dep:tracing"]
 test-support = []
 
 [dev-dependencies]
