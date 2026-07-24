@@ -5,10 +5,11 @@
 
 use chumsky::{Error, error::Simple};
 
+use crate::parser::error_messages::RELATION_MALFORMED_PRIMARY_KEY_ERROR as D_REL_007;
 use crate::parser::lexer_helpers::token_display;
 use crate::{Span, SyntaxKind};
 
-use super::{D_REL_007, ScanResult, custom_error};
+use super::{ScanResult, custom_error};
 
 /// Parse a balanced block opened by the delimiter matching `close`.
 ///

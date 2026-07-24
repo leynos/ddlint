@@ -17,7 +17,11 @@ pub mod tokenizer;
 pub mod test_util;
 
 pub use language::{DdlogLanguage, SyntaxKind};
-pub use parser::{Parsed, ast, parse};
+pub use parser::{
+    Parsed, ast,
+    diagnostics::{DiagnosticCategory, DiagnosticCode},
+    parse,
+};
 /// Re-exported for macro-generated rule handlers and downstream CST consumers
 /// so callers can use `ddlint`'s public syntax types without a direct `rowan`
 /// dependency.

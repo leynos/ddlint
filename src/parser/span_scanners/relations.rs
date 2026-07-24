@@ -9,6 +9,13 @@ mod preamble;
 
 use chumsky::error::Simple;
 
+use crate::parser::error_messages::{
+    RELATION_BRACKET_PRIMARY_KEY_ERROR as D_REL_004,
+    RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR as D_REL_008,
+    RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR as D_REL_005,
+    RELATION_MALFORMED_PRIMARY_KEY_ERROR as D_REL_007,
+    RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR as D_REL_006,
+};
 use crate::{Span, SyntaxKind};
 
 use cursor::{
@@ -20,13 +27,6 @@ use preamble::{RelationRole, parse_preamble};
 use super::utils::State;
 
 pub(super) type ScanResult<T> = Result<T, Box<Simple<SyntaxKind>>>;
-
-const D_REL_004: &str = "D-REL-004: bracket-form relations cannot declare a primary key clause";
-const D_REL_005: &str =
-    "D-REL-005: bracket-form relations require a single element type between '[' and ']'";
-const D_REL_006: &str = "D-REL-006: primary key clauses are only valid on input relations";
-pub(super) const D_REL_007: &str = "D-REL-007: unexpected or malformed primary key clause";
-const D_REL_008: &str = "D-REL-008: bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']'";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BodyForm {

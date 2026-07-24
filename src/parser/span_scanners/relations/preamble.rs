@@ -43,16 +43,14 @@
 
 use chumsky::{Error, error::Simple};
 
+use crate::parser::error_messages::{
+    RELATION_DUPLICATE_KIND_ERROR as D_REL_003, RELATION_DUPLICATE_ROLE_ERROR as D_REL_002,
+    RELATION_KIND_BEFORE_ROLE_ERROR as D_REL_001,
+};
 use crate::{Span, SyntaxKind};
 
 use super::cursor::skip_trivia;
 use super::{ScanResult, custom_error};
-
-const D_REL_001: &str =
-    "D-REL-001: relation role keyword (input/output) must precede the kind keyword";
-const D_REL_002: &str = "D-REL-002: at most one role keyword (input, output) is permitted";
-const D_REL_003: &str =
-    "D-REL-003: at most one kind keyword (relation, stream, multiset) is permitted";
 
 /// Relation role annotation parsed from a relation preamble keyword.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -12,13 +12,9 @@ use crate::test_util::{
 /// Assert that `body_terms()` reports an expected error for a literal found in `src`.
 fn assert_body_terms_error(src: &str, literal: &str, expected_error: &str) {
     let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
+    let mut rules = parsed.root().rules();
+    assert_eq!(rules.len(), 1, "expected a single rule");
+    let rule = rules.remove(0);
     let errors = match rule.body_terms() {
         Ok(terms) => panic!("expected body_terms error, got {terms:?}"),
         Err(errs) => errs,

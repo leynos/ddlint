@@ -26,6 +26,7 @@ use span_scanner::parse_tokens;
 mod cst_builder;
 use cst_builder::build_green_tree;
 mod delimiter;
+pub mod diagnostics;
 pub mod expression;
 mod expression_span;
 pub mod pattern;
