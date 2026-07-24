@@ -17,10 +17,16 @@ pub mod tokenizer;
 pub mod test_util;
 
 pub use language::{DdlogLanguage, SyntaxKind};
+#[cfg(feature = "observability")]
+pub use parser::observability::TelemetryObserver;
 pub use parser::{
     Parsed, ast,
     diagnostics::{DiagnosticCategory, DiagnosticCode},
-    parse,
+    observability::{
+        DiagnosticContext, DiagnosticSeverity, NoopParseObserver, ParseAttemptContext,
+        ParseObserver,
+    },
+    parse, parse_with_observer,
 };
 /// Re-exported for macro-generated rule handlers and downstream CST consumers
 /// so callers can use `ddlint`'s public syntax types without a direct `rowan`
