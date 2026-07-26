@@ -52,24 +52,6 @@ pub struct DiagnosticContext<'a> {
 }
 
 impl<'a> DiagnosticContext<'a> {
-    /// Construct diagnostic context for an observer callback.
-    #[must_use]
-    pub const fn new(
-        code: Option<DiagnosticCode>,
-        category: DiagnosticCategory,
-        span: Span,
-        severity: DiagnosticSeverity,
-        message: &'a str,
-    ) -> Self {
-        Self {
-            code,
-            category,
-            span,
-            severity,
-            message,
-        }
-    }
-
     /// Return the stable diagnostic code, when one is assigned.
     #[must_use]
     pub const fn code(&self) -> Option<DiagnosticCode> {
@@ -162,13 +144,13 @@ pub(crate) fn report_diagnostics(
 ) {
     for error in errors {
         let message = diagnostic_message(error);
-        let context = DiagnosticContext::new(
-            DiagnosticCode::from_message(message),
+        let context = DiagnosticContext {
+            code: DiagnosticCode::from_message(message),
             category,
-            error.span(),
-            DiagnosticSeverity::Error,
+            span: error.span(),
+            severity: DiagnosticSeverity::Error,
             message,
-        );
+        };
         observer.diagnostic_emitted(&context);
     }
 }
