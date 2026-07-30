@@ -80,6 +80,7 @@ the exact source span, but unsupported legacy syntax is rejected during parsing.
 
 `as` remains valid in supported grammar positions, including import aliases
 such as `import foo::bar as baz`.
+
 ## Relation declarations
 
 Relation declarations may combine an optional role, optional kind, optional
