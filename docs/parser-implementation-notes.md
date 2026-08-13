@@ -50,6 +50,9 @@ Current pipeline guarantees are intentionally narrow:
 
 - `parse()` builds the CST-backed `Parsed` result, collects top-level `for`
   semantic rules, and runs top-level name-uniqueness validation.
+- `parse_with_observer()` reports the same pipeline through a backend-neutral
+  observer. Observer callbacks do not return parser-control decisions, and
+  `parse()` supplies the no-op observer.
 - `parse()` does **not** classify rule-body aggregations or report duplicate or
   wrong-arity aggregation diagnostics in `Parsed::errors()`.
 - Aggregation classification and validation happen when callers request
@@ -379,6 +382,9 @@ token names or their human-readable equivalents.
 
 - Tokenization and keyword policy: `src/tokenizer.rs`
 - Entry parse orchestration: `src/parser/mod.rs`
+- Stable diagnostic taxonomy: `src/parser/diagnostics/*`
+- Backend-neutral observer and optional adapter:
+  `src/parser/observability/*`
 - Pratt parser: `src/parser/expression/pratt.rs`
 - Pratt postfix helpers:
   `src/parser/expression/pratt/{postfix,diff,delay}.rs`

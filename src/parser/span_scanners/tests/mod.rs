@@ -352,7 +352,11 @@ fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
     );
 
     let tokens = tokenize(src);
-    let (spans, errors) = parse_tokens(&tokens, src);
+    let (spans, errors) = parse_tokens(
+        &tokens,
+        src,
+        &crate::parser::observability::NoopParseObserver,
+    );
 
     assert!(errors.is_empty());
 

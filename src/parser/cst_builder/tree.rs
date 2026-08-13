@@ -111,7 +111,7 @@ fn validate_token_span(span: &Span, src_len: usize) -> bool {
 ///
 /// let src = "import foo::bar;";
 /// let tokens = tokenize(src);
-/// let (spans, errors) = parse_tokens(&tokens, src);
+/// let (spans, errors) = parse_tokens(&tokens, src, &NoopParseObserver);
 /// assert!(errors.is_empty());
 /// let green = build_green_tree(&tokens, src, &spans);
 /// let root = Root::from_green(green);
@@ -183,7 +183,11 @@ mod tests {
     fn build_green_tree_round_trip() {
         let src = "import foo::bar;";
         let tokens = tokenize(src);
-        let (spans, errors) = parse_tokens(&tokens, src);
+        let (spans, errors) = parse_tokens(
+            &tokens,
+            src,
+            &crate::parser::observability::NoopParseObserver,
+        );
         assert!(errors.is_empty());
         let green = build_green_tree(&tokens, src, &spans);
         let root = crate::parser::ast::Root::from_green(green);
@@ -209,7 +213,11 @@ mod tests {
     fn build_green_tree_skips_oob_token_span_in_release() {
         let src = "import foo::bar;";
         let mut tokens = tokenize(src);
-        let (spans, errors) = parse_tokens(&tokens, src);
+        let (spans, errors) = parse_tokens(
+            &tokens,
+            src,
+            &crate::parser::observability::NoopParseObserver,
+        );
         assert!(errors.is_empty());
 
         tokens.push((SyntaxKind::K_IMPORT, src.len() + 1..src.len() + 2));
@@ -244,7 +252,11 @@ mod tests {
             "User(id, name) :- name == \"a\", id > 0.\n"
         );
         let tokens = tokenize(src);
-        let (spans, errors) = parse_tokens(&tokens, src);
+        let (spans, errors) = parse_tokens(
+            &tokens,
+            src,
+            &crate::parser::observability::NoopParseObserver,
+        );
         assert!(errors.is_empty());
         let green = build_green_tree(&tokens, src, &spans);
         let root = Root::from_green(green);

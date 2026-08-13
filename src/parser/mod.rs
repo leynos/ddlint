@@ -26,14 +26,18 @@ use span_scanner::parse_tokens;
 mod cst_builder;
 use cst_builder::build_green_tree;
 mod delimiter;
+pub mod diagnostics;
 pub mod expression;
 mod expression_span;
+pub mod observability;
 pub mod pattern;
 mod top_level_for;
 pub use cst_builder::{Parsed, ParsedSpans};
 use top_level_for::collect_desugared_top_level_for_rules;
 
 use crate::Span;
+use diagnostics::DiagnosticCategory;
+use observability::{NoopParseObserver, ParseAttemptContext, ParseObserver, complete_attempt};
 
 /// Parse the provided source string.
 ///
@@ -64,18 +68,53 @@ use crate::Span;
 /// ```
 #[must_use]
 pub fn parse(src: &str) -> Parsed {
+    parse_with_observer(src, &NoopParseObserver)
+}
+
+/// Parse source while reporting attempts and diagnostics to `observer`.
+///
+/// The observer receives a deterministic event sequence and cannot affect
+/// parser recovery or the returned [`Parsed`] value.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # use ddlint::{NoopParseObserver, parse_with_observer};
+/// let parsed = parse_with_observer(
+///     "input relation R(x: u32);",
+///     &NoopParseObserver,
+/// );
+/// assert!(parsed.errors().is_empty());
+/// ```
+#[must_use]
+pub fn parse_with_observer(src: &str, observer: &dyn ParseObserver) -> Parsed {
+    observer.parse_attempt_started(DiagnosticCategory::Parser);
     let tokens = tokenize_with_trivia(src);
-    let (spans, mut errors) = parse_tokens(&tokens, src);
+    let (spans, mut errors) = parse_tokens(&tokens, src, observer);
     let exclusions = top_level_for_exclusions(&spans);
+
+    observer.parse_attempt_started(DiagnosticCategory::TopLevelFor);
     let (semantic_rules, top_level_for_errors) =
         collect_desugared_top_level_for_rules(&tokens, src, &exclusions);
+    complete_attempt(
+        observer,
+        DiagnosticCategory::TopLevelFor,
+        &top_level_for_errors,
+    );
     errors.extend(top_level_for_errors);
 
     let green = build_green_tree(&tokens, src, &spans);
     let root = ast::Root::from_green(green.clone());
 
-    errors.extend(validators::validate_name_uniqueness(&root));
+    observer.parse_attempt_started(DiagnosticCategory::NameUniqueness);
+    let name_errors = validators::validate_name_uniqueness(&root);
+    complete_attempt(observer, DiagnosticCategory::NameUniqueness, &name_errors);
+    errors.extend(name_errors);
 
+    observer.parse_attempt_completed(ParseAttemptContext::new(
+        DiagnosticCategory::Parser,
+        errors.len(),
+    ));
     Parsed::new(green, root, semantic_rules, errors)
 }
 
