@@ -4,7 +4,7 @@
 //! round-trips through `pretty_print` unchanged.
 
 use crate::{SyntaxKind, ast::AstNode};
-use crate::test_util::normalise_tokens;
+use crate::test_util::normalize_tokens;
 use rstest::rstest;
 use super::helpers::{parse_err, parse_ok, round_trip};
 
@@ -152,7 +152,7 @@ fn import_missing_path() {
     assert!(
         error
             .expected()
-            .filter_map(|e| e.as_ref().map(|k| normalise_tokens(&format!("{k:?}"))))
+            .filter_map(|e| e.as_ref().map(|k| normalize_tokens(&format!("{k:?}"))))
             .any(|k| k == "identifier")
     );
     assert_eq!(error.found(), Some(&SyntaxKind::K_AS));

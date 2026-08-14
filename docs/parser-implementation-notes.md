@@ -378,7 +378,7 @@ Test utilities that match these messages:
   counterpart; asserts that no custom error contains `pattern`.
 
 Both helpers normalize internal token names to human-readable forms before
-comparison (via `normalise_tokens`), so assertion strings can use either raw
+comparison (via `normalize_tokens`), so assertion strings can use either raw
 token names or their human-readable equivalents.
 
 ## File index

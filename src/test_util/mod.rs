@@ -100,7 +100,7 @@ impl From<&str> for ErrorPattern {
 }
 
 /// Replace internal token names with human-readable forms.
-pub(crate) fn normalise_tokens(s: &str) -> String {
+pub(crate) fn normalize_tokens(s: &str) -> String {
     // Build replacements from SyntaxKind debug names to human-friendly labels.
     // This avoids a hand-maintained token map drifting from the parser.
     use SyntaxKind as K;
