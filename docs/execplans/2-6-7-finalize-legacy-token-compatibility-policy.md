@@ -339,7 +339,7 @@ scope tolerance below, stop and escalate.
   missing user-facing guide deliberately or record why the existing migration
   notes are the closest active user-facing home for this change.
 - On 2026-06-16, a refined audit of parseable `.dl` examples found legacy
-  tokens in seven owned examples: `examples/left_join_by_negation.dl`,
+  tokens in nine owned examples: `examples/left_join_by_negation.dl`,
   `examples/tuple_destructuring.dl`, `examples/paths_excluding.dl`,
   `examples/reachability.dl`, `examples/functions_and_match.dl`,
   `examples/extern_transformer_decl.dl`, `examples/hello_join.dl`,
@@ -430,7 +430,7 @@ scope tolerance below, stop and escalate.
   scope tolerance was exceeded before implementation began. Completing the plan
   exactly as written appeared to require at least parser code, new parser
   tests, a behavioural test, a linter regression, seven active documentation or
-  migration-note files, the roadmap, this ExecPlan, and up to seven owned
+  migration-note files, the roadmap, this ExecPlan, and up to nine owned
   example migrations. Options were:
   1. raise the file-count tolerance and proceed with the complete plan;
   2. keep the tolerance and narrow the milestone by deferring owned example
@@ -704,14 +704,17 @@ decision, not just the internal unit suites.
 
 After implementation and documentation updates:
 
-1. Run `make fmt`, `make markdownlint`, and `make nixie` because this
-   change updates Markdown.
-2. Run `make check-fmt`, `make lint`, and `make test`.
-3. Only after those gates pass, update `docs/roadmap.md` to mark item
+1. Run `make fmt`.
+2. Run `make check-fmt`.
+3. Run `make lint`.
+4. Run `CI=1 make test`.
+5. Run `make markdownlint`.
+6. Run `make nixie`.
+7. Only after those gates pass, update `docs/roadmap.md` to mark item
    `2.6.7` done.
-4. Update this ExecPlan's `Progress`, `Decision Log`, and
+8. Update this ExecPlan's `Progress`, `Decision Log`, and
    `Outcomes & Retrospective` sections.
-5. Run `coderabbit review --agent` and clear every concern before closing
+9. Run `coderabbit review --agent` and clear every concern before closing
    the PR for review.
 
 ## Concrete steps
@@ -767,11 +770,11 @@ Run the following from the repository root, capturing output with `tee`:
 
 ```shell
 set -o pipefail; make fmt 2>&1 | tee /tmp/2-6-7-make-fmt.log
-set -o pipefail; make markdownlint 2>&1 | tee /tmp/2-6-7-make-markdownlint.log
-set -o pipefail; make nixie 2>&1 | tee /tmp/2-6-7-make-nixie.log
 set -o pipefail; make check-fmt 2>&1 | tee /tmp/2-6-7-make-check-fmt.log
 set -o pipefail; make lint 2>&1 | tee /tmp/2-6-7-make-lint.log
 set -o pipefail; CI=1 make test 2>&1 | tee /tmp/2-6-7-make-test.log
+set -o pipefail; make markdownlint 2>&1 | tee /tmp/2-6-7-make-markdownlint.log
+set -o pipefail; make nixie 2>&1 | tee /tmp/2-6-7-make-nixie.log
 ```
 
 Successful completion means all six commands exit with status `0`, the new
