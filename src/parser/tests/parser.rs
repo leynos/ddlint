@@ -4,7 +4,7 @@
 //! round-trips through `pretty_print` unchanged.
 
 use crate::{SyntaxKind, ast::AstNode};
-use crate::test_util::normalise_tokens;
+use crate::test_util::normalize_tokens;
 use rstest::rstest;
 use super::helpers::{parse_err, parse_ok, round_trip};
 
@@ -152,7 +152,7 @@ fn import_missing_path() {
     assert!(
         error
             .expected()
-            .filter_map(|e| e.as_ref().map(|k| normalise_tokens(&format!("{k:?}"))))
+            .filter_map(|e| e.as_ref().map(|k| normalize_tokens(&format!("{k:?}"))))
             .any(|k| k == "identifier")
     );
     assert_eq!(error.found(), Some(&SyntaxKind::K_AS));
@@ -160,25 +160,25 @@ fn import_missing_path() {
 }
 
 #[rstest]
-#[case("typedef Uuid = string\n", ("Uuid", false))]
-#[case("typedef UserRecord = (name: string, age: u64, active: bool)\n", ("UserRecord", false))]
+#[case("type Uuid = string\n", ("Uuid", false))]
+#[case("type UserRecord = (name: string, age: u64, active: bool)\n", ("UserRecord", false))]
 #[case("extern type FfiHandle\n", ("FfiHandle", true))]
-fn typedef_parsing(#[case] src: &str, #[case] expect: (&str, bool)) {
+fn type_and_extern_type_parsing(#[case] src: &str, #[case] expect: (&str, bool)) {
     let parsed = parse_ok(src);
-    assert_eq!(parsed.root().type_defs().len(), 1, "expected exactly one typedef");
+    assert_eq!(parsed.root().type_defs().len(), 1, "expected exactly one type");
     let def = parsed
         .root()
         .type_defs()
         .first()
-        .expect("typedef not found");
+        .expect("type not found");
     assert_eq!(def.name(), Some(expect.0.into()));
     assert_eq!(def.is_extern(), expect.1);
 }
 
 #[rstest]
-#[case("typedef = string\n")]
-#[case("typedef MissingType\n")]
-fn typedef_errors(#[case] src: &str) {
+#[case("type = string\n")]
+#[case("type MissingType\n")]
+fn type_definition_errors(#[case] src: &str) {
     let parsed = parse_err(src);
     assert!(parsed.root().type_defs().is_empty());
 }

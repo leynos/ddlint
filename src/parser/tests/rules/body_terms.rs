@@ -4,22 +4,15 @@ use super::super::helpers::{parse_err, parse_ok};
 use crate::parser::ast::{Expr, Pattern, RuleBodyTerm};
 use crate::test_util::{call, var};
 
-#[expect(
-    clippy::expect_used,
-    reason = "tests require a single parsed rule for assignment assertions"
-)]
 fn assert_body_assignment(
     src: &str,
     expected_terms_count: usize,
     assignment_index: usize,
 ) -> (Pattern, Expr) {
     let parsed = parse_ok(src);
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
+    let Some(rule) = parsed.root().rules().first().cloned() else {
+        panic!("rule missing");
+    };
     let terms = match rule.body_terms() {
         Ok(terms) => terms,
         Err(errs) => panic!("body terms should parse: {errs:?}"),

@@ -1,6 +1,6 @@
 //! Assertion helpers for verifying parser errors in tests.
 
-use super::{ErrorPattern, normalise_tokens};
+use super::{ErrorPattern, normalize_tokens};
 use crate::SyntaxKind;
 use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
@@ -121,9 +121,9 @@ pub fn assert_parse_error(
         panic!("error missing");
     };
     let rendered = format!("{error:?}");
-    let rendered_normalised = normalise_tokens(&rendered);
+    let rendered_normalised = normalize_tokens(&rendered);
     let pattern_normalised = match &pattern {
-        ErrorPattern::Custom(msg) => normalise_tokens(msg),
+        ErrorPattern::Custom(msg) => normalize_tokens(msg),
     };
     assert!(
         rendered_normalised.contains(&pattern_normalised),
@@ -135,9 +135,9 @@ pub fn assert_parse_error(
 /// Return `true` if any error in `errors` is a [`SimpleReason::Custom`] whose
 /// normalised message contains the normalised `pattern`.
 fn any_custom_error_contains(errors: &[Simple<SyntaxKind>], pattern: &str) -> bool {
-    let normalised = normalise_tokens(pattern);
+    let normalised = normalize_tokens(pattern);
     errors.iter().any(|error| match error.reason() {
-        SimpleReason::Custom(message) => normalise_tokens(message).contains(&normalised),
+        SimpleReason::Custom(message) => normalize_tokens(message).contains(&normalised),
         _ => false,
     })
 }
@@ -169,7 +169,7 @@ pub fn assert_custom_parse_error_contains(
     assert!(
         any_custom_error_contains(errors, pattern),
         "expected custom error containing `{}`, got {errors:?}",
-        normalise_tokens(pattern),
+        normalize_tokens(pattern),
     );
 }
 
@@ -199,7 +199,7 @@ pub fn assert_no_custom_parse_error_contains(
     assert!(
         !any_custom_error_contains(errors, pattern),
         "expected no custom error containing `{}`, but found one in {errors:?}",
-        normalise_tokens(pattern),
+        normalize_tokens(pattern),
     );
 }
 
@@ -226,11 +226,11 @@ pub fn assert_no_custom_parse_error_contains(
 #[must_use]
 pub fn find_matching_error(errors: &[Simple<SyntaxKind>], pattern: &ErrorPattern) -> Option<usize> {
     let pattern_normalised = match pattern {
-        ErrorPattern::Custom(msg) => normalise_tokens(msg),
+        ErrorPattern::Custom(msg) => normalize_tokens(msg),
     };
     errors.iter().position(|error| {
         let rendered = format!("{error:?}");
-        let rendered_normalised = normalise_tokens(&rendered);
+        let rendered_normalised = normalize_tokens(&rendered);
         rendered_normalised.contains(&pattern_normalised)
     })
 }
@@ -245,9 +245,9 @@ fn assert_delimiter_error_impl<'a>(
         panic!("error missing");
     };
     let rendered = format!("{error:?}");
-    let rendered_normalised = normalise_tokens(&rendered);
+    let rendered_normalised = normalize_tokens(&rendered);
     let pattern_normalised = match expected_pattern {
-        ErrorPattern::Custom(msg) => normalise_tokens(msg),
+        ErrorPattern::Custom(msg) => normalize_tokens(msg),
     };
     assert!(
         rendered_normalised.contains(&pattern_normalised),

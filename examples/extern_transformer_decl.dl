@@ -1,5 +1,5 @@
 /* Extern transformer declaration (parseable without an impl) */
-typedef node_t = u64
+type node_t = u64
 input relation Edge(from: node_t, to: node_t)
 
 extern transformer scc(edges: relation[(node_t, node_t)],

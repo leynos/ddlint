@@ -53,6 +53,7 @@ use crate::sema::SemanticModel;
 pub struct Runner<'a> {
     store: &'a CstRuleStore,
     green: GreenNode,
+    has_parse_errors: bool,
     source_text: Arc<str>,
     semantic_model: Arc<SemanticModel>,
     config: RuleConfig,
@@ -74,6 +75,7 @@ impl<'a> Runner<'a> {
         Self {
             store,
             green: parsed.green().clone(),
+            has_parse_errors: !parsed.errors().is_empty(),
             source_text: source_text.into(),
             semantic_model: Arc::new(crate::sema::build(parsed)),
             config,
@@ -82,11 +84,14 @@ impl<'a> Runner<'a> {
 
     /// Execute all registered rules against the CST in parallel.
     ///
+    /// Returns no diagnostics when parsing failed, because recovery CST nodes
+    /// must not trigger lint rules.
+    ///
     /// Returns diagnostics sorted by span start, then span end, then rule
     /// name, ensuring deterministic output regardless of thread scheduling.
     #[must_use]
     pub fn run(&self) -> Vec<LintDiagnostic> {
-        if self.store.is_empty() {
+        if self.has_parse_errors || self.store.is_empty() {
             return Vec::new();
         }
 

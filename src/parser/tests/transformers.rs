@@ -208,11 +208,11 @@ fn transformer_requires_extern_for_malformed(transformer_non_extern_malformed: &
     let keyword_len = "transformer".len();
     let expected = ErrorPattern::from("transformer declarations must be extern");
     let expected_pattern = match &expected {
-        ErrorPattern::Custom(msg) => crate::test_util::normalise_tokens(msg),
+        ErrorPattern::Custom(msg) => crate::test_util::normalize_tokens(msg),
     };
     let matching_error = errors.iter().find(|error| {
         let rendered = format!("{error:?}");
-        let rendered_normalised = crate::test_util::normalise_tokens(&rendered);
+        let rendered_normalised = crate::test_util::normalize_tokens(&rendered);
         rendered_normalised.contains(&expected_pattern)
     });
     let Some(error) = matching_error else {

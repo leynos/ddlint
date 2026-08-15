@@ -126,7 +126,6 @@ pub(super) fn round_trip(src: impl Into<SourceText>) {
 ///
 /// The helper asserts that parsing succeeds without errors and that the
 /// extractor yields at least one item.
-#[expect(clippy::expect_used, reason = "helpers used only in tests")]
 fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
     src: impl Into<SourceText>,
     extractor: F,
@@ -136,7 +135,10 @@ fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     let items = extractor(parsed.root());
-    items.first().cloned().expect("item missing")
+    let Some(item) = items.first().cloned() else {
+        panic!("item missing");
+    };
+    item
 }
 
 /// Parse a program containing a single relation and return it.
