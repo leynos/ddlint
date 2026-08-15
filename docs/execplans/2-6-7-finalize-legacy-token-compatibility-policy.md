@@ -50,17 +50,18 @@ parser being weakened to match the older intent.
 The closed policy matrix becomes:
 
 - `typedef` (`K_TYPEDEF`) — **reject at parse**. Emit
-  `` `typedef` is a legacy DDlog keyword; use `type` instead ``. The current
-  scanner in `src/parser/span_scanners/typedefs.rs` accepts these declarations
-  today; it must be changed to record a deterministic legacy-keyword error and
-  skip the malformed line through the shared scanner-recovery utility rather
-  than producing a `TypeDef` AST node.
-- `as` (`K_AS`) — **keep as the import alias keyword and the future cast
-  keyword**. Spec section `9.1`'s "reject as a keyword" wording is corrected
-  because upstream DDlog used `as` in both roles and the current ddlint parser
-  already depends on it for `Import` aliases (`src/parser/ast/import.rs`,
-  `src/parser/span_scanners/imports.rs`). Spec section `5.2` is updated so the
-  `Import` production records the alias clause.
+  `` `typedef` is a legacy DDlog keyword; use `type` instead ``. The
+  `src/parser/span_scanners/typedefs.rs` scanner skips the rejected line rather
+  than producing a `TypeDef` AST node; `collect_reserved_token_errors` in
+  `src/parser/span_scanner.rs` records the deterministic legacy-keyword error.
+- `as` (`K_AS`) — **keep as the import alias keyword and the implemented
+  expression cast operator**. Spec section `9.1`'s "reject as a keyword"
+  wording is corrected because upstream DDlog used `as` in both roles and the
+  current ddlint parser implements both the expression cast and `Import` aliases
+  (`src/parser/ast/import.rs`, `src/parser/ast/expr.rs`,
+  `src/parser/span_scanners/imports.rs`). The expression type-ascription
+  operator remains `:`. Spec section `5.2` is updated so the `Import`
+  production records the alias clause.
 - Legacy type names `bigint`, `bit`, `double`, `float`, `signed` (`K_BIGINT`,
   `K_BIT`, `K_DOUBLE`, `K_FLOAT`, `K_SIGNED`) — **reject at parse when used in
   type position**. Each token gets a fix hint naming the modern sized type
@@ -88,11 +89,12 @@ module hosts the per-token message constants, a single classification predicate
 `rejection_for(kind: SyntaxKind) -> Option<&'static str>` that returns the
 message text when the kind is a rejected reserved token (and `None` otherwise),
 and a thin constructor that builds a `Simple<SyntaxKind>::custom` from a span
-plus a message. Every enforcement site (the four named below) routes through
-this predicate so the five messages cannot drift between scanners. The module
-name uses "reserved tokens" rather than "legacy tokens" because `as` is also a
-legacy token but is *kept*; the rejected set is more precisely described as
-"reserved without semantics" in the Rust-tier sense.
+plus a message. Every enforcement path routes through this predicate so the
+eight diagnostic messages stay aligned; the bare-`#` message is selected by
+contextual lookahead. The module name uses "reserved tokens" rather than
+"legacy tokens" because `as` is also a legacy token but is *kept*; the rejected
+set is more precisely described as "reserved without semantics" in the
+Rust-tier sense.
 
 The parser emits these as `Simple<SyntaxKind>::custom` failures so they appear
 in `Parsed::errors` like every other deterministic parser diagnostic and
@@ -207,9 +209,10 @@ scope tolerance below, stop and escalate.
   corrected grammar as a single coherent contract.
 - Risk: emitting one `Simple<SyntaxKind>::custom` per token without a shared
   helper risks message drift between scanners and tests. Severity: medium.
-  Likelihood: medium. Mitigation: centralize the five messages and their fix
-  hints in a single module (`src/parser/reserved_tokens.rs`) and reference the
-  same constants from scanners and tests.
+  Likelihood: medium. Mitigation: centralize the eight messages and their fix
+  hints, including the contextual bare-`#` message, in a single module
+  (`src/parser/reserved_tokens.rs`) and reference the same constants from
+  scanners and tests.
 - Risk: the `<=>` operator can appear in user code at lex points where the
   Pratt parser is not active (e.g., inside a relation row when expression
   parsing has bailed out). Severity: medium. Likelihood: low. Mitigation: add a
@@ -245,10 +248,10 @@ scope tolerance below, stop and escalate.
 - [x] (2026-06-26) Add red tests in `src/parser/tests/reserved_tokens.rs` for
   each reject path and regression tests for the preserved `as` and `#[...]`
   uses.
-- [x] (2026-06-26) Implement the reserved-token diagnostic module and update the
-  four scanners (`typedefs.rs`, the Pratt expression layer, the top-level span
-  scanner, and the type-position scanners), routing every reject site through
-  the shared predicate.
+- [x] (2026-06-26) Implement the reserved-token diagnostic module and route
+  full-program diagnostics through `collect_reserved_token_errors` in the
+  top-level span scanner, with expression parsing using the same predicate and
+  constructor.
 - [x] (2026-06-26) Update active documentation: spec sections `2.3`, `5.2`, and
   `9.1`; the conformance register; parser-implementation-notes; ddlint-design;
   users' guide; developers' guide.
@@ -263,7 +266,7 @@ scope tolerance below, stop and escalate.
   re-read the plan and active documentation index before editing code.
 - [x] (2026-06-16) Re-ran the workspace token audit before stage A and found
   that completing the plan as written will require more than the current
-  14-file scope tolerance because documentation updates, parser/test changes,
+  28-file scope tolerance because documentation updates, parser/test changes,
   and owned example migrations together exceed that threshold.
 - [x] (2026-06-26) Resumed implementation after explicit human direction to
   proceed past the prior blocked state, loaded `leta`, `execplans`,
@@ -325,9 +328,9 @@ scope tolerance below, stop and escalate.
   upstream-aligned grammar) from type-position uses that will need migration.
   `<=>` does not appear in any `.rs` source programme outwith the tokenizer
   itself, and a manual scan of `examples/*.dl` is still required for
-  completeness. These counts confirm the scope tolerance (≤14 files, ≤360 net
-  LOC) is realistic provided the `.dl` examples are updated alongside the
-  parser change.
+  completeness. These counts confirm the approved scope tolerance (≤28 files,
+  ≤800 net LOC) is realistic provided the `.dl` examples are updated alongside
+  the parser change.
 - On 2026-06-16, `docs/repository-layout.md`, referenced by the general
   repository-orientation guidance, was absent. Orientation used
   `docs/contents.md` and `leta files` instead.
@@ -376,10 +379,11 @@ scope tolerance below, stop and escalate.
   `reservedNames`/`reservedOpNames` model, and matches rustc, TypeScript, and
   Swift's stage choice.
 - Decision: keep `as` as a live keyword for the `Import` alias clause and
-  for the future cast operator, and update spec section `9.1` to record this.
-  Rationale: upstream DDlog used `as` in both roles, the current ddlint parser
-  already depends on it for `Import`, and removing it would break any programme
-  that uses `import foo::bar as baz`.
+  implemented expression cast operator, and update spec section `9.1` to record
+  this. The expression type-ascription operator remains `:`. Rationale:
+  upstream DDlog used `as` in both roles, the current ddlint parser already
+  depends on it for `Import`, and removing it would break any programme that
+  uses `import foo::bar as baz`.
 - Decision: keep `#` as the attribute sigil and reject only bare uses (a
   `T_HASH` not immediately followed by `T_LBRACKET`). Rationale: aligns with
   upstream DDlog's `#[...]` attribute syntax, preserves
@@ -391,10 +395,11 @@ scope tolerance below, stop and escalate.
   explicitly directs users to `type`, and continuing to silently accept
   `typedef` while documenting it as a legacy keyword would leave the
   conformance register stuck at `scheduled` indefinitely.
-- Decision: centralize the five diagnostic messages and fix hints in a
-  single Rust module rather than copy-pasting them across scanners. Rationale:
-  keeps wording aligned with tests, prevents drift, and matches the pattern
-  already established by `error_messages.rs` for the transformer messages.
+- Decision: centralize the eight diagnostic messages and fix hints, with the
+  bare-`#` message selected contextually, in a single Rust module rather than
+  copy-pasting them across scanners. Rationale: keeps wording aligned with
+  tests, prevents drift, and matches the pattern already established by
+  `error_messages.rs` for the transformer messages.
 - Decision: this milestone does not touch the wider top-level statement
   terminator policy, the relation-form work in `2.6.6`, or the brace-group
   decision in `2.6.8`. Rationale: those items are tracked separately and
@@ -421,8 +426,8 @@ scope tolerance below, stop and escalate.
   subsequent adopter feedback shows external programmes depend on `typedef`,
   the policy module can grow a warning variant without changing the public
   surface.
-- Decision point recorded before implementation: the plan's 14-file scope
-  tolerance was exceeded before implementation began. Completing the plan
+- Decision point recorded before implementation: the plan's original 14-file
+  scope tolerance was exceeded before implementation began. Completing the plan
   exactly as written appeared to require at least parser code, new parser
   tests, a behavioural test, a linter regression, seven active documentation or
   migration-note files, the roadmap, this ExecPlan, and up to seven owned
@@ -461,9 +466,11 @@ scope tolerance below, stop and escalate.
 
 Implementation now matches the closed policy matrix in spec section `9.1`.
 `typedef`, legacy type names, bare `#`, and `<=>` produce deterministic parser
-diagnostics through `src/parser/reserved_tokens.rs`; `type`, `import X as Y`,
-and `#[...]` remain accepted. The owned examples and parser/linter fixtures
-were migrated away from legacy `typedef` and `bit<N>` syntax.
+diagnostics through `collect_reserved_token_errors` in
+`src/parser/span_scanner.rs`, using `src/parser/reserved_tokens.rs`; `type`,
+`import X as Y`, and `#[...]` remain accepted. The owned examples and
+parser/linter fixtures were migrated away from legacy `typedef` and `bit<N>`
+syntax.
 
 The final deterministic gates passed on 2026-06-26:
 
@@ -491,9 +498,10 @@ locate each one without prior context.
   `K_DOUBLE`, `K_FLOAT`, `K_SIGNED`, `T_HASH`, and `T_SPACESHIP`. The `KEYWORDS`
   `phf` map (lines around `120`–`195`) and the `Token` enum (lines around
   `60`–`112`) are the source of truth for the token names used elsewhere.
-- `src/parser/span_scanners/typedefs.rs` — currently the *acceptance* path
-  for `typedef`. The scanner consumes the keyword via `handle_typedef` and
-  records a top-level span for downstream `TypeDef` AST construction.
+- `src/parser/span_scanners/typedefs.rs` — handles the rejected `typedef` line
+  by skipping it, without recording a `TypeDef` span. The deterministic
+  diagnostic is added by `collect_reserved_token_errors` in
+  `src/parser/span_scanner.rs`.
 - `src/parser/span_scanners/imports.rs` and `src/parser/ast/import.rs` —
   consume `K_AS` to record the optional alias on `Import` AST nodes. Both files
   must stay green; `as` is *not* being rejected.
@@ -508,15 +516,16 @@ locate each one without prior context.
   place and not extended; reserved-token messages live in a sibling module so
   per-feature and policy-level diagnostics stay visually distinct.
 - `src/parser/reserved_tokens.rs` — new module added by this milestone.
-  Hosts the five `pub(crate)` message constants, the
-  `rejection_for(kind) -> Option<&'static str>` predicate, and the
-  `Simple<SyntaxKind>::custom` constructor that every enforcement site shares.
+  Hosts the eight `pub(crate)` message constants, including the contextual
+  bare-`#` message, the `rejection_for(kind) -> Option<&'static str>`
+  predicate, and the `Simple<SyntaxKind>::custom` constructor that every
+  enforcement site shares.
 - `src/parser/tests/parser.rs` (lines 272–293) — currently asserts that
   `typedef` declarations parse into `TypeDef` nodes; these assertions are
   inverted in stage A.
 - `src/parser/tests/` — feature-specific unit tests. A new file
-  `src/parser/tests/reserved_tokens.rs` is the natural home for the five
-  token-specific reject suites.
+  `src/parser/tests/reserved_tokens.rs` is the natural home for the eight
+  reserved-token rejection cases, with bare-`#` selected by context.
 - `tests/` — `tests/attribute_placement.rs` and `tests/name_uniqueness.rs`
   show the canonical shape for behavioural unhappy-path coverage. A new
   `tests/reserved_token_rejection.rs` files the end-to-end coverage.
@@ -601,15 +610,17 @@ pass (because `as` and `#[...]` paths have not changed yet).
 
 Adjust the parser so the chosen contract is enforced explicitly and recoverably.
 
-- Add `src/parser/reserved_tokens.rs` with five `pub(crate)` message
+- Add `src/parser/reserved_tokens.rs` with eight `pub(crate)` message
   constants, the `rejection_for(kind: SyntaxKind) -> Option<&'static str>`
   predicate, and a `reserved_token_error(span, message) -> Simple<SyntaxKind>`
   constructor. The module doc string explains the "reservation without
   semantics" pattern and links to spec section `9.1`.
-- Refactor `src/parser/span_scanners/typedefs.rs` so `handle_typedef`
-  calls `reserved_tokens::rejection_for(K_TYPEDEF)`, builds the diagnostic
-  through the shared constructor, and skips the line via the shared
-  span-recovery utility rather than producing a `TypeDef` span.
+- Keep `handle_typedef` in `src/parser/span_scanners/typedefs.rs` on the
+  line-skipping recovery path rather than producing a `TypeDef` span. The
+  top-level `collect_reserved_token_errors` call in
+  `src/parser/span_scanner.rs` classifies `K_TYPEDEF` through
+  `reserved_tokens::rejection_for` and builds the diagnostic through the shared
+  constructor.
 - Extend the top-level span scanner (`src/parser/span_scanner.rs` or the
   appropriate dispatcher in `src/parser/span_scanners/`) so every token drawn
   from the stream is first classified via `reserved_tokens::rejection_for`. If
@@ -639,8 +650,9 @@ grammar contract.
   - Section `2.3`: list `#` as a special attribute-prefix token, retain
     `<=>` in the reserved list, and narrow the "reject" sentence so it
     covers `<=>` and bare `#` only.
-  - Section `5.2`: extend the `Import` production to include the optional
-    `('as' UcName)?` alias clause already implemented by the parser.
+  - Section `5.2`: record the optional `('as' LcName)?` alias clause. `LcName`
+    is the documented grammar category; the parser's generic identifier
+    parser does not enforce the case distinction.
   - Section `9.1`: replace the loose prose with a closed policy table
     enumerating each token, the reject site, the diagnostic message
     template, and the fix hint.
@@ -716,15 +728,16 @@ After implementation and documentation updates:
    under `src/parser/tests/programs.rs` and `src/parser/tests/specs.rs` that
    depended on them. Migrate any `examples/*.dl` fixtures that use rejected
    tokens to the modern equivalents in the same commit.
-4. Add `src/parser/reserved_tokens.rs` with the five `pub(crate)`
-   diagnostic constants, the `rejection_for` predicate, and the
-   `reserved_token_error` constructor that yields a
-   `Simple<SyntaxKind>::custom` carrying the matching message.
-5. Rewrite `handle_typedef` in `src/parser/span_scanners/typedefs.rs` so
-   it routes through `reserved_tokens::rejection_for(K_TYPEDEF)` plus
-   `reserved_token_error` and skips the line via the shared span-recovery
-   utility. Remove or redirect any helper that previously assumed `typedef`
-   would produce a `TypeDef` span.
+4. Add `src/parser/reserved_tokens.rs` with the eight `pub(crate)`
+   diagnostic constants, including the contextual bare-`#` case, the
+   `rejection_for` predicate, and the `reserved_token_error` constructor that
+   yields a `Simple<SyntaxKind>::custom` carrying the matching message.
+5. Keep `handle_typedef` in `src/parser/span_scanners/typedefs.rs` on its
+   line-skipping recovery path and ensure that `collect_reserved_token_errors`
+   in `src/parser/span_scanner.rs` routes `K_TYPEDEF` through
+   `reserved_tokens::rejection_for` plus `reserved_token_error`. Remove or
+   redirect any helper that previously assumed `typedef` would produce a
+   `TypeDef` span.
 6. Extend the top-level span scanner so every drawn token is classified
    via `reserved_tokens::rejection_for` and rejected through the shared
    constructor. Add the bare-`T_HASH` lookahead so attribute uses still reach
@@ -798,11 +811,10 @@ pub(crate) const RESERVED_SIGNED_ERROR: &str =
 
 /// Returns the matching diagnostic message when `kind` is a reserved
 /// token that must be rejected by the parser, or `None` otherwise. The
-/// bare-`#` case is *not* classified here because rejection depends on
-/// the following token (`T_LBRACKET` is the attribute prefix); the
-/// top-level span scanner handles that lookahead directly and calls
-/// `reserved_token_error` with `RESERVED_BARE_HASH_ERROR` when the
-/// lookahead fails.
+/// bare-`#` case is selected by contextual lookahead: `T_LBRACKET` is the
+/// attribute prefix, and `collect_reserved_token_errors`, invoked by the
+/// top-level span scanner, calls `reserved_token_error` with
+/// `RESERVED_BARE_HASH_ERROR` when the lookahead fails.
 pub(crate) fn rejection_for(
     kind: crate::SyntaxKind,
 ) -> Option<&'static str>;
@@ -817,9 +829,11 @@ pub(crate) fn reserved_token_error(
 ```
 
 Routing every enforcement site through `rejection_for` plus
-`reserved_token_error` keeps the five messages aligned across the four scanner
-locations. A constraint in the section above forbids any site from constructing
-its own `Simple<SyntaxKind>::custom` for a rejected reserved token.
+`reserved_token_error` keeps the eight messages aligned, with the bare-`#`
+message selected contextually. Full-program collection is centralized in the
+top-level span scanner, while expression-only parsing uses the same helper. A
+constraint in the section above forbids any site from constructing its own
+`Simple<SyntaxKind>::custom` for a rejected reserved token.
 
 The preserved interfaces are:
 
@@ -877,7 +891,8 @@ What changed in the post-review revision:
   the more precise name avoids confusion.
 - A single classification predicate `rejection_for(kind)` was added and
   every enforcement site now routes through it (Pandalump): the previous draft
-  risked message drift between the four scanner locations.
+  risked message drift between full-program collection and expression parsing
+  paths.
 - The message constants were pinned to `pub(crate)` and the messages
   themselves were declared *not* a public contract (Telefono): tests import the
   constants by name so any drift breaks the tests.
@@ -903,9 +918,9 @@ follow the plan to completion without relying on tacit knowledge.
 Effect on remaining work: the workspace audit step is now explicit at the top
 of stage A, the predicate constraint binds every enforcement site identically,
 and the test plan now commits to one extra regression test under the linter /
-sema suite. The overall scope budget (≤14 files, ≤360 net LOC) is unchanged
-because the new module is small and the new regression test is a single rstest
-case.
+sema suite. The approved scope budget (≤28 files, ≤800 net LOC) remains the
+limit because the new module is small and the new regression test is a single
+rstest case.
 
 Subsequent revisions must append a short note describing what changed, why, and
 how it affects the remaining work, and must update the Status field above.

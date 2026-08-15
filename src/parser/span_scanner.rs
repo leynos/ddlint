@@ -30,7 +30,7 @@ pub(super) fn parse_tokens(
     });
     let mut errors = rule_errors;
     errors.extend(observe_error_scan(observer, || lexer_errors(tokens)));
-    errors.extend(collect_reserved_token_errors(tokens, src, &expr_spans));
+    errors.extend(collect_reserved_token_errors(tokens, &errors));
 
     build_parsed_spans(
         observer,

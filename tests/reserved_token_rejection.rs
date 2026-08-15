@@ -3,9 +3,9 @@
 //! These cases exercise the public `parse()` entrypoint so parser-policy
 //! diagnostics remain visible to downstream linter and semantic-model callers.
 
-use ddlint::linter::{CstRuleStore, RuleConfig, Runner};
+use ddlint::linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleCtx, Runner};
 use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
-use ddlint::{SyntaxKind, parse};
+use ddlint::{DdlogLanguage, SyntaxKind, SyntaxToken, parse};
 use rstest::rstest;
 
 const RESERVED_TYPEDEF_ERROR: &str = "`typedef` is a legacy DDlog keyword; use `type` instead";
@@ -57,8 +57,17 @@ fn import_alias_keyword_still_parses_cleanly() {
     );
 }
 
+#[rstest]
+#[case("# cold\n")]
+#[case("# [cold]\ntype Foo = u32\n")]
+#[case("#/*comment*/[cold]\ntype Foo = u32\n")]
+fn bare_hash_is_rejected(#[case] source: &str) {
+    let bare = parse(source);
+    assert_custom_parse_error_contains(bare.errors(), RESERVED_BARE_HASH_ERROR);
+}
+
 #[test]
-fn attribute_hash_is_preserved_and_bare_hash_is_rejected() {
+fn attribute_hash_is_preserved() {
     let attributed = parse("#[cold]\ntype Foo = u32\n");
     assert_no_parse_errors(attributed.errors());
     assert_eq!(
@@ -71,9 +80,6 @@ fn attribute_hash_is_preserved_and_bare_hash_is_rejected() {
         1
     );
     assert_eq!(attributed.root().type_defs().len(), 1);
-
-    let bare = parse("# cold\n");
-    assert_custom_parse_error_contains(bare.errors(), RESERVED_BARE_HASH_ERROR);
 }
 
 #[test]
@@ -84,10 +90,46 @@ fn typedef_rejection_reaches_linter_callers_before_rules_run() {
     assert!(parsed.root().type_defs().is_empty());
     assert_custom_parse_error_contains(parsed.errors(), RESERVED_TYPEDEF_ERROR);
 
-    let store = CstRuleStore::new();
+    let mut store = CstRuleStore::new();
+    store.register(Box::new(TypedefSentinelRule));
     let diagnostics = Runner::new(&store, source, &parsed, RuleConfig::new()).run();
     assert!(
         diagnostics.is_empty(),
-        "empty linter store should not mask parse errors with diagnostics: {diagnostics:?}",
+        "parse errors should prevent registered rules from running: {diagnostics:?}",
     );
+}
+
+struct TypedefSentinelRule;
+
+impl Rule for TypedefSentinelRule {
+    fn name(&self) -> &'static str {
+        "typedef-sentinel"
+    }
+
+    fn group(&self) -> &'static str {
+        "test"
+    }
+
+    fn docs(&self) -> &'static str {
+        "Emits a deterministic diagnostic for a legacy typedef token."
+    }
+}
+
+impl CstRule for TypedefSentinelRule {
+    fn target_kinds(&self) -> &'static [SyntaxKind] {
+        &[SyntaxKind::K_TYPEDEF]
+    }
+
+    fn check_token(
+        &self,
+        token: &SyntaxToken<DdlogLanguage>,
+        _ctx: &RuleCtx,
+        diagnostics: &mut Vec<LintDiagnostic>,
+    ) {
+        diagnostics.push(LintDiagnostic::new(
+            self.name(),
+            "legacy typedef token",
+            token.text_range(),
+        ));
+    }
 }

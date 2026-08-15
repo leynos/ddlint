@@ -72,9 +72,11 @@ fn collect_attribute_spans_unclosed_bracket() {
     assert!(has_unclosed_error, "unexpected errors: {errors:?}");
 }
 
-#[test]
-fn collect_attribute_spans_hash_without_bracket() {
-    let src = "# type T = u32\n";
+#[rstest]
+#[case("# type T = u32\n")]
+#[case("# [cold]\ntype T = u32\n")]
+#[case("#/*comment*/[cold]\ntype T = u32\n")]
+fn collect_attribute_spans_rejects_bare_hashes(#[case] src: &str) {
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);
     assert!(spans.is_empty());
