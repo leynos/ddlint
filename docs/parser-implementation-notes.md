@@ -323,12 +323,13 @@ Important invariants:
   output-signature check and emits the targeted diagnostic
   `transformer declarations require ':' followed by at least one output identifier`
   when the colon or first output identifier is missing.
-- Reserved-token compatibility diagnostics are centralized in
+- Reserved-token compatibility diagnostics are owned exclusively by
   `src/parser/reserved_tokens.rs`. The lexer keeps legacy token kinds such as
   `K_TYPEDEF`, `K_BIGINT`, and `T_SPACESHIP` so parser recovery can report
-  exact spans, while parser scanners and the Pratt expression layer reject
-  unsupported uses through `reserved_tokens::rejection_for` and
-  `reserved_tokens::reserved_token_error`.
+  exact spans. This module owns the compatibility messages,
+  `reserved_tokens::rejection_for`, which selects a rejection message, and
+  `reserved_tokens::reserved_token_error`, which constructs the span-attached
+  diagnostic.
 
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.
@@ -355,13 +356,16 @@ Representative diagnostics include:
 - malformed aggregation signatures,
 - invalid transformer declaration forms.
 
-### Centralized diagnostic messages
+### Feature-specific diagnostic messages
 
-Diagnostic strings that form part of the parser's contract (asserted in tests
-or exposed through `Parsed::errors()`) are defined once in
+Feature-specific diagnostic strings that form part of the parser's contract
+(asserted in tests or exposed through `Parsed::errors()`) are defined once in
 `src/parser/error_messages.rs` and re-exported via `src/test_util/mod.rs`.
 Scanner code and test helpers import the same constants, so message text cannot
-drift between production code and assertions.
+drift between production code and assertions. Reserved-token compatibility
+diagnostics are excluded from this module and are exclusively owned by
+`src/parser/reserved_tokens.rs`, including `rejection_for` and
+`reserved_token_error`.
 
 Constants currently defined:
 
@@ -389,7 +393,8 @@ token names or their human-readable equivalents.
 - Pratt postfix helpers:
   `src/parser/expression/pratt/{postfix,diff,delay}.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`
-- Centralized diagnostic messages: `src/parser/error_messages.rs`
+- Feature-specific diagnostic messages: `src/parser/error_messages.rs`
+- Reserved-token compatibility diagnostics: `src/parser/reserved_tokens.rs`
 - Rule span scanning: `src/parser/span_scanners/rules.rs`
 - Top-level scanners: `src/parser/span_scanners/*.rs`
 - AST wrappers: `src/parser/ast/*.rs`

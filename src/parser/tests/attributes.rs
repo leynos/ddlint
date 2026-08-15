@@ -44,7 +44,7 @@ fn attribute_on_forbidden_item_emits_error(#[case] src: &str, #[case] expected_m
 }
 
 #[test]
-fn stacked_attributes_on_typedef_no_error() {
+fn stacked_attributes_on_type_no_error() {
     let src = "#[a]\n#[b]\ntype T = u32";
     let parsed = parse(src);
     assert_no_parse_errors(parsed.errors());

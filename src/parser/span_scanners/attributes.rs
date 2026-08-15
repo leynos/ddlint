@@ -72,9 +72,6 @@ fn consume_attribute(st: &mut State<'_>) -> Option<Span> {
     let start = hash_span.start;
     st.stream.advance(); // consume T_HASH
 
-    // Skip optional inline whitespace between # and [
-    st.stream.skip_ws_inline();
-
     // Must be followed by T_LBRACKET to form an attribute
     let next = st.stream.peek()?;
     if next.0 != SyntaxKind::T_LBRACKET {

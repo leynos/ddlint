@@ -50,7 +50,7 @@ pub(super) fn parse_tokens(
     let non_rule_spans = merge_spans(non_rule_spans);
 
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(tokens, src, &non_rule_spans);
-    let reserved_errors = collect_reserved_token_errors(tokens, src, &expr_spans);
+    let reserved_errors = collect_reserved_token_errors(tokens, &rule_errors);
 
     let mut all_errors = attribute_errors;
     all_errors.extend(errors);

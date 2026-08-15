@@ -65,7 +65,7 @@ mod tests {
     }
 
     #[test]
-    fn regular_typedef_parsed() {
+    fn regular_type_parsed() {
         let parsed = parse("type UserId = u64");
         crate::test_util::assert_no_parse_errors(parsed.errors());
         #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
@@ -80,7 +80,7 @@ mod tests {
     }
 
     #[test]
-    fn typedef_name_span_points_to_declaration_identifier() {
+    fn type_name_span_points_to_declaration_identifier() {
         let source = "type UserId = UserId";
         let parsed = parse(source);
         crate::test_util::assert_no_parse_errors(parsed.errors());

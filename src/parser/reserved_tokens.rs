@@ -4,7 +4,9 @@
 //! lexer for precise spans, but rejects unsupported uses in the parser with a
 //! deterministic message and fix hint.
 
-use chumsky::error::Simple;
+use std::collections::HashSet;
+
+use chumsky::error::{Simple, SimpleReason};
 
 use crate::{Span, SyntaxKind};
 
@@ -42,64 +44,59 @@ pub(crate) fn reserved_token_error(span: Span, message: &'static str) -> Simple<
 
 pub(crate) fn collect_reserved_token_errors(
     tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    expression_spans: &[Span],
+    parse_errors: &[Simple<SyntaxKind>],
 ) -> Vec<Simple<SyntaxKind>> {
+    let emitted_reserved_errors = emitted_reserved_errors(parse_errors);
     tokens
         .iter()
         .enumerate()
         .filter_map(|(idx, (kind, span))| {
-            reserved_message_for_token(tokens, src, expression_spans, idx, *kind, span)
-                .map(|message| reserved_token_error(span.clone(), message))
+            let message = reserved_message_for_token(tokens, idx, *kind)?;
+            (!emitted_reserved_errors.contains(&(span.clone(), message)))
+                .then(|| reserved_token_error(span.clone(), message))
         })
         .collect()
 }
 
+fn emitted_reserved_errors(errors: &[Simple<SyntaxKind>]) -> HashSet<(Span, &'static str)> {
+    errors
+        .iter()
+        .filter_map(|error| match error.reason() {
+            SimpleReason::Custom(message) => {
+                reserved_message(message).map(|message| (error.span().clone(), message))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn reserved_message(message: &str) -> Option<&'static str> {
+    [
+        RESERVED_TYPEDEF_ERROR,
+        RESERVED_SPACESHIP_ERROR,
+        RESERVED_BARE_HASH_ERROR,
+        RESERVED_BIGINT_ERROR,
+        RESERVED_BIT_ERROR,
+        RESERVED_DOUBLE_ERROR,
+        RESERVED_FLOAT_ERROR,
+        RESERVED_SIGNED_ERROR,
+    ]
+    .into_iter()
+    .find(|candidate| *candidate == message)
+}
+
 fn reserved_message_for_token(
     tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    expression_spans: &[Span],
     idx: usize,
     kind: SyntaxKind,
-    span: &Span,
 ) -> Option<&'static str> {
     if kind == SyntaxKind::T_HASH {
-        return is_bare_hash(tokens, src, idx).then_some(RESERVED_BARE_HASH_ERROR);
+        return is_bare_hash(tokens, idx).then_some(RESERVED_BARE_HASH_ERROR);
     }
 
-    let message = rejection_for(kind)?;
-    if kind == SyntaxKind::T_SPACESHIP && span_is_in_expression(span, expression_spans) {
-        return None;
-    }
-    Some(message)
+    rejection_for(kind)
 }
 
-fn is_bare_hash(tokens: &[(SyntaxKind, Span)], src: &str, idx: usize) -> bool {
-    next_inline_non_trivia(tokens, src, idx).is_none_or(|(kind, _)| kind != SyntaxKind::T_LBRACKET)
-}
-
-fn next_inline_non_trivia(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
-    idx: usize,
-) -> Option<(SyntaxKind, Span)> {
-    let mut cursor = idx + 1;
-    while let Some((kind, span)) = tokens.get(cursor) {
-        if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
-            && src
-                .get(span.clone())
-                .is_some_and(|text| !text.contains('\n'))
-        {
-            cursor += 1;
-            continue;
-        }
-        return Some((*kind, span.clone()));
-    }
-    None
-}
-
-fn span_is_in_expression(span: &Span, expression_spans: &[Span]) -> bool {
-    expression_spans
-        .iter()
-        .any(|expr| expr.start <= span.start && span.end <= expr.end)
+fn is_bare_hash(tokens: &[(SyntaxKind, Span)], idx: usize) -> bool {
+    !matches!(tokens.get(idx + 1), Some((SyntaxKind::T_LBRACKET, _)))
 }

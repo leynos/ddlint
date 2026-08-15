@@ -90,6 +90,10 @@ ______________________________________________________________________
 function calls at parse time. A bare `name(…)` parses as a variable application
 and is disambiguated later during name resolution.
 
+These case classes describe the intended naming categories. The current parser
+uses the generic `T_IDENT` token for identifiers and does not enforce the
+initial-case distinction in every context.
+
 ### 2.3 Reserved words and symbols
 
 The following **keywords** and **reserved operators** cannot be used as
@@ -187,7 +191,10 @@ intentional. -->
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
 and are recognized as operators. `&` in row 13 is expression-only; head
-semantics are described in §7.3.
+semantics are described in §7.3. `:` is the implemented expression
+type-ascription operator, and `as` is the implemented expression cast operator;
+both use the type-operator binding level between shifts and bitwise operators.
+`as` is also the import alias keyword.
 
 ______________________________________________________________________
 
@@ -222,6 +229,10 @@ VecType   ::= '[' Type ']'
 Primitive ::= 'bool' | 'i8' | 'u8' | 'i16' | … | 'u128'
             | 'f32' | 'f64' | 'string' | 'interned'
 ```
+
+The import alias uses the documented `LcName` category. The current parser
+accepts the generic identifier token here and does not enforce that case
+restriction.
 
 ### 5.3 Functions and closures
 
@@ -571,7 +582,8 @@ rejected by the parser.
   `typedef` is a legacy DDlog keyword; use `type` instead
   ```
 
-- `as`: accepted as the import alias keyword and expression cast operator.
+- `as`: accepted as the import alias keyword and the implemented expression
+  cast operator; `:` is the implemented expression type-ascription operator.
 - `bigint`: rejected.
 
   ```plaintext
