@@ -83,15 +83,17 @@ fn attribute_hash_is_preserved() {
 }
 
 #[test]
-fn typedef_rejection_reaches_linter_callers_before_rules_run() {
-    let source = "typedef Foo = u32\n";
+fn runner_skips_rules_for_any_parse_error() {
+    let source = "input relation R(x: u32); $";
     let parsed = parse(source);
 
-    assert!(parsed.root().type_defs().is_empty());
-    assert_custom_parse_error_contains(parsed.errors(), RESERVED_TYPEDEF_ERROR);
+    assert!(
+        !parsed.errors().is_empty(),
+        "generic syntax error should prevent lint rule execution"
+    );
 
     let mut store = CstRuleStore::new();
-    store.register(Box::new(TypedefSentinelRule));
+    store.register(Box::new(ParseErrorSentinelRule));
     let diagnostics = Runner::new(&store, source, &parsed, RuleConfig::new()).run();
     assert!(
         diagnostics.is_empty(),
@@ -99,11 +101,11 @@ fn typedef_rejection_reaches_linter_callers_before_rules_run() {
     );
 }
 
-struct TypedefSentinelRule;
+struct ParseErrorSentinelRule;
 
-impl Rule for TypedefSentinelRule {
+impl Rule for ParseErrorSentinelRule {
     fn name(&self) -> &'static str {
-        "typedef-sentinel"
+        "parse-error-sentinel"
     }
 
     fn group(&self) -> &'static str {
@@ -111,25 +113,21 @@ impl Rule for TypedefSentinelRule {
     }
 
     fn docs(&self) -> &'static str {
-        "Emits a deterministic diagnostic for a legacy typedef token."
+        "Panics if a parser error permits lint rule execution."
     }
 }
 
-impl CstRule for TypedefSentinelRule {
+impl CstRule for ParseErrorSentinelRule {
     fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::K_TYPEDEF]
+        &[SyntaxKind::K_RELATION]
     }
 
     fn check_token(
         &self,
-        token: &SyntaxToken<DdlogLanguage>,
+        _token: &SyntaxToken<DdlogLanguage>,
         _ctx: &RuleCtx,
-        diagnostics: &mut Vec<LintDiagnostic>,
+        _diagnostics: &mut Vec<LintDiagnostic>,
     ) {
-        diagnostics.push(LintDiagnostic::new(
-            self.name(),
-            "legacy typedef token",
-            token.text_range(),
-        ));
+        panic!("parse errors must prevent lint rule execution");
     }
 }

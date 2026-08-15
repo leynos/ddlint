@@ -574,8 +574,10 @@ rejected by the parser.
 - `Aggregate(…)`: accepted and normalized during rule-body semantic
   extraction to the same canonical `(project, key)` aggregation contract used
   for `group_by(project, key)`; linters may emit a deprecation diagnostic.
-- `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
-  binds instead. If used as keywords, reject with a targeted message.
+- `FlatMap`/`Inspect`: retained as lexer compatibility tokens; neither is in the
+  reserved-token rejection set. `FlatMap(…)` is accepted as an identifier-like
+  RHS call, and both names are accepted in pattern positions. FlatMap-style
+  binds use RHS patterns.
 - `typedef`: rejected.
 
   ```plaintext
