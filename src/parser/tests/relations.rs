@@ -2,12 +2,6 @@
 //!
 //! Validates parsing for input, output, and internal relations.
 
-#![expect(
-    clippy::expect_used,
-    reason = "arranging state is fallible, so the helpers return Option and \
-              the unwrap sits in the test body, where a failure is the verdict"
-)]
-
 use super::helpers::{parse_relation, pretty_print};
 use crate::parser::ast::{AstNode, RelationBody, RelationKind, RelationRole};
 use crate::test_util::{
@@ -72,6 +66,10 @@ fn parses_relations(
     #[case] columns: Vec<(&str, &str)>,
     #[case] primary_key: Option<Vec<&str>>,
 ) {
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
     let rel = parse_relation(src).expect("expected a single relation");
     assert_eq!(rel.is_input(), is_input);
     assert_eq!(rel.is_output(), is_output);
@@ -87,6 +85,10 @@ fn parses_relations(
 
 #[rstest]
 fn multiline_relation_parsed(multiline_relation: &str) {
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
     let rel = parse_relation(multiline_relation).expect("expected a single relation");
     assert!(rel.is_input());
     assert_eq!(rel.name().as_deref(), Some("Log"));

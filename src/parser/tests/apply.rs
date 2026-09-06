@@ -1,11 +1,5 @@
 //! Apply statement parsing tests.
 
-#![expect(
-    clippy::expect_used,
-    reason = "arranging state is fallible, so the helpers return Option and \
-              the unwrap sits in the test body, where a failure is the verdict"
-)]
-
 use super::helpers::parse_apply;
 use super::helpers::{parse_err, parse_ok};
 use rstest::{fixture, rstest};
@@ -40,6 +34,10 @@ fn parses_apply_statements(
     #[case] inputs: Vec<&str>,
     #[case] outputs: Vec<&str>,
 ) {
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
     let apply = parse_apply(src).expect("expected a single apply");
     assert_eq!(apply.transformer_name().as_deref(), Some(name));
     let inputs_expected: Vec<String> = inputs.into_iter().map(str::to_string).collect();

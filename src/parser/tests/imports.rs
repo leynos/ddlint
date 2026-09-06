@@ -2,12 +2,6 @@
 //!
 //! Covers standard and aliased imports along with basic error recovery.
 
-#![expect(
-    clippy::expect_used,
-    reason = "arranging state is fallible, so the helpers return Option and \
-              the unwrap sits in the test body, where a failure is the verdict"
-)]
-
 use crate::{
     ast::Import,
     parse,
@@ -27,6 +21,10 @@ use super::helpers::parse_import;
 #[case::multi_segment("import foo::bar::baz", "foo::bar::baz", None)]
 #[case::whitespace("  import  foo  as  f  ", "foo", Some("f"))]
 fn import_statement_parses(#[case] src: &str, #[case] path: &str, #[case] alias: Option<&str>) {
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
     let imp = parse_import(src).expect("expected a single import");
     assert_eq!(imp.path(), path);
     assert_eq!(imp.alias().as_deref(), alias);

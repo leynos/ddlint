@@ -2,12 +2,6 @@
 //!
 //! Exercises extern and normal functions with varied signatures.
 
-#![expect(
-    clippy::expect_used,
-    reason = "arranging state is fallible, so the helpers return Option and \
-              the unwrap sits in the test body, where a failure is the verdict"
-)]
-
 use super::helpers::{parse_function, pretty_print};
 use crate::{parser::ast::AstNode, test_util::assert_parse_error};
 use rstest::{fixture, rstest};
@@ -80,6 +74,10 @@ fn parses_functions(
     #[case] params: Vec<(&str, &str)>,
     #[case] ret: Option<&str>,
 ) {
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
     let func = parse_function(src).expect("expected a single function");
     assert_eq!(func.name().as_deref(), Some(name));
     assert_eq!(func.is_extern(), is_extern);
