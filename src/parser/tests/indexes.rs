@@ -2,6 +2,12 @@
 //!
 //! These tests cover single and multi-column indexes and error cases.
 
+#![expect(
+    clippy::expect_used,
+    reason = "arranging state is fallible, so the helpers return Option and \
+              the unwrap sits in the test body, where a failure is the verdict"
+)]
+
 use super::helpers::{normalize_whitespace, parse_index, pretty_print};
 use crate::test_util::{
     assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
@@ -66,7 +72,7 @@ fn parses_indexes(
     #[case] fields: Vec<(String, String)>,
     #[case] on_target: &str,
 ) {
-    let idx = parse_index(src);
+    let idx = parse_index(src).expect("expected a single index");
     assert_eq!(idx.name().as_deref(), Some(name));
     assert_eq!(idx.fields(), Ok(fields));
     assert_eq!(idx.on_target().as_deref(), Some(on_target));
@@ -105,7 +111,7 @@ fn index_declaration_whitespace_variations(#[case] src: &str) {
     assert_eq!(indexes.len(), 1);
     let printed = pretty_print(parsed.root().syntax());
     assert_eq!(normalize_whitespace(&printed), normalize_whitespace(src));
-    let idx = parse_index(src);
+    let idx = parse_index(src).expect("expected a single index");
     assert_eq!(idx.name().as_deref(), Some("Idx_User_ws"));
     assert_eq!(
         idx.fields(),

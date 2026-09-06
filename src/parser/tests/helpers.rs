@@ -124,47 +124,57 @@ pub(super) fn round_trip(src: impl Into<SourceText>) {
 
 /// Parse a program and extract the first item produced by `extractor`.
 ///
-/// The helper asserts that parsing succeeds without errors and that the
-/// extractor yields at least one item.
-#[expect(clippy::expect_used, reason = "helpers used only in tests")]
+/// The helper asserts that parsing succeeds without errors, then reports
+/// whether the extractor yielded anything. Arranging state is allowed to
+/// fail, so the absence of an item is returned rather than raised here: the
+/// caller is a test body, and a failure there is the test's verdict with the
+/// test's own line number.
 fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
     src: impl Into<SourceText>,
     extractor: F,
-) -> T {
+) -> Option<T> {
     let src = src.into();
     let parsed = parse(src.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     let items = extractor(parsed.root());
-    items.first().cloned().expect("item missing")
+    items.first().cloned()
+}
+
+/// Parse a program and return its first rule, if it has one.
+///
+/// Arrangement, not assertion: the absence of a rule is reported to the
+/// caller so the panic, when it comes, carries the calling test's line.
+pub(super) fn parse_single_rule(src: &str) -> Option<crate::parser::ast::rule::Rule> {
+    parse_ok(src).root().rules().first().cloned()
 }
 
 /// Parse a program containing a single relation and return it.
-pub(super) fn parse_relation(src: impl Into<SourceText>) -> Relation {
+pub(super) fn parse_relation(src: impl Into<SourceText>) -> Option<Relation> {
     parse_single_item(src, crate::parser::ast::Root::relations)
 }
 
 /// Parse a program containing a single index and return it.
-pub(super) fn parse_index(src: impl Into<SourceText>) -> Index {
+pub(super) fn parse_index(src: impl Into<SourceText>) -> Option<Index> {
     parse_single_item(src, crate::parser::ast::Root::indexes)
 }
 
 /// Parse a program containing a single function and return it.
-pub(super) fn parse_function(src: impl Into<SourceText>) -> Function {
+pub(super) fn parse_function(src: impl Into<SourceText>) -> Option<Function> {
     parse_single_item(src, crate::parser::ast::Root::functions)
 }
 
 /// Parse a program containing a single transformer and return it.
-pub(super) fn parse_transformer(src: impl Into<SourceText>) -> Transformer {
+pub(super) fn parse_transformer(src: impl Into<SourceText>) -> Option<Transformer> {
     parse_single_item(src, crate::parser::ast::Root::transformers)
 }
 
 /// Parse a program containing a single import and return it.
-pub(super) fn parse_import(src: impl Into<SourceText>) -> Import {
+pub(super) fn parse_import(src: impl Into<SourceText>) -> Option<Import> {
     parse_single_item(src, crate::parser::ast::Root::imports)
 }
 
 /// Parse a program containing a single apply statement and return it.
-pub(super) fn parse_apply(src: impl Into<SourceText>) -> crate::parser::ast::Apply {
+pub(super) fn parse_apply(src: impl Into<SourceText>) -> Option<crate::parser::ast::Apply> {
     parse_single_item(src, crate::parser::ast::Root::applys)
 }
