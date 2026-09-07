@@ -89,7 +89,11 @@ fn parses_transformers(
     #[case] inputs: Vec<(&str, &str)>,
     #[case] outputs: Vec<String>,
 ) {
-    let t = parse_transformer(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let t = parse_transformer(src).expect("expected a single transformer");
     assert_eq!(t.name().as_deref(), Some(name));
     let in_expected: Vec<(String, String)> = inputs
         .into_iter()
@@ -134,14 +138,22 @@ fn transformer_missing_output_signature_errors(#[case] src: &str, #[case] expect
 
 #[rstest]
 fn transformer_no_inputs_parsed(transformer_no_inputs: &str) {
-    let t = parse_transformer(transformer_no_inputs);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let t = parse_transformer(transformer_no_inputs).expect("expected a single transformer");
     assert_eq!(t.inputs(), Vec::<(String, String)>::new());
     assert_eq!(t.outputs(), vec![String::from("OutputType")]);
 }
 
 #[rstest]
 fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
-    let t = parse_transformer(transformer_extra_ws);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let t = parse_transformer(transformer_extra_ws).expect("expected a single transformer");
     assert_eq!(t.name().as_deref(), Some("spaced"));
     assert_eq!(
         t.inputs(),
@@ -164,7 +176,11 @@ fn transformer_duplicate_input_names(transformer_dup_inputs: &str) {
 
 #[rstest]
 fn transformer_reserved_keyword_names(transformer_reserved_names: &str) {
-    let t = parse_transformer(transformer_reserved_names);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let t = parse_transformer(transformer_reserved_names).expect("expected a single transformer");
     let names: Vec<_> = t.inputs().into_iter().map(|(n, _)| n).collect();
     assert_eq!(names, vec!["transformer", "extern"]);
 }

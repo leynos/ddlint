@@ -66,7 +66,11 @@ fn parses_relations(
     #[case] columns: Vec<(&str, &str)>,
     #[case] primary_key: Option<Vec<&str>>,
 ) {
-    let rel = parse_relation(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let rel = parse_relation(src).expect("expected a single relation");
     assert_eq!(rel.is_input(), is_input);
     assert_eq!(rel.is_output(), is_output);
     assert_eq!(rel.name().as_deref(), Some(name));
@@ -81,7 +85,11 @@ fn parses_relations(
 
 #[rstest]
 fn multiline_relation_parsed(multiline_relation: &str) {
-    let rel = parse_relation(multiline_relation);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let rel = parse_relation(multiline_relation).expect("expected a single relation");
     assert!(rel.is_input());
     assert_eq!(rel.name().as_deref(), Some("Log"));
     assert_eq!(

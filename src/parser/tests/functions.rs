@@ -74,7 +74,11 @@ fn parses_functions(
     #[case] params: Vec<(&str, &str)>,
     #[case] ret: Option<&str>,
 ) {
-    let func = parse_function(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let func = parse_function(src).expect("expected a single function");
     assert_eq!(func.name().as_deref(), Some(name));
     assert_eq!(func.is_extern(), is_extern);
     let expected: Vec<(String, String)> = params

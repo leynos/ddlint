@@ -21,7 +21,11 @@ use super::helpers::parse_import;
 #[case::multi_segment("import foo::bar::baz", "foo::bar::baz", None)]
 #[case::whitespace("  import  foo  as  f  ", "foo", Some("f"))]
 fn import_statement_parses(#[case] src: &str, #[case] path: &str, #[case] alias: Option<&str>) {
-    let imp = parse_import(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let imp = parse_import(src).expect("expected a single import");
     assert_eq!(imp.path(), path);
     assert_eq!(imp.alias().as_deref(), alias);
 }

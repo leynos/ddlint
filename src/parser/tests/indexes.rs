@@ -66,7 +66,11 @@ fn parses_indexes(
     #[case] fields: Vec<(String, String)>,
     #[case] on_target: &str,
 ) {
-    let idx = parse_index(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let idx = parse_index(src).expect("expected a single index");
     assert_eq!(idx.name().as_deref(), Some(name));
     assert_eq!(idx.fields(), Ok(fields));
     assert_eq!(idx.on_target().as_deref(), Some(on_target));
@@ -105,7 +109,11 @@ fn index_declaration_whitespace_variations(#[case] src: &str) {
     assert_eq!(indexes.len(), 1);
     let printed = pretty_print(parsed.root().syntax());
     assert_eq!(normalize_whitespace(&printed), normalize_whitespace(src));
-    let idx = parse_index(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let idx = parse_index(src).expect("expected a single index");
     assert_eq!(idx.name().as_deref(), Some("Idx_User_ws"));
     assert_eq!(
         idx.fields(),
