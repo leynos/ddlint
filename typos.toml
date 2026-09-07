@@ -32,7 +32,8 @@ locale = "en-gb"
 extend-ignore-re = [
     "(?s)```.*?```",
     "\\brust-analyzer\\b",
-    "`[^`\\n]+`",
+    "`color`",
+    "`normalise_tokens`",
 ]
 
 [default.extend-words]

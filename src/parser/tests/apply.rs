@@ -34,7 +34,11 @@ fn parses_apply_statements(
     #[case] inputs: Vec<&str>,
     #[case] outputs: Vec<&str>,
 ) {
-    let apply = parse_apply(src);
+    #[expect(
+        clippy::expect_used,
+        reason = "arrangement failure is this test's verdict"
+    )]
+    let apply = parse_apply(src).expect("expected a single apply");
     assert_eq!(apply.transformer_name().as_deref(), Some(name));
     let inputs_expected: Vec<String> = inputs.into_iter().map(str::to_string).collect();
     let outputs_expected: Vec<String> = outputs.into_iter().map(str::to_string).collect();

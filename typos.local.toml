@@ -12,7 +12,20 @@ accepted = ["Center", "Flavored", "applys"]
 [words.corrections]
 
 [patterns]
-ignore = []
+# The shared policy checks inline code since agent-helper-scripts #90, so each
+# quoted identifier that keeps an upstream spelling is listed here, scoped to
+# the form it appears in rather than accepted as a word.
+# `color`: the documentation style guide's own example of a US spelling kept
+# inside an API name.
+# `normalise_tokens`: a preserved identifier. The function is named
+# `normalise_tokens` in `src/test_util`, and the parser implementation notes
+# quote that name; the code is not renamed to satisfy a prose checker. The
+# repository's en-GB-oxendict policy asks for the "-ize" form in prose, so the
+# bare word stays a spelling error and only the backticked form is exempt.
+ignore = [
+    "`color`",
+    "`normalise_tokens`",
+]
 
 [files]
 exclude = []

@@ -1,25 +1,28 @@
 //! Tests for rule body term classification.
 
-use super::super::helpers::{parse_err, parse_ok};
+use super::super::helpers::parse_err;
 use crate::parser::ast::{Expr, Pattern, RuleBodyTerm};
 use crate::test_util::{call, var};
 
-#[expect(
-    clippy::expect_used,
-    reason = "tests require a single parsed rule for assignment assertions"
-)]
-fn assert_body_assignment(
-    src: &str,
+macro_rules! assert_body_assignment {
+    ($src:expr, $expected_terms_count:expr, $assignment_index:expr $(,)?) => {{
+        // A macro rather than a function so a failure points at the calling
+        // test, and so the arrangement's `expect` sits in the test body where
+        // a failure is the verdict.
+        let rule = super::super::helpers::parse_single_rule($src).expect("expected a single rule");
+        $crate::parser::tests::rules::body_terms::rule_body_assignment(
+            &rule,
+            $expected_terms_count,
+            $assignment_index,
+        )
+    }};
+}
+
+pub(super) fn rule_body_assignment(
+    rule: &crate::parser::ast::rule::Rule,
     expected_terms_count: usize,
     assignment_index: usize,
 ) -> (Pattern, Expr) {
-    let parsed = parse_ok(src);
-    let rule = parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing");
     let terms = match rule.body_terms() {
         Ok(terms) => terms,
         Err(errs) => panic!("body terms should parse: {errs:?}"),
@@ -35,7 +38,7 @@ fn assert_body_assignment(
 #[test]
 fn body_terms_capture_flatmap_assignments() {
     let src = "Flat(ip) :- Source(addrs), var ip = FlatMap(extract_ips(addrs)).";
-    let (pattern, value) = assert_body_assignment(src, 2, 1);
+    let (pattern, value) = assert_body_assignment!(src, 2, 1);
     assert_eq!(
         pattern,
         Pattern::Var {
@@ -52,7 +55,7 @@ fn body_terms_capture_flatmap_assignments() {
 #[test]
 fn body_terms_capture_tuple_bind_assignments() {
     let src = "Joined(key, value) :- Source(pairs), (key, value) = FlatMap(extract_pairs(pairs)).";
-    let (pattern, _value) = assert_body_assignment(src, 2, 1);
+    let (pattern, _value) = assert_body_assignment!(src, 2, 1);
     assert_eq!(
         pattern,
         Pattern::Tuple(vec![

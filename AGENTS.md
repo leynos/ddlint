@@ -24,7 +24,11 @@
 - **Use consistent spelling and grammar.** Comments must use en-GB-oxendict
   ("-ize" / "-yse" / "-our") spelling and grammar, with the exception of
   references to external APIs. Markdown prose is enforced mechanically by the
-  pinned `typos` spelling gate in `make lint` and `make markdownlint`.
+  pinned `typos` spelling gate in `make lint` and `make markdownlint`. Fenced
+  code blocks are ignored by that gate; inline code is checked (the shared
+  policy changed on 2026-08-06, agent-helper-scripts #90), so record each
+  quoted identifier in `typos.local.toml` under `[patterns] ignore`, scoped to
+  the form it appears in, rather than accepting the bare word.
 - **Illustrate with clear examples.** Function documentation must include clear
   examples demonstrating the usage and outcome of the function. Test
   documentation should omit examples where the example serves only to reiterate
