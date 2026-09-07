@@ -141,8 +141,10 @@ implementations; this guide does not duplicate them.
 A test asserts; a helper arranges. Arrangement can fail, so the arrangement
 helpers in `src/parser/tests/helpers.rs` return `Option` and the calling test
 body owns the unwrap. `parse_single_item` and its six wrappers,
-`parse_single_rule`, `parse_relation`, `parse_index`, `parse_function`,
-`parse_transformer`, `parse_import` and `parse_apply`, all follow this shape.
+`parse_relation`, `parse_index`, `parse_function`, `parse_transformer`,
+`parse_import` and `parse_apply`, follow this shape, as does
+`parse_single_rule`, which reaches the same result through `parse_ok` rather
+than through `parse_single_item`.
 
 The Whitaker lint `no_expect_outside_tests` enforces it, and it is stricter
 than it looks. Proc-macro attributes are erased before the lint sees the code,
