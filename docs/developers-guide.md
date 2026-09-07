@@ -136,6 +136,37 @@ generated `typos` configuration and checking tracked Markdown for
 en-GB-oxendict spelling. See `AGENTS.md` for the underlying command
 implementations; this guide does not duplicate them.
 
+## Parser test helpers
+
+A test asserts; a helper arranges. Arrangement can fail, so the arrangement
+helpers in `src/parser/tests/helpers.rs` return `Option` and the calling test
+body owns the unwrap. `parse_single_item` and its six wrappers,
+`parse_single_rule`, `parse_relation`, `parse_index`, `parse_function`,
+`parse_transformer`, `parse_import` and `parse_apply`, all follow this shape.
+
+The Whitaker lint `no_expect_outside_tests` enforces it, and it is stricter
+than it looks. Proc-macro attributes are erased before the lint sees the code,
+so a helper is indistinguishable from production code no matter where it
+lives. A panicking helper also reports the wrong location: the failure points
+at the helper and says `item missing`, with nothing about which test wanted
+what.
+
+Two consequences follow.
+
+- `clippy::expect_used` stays denied, and each intentional unwrap carries its
+  own narrowly scoped `#[expect(clippy::expect_used, reason = "...")]`. Put
+  that attribute on the `let` statement that owns the unwrap, not on the test
+  function. `#[rstest]` moves a function-level attribute onto its generated
+  per-case wrappers, so the base function holding the body stays unlinted and
+  the expectation is reported unfulfilled. Module-wide `#![expect(...)]` is
+  forbidden: it disarms the lint for code nobody has written yet.
+- Shared rule assertions are macros, not functions. `assert_body_assignment`,
+  `assert_body_terms_error` and `assert_multiple_aggregation_error` expand at
+  the call site, so a failure names the calling test rather than the helper,
+  and the arrangement's unwrap lands inside a test body. A function that wraps
+  an assertion macro puts that unwrap back outside a test body, and the lint
+  reports it again.
+
 ## Spelling policy
 
 The lint and Markdown gates run pinned `typos` 1.48.0 with British English and
