@@ -22,16 +22,16 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@18bed1ca49a6de3d8882bd72635a32ae3f023d57
+        uses: leynos/shared-actions/.github/actions/setup-rust@95e90ba9e33eaeb3c8b4bf6ed1dbe1d7184ee710
       - name: Setup uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
           python-version: '3.13'
           enable-cache: true
       - name: Format
         run: make check-fmt
       - name: Cache whitaker-installer
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/bin/whitaker-installer
@@ -54,7 +54,7 @@ jobs:
       - name: Workflow contract tests
         run: make test-workflow-contracts
       - name: Generate coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@18bed1ca49a6de3d8882bd72635a32ae3f023d57
+        uses: leynos/shared-actions/.github/actions/generate-coverage@95e90ba9e33eaeb3c8b4bf6ed1dbe1d7184ee710
         with:
           output-path: lcov.info
           format: lcov
@@ -64,7 +64,7 @@ jobs:
         env:
           CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
         if: env.CS_ACCESS_TOKEN != '' && github.event_name == 'pull_request'
-        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@18bed1ca49a6de3d8882bd72635a32ae3f023d57
+        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@95e90ba9e33eaeb3c8b4bf6ed1dbe1d7184ee710
         with:
           format: lcov
           mode: check
