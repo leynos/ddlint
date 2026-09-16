@@ -1,6 +1,6 @@
 //! Property tests for relation declaration forms.
 //!
-//! The hand-written matrix pins representative cases. These generated cases
+//! The handwritten matrix pins representative cases. These generated cases
 //! cover the role, kind, body, ref, and primary-key space more densely while
 //! staying within the accepted grammar.
 
