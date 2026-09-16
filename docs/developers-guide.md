@@ -131,10 +131,9 @@ This is the required pre-commit sequence, matching `AGENTS.md`.
 the spelling gate for tracked Markdown. `make markdownlint` lints every
 Markdown source, and `make nixie` validates the Mermaid diagrams within them.
 
-`make spelling` validates the spelling-policy helper before regenerating the
-generated `typos` configuration and checking tracked Markdown for
-en-GB-oxendict spelling. See `AGENTS.md` for the underlying command
-implementations; this guide does not duplicate them.
+`make spelling` regenerates the `typos` configuration and checks tracked
+Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
+command implementations; this guide does not duplicate them.
 
 ## Parser test helpers
 
@@ -170,16 +169,21 @@ Two consequences follow.
 
 ## Spelling policy
 
-The lint and Markdown gates run pinned `typos` 1.48.0 with British English and
-Oxford `-ize` conventions. Before checking maintained Markdown, the generator
-refreshes the shared estate dictionary into an untracked local cache only when
-the authority is newer, then merges `typos.local.toml`. The generated
-`typos.toml` is reviewed and committed so a clean, network-restricted checkout
-can still enforce the last known-good policy.
+Run the spelling gate with `make spelling`. It enforces British English with
+Oxford `-ize` conventions over tracked Markdown prose, and it also enforces
+exact phrase corrections that Typos cannot match because it splits hyphenated
+phrases into separate words.
+
+The gate regenerates the tracked `typos.toml` on every run from the live shared
+dictionary and the repository-specific `typos.local.toml` overlay. Because the
+dictionary is live, `typos.toml` must never be drift checked in continuous
+integration. The builder refreshes the estate dictionary into the untracked
+`.typos-oxendict-base.toml` cache only when the authoritative copy is newer,
+records refresh metadata in `.typos-oxendict-base.json`, and reuses a valid
+cache when the network is unavailable.
 
 Add repository-only proper names or quoted upstream terms to
-`typos.local.toml`; never edit generated entries in `typos.toml` by hand. The
-gate also runs the helper's Python 3.13 tests with at least 90% line coverage.
+`typos.local.toml`; never edit generated entries in `typos.toml` by hand.
 
 ## Workflow pins and Dependabot
 

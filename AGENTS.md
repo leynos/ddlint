@@ -24,11 +24,11 @@
 - **Use consistent spelling and grammar.** Comments must use en-GB-oxendict
   ("-ize" / "-yse" / "-our") spelling and grammar, with the exception of
   references to external APIs. Markdown prose is enforced mechanically by the
-  pinned `typos` spelling gate in `make lint` and `make markdownlint`. Fenced
-  code blocks are ignored by that gate; inline code is checked (the shared
-  policy changed on 2026-08-06, agent-helper-scripts #90), so record each
-  quoted identifier in `typos.local.toml` under `[patterns] ignore`, scoped to
-  the form it appears in, rather than accepting the bare word.
+  spelling gate in `make lint` and `make markdownlint`. Fenced code blocks are
+  ignored by that gate; inline code is checked (the shared policy changed on
+  2026-08-06, agent-helper-scripts #90), so record each quoted identifier in
+  `typos.local.toml` under `[patterns] ignore`, scoped to the form it appears
+  in, rather than accepting the bare word.
 - **Illustrate with clear examples.** Function documentation must include clear
   examples demonstrating the usage and outcome of the function. Test
   documentation should omit examples where the example serves only to reiterate
@@ -173,17 +173,13 @@ project:
   - `make spelling` executes:
 
     ```sh
-    PYTHONPATH=scripts uv run --python 3.13 \
-      --with pytest==9.0.2 --with pytest-cov==7.0.0 \
-      python -m pytest scripts/tests/test_typos_rollout.py \
-      --cov=generate_typos_config --cov=typos_rollout \
-      --cov=typos_rollout_cache --cov-fail-under=90
-    uv run scripts/generate_typos_config.py
-    git ls-files -z '*.md' | xargs -0 -r $(TYPOS) --config typos.toml --force-exclude
+    $(TYPOS_CONFIG_BUILDER) gate --repository .
     ```
 
-    validating the shared spelling-policy helper before generating the typos
-    configuration and enforcing en-GB-oxendict spelling in Markdown prose.
+    regenerating `typos.toml` from the live shared dictionary and the
+    `typos.local.toml` overlay, then enforcing en-GB-oxendict spelling in
+    Markdown prose. Because the dictionary is live, `typos.toml` must never be
+    drift checked in continuous integration.
   - `make test` executes:
 
     ```sh
@@ -339,12 +335,13 @@ project:
 
 ## Markdown guidance
 
-- Validate Markdown files using `make markdownlint`; this also runs the pinned
-  en-GB-oxendict `typos` spelling gate.
-- The spelling configuration `typos.toml` is generated. Put narrow
-  repository-only exceptions in `typos.local.toml`, then regenerate with
-  `uv run scripts/generate_typos_config.py`; never edit generated entries by
-  hand.
+- Validate Markdown files using `make markdownlint`; this also runs the
+  en-GB-oxendict spelling gate.
+- Enforce spelling with `make spelling`. It regenerates `typos.toml` from the
+  live shared dictionary and the `typos.local.toml` overlay on every run, so
+  the generated file must not be drift checked in continuous integration. Add
+  narrow repository-only exceptions to `typos.local.toml`; never edit generated
+  entries by hand.
 - Run `make fmt` after any documentation changes to format all Markdown
   files and fix table markup.
 - Validate Mermaid diagrams in Markdown files by running `make nixie`.

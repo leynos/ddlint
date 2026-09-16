@@ -6,8 +6,8 @@ schema = 1
 stems = []
 
 [words]
-# Upstream titles and the established `Root::applys` parser API.
-accepted = ["Center", "Flavored", "applys"]
+# The established `Root::applys` parser API.
+accepted = ["applys"]
 
 [words.corrections]
 
