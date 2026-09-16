@@ -128,8 +128,8 @@ Run these gates in order before committing:
 This is the required pre-commit sequence, matching `AGENTS.md`.
 
 `make lint` includes the spelling gate, and `make markdownlint` also invokes
-the spelling gate for tracked Markdown. `make markdownlint` lints the tracked
-Markdown sources, and `make nixie` validates the Mermaid diagrams within them.
+the spelling gate for tracked Markdown. `make markdownlint` lints every
+Markdown source, and `make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` validates the spelling-policy helper before regenerating the
 generated `typos` configuration and checking tracked Markdown for
@@ -148,10 +148,9 @@ than through `parse_single_item`.
 
 The Whitaker lint `no_expect_outside_tests` enforces it, and it is stricter
 than it looks. Proc-macro attributes are erased before the lint sees the code,
-so a helper is indistinguishable from production code no matter where it
-lives. A panicking helper also reports the wrong location: the failure points
-at the helper and says `item missing`, with nothing about which test wanted
-what.
+so a helper is indistinguishable from production code no matter where it lives.
+A panicking helper also reports the wrong location: the failure points at the
+helper and says `item missing`, with nothing about which test wanted what.
 
 Two consequences follow.
 
