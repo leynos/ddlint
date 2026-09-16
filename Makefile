@@ -6,7 +6,15 @@ APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
 BUILD_JOBS ?=
 CLIPPY_FLAGS ?= --all-targets --all-features -- -D warnings
-MDLINT ?= markdownlint
+MDLINT ?= $(shell command -v markdownlint-cli2 2>/dev/null || printf '%s' "$$HOME/.bun/bin/markdownlint-cli2")
+# `make fmt` and `make check-fmt` call mdtablefix directly. `--git` selects the
+# Markdown files Git tracks and `--include-untracked` adds the untracked files
+# Git does not ignore, so a new document is formatted before it is staged.
+# Both modes need mdtablefix 0.6.0 or later; CI pins the version at the
+# install-mdtablefix step.
+MDTABLEFIX ?= mdtablefix
+MDTABLEFIX_SELECT = --git --include-untracked
+MDTABLEFIX_RULES = --wrap --renumber --breaks --ellipsis --fences
 NIXIE ?= nixie
 TYPOS_VERSION ?= 1.48.0
 TYPOS := uv tool run typos@$(TYPOS_VERSION)
@@ -49,24 +57,20 @@ endef
 
 # Ensure essential formatting tools exist to avoid missing-command errors
 tools:
-	$(call ensure_tool,mdformat-all)
+	$(call ensure_tool,mdtablefix)
 	$(call ensure_tool,$(CARGO))
 	$(call ensure_tool,rustfmt)
 fmt: tools ## Format Rust and Markdown sources
 	$(CARGO) fmt --all
-	mdformat-all
+	$(MDTABLEFIX) --in-place $(MDTABLEFIX_SELECT) $(MDTABLEFIX_RULES)
+	$(MDLINT) --fix "**/*.md"
 
 check-fmt: ## Verify formatting
 	$(CARGO) fmt --all -- --check
+	$(MDTABLEFIX) --check $(MDTABLEFIX_SELECT) $(MDTABLEFIX_RULES)
 
 markdownlint: ## Lint Markdown files
-	git rev-parse --verify origin/main >/dev/null
-	@set -e; \
-	tmp=$$(mktemp); \
-	trap 'rm -f "$$tmp"' EXIT; \
-	git diff --name-only -z --diff-filter=ACMRT origin/main...HEAD -- \
-		'*.md' '*.markdown' '*.mdx' > "$$tmp"; \
-	if [ -s "$$tmp" ]; then xargs -0 $(MDLINT) < "$$tmp"; fi
+	$(MDLINT) '**/*.md'
 	+$(MAKE) spelling
 
 spelling: spelling-helper-test ## Enforce en-GB-oxendict spelling in Markdown prose

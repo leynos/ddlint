@@ -146,14 +146,17 @@ project:
 
     ```sh
     $(CARGO) fmt --all -- --check
+    $(MDTABLEFIX) --check $(MDTABLEFIX_SELECT) $(MDTABLEFIX_RULES)
     ```
 
-    validating formatting across the entire workspace without modifying files.
+    validating Rust and Markdown formatting across the entire workspace
+    without modifying files.
   - `make fmt` executes:
 
     ```sh
     $(CARGO) fmt --all
-    mdformat-all
+    $(MDTABLEFIX) --in-place $(MDTABLEFIX_SELECT) $(MDTABLEFIX_RULES)
+    $(MDLINT) --fix "**/*.md"
     ```
 
     formatting Rust and Markdown sources.
