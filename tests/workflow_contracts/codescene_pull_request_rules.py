@@ -55,6 +55,20 @@ PULL_REQUEST_FORBIDDEN: typ.Final[tuple[tuple[str, str], ...]] = (
 )
 
 
+def _refuse_a_call_at_a_ref(reference: str) -> None:
+    """Refuse a call to this repository's own workflow at some ref.
+
+    The closure can read only the checked-out file, so a call that runs the
+    file as it stands at another ref cannot be judged.
+    """
+    if reference.casefold().startswith(f"{REPOSITORY}/".casefold()):
+        message = f"{reference} runs this repository's workflow at a ref"
+        raise WorkflowError(message)
+    if reference.startswith("$/") and "@" in reference:
+        message = f"{reference}: a `$/` call cannot name a ref"
+        raise WorkflowError(message)
+
+
 def local_callee(reference: str, documents: dict[str, Document]) -> str | None:
     """Return the workflow file a job-level `uses:` names in this tree.
 
@@ -83,12 +97,7 @@ def local_callee(reference: str, documents: dict[str, Document]) -> str | None:
         a local workflow that does not exist.
 
     """
-    if reference.casefold().startswith(f"{REPOSITORY}/".casefold()):
-        message = f"{reference} runs this repository's workflow at a ref"
-        raise WorkflowError(message)
-    if reference.startswith("$/") and "@" in reference:
-        message = f"{reference}: a `$/` call cannot name a ref"
-        raise WorkflowError(message)
+    _refuse_a_call_at_a_ref(reference)
     path = reference.removeprefix("./").removeprefix("$/")
     if not path.startswith(WORKFLOW_PREFIX):
         return None
