@@ -209,12 +209,13 @@ def _push_writers(documents: dict[str, Document], publisher: str) -> list[str]:
     Such a step writes a second baseline on every push to main, outside the
     publisher's concurrency group. The push side is followed through local
     calls as the pull-request side is, since a called workflow runs on its
-    caller's push.
+    caller's push; the publisher is a seed too, so its own callees are judged,
+    and only its own document is exempt.
     """
     seeds = {
         name
         for name, document in documents.items()
-        if name != publisher and "push" in triggers(name, document)
+        if "push" in triggers(name, document)
     }
     return [
         f"{name} coverage can run on a push; guard it to pull requests"

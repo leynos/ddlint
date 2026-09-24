@@ -180,7 +180,13 @@ def test_closure_refuses_an_unreadable_workflow_run_list(
 
 
 @pytest.mark.parametrize(
-    "uses", ["./.github/actions/probe", "$/.github/actions/probe"]
+    "uses",
+    [
+        "./.github/actions/probe",
+        "$/.github/actions/probe",
+        "leynos/ddlint/.github/actions/probe@some-branch",
+        "Leynos/DDlint@some-branch",
+    ],
 )
 def test_pull_request_lane_cannot_run_a_local_action(
     documents: Documents, uses: str

@@ -100,7 +100,7 @@ def test_publisher_never_cancels(documents: Documents, concurrency: object) -> N
     ],
 )
 def test_publisher_group_is_exactly_the_ref(documents: Documents, group: str) -> None:
-    """One group per ref keeps uploads in commit order."""
+    """One group per ref keeps runs on main from overlapping."""
     publisher, _ = find_publisher(documents)
     publisher["concurrency"] = {"group": group, "cancel-in-progress": False}
     assert_reports(publisher_violations, documents, "concurrency must be exactly")
@@ -286,6 +286,24 @@ def test_push_callee_cannot_write_a_second_baseline(documents: Documents) -> Non
     documents["caller.yml"] = {
         True: "push",
         "jobs": {"call": {"uses": "./.github/workflows/cov.yml"}},
+    }
+    assert_reports(
+        coverage_violations,
+        documents,
+        "cov.yml coverage can run on a push; guard it to pull requests",
+    )
+
+
+def test_publisher_callee_cannot_write_a_second_baseline(documents: Documents) -> None:
+    """The publisher's own local callee runs on its push, so its coverage counts."""
+    publisher, _ = find_publisher(documents)
+    step = copy.deepcopy(coverage_step(publisher))
+    documents["cov.yml"] = {
+        True: {"workflow_call": None},
+        "jobs": {"c": {"steps": [step]}},
+    }
+    typ.cast("dict[str, object]", publisher["jobs"])["call"] = {
+        "uses": "./.github/workflows/cov.yml"
     }
     assert_reports(
         coverage_violations,
