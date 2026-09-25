@@ -69,7 +69,7 @@ jobs:
       # artefact and never contacts CodeScene.
       - name: Generate coverage
         if: github.event_name == 'pull_request'
-        uses: leynos/shared-actions/.github/actions/generate-coverage@82feb2b7aac45b7efff40c9c4bb632551b14521c
+        uses: leynos/shared-actions/.github/actions/generate-coverage@438ad8a99a3580e753189c47391a1652c5f46ed4
         with:
           output-path: lcov.info
           format: lcov
