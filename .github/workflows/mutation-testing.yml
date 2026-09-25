@@ -26,7 +26,7 @@ jobs:
     permissions:
       contents: read
       id-token: write # OIDC workflow-source resolution
-    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@438ad8a99a3580e753189c47391a1652c5f46ed4
+    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@22c1a57865e42ba7e2ca4f88ae49fa6f81f58013
     with:
       # Test-support scaffolding gated on the test-support feature; it
       # is compiled under --all-features, so its survivors are noise.
