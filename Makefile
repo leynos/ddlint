@@ -28,7 +28,8 @@ WHITAKER ?= whitaker
 # recipe that sets it composes these onto any inherited value (CI's
 # setup-rust exports one), except coverage, which stays on LLVM and the
 # platform linker.
-STANDARD_RUSTFLAGS := -Zthreads=8$(if $(filter Linux,$(shell uname -s)), -Clink-arg=-fuse-ld=mold)
+BUILD_HOST_OS := $(shell uname -s)
+STANDARD_RUSTFLAGS := -Zthreads=8$(if $(filter Linux,$(BUILD_HOST_OS)), -Clink-arg=-fuse-ld=mold)
 
 build: target/debug/$(APP) ## Build debug binary
 release: target/release/$(APP) ## Build release binary
@@ -49,7 +50,7 @@ test-workflow-contracts: ## Validate the mutation-testing and CodeScene coverage
 	uv run --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
 
 target/%/$(APP): ## Build binary in debug or release mode
-	$(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
+	$(if $(filter release,$*),RUSTFLAGS="$${RUSTFLAGS-}",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
 
 lint: ## Run Clippy and the Whitaker Dylint suite with warnings denied
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
