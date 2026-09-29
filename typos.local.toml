@@ -25,6 +25,8 @@ accepted = ["applys"]
 ignore = [
     "`color`",
     "`normalise_tokens`",
+    # The mold linker, named in the build standard section of the developers' guide.
+    "\\bmold\\b",
 ]
 
 [files]
