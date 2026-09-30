@@ -174,6 +174,10 @@ Oxford `-ize` conventions over tracked Markdown prose, and it also enforces
 exact phrase corrections that Typos cannot match because it splits hyphenated
 phrases into separate words.
 
+`TYPOS_CONFIG_BUILDER_VERSION` in the `Makefile` pins the
+`typos-config-builder` release the gate runs (currently `v0.1.3`). Raise it
+together with the regenerated `typos.toml`, never on its own.
+
 The gate regenerates the tracked `typos.toml` on every run from the live shared
 dictionary and the repository-specific `typos.local.toml` overlay. Because the
 dictionary is live, `typos.toml` must never be drift checked in continuous
