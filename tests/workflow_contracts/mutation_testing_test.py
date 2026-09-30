@@ -31,15 +31,10 @@ USES_RE = re.compile(
 )
 
 EXPECTED_WITH = {
+    # .cargo/config.toml links with mold on Linux; the reusable workflow installs it.
+    "install-mold": "true",
     "exclude-globs": "src/test_util/**",
     "extra-args": "--all-features",
-    # The reusable workflow has no install-mold input, so the mutants job installs
-    # mold through a setup command; .cargo/config.toml links with it on Linux.
-    "setup-commands": (
-        "export DEBIAN_FRONTEND=noninteractive\n"
-        "sudo apt-get update\n"
-        "sudo apt-get install --yes --no-install-recommends mold\n"
-    ),
 }
 
 

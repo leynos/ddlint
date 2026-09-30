@@ -26,17 +26,13 @@ jobs:
     permissions:
       contents: read
       id-token: write # OIDC workflow-source resolution
-    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@774cc5a01e457714aede66e14a97b3e257812fc2
+    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@9a27950942334d69ff79005b3a8db23bf151f43f
     with:
+      # .cargo/config.toml links with mold on Linux; the reusable workflow installs it.
+      install-mold: 'true'
       # Test-support scaffolding gated on the test-support feature; it
       # is compiled under --all-features, so its survivors are noise.
       exclude-globs: "src/test_util/**"
       # Match the CI baseline (`make test` runs --all-features) so
       # feature-gated tests run against mutants.
       extra-args: "--all-features"
-      # .cargo/config.toml links with mold on Linux, and the reusable workflow has
-      # no `install-mold` input, so the mutants job installs it here.
-      setup-commands: |
-        export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get update
-        sudo apt-get install --yes --no-install-recommends mold
