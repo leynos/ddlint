@@ -176,7 +176,9 @@ phrases into separate words.
 
 `TYPOS_CONFIG_BUILDER_VERSION` in the `Makefile` pins the
 `typos-config-builder` release the gate runs (currently `v0.1.3`). Raise it
-together with the regenerated `typos.toml`, never on its own.
+together with the regenerated `typos.toml`, never on its own. The builder
+requires Python 3.14 or newer, so the target passes `--python 3.14` and `uv`
+fetches that interpreter when the host lacks one.
 
 The gate regenerates the tracked `typos.toml` on every run from the live shared
 dictionary and the repository-specific `typos.local.toml` overlay. Because the
