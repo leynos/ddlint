@@ -31,6 +31,8 @@ USES_RE = re.compile(
 )
 
 EXPECTED_WITH = {
+    # .cargo/config.toml links with mold on Linux; the reusable workflow installs it.
+    "install-mold": "true",
     "exclude-globs": "src/test_util/**",
     "extra-args": "--all-features",
 }
