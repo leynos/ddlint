@@ -8,6 +8,7 @@ mod build;
 mod builder;
 mod model;
 mod resolve;
+mod scope_origin;
 mod traverse;
 mod variables;
 

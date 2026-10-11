@@ -19,10 +19,15 @@ pub enum SemanticRuleOrigin {
 /// Parameters for constructing a desugared semantic rule.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SemanticRuleSpec {
+    /// Origin category of the rule.
     pub origin: SemanticRuleOrigin,
+    /// Source span that produced the rule.
     pub source_span: Span,
+    /// Patterns bound by the originating construct.
     pub patterns: Vec<Pattern>,
+    /// Head expression of the desugared rule.
     pub head: Expr,
+    /// Body expressions of the desugared rule.
     pub body: Vec<Expr>,
 }
 

@@ -245,7 +245,12 @@ pub enum Expr {
         else_branch: Box<Expr>,
     },
     /// Unary operation expression.
-    Unary { op: UnaryOp, expr: Box<Expr> },
+    Unary {
+        /// Unary operator applied.
+        op: UnaryOp,
+        /// Operand expression.
+        expr: Box<Expr>,
+    },
     /// Atom diff marker (`Rel'(...)`), represented as a wrapper around the
     /// underlying atom expression.
     AtomDiff {
@@ -262,8 +267,11 @@ pub enum Expr {
     },
     /// Binary operation expression.
     Binary {
+        /// Binary operator applied.
         op: BinaryOp,
+        /// Left-hand operand.
         lhs: Box<Expr>,
+        /// Right-hand operand.
         rhs: Box<Expr>,
     },
     /// Grouped expression (parenthesised).

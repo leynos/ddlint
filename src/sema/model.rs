@@ -6,7 +6,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::Span;
-use crate::parser::ast::SemanticRuleOrigin;
+
+pub use super::scope_origin::{ScopeKind, ScopeOrigin};
 
 /// Opaque identifier for one scope in a semantic model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -15,33 +16,6 @@ pub struct ScopeId(pub(crate) usize);
 /// Opaque identifier for one declared symbol in a semantic model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SymbolId(pub(crate) usize);
-
-/// Scope category recorded by semantic analysis.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScopeKind {
-    /// Root scope containing top-level declarations.
-    Program,
-    /// One syntactic rule or one desugared semantic rule.
-    Rule,
-    /// Nested scope created for a `for`-loop body.
-    ForLoop,
-}
-
-/// Provenance for one recorded scope.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScopeOrigin {
-    /// The root program scope.
-    Program,
-    /// Scope for an AST-backed rule.
-    AstRule { index: usize },
-    /// Scope for a parse-time semantic rule.
-    SemanticRule {
-        index: usize,
-        origin: SemanticRuleOrigin,
-    },
-    /// Scope for a nested `for`-loop body.
-    ForLoop { literal_index: usize },
-}
 
 /// Declaration category recorded in the symbol table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -36,7 +36,10 @@ fn contains_unescaped_interpolation(body: &str) -> bool {
 
 enum StringPrefix {
     Standard,
-    Raw { interpolated: bool },
+    Raw {
+        /// Whether the literal contains interpolation.
+        interpolated: bool,
+    },
 }
 
 /// A literal token decomposed into its prefix and remaining text.
@@ -86,9 +89,15 @@ fn parse_prefix(text: &str) -> PrefixedText<'_> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StringKind {
     /// Standard quoted string supporting escape sequences and interpolation.
-    Standard { interpolated: bool },
+    Standard {
+        /// Whether the literal contains interpolation.
+        interpolated: bool,
+    },
     /// Raw string delimited by `[|` and `|]`, with optional interpolation.
-    Raw { interpolated: bool },
+    Raw {
+        /// Whether the literal contains interpolation.
+        interpolated: bool,
+    },
 }
 
 /// Representation of string literals including interning and interpolation.

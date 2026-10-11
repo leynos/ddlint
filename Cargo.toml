@@ -26,6 +26,9 @@ insta = "1.47.2"
 ddlint = { path = ".", features = ["test-support"] }
 proptest = "1.6.0"
 
+[lints.rust]
+missing_docs = "deny"
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 
