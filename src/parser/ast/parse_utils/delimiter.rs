@@ -13,7 +13,9 @@ use crate::{DdlogLanguage, SyntaxKind};
 /// Error returned when an opening delimiter is never closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnclosedDelimiterError {
+    /// Text gathered after the opening delimiter before input ran out.
     pub collected: String,
+    /// Kind of the closing delimiter that was expected.
     pub expected: SyntaxKind,
 }
 

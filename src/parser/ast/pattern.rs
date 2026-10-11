@@ -23,16 +23,28 @@ pub enum Pattern {
     /// Wildcard pattern `_`.
     Wildcard,
     /// Variable binding pattern, optionally introduced by `var`.
-    Var { declared: bool, name: String },
+    Var {
+        /// Whether the binding is introduced with `var`.
+        declared: bool,
+        /// Name of the bound variable.
+        name: String,
+    },
     /// Tuple pattern `(p1, p2, …)`.
     Tuple(Vec<Pattern>),
     /// Struct pattern `Type { field: pat, … }`.
     Struct {
+        /// Name of the struct or constructor being matched.
         name: String,
+        /// Field names with the pattern matched against each.
         fields: Vec<(String, Pattern)>,
     },
     /// Typed pattern `pat: Type`.
-    Typed { pattern: Box<Pattern>, ty: String },
+    Typed {
+        /// Pattern being annotated.
+        pattern: Box<Pattern>,
+        /// Type annotation, as written.
+        ty: String,
+    },
     /// Literal pattern.
     Literal(PatternLiteral),
 }
