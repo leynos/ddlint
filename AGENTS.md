@@ -160,7 +160,11 @@ project:
     ```
 
     formatting Rust and Markdown sources.
-  - `make lint` executes:
+  - `make lint` first runs `make interrogate`, which needs `uv` and fails on any
+    Python definition under `tests` without a docstring (and on any `MISSED`
+    row, since interrogate rounds its percentage to one decimal;
+    `tests/workflow_contracts/interrogate_gate_test.py` asserts the wiring),
+    and then executes:
 
     ```sh
     $(CARGO) clippy $(CLIPPY_FLAGS)

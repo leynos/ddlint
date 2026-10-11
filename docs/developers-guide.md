@@ -127,9 +127,12 @@ Run these gates in order before committing:
 
 This is the required pre-commit sequence, matching `AGENTS.md`.
 
-`make lint` includes the spelling gate, and `make markdownlint` also invokes
-the spelling gate for tracked Markdown. `make markdownlint` lints every
-Markdown source, and `make nixie` validates the Mermaid diagrams within them.
+`make lint` first runs `make interrogate`, which needs `uv` and requires a
+docstring on every Python definition under `tests` (it fails on any `MISSED`
+row, because interrogate rounds its percentage to one decimal). It also
+includes the spelling gate, and `make markdownlint` also invokes the spelling
+gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
+`make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
