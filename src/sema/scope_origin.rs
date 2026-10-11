@@ -1,4 +1,13 @@
 //! Scope categories and provenance recorded by semantic analysis.
+//!
+//! [`ScopeKind`] says what sort of scope the semantic model recorded (the root
+//! program, one rule, or a nested `for`-loop body), and [`ScopeOrigin`] says
+//! where the scope came from: the program itself, an AST-backed rule, a
+//! parse-time semantic rule, or a `for` loop inside a rule body. The builder in
+//! `sema::builder` and the traversal in `sema::traverse` create them, and
+//! `sema::model` re-exports both so existing imports keep working. They live
+//! here, apart from the model's symbol tables, to keep `sema::model` under
+//! Whitaker's module-length limit.
 
 use crate::parser::ast::SemanticRuleOrigin;
 
