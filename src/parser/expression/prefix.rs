@@ -10,6 +10,10 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
+    /// Parse the next token as a prefix expression, literal, or prefix operator.
+    ///
+    /// Unsupported reserved tokens emit their shared policy diagnostic and
+    /// return no expression; ordinary unexpected tokens retain parser errors.
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {

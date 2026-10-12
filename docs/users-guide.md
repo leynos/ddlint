@@ -51,6 +51,10 @@ let diagnostics = runner.run();
 assert!(diagnostics.is_empty());
 ```
 
+When parsing produces errors, `Runner::run` returns no lint diagnostics and
+does not run rules against the recovered parse tree. Inspect and report the
+parser errors separately.
+
 ## Rule authorship (high level)
 
 - Implement `Rule` for metadata (`name`, `group`, `docs`) and `CstRule` for CST
@@ -94,6 +98,12 @@ fn parse_sources(sources: &[&str]) {
 ```
 
 ## Legacy DDlog tokens
+
+### Unreleased migration
+
+Sources using the rejected legacy syntax below now produce parser errors and no
+lint diagnostics from `Runner::run`. Migrate the syntax before relying on lint
+results.
 
 The parser keeps legacy token kinds in the lexer so diagnostics can point to
 the exact source span, but unsupported legacy syntax is rejected during parsing.

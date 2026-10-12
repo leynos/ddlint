@@ -4,7 +4,8 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
+Status: LOCAL FOLLOW-UP VALIDATED; scope approval and review reconciliation
+pending
 
 ## PR #354 CodeScene repair
 
@@ -38,8 +39,8 @@ Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
   workflow contracts. The
   [CodeRabbit assessment reply](https://github.com/leynos/ddlint/pull/354#issuecomment-6131906604)
   clears all six implementation dispositions; local receipts were supplied and
-  its hosted logs verified. The assessment is not formal PR approval. Formal
-  review and merge remain pending.
+  its hosted logs verified. The assessment is not formal PR approval. At this
+  implementation receipt checkpoint, formal review and merge remained pending.
 
 ## Purpose / big picture
 
@@ -270,6 +271,23 @@ scope tolerance below, stop and escalate.
 
 ## Progress
 
+- **Current follow-up (2026-10-12):** All seven suffix-5 Make gates passed,
+  including 1,213 tests and 16 workflow contracts. Receipts use
+  `/tmp/ddlint-pr354-boundary-*-5.out`; formatting was `fmt5`. CodeScene's
+  `typedefs.rs` review scored 10.0 with no introduced findings. No Rust changes
+  followed gate 5. Documentation-only gates are required for receipt
+  validation; their results belong in the delivery ledger. Current net Rust
+  delta is 761 lines, within the 800-line limit. Approval to raise the limit to
+  1,000 remains unanswered; the 132-line property-test draft is outside the
+  workspace and is not included. Scope approval remains a blocker. The E1
+  reviews (`5495972133`, `5495921966`) requested changes across four premerge
+  rows and reported the P1; they predate and do not cover the current helper
+  lift. Reply `6133168607` could not recover the reported 82 denominator;
+  independent enumeration found 79, so that numeric warning remains unverified.
+  Documentation records 12 purposeful source docs, preserved `Runner`
+  semantics, and the `Unreleased` migration correction without inventing a
+  `0.2` version. Review reconciliation remains pending.
+
 ### Rebase receipt (2026-10-12)
 
 - Rebased 14 original branch commits onto target
@@ -326,8 +344,9 @@ scope tolerance below, stop and escalate.
   implementation head `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
   `353bb48b4900bcaf9322246f3911c371c175140c`; see the replacement plan. Hosted
   build-test and CodeScene passed for this head, and the six implementation
-  dispositions are cleared. Formal review and merge remain pending; the
-  CodeRabbit assessment is not formal approval.
+  dispositions are cleared. At that implementation receipt checkpoint, formal
+  review and merge remained pending; the CodeRabbit assessment was not formal
+  approval.
 - (2026-10-12) Local behavioural acceptance passed: 44 focused unit tests
   and 15 integration tests. `make check-fmt`, `make lint`, `make test`,
   `make typecheck`, `make test-workflow-contracts` (6 passed),
@@ -620,9 +639,10 @@ The prior implementation was recorded as matching the closed policy matrix in
 spec section `9.1`; local behavioural acceptance for the diagnostic-path
 follow-up passed on 2026-10-12. At that pre-publication checkpoint, final
 documentation validation and remote review remained pending. Implementation and
-exact-head hosted acceptance are recorded in the current receipt above; formal
-review and merge remain pending. Current full-program diagnostic completion is
-performed by `complete_reserved_token_errors` in `src/parser/mod.rs`, after
+exact-head hosted acceptance are recorded in the receipt above. At that receipt
+checkpoint, formal review and merge remained pending; current review and repair
+status is recorded in the continuation plan. Full-program diagnostic completion
+is performed by `complete_reserved_token_errors` in `src/parser/mod.rs`, after
 top-level `for` diagnostics and validators. Full-expression completion is
 performed by the same helper from `src/parser/expression/pratt.rs`, after Pratt
 parsing and unexpected-token handling. The shared classification and
@@ -645,7 +665,8 @@ findings. That review and the remote checks recorded earlier do not cover the
 current follow-up head. Local acceptance and exact-head hosted results are
 recorded above. At that earlier pre-publication checkpoint, final formatting
 validation and a new hosted review remained pending; formal review and merge
-remain pending now. This plan does not claim full PR completion.
+were also pending at that earlier checkpoint. This plan does not claim full PR
+completion.
 
 The main implementation lesson was that `typedef` compatibility had leaked into
 tests whose purpose was not compatibility: attribute placement and

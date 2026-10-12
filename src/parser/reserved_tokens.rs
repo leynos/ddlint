@@ -25,6 +25,11 @@ pub(crate) const RESERVED_FLOAT_ERROR: &str = "`float` is a legacy type name; us
 pub(crate) const RESERVED_SIGNED_ERROR: &str =
     "`signed` is a legacy type name; use a signed sized integer such as `i32`";
 
+/// Return the policy message for token kinds rejected regardless of context.
+///
+/// The supported `as` keyword is intentionally absent because it remains
+/// valid for casts and import aliases. Bare `#` needs token context and is
+/// classified by `reserved_message_for_token` instead.
 pub(crate) fn rejection_for(kind: SyntaxKind) -> Option<&'static str> {
     match kind {
         SyntaxKind::K_TYPEDEF => Some(RESERVED_TYPEDEF_ERROR),
@@ -38,6 +43,7 @@ pub(crate) fn rejection_for(kind: SyntaxKind) -> Option<&'static str> {
     }
 }
 
+/// Build a parser diagnostic with the supplied token span and policy message.
 pub(crate) fn reserved_token_error(span: Span, message: &'static str) -> Simple<SyntaxKind> {
     Simple::custom(span, message)
 }
@@ -58,6 +64,10 @@ pub(crate) fn complete_reserved_token_errors(
     errors.extend(collect_reserved_token_errors(tokens, errors));
 }
 
+/// Collect missing reserved-token diagnostics from the supplied token stream.
+///
+/// Existing parser errors are used to avoid emitting the same span and policy
+/// message twice.
 pub(crate) fn collect_reserved_token_errors(
     tokens: &[(SyntaxKind, Span)],
     parse_errors: &[Simple<SyntaxKind>],
@@ -74,6 +84,7 @@ pub(crate) fn collect_reserved_token_errors(
         .collect()
 }
 
+/// Index reserved diagnostics already present in parser output by span/message.
 fn emitted_reserved_errors(errors: &[Simple<SyntaxKind>]) -> HashSet<(Span, &'static str)> {
     errors
         .iter()
@@ -86,6 +97,7 @@ fn emitted_reserved_errors(errors: &[Simple<SyntaxKind>]) -> HashSet<(Span, &'st
         .collect()
 }
 
+/// Match a custom diagnostic message to its canonical reserved-token constant.
 fn reserved_message(message: &str) -> Option<&'static str> {
     [
         RESERVED_TYPEDEF_ERROR,
@@ -101,6 +113,10 @@ fn reserved_message(message: &str) -> Option<&'static str> {
     .find(|candidate| *candidate == message)
 }
 
+/// Resolve a token's policy message, using neighboring tokens for bare `#`.
+///
+/// The input must retain trivia: only adjacent `#[` is attribute syntax, while
+/// whitespace or comments between `#` and `[` leave a bare-hash diagnostic.
 fn reserved_message_for_token(
     tokens: &[(SyntaxKind, Span)],
     idx: usize,
@@ -113,6 +129,10 @@ fn reserved_message_for_token(
     rejection_for(kind)
 }
 
+/// Check whether `#` is not immediately followed by `[` in a trivia stream.
+///
+/// Retained whitespace and comments therefore distinguish bare `#` from
+/// adjacent `#[` attribute syntax.
 fn is_bare_hash(tokens: &[(SyntaxKind, Span)], idx: usize) -> bool {
     !matches!(tokens.get(idx + 1), Some((SyntaxKind::T_LBRACKET, _)))
 }

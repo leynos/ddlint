@@ -1,8 +1,28 @@
 # 2.6.7 legacy-token diagnostic follow-up
 
-Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
+Status: LOCAL FOLLOW-UP VALIDATED; scope approval and review reconciliation
+pending
 
 ## PR #354 CodeScene repair
+
+### Current follow-up (2026-10-12)
+
+- All seven suffix-5 Make gates passed, including 1,213 tests and 16 workflow
+  contracts. Receipts use `/tmp/ddlint-pr354-boundary-*-5.out`; formatting was
+  `fmt5`. CodeScene's `typedefs.rs` review scored 10.0 with no introduced
+  findings. No Rust changes followed gate 5. Documentation-only gates are
+  required for receipt validation; their results belong in the delivery ledger.
+- Current net Rust delta is 761 lines, within the 800-line limit. Approval to
+  raise the limit to 1,000 remains unanswered; the 132-line property-test draft
+  is outside the workspace and is not included. Scope approval remains a
+  blocker.
+- The E1 reviews (`5495972133`, `5495921966`) requested changes across four
+  premerge rows and reported the P1; they predate and do not cover the current
+  helper lift. Reply `6133168607` could not recover the reported 82
+  denominator; independent enumeration found 79, so that numeric warning
+  remains unverified. Documentation records 12 purposeful source docs, preserved
+  `Runner` semantics, and the `Unreleased` migration correction without
+  inventing a `0.2` version. Review reconciliation remains pending.
 
 - Implementation head: `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
   `353bb48b4900bcaf9322246f3911c371c175140c`. The diff is 48 files and net +662
@@ -34,8 +54,8 @@ Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
   workflow contracts. The
   [CodeRabbit assessment reply](https://github.com/leynos/ddlint/pull/354#issuecomment-6131906604)
   clears all six implementation dispositions; local receipts were supplied and
-  its hosted logs verified. The assessment is not formal PR approval. Formal
-  review and merge remain pending.
+  its hosted logs verified. The assessment is not formal PR approval. At this
+  receipt checkpoint, formal review and merge remained pending.
 
 ## Rebase receipt (2026-10-12)
 
@@ -109,8 +129,8 @@ checkpoint, branch scope counting this continuation plan was 54 files and net
   history; replay-head documentation gates passed as recorded above.
 - Pre-rebase CodeScene's test-file score and finding remain historical; the
   current correct-path test assessment is recorded in the receipt above.
-- Formal PR review and merge remain pending; the CodeRabbit assessment above is
-  implementation evidence, not formal approval.
+- At this receipt checkpoint, formal PR review and merge remained pending; the
+  CodeRabbit assessment above is implementation evidence, not formal approval.
 - Logs:
   `/tmp/*-d0264bd8-554b-49e7-ab08-b42ea6541172-2-6-7-finalize-legacy-token-compatibility-policy-replacement*`.
 
@@ -124,8 +144,9 @@ sentinels.
 The authorized follow-up is limited to the diagnostic-path placement,
 deduplication, and acceptance work above. Do not infer approval for broader
 parser changes or a larger code-line budget. Implementation and exact-head
-hosted acceptance are recorded above; formal review and merge remain pending.
-Do not claim full PR completion.
+hosted acceptance are recorded above. At that receipt checkpoint, formal review
+and merge remained pending; current review and repair status is recorded in the
+current follow-up. Do not claim full PR completion.
 
 ## Remote baseline
 

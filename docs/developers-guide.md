@@ -70,6 +70,16 @@ parsing pipeline.
 - Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
   and recovery in `relations.rs`.
 
+### `src/parser/span_scanners/typedefs.rs`
+
+- Collects spans for supported `type` and `extern type` declarations. A
+  top-level semicolon or newline ends the span; newlines inside balanced
+  delimiter groups do not.
+- Composes the existing `balanced_block` parser locally with the declaration
+  terminator. Keep this grammar-specific boundary logic in the type scanner; it
+  does not justify a new shared abstraction. Legacy `typedef` diagnostics
+  remain owned by `src/parser/reserved_tokens.rs`.
+
 ### `src/parser/expression/pratt/postfix.rs`
 
 - Owns postfix dispatch for the Pratt parser.

@@ -8,6 +8,33 @@ use crate::parser::ast::{AstNode, TypeDef};
 use crate::test_util::assert_no_parse_errors;
 use rstest::rstest;
 
+/// Declaration boundaries preserve complete records and independent type nodes.
+#[rstest]
+#[case("type A = A{\n value: u32,\n nested: (u32, string)\n}; type B = u64;")]
+#[case("type A = u32; type B = u64;")]
+#[case("extern type A; type B = u64;")]
+#[case("type A = u32\ntype B = u64\n")]
+fn complete_type_declaration_boundaries(#[case] source: &str) {
+    let parsed = parse(source);
+    assert_no_parse_errors(parsed.errors());
+    let defs = parsed.root().type_defs();
+    assert_eq!(
+        defs.iter().filter_map(TypeDef::name).collect::<Vec<_>>(),
+        ["A", "B"]
+    );
+    let Some(first) = defs.first() else {
+        panic!("first declaration missing")
+    };
+    let Some((first_source, _)) = source.split_once("type B") else {
+        panic!("second declaration missing")
+    };
+    assert_eq!(
+        pretty_print(first.syntax()).trim_end(),
+        first_source.trim_end()
+    );
+    assert_eq!(pretty_print(parsed.root().syntax()), source);
+}
+
 #[rstest]
 fn standard_type_definition() {
     let src = "type Uuid = string\n";

@@ -1,29 +1,80 @@
-//! Scanner for `typedef` and extern type declarations.
+//! Span collection for supported type declarations.
 //!
-//! The functions here locate spans for type aliases and extern type
-//! declarations, skipping malformed lines to keep downstream parsing aligned.
+//! The scanner collects `type` and `extern type` spans for downstream parsing,
+//! ending each span at a top-level semicolon or newline while preserving
+//! newlines inside balanced groups. It skips legacy `typedef` and `extern`
+//! forms without `type`; `reserved_tokens` owns the compatibility diagnostic
+//! for the legacy keyword.
 
-use chumsky::error::Simple;
+use chumsky::prelude::*;
 
-use crate::parser::span_collector::SpanCollector;
+use crate::parser::lexer_helpers::balanced_block;
 use crate::{Span, SyntaxKind};
 
+use super::utils::State;
+
+/// Keep balanced groups inside a type span, stopping at a top-level terminator.
+/// Fall back to skipping the current line if span parsing fails.
+fn push_type_span(st: &mut State<'_>, start: usize) {
+    let src = st.stream.src();
+    let terminator = filter(move |kind: &SyntaxKind| *kind == SyntaxKind::T_SEMI).or(filter_map(
+        move |span: Span, kind| {
+            if src
+                .get(span.clone())
+                .is_some_and(|text| text.contains('\n'))
+            {
+                Ok(kind)
+            } else {
+                Err(Simple::expected_input_found(span, Vec::new(), Some(kind)))
+            }
+        },
+    ));
+    let content = choice((
+        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
+        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        terminator.not().ignored(),
+    ));
+    let parser = content
+        .repeated()
+        .then_ignore(terminator.or_not())
+        .map_with_span(|_, span: Span| start..span.end);
+    let input = chumsky::Stream::from_iter(
+        start..src.len(),
+        st.stream.tokens().iter().skip(st.stream.cursor()).cloned(),
+    );
+    let (span, _) = parser.parse_recovery(input);
+    if let Some(span) = span {
+        st.stream.skip_until(span.end);
+        st.spans.push(span);
+    } else {
+        st.skip_line();
+    }
+}
+
+/// Collect complete `type` and `extern type` declarations.
+///
+/// Spans end at a top-level semicolon or newline; newlines inside balanced
+/// groups remain part of the declaration. The scanner skips legacy `typedef`
+/// declarations and `extern` forms without `type`. The reserved-token parser
+/// policy, not this span scanner, reports legacy syntax.
 pub(crate) fn collect_typedef_spans(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
-    type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
-
+    /// Start a span at a supported `type` declaration.
     fn handle_type(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
-        st.push_line_span(start);
+        push_type_span(st, start);
     }
 
+    /// Skip legacy `typedef`; its compatibility error is emitted centrally.
     fn handle_typedef(st: &mut State<'_>, _span: Span) {
         st.skip_line();
     }
 
+    /// Collect an `extern type` span, or skip an `extern` form without `type`.
     fn handle_extern(st: &mut State<'_>, span: Span) {
         let start = span.start;
         st.stream.advance();
@@ -34,7 +85,7 @@ pub(crate) fn collect_typedef_spans(
             .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TYPE)
         {
             st.stream.advance();
-            st.push_line_span(start);
+            push_type_span(st, start);
         } else {
             st.skip_line();
         }

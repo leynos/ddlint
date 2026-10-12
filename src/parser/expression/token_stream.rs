@@ -95,6 +95,10 @@ where
         self.errors.push(Simple::custom(span, msg.into()));
     }
 
+    /// Append a reserved-token diagnostic already classified by the parser.
+    ///
+    /// Classification stays in `reserved_tokens`; this method only records the
+    /// supplied span and policy message in the expression parser's errors.
     pub(super) fn push_reserved_error(&mut self, span: Span, msg: &'static str) {
         self.errors.push(reserved_token_error(span, msg));
     }
