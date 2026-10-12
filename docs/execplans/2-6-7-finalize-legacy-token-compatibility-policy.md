@@ -4,7 +4,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: COMPLETE — implementation, validation, and CodeRabbit review are done
+Status: LOCAL ACCEPTANCE PASSED — remote review pending
 
 ## Purpose / big picture
 
@@ -33,7 +33,7 @@ remaining legitimate role. Success is observable when:
 - the existing roles of `as` (in `import` aliases) and `#` (as the attribute
   sigil) are explicitly preserved in code, spec, and tests;
 - `make check-fmt`, `make lint`, `make markdownlint`, `make nixie`, and
-  `CI=1 make test` pass after the implementation change; and
+  `make test` pass after the implementation change; and
 - `docs/roadmap.md` item `2.6.7` is marked done only after those checks
   succeed.
 
@@ -52,8 +52,11 @@ The closed policy matrix becomes:
 - `typedef` (`K_TYPEDEF`) — **reject at parse**. Emit
   `` `typedef` is a legacy DDlog keyword; use `type` instead ``. The
   `src/parser/span_scanners/typedefs.rs` scanner skips the rejected line rather
-  than producing a `TypeDef` AST node; `collect_reserved_token_errors` in
-  `src/parser/span_scanner.rs` records the deterministic legacy-keyword error.
+  than producing a `TypeDef` AST node. Final reserved-token diagnostic
+  completion runs in `src/parser/mod.rs` after top-level `for` diagnostics and
+  validators; expression parsing completes the policy in
+  `src/parser/expression/pratt.rs` after Pratt parsing and unexpected-token
+  handling.
 - `as` (`K_AS`) — **keep as the import alias keyword and the implemented
   expression cast operator**. Spec section `9.1`'s "reject as a keyword"
   wording is corrected because upstream DDlog used `as` in both roles and the
@@ -156,11 +159,14 @@ scope tolerance below, stop and escalate.
 ## Tolerances (exception triggers)
 
 - Scope: the original 14-file tolerance was exceeded during the
-  pre-implementation audit and the human operator approved proceeding on
-  2026-06-26. Continue only for files directly required by this plan. Stop and
-  escalate if the implementation exceeds 28 edited files, 800 net new code
-  lines, or pulls in relation-form, brace-group, or unrelated terminator policy
-  work.
+  pre-implementation audit. The subsequent implementation baseline is 54 files,
+  including semantic fixture and example migrations. The user has authorized
+  reconciling the plan to that 54-file baseline and the narrow diagnostic-path
+  fixes described in the continuation plan. This does not authorize adjacent
+  parser work or establish a new line budget; the existing 800
+  net-new-code-line limit remains. Stop and escalate before expanding beyond
+  that baseline and narrow follow-up, or pulling in relation-form, brace-group,
+  or unrelated terminator policy work.
 - Interface: if the only coherent fix requires removing
   `Import::alias()`, reshaping the attribute scanner, or changing the public
   `Parsed` surface, stop and escalate.
@@ -229,6 +235,37 @@ scope tolerance below, stop and escalate.
 
 ## Progress
 
+- [x] (2026-10-12) Record the remote baseline; refresh after new results:
+  GitHub `build-test` was **SUCCESS** at `00d695e`
+  ([job 95013385605](https://github.com/leynos/ddlint/actions/runs/31885199898/job/95013385605));
+  CodeScene health was **FAILURE**
+  ([result 7771601](https://codescene.io/projects/69278/delta/results/7771601)).
+  Local review is recorded below; new remote results are pending.
+
+- [ ] (2026-10-12) Continue diagnostic-path and acceptance follow-up on branch
+  `2-6-7-finalize-legacy-token-compatibility-policy-replacement`; see
+  `docs/execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md`.
+  The plan's implementation baseline is reconciled to 54 files, including
+  semantic fixture and example migrations. Current narrow diagnostic fixes move
+  final reserved-token deduplication after top-level `for` processing and
+  complete the policy at the full-expression boundary. Local behavioural
+  acceptance is satisfied; final formatting passed. Final documentation
+  validation is required before publication; remote review remains pending.
+- (2026-10-12) Local behavioural acceptance passed: 44 focused unit tests
+  and 15 integration tests. `make check-fmt`, `make lint`, `make test`,
+  `make typecheck`, `make test-workflow-contracts` (6 passed),
+  `make markdownlint`, explicit continuation-plan lint, and `make nixie` passed
+  at the prior checkpoint. The initial `make fmt` failed with an
+  infrastructural EAGAIN thread/fork error; retry passed with exit code 0 at
+  `/tmp/ddlint-diagnostics-final-fmt-2929239.out`. `make check-fmt`,
+  `make nixie`, and explicit continuation-plan lint also passed. The latest
+  `markdownlint` found four spelling errors, now corrected. Final documentation
+  validation is required before publication; remote review remains pending.
+  Logs:
+  `/tmp/*-d0264bd8-554b-49e7-ab08-b42ea6541172-2-6-7-finalize-legacy-token-compatibility-policy-replacement*`.
+  At the pre-format checkpoint, branch scope counting the continuation plan
+  was 54 files and net +564 Rust lines from the merge base.
+
 - [x] (2026-05-29) Reviewed roadmap item `2.6.7`, parser conformance register
   item `14`, the syntax spec section `9.1`, parser-implementation-notes, the
   tokenizer, every parser site that mentions one of the five token kinds, and
@@ -248,10 +285,10 @@ scope tolerance below, stop and escalate.
 - [x] (2026-06-26) Add red tests in `src/parser/tests/reserved_tokens.rs` for
   each reject path and regression tests for the preserved `as` and `#[...]`
   uses.
-- [x] (2026-06-26) Implement the reserved-token diagnostic module and route
-  full-program diagnostics through `collect_reserved_token_errors` in the
-  top-level span scanner, with expression parsing using the same predicate and
-  constructor.
+- [x] (2026-06-26, initial implementation; superseded by the follow-up below)
+  Implement the reserved-token diagnostic module and route full-program
+  diagnostics through `collect_reserved_token_errors` in the top-level span
+  scanner, with expression parsing using the same predicate and constructor.
 - [x] (2026-06-26) Update active documentation: spec sections `2.3`, `5.2`, and
   `9.1`; the conformance register; parser-implementation-notes; ddlint-design;
   users' guide; developers' guide.
@@ -266,8 +303,9 @@ scope tolerance below, stop and escalate.
   re-read the plan and active documentation index before editing code.
 - [x] (2026-06-16) Re-ran the workspace token audit before stage A and found
   that completing the plan as written will require more than the current
-  28-file scope tolerance because documentation updates, parser/test changes,
-  and owned example migrations together exceed that threshold.
+  then-current 28-file scope tolerance because documentation updates,
+  parser/test changes, and owned example migrations together exceeded that
+  threshold. The later 54-file baseline reconciliation is recorded below.
 - [x] (2026-06-26) Resumed implementation after explicit human direction to
   proceed past the prior blocked state, loaded `leta`, `execplans`,
   `rust-router`, `rust-errors`, `rust-unit-testing`, `nextest`, and
@@ -300,6 +338,32 @@ scope tolerance below, stop and escalate.
 
 ## Surprises & Discoveries
 
+- (2026-10-12) Follow-up found that reserved-token completion must run only
+  after all diagnostics for the relevant boundary have been produced. For a
+  full program, that means after top-level `for` diagnostics and the top-level
+  name-uniqueness validator; for a full expression, it means after Pratt
+  parsing and unexpected-token handling. The current working diff moves the
+  calls to those boundaries and deduplicates reserved diagnostics by span and
+  message while preserving other errors.
+- (2026-10-12) Local behavioural acceptance is satisfied: 44 focused unit tests
+  and 15 integration tests passed. `make check-fmt`, `make lint`, `make test`,
+  `make typecheck`, `make test-workflow-contracts` (6 passed), explicit
+  continuation-plan lint, and `make nixie` passed. The initial `make fmt`
+  failed with an infrastructural EAGAIN thread/fork error; retry passed with
+  exit code 0 at `/tmp/ddlint-diagnostics-final-fmt-2929239.out`. The latest
+  `markdownlint` found four spelling errors, now corrected. Final documentation
+  validation is required before publication. The local CodeScene score was
+  `9.68`, with no duplication indication; the sole remaining String Heavy
+  Function Arguments indication comes from parameterized string-based parser
+  fixtures and is locally dispositioned. These results do not establish full PR
+  completion or remote review.
+- (2026-10-12) Remote baseline at `00d695e`: GitHub `build-test` reported
+  **SUCCESS**
+  ([job 95013385605](https://github.com/leynos/ddlint/actions/runs/31885199898/job/95013385605));
+  CodeScene health reported **FAILURE**
+  ([result 7771601](https://codescene.io/projects/69278/delta/results/7771601)).
+  These are baseline results, not results for the current follow-up. The local
+  review is recorded below; refreshed remote results remain pending.
 - The current parser already *accepts* `typedef` and exposes the result via
   `root.type_defs()` in `src/parser/tests/parser.rs` (lines 272–282). Closing
   this conformance item therefore requires changing existing positive test
@@ -328,9 +392,10 @@ scope tolerance below, stop and escalate.
   upstream-aligned grammar) from type-position uses that will need migration.
   `<=>` does not appear in any `.rs` source programme outwith the tokenizer
   itself, and a manual scan of `examples/*.dl` is still required for
-  completeness. These counts confirm the approved scope tolerance (≤28 files,
-  ≤800 net LOC) is realistic provided the `.dl` examples are updated alongside
-  the parser change.
+  completeness. At the time, these counts supported the then-proposed scope
+  tolerance (≤28 files, ≤800 net LOC), provided the `.dl` examples were updated
+  alongside the parser change. The subsequently observed 54-file baseline and
+  current scope reconciliation supersede that estimate.
 - On 2026-06-16, `docs/repository-layout.md`, referenced by the general
   repository-orientation guidance, was absent. Orientation used
   `docs/contents.md` and `leta files` instead.
@@ -448,6 +513,13 @@ scope tolerance below, stop and escalate.
   code lines while keeping the grammar scope unchanged. Rationale: the
   additional files are direct consequences of the approved acceptance criteria
   (tests, owned examples, and active documentation), not adjacent parser work.
+- Decision: on 2026-10-12, reconcile the implementation file baseline to 54,
+  including semantic fixture and example migrations, and authorize the narrow
+  diagnostic-path fixes recorded in the continuation plan. This scope
+  reconciliation does not approve a new line budget; the existing 800
+  net-new-code-line limit remains. Rationale: the observed implementation
+  baseline and remaining acceptance follow-up exceed the earlier file-count
+  tolerance without changing the token-policy scope.
 - Decision: exclude the one-time `make fmt` Markdown baseline from the
   parser-policy file-count tolerance while keeping all semantic parser,
   example, and documentation edits inside the raised scope. Rationale: the
@@ -464,24 +536,33 @@ scope tolerance below, stop and escalate.
 
 ## Outcomes & Retrospective
 
-Implementation now matches the closed policy matrix in spec section `9.1`.
-`typedef`, legacy type names, bare `#`, and `<=>` produce deterministic parser
-diagnostics through `collect_reserved_token_errors` in
-`src/parser/span_scanner.rs`, using `src/parser/reserved_tokens.rs`; `type`,
-`import X as Y`, and `#[...]` remain accepted. The owned examples and
-parser/linter fixtures were migrated away from legacy `typedef` and `bit<N>`
-syntax.
+The prior implementation was recorded as matching the closed policy matrix in
+spec section `9.1`; local behavioural acceptance for the diagnostic-path
+follow-up passed on 2026-10-12. Final formatting passed. Final documentation
+validation is required before publication; remote review remains pending.
+Current full-program diagnostic completion is performed by
+`complete_reserved_token_errors` in `src/parser/mod.rs`, after top-level `for`
+diagnostics and validators. Full-expression completion is performed by the same
+helper from `src/parser/expression/pratt.rs`, after Pratt parsing and
+unexpected-token handling. The shared classification and deduplication logic
+lives in `src/parser/reserved_tokens.rs`. `type`, `import X as Y`, and `#[...]`
+remain accepted. The owned examples and parser/linter fixtures were migrated
+away from legacy `typedef` and `bit<N>` syntax.
 
-The final deterministic gates passed on 2026-06-26:
+The prior implementation's deterministic gates passed on 2026-06-26:
 
 - `make fmt`
 - `make markdownlint`
 - `make nixie`
 - `make check-fmt`
 - `make lint`
-- `CI=1 make test`
+- `make test`
 
-CodeRabbit reviewed the pushed implementation commit and reported zero findings.
+CodeRabbit reviewed the prior pushed implementation commit and reported zero
+findings. That review and the remote checks recorded earlier do not cover the
+current follow-up head. Local acceptance and check results are recorded in
+`Progress` and `Surprises & Discoveries`. Final formatting validation and a new
+hosted review remain pending; this plan does not claim full PR completion.
 
 The main implementation lesson was that `typedef` compatibility had leaked into
 tests whose purpose was not compatibility: attribute placement and
@@ -499,18 +580,18 @@ locate each one without prior context.
   `phf` map (lines around `120`–`195`) and the `Token` enum (lines around
   `60`–`112`) are the source of truth for the token names used elsewhere.
 - `src/parser/span_scanners/typedefs.rs` — handles the rejected `typedef` line
-  by skipping it, without recording a `TypeDef` span. The deterministic
-  diagnostic is added by `collect_reserved_token_errors` in
-  `src/parser/span_scanner.rs`.
+  by skipping it, without recording a `TypeDef` span. Final reserved-token
+  diagnostics are completed by `complete_reserved_token_errors` in
+  `src/parser/mod.rs`, after all top-level diagnostic producers have run.
 - `src/parser/span_scanners/imports.rs` and `src/parser/ast/import.rs` —
   consume `K_AS` to record the optional alias on `Import` AST nodes. Both files
   must stay green; `as` is *not* being rejected.
 - `src/parser/span_scanners/attributes.rs` — consumes `T_HASH` `T_LBRACKET`.
-  The happy path stays unchanged; the new bare-`#` rejection lives in the
-  top-level span scanner so it sees uses outwith attribute context.
-- `src/parser/expression/` — the Pratt parser and infix table. A stray
-  `T_SPACESHIP` reaches this layer when expression parsing is active and is the
-  natural site to detect and recover.
+  The happy path stays unchanged; bare-`#` rejection is completed at the
+  `parse()` and `parse_expression()` boundaries after their diagnostic
+  producers have run.
+- `src/parser/expression/pratt.rs` — runs final reserved-token completion for
+  full expressions after Pratt parsing and unexpected-token handling.
 - `src/parser/error_messages.rs` — current per-feature diagnostic
   catalogue (two transformer-specific constants today). This module is left in
   place and not extended; reserved-token messages live in a sibling module so
@@ -616,22 +697,18 @@ Adjust the parser so the chosen contract is enforced explicitly and recoverably.
   constructor. The module doc string explains the "reservation without
   semantics" pattern and links to spec section `9.1`.
 - Keep `handle_typedef` in `src/parser/span_scanners/typedefs.rs` on the
-  line-skipping recovery path rather than producing a `TypeDef` span. The
-  top-level `collect_reserved_token_errors` call in
-  `src/parser/span_scanner.rs` classifies `K_TYPEDEF` through
-  `reserved_tokens::rejection_for` and builds the diagnostic through the shared
-  constructor.
-- Extend the top-level span scanner (`src/parser/span_scanner.rs` or the
-  appropriate dispatcher in `src/parser/span_scanners/`) so every token drawn
-  from the stream is first classified via `reserved_tokens::rejection_for`. If
-  it returns `Some(message)`, the scanner records the diagnostic and skips the
-  offending line. Bare `T_HASH` (a `T_HASH` not immediately followed by
-  `T_LBRACKET`) is classified explicitly because the attribute-prefix case must
-  still reach the attribute scanner unchanged.
-- Extend the Pratt expression layer in `src/parser/expression/infix.rs`
-  (or `pratt.rs`) so `T_SPACESHIP` and any legacy type-name keyword encountered
-  inside an expression context routes through the same predicate and recovers
-  to the next infix boundary.
+  line-skipping recovery path rather than producing a `TypeDef` span. The final
+  `complete_reserved_token_errors` call in `src/parser/mod.rs` applies
+  reserved-token classification after top-level diagnostics and validators; the
+  expression boundary applies it in `src/parser/expression/pratt.rs`.
+- Complete reserved-token diagnostics at the final parser boundaries:
+  `src/parser/mod.rs` calls `complete_reserved_token_errors` after all
+  top-level producers, including top-level `for` diagnostics and validators;
+  `src/parser/expression/pratt.rs` calls it after Pratt parsing and
+  unexpected-token handling. Keep intermediate scanners and expression helpers
+  focused on producing their local diagnostics rather than running completion.
+  The shared completion logic classifies bare `T_HASH` contextually while
+  preserving the `T_HASH` `T_LBRACKET` attribute prefix.
 - Extend the type-position scanners (the bodies of `TypeDef`, parameter
   lists, and field declarations) so the five legacy type names route through
   the same predicate, producing the matching diagnostic with the modern-type
@@ -707,7 +784,7 @@ After implementation and documentation updates:
 1. Run `make fmt`.
 2. Run `make check-fmt`.
 3. Run `make lint`.
-4. Run `CI=1 make test`.
+4. Run `make test`.
 5. Run `make markdownlint`.
 6. Run `make nixie`.
 7. Only after those gates pass, update `docs/roadmap.md` to mark item
@@ -736,18 +813,17 @@ After implementation and documentation updates:
    `rejection_for` predicate, and the `reserved_token_error` constructor that
    yields a `Simple<SyntaxKind>::custom` carrying the matching message.
 5. Keep `handle_typedef` in `src/parser/span_scanners/typedefs.rs` on its
-   line-skipping recovery path and ensure that `collect_reserved_token_errors`
-   in `src/parser/span_scanner.rs` routes `K_TYPEDEF` through
-   `reserved_tokens::rejection_for` plus `reserved_token_error`. Remove or
-   redirect any helper that previously assumed `typedef` would produce a
-   `TypeDef` span.
-6. Extend the top-level span scanner so every drawn token is classified
-   via `reserved_tokens::rejection_for` and rejected through the shared
-   constructor. Add the bare-`T_HASH` lookahead so attribute uses still reach
-   the attribute scanner unchanged.
-7. Extend the Pratt expression layer in `src/parser/expression/` so
-   `T_SPACESHIP` and any legacy type-name keyword inside an expression context
-   routes through the same predicate and recovers to the next infix boundary.
+   line-skipping recovery path. Ensure final completion in `src/parser/mod.rs`
+   routes `K_TYPEDEF` through the reserved-token policy after all top-level
+   diagnostic producers have run. Remove or redirect any helper that previously
+   assumed `typedef` would produce a `TypeDef` span.
+6. Run `complete_reserved_token_errors` at the final `parse()` and
+   `parse_expression()` boundaries, after each boundary's diagnostic producers
+   have run. Preserve bare-`T_HASH` contextual handling so attribute uses still
+   reach the attribute scanner unchanged.
+7. Keep local reserved-token detection in the scanners and Pratt parser routed
+   through the shared predicate and constructor; do not run final completion
+   from intermediate helpers.
 8. Extend the type-position scanners so the five legacy type names route
    through the same predicate, producing the modern-type fix hint. No site
    constructs its own `Simple<SyntaxKind>::custom` for a rejected reserved
@@ -772,7 +848,7 @@ Run the following from the repository root, capturing output with `tee`:
 set -o pipefail; make fmt 2>&1 | tee /tmp/2-6-7-make-fmt.log
 set -o pipefail; make check-fmt 2>&1 | tee /tmp/2-6-7-make-check-fmt.log
 set -o pipefail; make lint 2>&1 | tee /tmp/2-6-7-make-lint.log
-set -o pipefail; CI=1 make test 2>&1 | tee /tmp/2-6-7-make-test.log
+set -o pipefail; make test 2>&1 | tee /tmp/2-6-7-make-test.log
 set -o pipefail; make markdownlint 2>&1 | tee /tmp/2-6-7-make-markdownlint.log
 set -o pipefail; make nixie 2>&1 | tee /tmp/2-6-7-make-nixie.log
 ```
@@ -815,9 +891,9 @@ pub(crate) const RESERVED_SIGNED_ERROR: &str =
 /// Returns the matching diagnostic message when `kind` is a reserved
 /// token that must be rejected by the parser, or `None` otherwise. The
 /// bare-`#` case is selected by contextual lookahead: `T_LBRACKET` is the
-/// attribute prefix, and `collect_reserved_token_errors`, invoked by the
-/// top-level span scanner, calls `reserved_token_error` with
-/// `RESERVED_BARE_HASH_ERROR` when the lookahead fails.
+/// attribute prefix. Final reserved-token completion calls
+/// `reserved_token_error` with `RESERVED_BARE_HASH_ERROR` when the lookahead
+/// fails.
 pub(crate) fn rejection_for(
     kind: crate::SyntaxKind,
 ) -> Option<&'static str>;
@@ -879,7 +955,7 @@ Relevant skills the implementing agent should load:
 - `rust-router`, then `rust-errors` for the `Simple<SyntaxKind>::custom`
   shape and message hygiene, and `rust-types-and-apis` if the diagnostic helper
   grows beyond constants and one function.
-- `nextest` for the test runner conventions used by `CI=1 make test`.
+- `nextest` for the test runner conventions used by `make test`.
 - `commit-message` and `pr-creation` to land the change.
 
 ## Revision note
@@ -921,9 +997,10 @@ follow the plan to completion without relying on tacit knowledge.
 Effect on remaining work: the workspace audit step is now explicit at the top
 of stage A, the predicate constraint binds every enforcement site identically,
 and the test plan now commits to one extra regression test under the linter /
-sema suite. The approved scope budget (≤28 files, ≤800 net LOC) remains the
-limit because the new module is small and the new regression test is a single
-rstest case.
+sema suite. At the time of this retrospective, the approved scope budget (≤28
+files, ≤800 net LOC) was recorded as the limit. The 2026-10-12 scope
+reconciliation above supersedes its file-count cap for the 54-file baseline and
+narrow diagnostic follow-up; it does not increase the line limit.
 
 Subsequent revisions must append a short note describing what changed, why, and
 how it affects the remaining work, and must update the Status field above.

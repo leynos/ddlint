@@ -63,6 +63,14 @@ The expression parser is a bespoke Pratt parser over the token stream. It does
 not use `chumsky::pratt`; operator binding powers are defined centrally in
 `src/parser/ast/precedence.rs`.
 
+`reserved_tokens::complete_reserved_token_errors` owns final reserved-token
+diagnostic completion and deduplication only at the `parse()` and
+`parse_expression()` boundaries. In `parse()`, call it after top-level `for`
+diagnostics and parser validators have been collected. In `parse_expression()`,
+call it after Pratt parsing and unexpected-token handling. Intermediate
+scanners and expression-parser helpers may emit reserved-token diagnostics, but
+must not run this final completion step.
+
 ## ADR-001 split-crate migration mapping
 
 The current implementation still lives inside the `ddlint` crate, but ADR-001

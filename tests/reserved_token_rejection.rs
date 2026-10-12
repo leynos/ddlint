@@ -82,14 +82,33 @@ fn attribute_hash_is_preserved() {
     assert_eq!(attributed.root().type_defs().len(), 1);
 }
 
-#[test]
-fn runner_skips_rules_for_any_parse_error() {
-    let source = "input relation R(x: u32); $";
+#[rstest]
+#[case::generic("input relation R(x: u32); $", SyntaxKind::K_RELATION, None)]
+#[case::legacy(
+    "typedef Foo = u32;",
+    SyntaxKind::K_TYPEDEF,
+    Some(RESERVED_TYPEDEF_ERROR)
+)]
+fn runner_skips_rules_for_any_parse_error(
+    #[case] source: &str,
+    #[case] target: SyntaxKind,
+    #[case] message: Option<&str>,
+) {
     let parsed = parse(source);
 
     assert!(
         !parsed.errors().is_empty(),
         "generic syntax error should prevent lint rule execution"
+    );
+    if let Some(message) = message {
+        assert_custom_parse_error_contains(parsed.errors(), message);
+    }
+    assert!(
+        parsed
+            .root()
+            .syntax()
+            .descendants_with_tokens()
+            .any(|element| element.kind() == target)
     );
 
     let mut store = CstRuleStore::new();
@@ -119,7 +138,7 @@ impl Rule for ParseErrorSentinelRule {
 
 impl CstRule for ParseErrorSentinelRule {
     fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::K_RELATION]
+        &[SyntaxKind::K_RELATION, SyntaxKind::K_TYPEDEF]
     }
 
     fn check_token(

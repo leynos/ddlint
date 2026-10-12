@@ -59,6 +59,52 @@ fn legacy_type_names_are_rejected_in_type_position(
 }
 
 #[rstest]
+#[case("bigint", RESERVED_BIGINT_ERROR)]
+#[case("bit", RESERVED_BIT_ERROR)]
+#[case("double", RESERVED_DOUBLE_ERROR)]
+#[case("float", RESERVED_FLOAT_ERROR)]
+#[case("signed", RESERVED_SIGNED_ERROR)]
+fn legacy_types_in_declarations(
+    #[case] token: &str,
+    #[case] message: &str,
+    #[values(
+        "function bad(value: TOKEN): u32 = 0;",
+        "input relation Bad(value: TOKEN);"
+    )]
+    template: &str,
+) {
+    let source = template.replace("TOKEN", token);
+    let span = token_span(&source, token);
+    let parsed = parse_err(source);
+    assert_reserved_token_error(parsed.errors(), message, span);
+}
+
+#[rstest]
+#[case("typedef Old = u32;", RESERVED_TYPEDEF_ERROR)]
+#[case("type Bad = bigint;", RESERVED_BIGINT_ERROR)]
+#[case("# bad", RESERVED_BARE_HASH_ERROR)]
+#[case("Output(x) :- x <=> 1.", RESERVED_SPACESHIP_ERROR)]
+fn rejected_syntax_preserves_later_declarations(#[case] rejected: &str, #[case] message: &str) {
+    let source = format!("{rejected}\ntype Later = u32;\ninput relation Kept(value: u32);\n");
+    let parsed = parse_err(source);
+    assert!(!reserved_token_spans(parsed.errors(), message).is_empty());
+    assert!(
+        parsed
+            .root()
+            .type_defs()
+            .iter()
+            .any(|item| item.name().as_deref() == Some("Later"))
+    );
+    assert!(
+        parsed
+            .root()
+            .relations()
+            .iter()
+            .any(|item| item.name().as_deref() == Some("Kept"))
+    );
+}
+
+#[rstest]
 #[case::bigint("bigint", RESERVED_BIGINT_ERROR)]
 #[case::bit("bit", RESERVED_BIT_ERROR)]
 #[case::double("double", RESERVED_DOUBLE_ERROR)]
@@ -103,36 +149,45 @@ fn attribute_hash_is_preserved() {
     assert_eq!(attributed.root().type_defs().len(), 1);
 }
 
-#[test]
-fn emitted_reserved_errors_are_not_duplicated() {
-    let source = "Output(x) :- Source(x), bigint.\n";
+#[rstest]
+#[case("Output(x) :- Source(x), bigint.\n", "bigint", RESERVED_BIGINT_ERROR)]
+#[case("Output(x) :- x <=> y = z.\n", "<=>", RESERVED_SPACESHIP_ERROR)]
+#[case(
+    "for (x in Items(x)) Process(x <=> 1).",
+    "<=>",
+    RESERVED_SPACESHIP_ERROR
+)]
+fn reserved_errors_are_not_duplicated(
+    #[case] source: &str,
+    #[case] token: &str,
+    #[case] message: &str,
+) {
     let parsed = parse_err(source);
-
-    assert_eq!(
-        count_custom_parse_errors(parsed.errors(), RESERVED_BIGINT_ERROR),
-        1,
-    );
-    assert_reserved_token_error(
-        parsed.errors(),
-        RESERVED_BIGINT_ERROR,
-        token_span(source, "bigint"),
-    );
+    assert_reserved_token_error(parsed.errors(), message, token_span(source, token));
 }
 
-#[test]
-fn spaceship_in_assignment_pattern_is_rejected() {
-    let source = "Output(x) :- x <=> y = z.\n";
-    let parsed = parse_err(source);
-
-    assert_eq!(
-        count_custom_parse_errors(parsed.errors(), RESERVED_SPACESHIP_ERROR),
-        1,
-    );
-    assert_reserved_token_error(
-        parsed.errors(),
-        RESERVED_SPACESHIP_ERROR,
-        token_span(source, "<=>"),
-    );
+#[rstest]
+#[case("1 <=> 2 <=> 3", "<=>", RESERVED_SPACESHIP_ERROR)]
+#[case("1 <=> bigint + float", "<=>", RESERVED_SPACESHIP_ERROR)]
+#[case("1 <=> bigint + float", "bigint", RESERVED_BIGINT_ERROR)]
+#[case("1 <=> bigint + float", "float", RESERVED_FLOAT_ERROR)]
+#[case("# value", "#", RESERVED_BARE_HASH_ERROR)]
+#[case("1 <=> # value", "#", RESERVED_BARE_HASH_ERROR)]
+#[case("# [value]", "#", RESERVED_BARE_HASH_ERROR)]
+#[case("#/*comment*/[value]", "#", RESERVED_BARE_HASH_ERROR)]
+fn expression_failures_report_every_reserved_token(
+    #[case] source: &str,
+    #[case] token: &str,
+    #[case] message: &str,
+) {
+    let Err(errors) = parse_expression(source) else {
+        panic!("reserved expression must fail");
+    };
+    let expected = source
+        .match_indices(token)
+        .map(|(start, text)| start..start + text.len())
+        .collect::<Vec<_>>();
+    assert_eq!(reserved_token_spans(&errors, message), expected);
 }
 
 #[test]

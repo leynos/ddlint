@@ -88,6 +88,8 @@
   Plan for relation form coverage and modelling alignment.
 - [2.6.7 finalize legacy token compatibility policy](./execplans/2-6-7-finalize-legacy-token-compatibility-policy.md):
   Plan for closing the legacy-token compatibility policy.
+- [2.6.7 legacy token policy diagnostic follow-up](./execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md):
+  Continuation for diagnostic-path acceptance and validation follow-up.
 - [3.1.1 core rule and CST rule traits](./execplans/3-1-1-core-rule-and-cst-rule-traits.md):
   Plan for lint rule trait foundations.
 - [3.1.2 rule context struct](./execplans/3-1-2-rule-context-struct.md):
