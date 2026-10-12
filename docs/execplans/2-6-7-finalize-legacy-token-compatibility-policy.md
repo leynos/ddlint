@@ -4,7 +4,34 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: LOCAL REBASE ACCEPTANCE PASSED; hosted review and checks pending
+Status: LOCAL REPAIR ACCEPTANCE PASSED; hosted review and checks pending
+
+## PR #354 CodeScene repair
+
+- Base: `353bb48b4900bcaf9322246f3911c371c175140c`; candidate: `71ebe4c` plus
+  supervisor-owned typed-fixture edits. Current diff: 48 files and net +662
+  Rust lines, within the 800-line limit. The earlier 54-file count is
+  historical. Runtime and API code are unchanged.
+- At `71ebe4c`, hosted CI was green, but CodeScene check `7920932` failed:
+  String Heavy Function Arguments was 84.6% across 17 functions against a 39%
+  threshold. This was not cleared by retaining string fixtures; that earlier
+  disposition is superseded by the typed fixture remedy below.
+- Private `src/parser/tests/reserved_tokens/fixtures.rs` pairs each
+  `ExpectedReservedToken` with its exact lexeme and diagnostic constant,
+  independently of production `rejection_for`. `ReservedTokenScenario` owns
+  `SourceText` plus `ExpectedReservedToken`; `DeclarationPosition` is a
+  separate typed source builder. `SourceText` carries source input only. No
+  `TOKEN` placeholder, suppression, or threshold change is used; all 44 cases
+  remain.
+- Local gates passed sequentially: `make check-fmt`, `make lint`, `make test`
+  (1,209 passed), `make typecheck`, workflow contracts (16),
+  `make markdownlint`, and `make nixie`; `make fmt` passed on the parent.
+  Focused CodeScene reviews of both reserved-token Rust test files scored 10.0.
+  CodeScene reported no introduced findings for the working-tree delta from
+  `353bb48`; its staged-delta check was empty. Logs:
+  `/tmp/ddlint-pr354-repair-*`.
+- Hosted review and checks remain pending. These are local results, not hosted
+  success; publication and hosted verification are separate delivery gates.
 
 ## Purpose / big picture
 
@@ -259,22 +286,20 @@ scope tolerance below, stop and escalate.
   `missing_docs` denial, the Python interrogate gate, tracked and untracked
   `mdtablefix` checks, and `typos-config-builder` v0.1.3 in place of the
   deleted scripts.
-- **Replay-head local acceptance passed.** Integration coverage passed (15),
-  the targeted `expression_prefix` retry passed (33), and focused library tests
-  passed (44). `make fmt`, `make check-fmt`, `make lint`, `make typecheck`,
-  workflow contracts (16), `make markdownlint`, and `make nixie` passed. The
-  first `make test` run had 720 passes and 9 Rayon initialization failures
-  (`EAGAIN`); bounded with `RAYON_NUM_THREADS=2 RUST_TEST_THREADS=1`,
-  `make test` passed. A prior compiler-wrapper invocation exited 1 without a
-  supervisor refusal or established cause; its targeted retry passed. The
-  supervisor/daemon task cgroup limit near 8192 is consistent with possible
-  environmental pressure but does not establish the earlier cause. Current
-  CodeScene scored runtime `src/parser/reserved_tokens.rs` 10.0 and test-side
-  `reserved_tokens` 9.68, with no duplication and a sole String Heavy Function
-  Arguments finding. The string-fixture parameters are intentional; retain them
-  without suppression or refactoring. Logs:
-  `/tmp/ddlint-rebase-codescene-reserved-token-tests.out` and
-  `/tmp/ddlint-rebase-*.out`.
+- **Earlier replay-head local acceptance passed.** Integration coverage
+  passed (15), the targeted `expression_prefix` retry passed (33), and focused
+  library tests passed (44). `make fmt`, `make check-fmt`, `make lint`,
+  `make typecheck`, workflow contracts (16), `make markdownlint`, and
+  `make nixie` passed. The first `make test` run had 720 passes and 9 Rayon
+  initialization failures (`EAGAIN`); bounded with
+  `RAYON_NUM_THREADS=2 RUST_TEST_THREADS=1`, `make test` passed. A prior
+  compiler-wrapper invocation exited 1 without a supervisor refusal or
+  established cause; its targeted retry passed. The supervisor/daemon task
+  cgroup limit near 8192 is consistent with possible environmental pressure but
+  does not establish the earlier cause. The prior test-side CodeScene score of
+  9.68 and its String Heavy Function Arguments finding did not satisfy the
+  hosted gate; the retain-string-fixtures decision is superseded by the typed
+  remedy above. Logs: `/tmp/ddlint-rebase-*.out`.
 - **Hosted review and checks remain pending.** Scrutineer's final report
   confirms the local gates passed; this is not hosted success or full PR
   completion. Earlier local results recorded elsewhere in this plan belong to
@@ -401,9 +426,9 @@ scope tolerance below, stop and escalate.
   validation was still required at that pre-rebase checkpoint. Pre-rebase
   CodeScene's test-file report scored `9.68`, indicated no duplication, and
   found String Heavy Function Arguments in parameterized string fixtures. The
-  current test-side result is recorded above; retain those parameters by
-  intent, without suppression or refactoring. These historical results do not
-  establish full PR completion or remote review.
+  current test-side remedy is recorded above. The prior retain-by-intent
+  disposition is superseded to clear the hosted gate. These historical results
+  do not establish full PR completion or remote review.
 - (2026-10-12) Remote baseline at `00d695e`: GitHub `build-test` reported
   **SUCCESS**
   ([job 95013385605](https://github.com/leynos/ddlint/actions/runs/31885199898/job/95013385605));

@@ -118,6 +118,13 @@ parsing pipeline.
   predicate for unsupported legacy tokens. The canonical public policy table
   lives in `docs/differential-datalog-parser-syntax-spec-updated.md` section
   `9.1`; avoid duplicating it in code comments or local scanner modules.
+- Keep expected-token types private to parser test fixtures:
+  `ExpectedReservedToken` pairs lexemes with diagnostic constants, and
+  `ReservedTokenScenario` owns `SourceText` plus that expectation;
+  `DeclarationPosition` is a separate typed source builder. `SourceText`
+  carries source input only, and tests must not call production `rejection_for`
+  to derive expectations. Follow `SpannedErrorCase` for typed
+  source-and-diagnostic-span fixtures.
 
 ## Parser observability
 

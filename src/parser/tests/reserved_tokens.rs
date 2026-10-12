@@ -9,13 +9,12 @@ use std::ops::Range;
 
 use crate::SyntaxKind;
 use crate::parser::expression::parse_expression;
-use crate::parser::reserved_tokens::{
-    RESERVED_BARE_HASH_ERROR, RESERVED_BIGINT_ERROR, RESERVED_BIT_ERROR, RESERVED_DOUBLE_ERROR,
-    RESERVED_FLOAT_ERROR, RESERVED_SIGNED_ERROR, RESERVED_SPACESHIP_ERROR, RESERVED_TYPEDEF_ERROR,
-};
 use crate::test_util::assert_no_parse_errors;
 
-use super::helpers::{count_nodes_by_kind, parse_err, parse_ok};
+mod fixtures;
+
+use super::helpers::{SourceText, count_nodes_by_kind, parse_err, parse_ok};
+use fixtures::{DeclarationPosition, ExpectedReservedToken, ReservedTokenScenario};
 
 #[test]
 fn typedef_keyword_is_rejected_without_type_def_ast() {
@@ -25,8 +24,8 @@ fn typedef_keyword_is_rejected_without_type_def_ast() {
     assert!(parsed.root().type_defs().is_empty());
     assert_reserved_token_error(
         parsed.errors(),
-        RESERVED_TYPEDEF_ERROR,
-        token_span(source, "typedef"),
+        ExpectedReservedToken::Typedef,
+        token_span(source, ExpectedReservedToken::Typedef),
     );
 }
 
@@ -43,51 +42,51 @@ fn modern_type_keyword_still_parses_type_definitions() {
 }
 
 #[rstest]
-#[case::bigint("type Foo = bigint;\n", "bigint", RESERVED_BIGINT_ERROR)]
-#[case::bit("type Foo = bit<32>;\n", "bit", RESERVED_BIT_ERROR)]
-#[case::double("type Foo = double;\n", "double", RESERVED_DOUBLE_ERROR)]
-#[case::float("type Foo = float;\n", "float", RESERVED_FLOAT_ERROR)]
-#[case::signed("type Foo = signed<32>;\n", "signed", RESERVED_SIGNED_ERROR)]
-fn legacy_type_names_are_rejected_in_type_position(
-    #[case] src: &str,
-    #[case] token: &str,
-    #[case] expected: &str,
-) {
-    let parsed = parse_err(src);
+#[case::bigint(ReservedTokenScenario::new("type Foo = bigint;\n", ExpectedReservedToken::Bigint))]
+#[case::bit(ReservedTokenScenario::new("type Foo = bit<32>;\n", ExpectedReservedToken::Bit))]
+#[case::double(ReservedTokenScenario::new("type Foo = double;\n", ExpectedReservedToken::Double))]
+#[case::float(ReservedTokenScenario::new("type Foo = float;\n", ExpectedReservedToken::Float))]
+#[case::signed(ReservedTokenScenario::new(
+    "type Foo = signed<32>;\n",
+    ExpectedReservedToken::Signed
+))]
+fn legacy_type_names_are_rejected_in_type_position(#[case] scenario: ReservedTokenScenario) {
+    let span = token_span(scenario.source.as_ref(), scenario.expected);
+    let parsed = parse_err(scenario.source);
 
-    assert_reserved_token_error(parsed.errors(), expected, token_span(src, token));
+    assert_reserved_token_error(parsed.errors(), scenario.expected, span);
 }
 
 #[rstest]
-#[case("bigint", RESERVED_BIGINT_ERROR)]
-#[case("bit", RESERVED_BIT_ERROR)]
-#[case("double", RESERVED_DOUBLE_ERROR)]
-#[case("float", RESERVED_FLOAT_ERROR)]
-#[case("signed", RESERVED_SIGNED_ERROR)]
+#[case(ExpectedReservedToken::Bigint)]
+#[case(ExpectedReservedToken::Bit)]
+#[case(ExpectedReservedToken::Double)]
+#[case(ExpectedReservedToken::Float)]
+#[case(ExpectedReservedToken::Signed)]
 fn legacy_types_in_declarations(
-    #[case] token: &str,
-    #[case] message: &str,
+    #[case] expected: ExpectedReservedToken,
     #[values(
-        "function bad(value: TOKEN): u32 = 0;",
-        "input relation Bad(value: TOKEN);"
+        DeclarationPosition::FunctionParameter,
+        DeclarationPosition::RelationField
     )]
-    template: &str,
+    position: DeclarationPosition,
 ) {
-    let source = template.replace("TOKEN", token);
-    let span = token_span(&source, token);
+    let source = position.source(expected);
+    let span = token_span(source.as_ref(), expected);
     let parsed = parse_err(source);
-    assert_reserved_token_error(parsed.errors(), message, span);
+    assert_reserved_token_error(parsed.errors(), expected, span);
 }
 
 #[rstest]
-#[case("typedef Old = u32;", RESERVED_TYPEDEF_ERROR)]
-#[case("type Bad = bigint;", RESERVED_BIGINT_ERROR)]
-#[case("# bad", RESERVED_BARE_HASH_ERROR)]
-#[case("Output(x) :- x <=> 1.", RESERVED_SPACESHIP_ERROR)]
-fn rejected_syntax_preserves_later_declarations(#[case] rejected: &str, #[case] message: &str) {
+#[case(ReservedTokenScenario::new("typedef Old = u32;", ExpectedReservedToken::Typedef))]
+#[case(ReservedTokenScenario::new("type Bad = bigint;", ExpectedReservedToken::Bigint))]
+#[case(ReservedTokenScenario::new("# bad", ExpectedReservedToken::BareHash))]
+#[case(ReservedTokenScenario::new("Output(x) :- x <=> 1.", ExpectedReservedToken::Spaceship))]
+fn rejected_syntax_preserves_later_declarations(#[case] scenario: ReservedTokenScenario) {
+    let rejected = scenario.source.as_ref();
     let source = format!("{rejected}\ntype Later = u32;\ninput relation Kept(value: u32);\n");
     let parsed = parse_err(source);
-    assert!(!reserved_token_spans(parsed.errors(), message).is_empty());
+    assert!(!reserved_token_spans(parsed.errors(), scenario.expected).is_empty());
     assert!(
         parsed
             .root()
@@ -105,17 +104,15 @@ fn rejected_syntax_preserves_later_declarations(#[case] rejected: &str, #[case] 
 }
 
 #[rstest]
-#[case::bigint("bigint", RESERVED_BIGINT_ERROR)]
-#[case::bit("bit", RESERVED_BIT_ERROR)]
-#[case::double("double", RESERVED_DOUBLE_ERROR)]
-#[case::float("float", RESERVED_FLOAT_ERROR)]
-#[case::signed("signed", RESERVED_SIGNED_ERROR)]
-fn legacy_type_names_are_rejected_outwith_type_position(
-    #[case] legacy_type: &str,
-    #[case] expected: &str,
-) {
+#[case::bigint(ExpectedReservedToken::Bigint)]
+#[case::bit(ExpectedReservedToken::Bit)]
+#[case::double(ExpectedReservedToken::Double)]
+#[case::float(ExpectedReservedToken::Float)]
+#[case::signed(ExpectedReservedToken::Signed)]
+fn legacy_type_names_are_rejected_outwith_type_position(#[case] expected: ExpectedReservedToken) {
+    let legacy_type = expected.lexeme();
     let source = format!("Output(x) :- Source(x), var {legacy_type} = x.\n");
-    let expected_span = token_span(&source, legacy_type);
+    let expected_span = token_span(&source, expected);
     let parsed = parse_err(source);
 
     assert_reserved_token_error(parsed.errors(), expected, expected_span);
@@ -127,16 +124,16 @@ fn spaceship_operator_is_rejected_in_expression_context() {
         panic!("spaceship expression should be rejected");
     };
 
-    assert_reserved_token_error(&errors, RESERVED_SPACESHIP_ERROR, 2..5);
+    assert_reserved_token_error(&errors, ExpectedReservedToken::Spaceship, 2..5);
 }
 
 #[rstest]
-#[case("# foo\n")]
-#[case("# [attribute]\ntype Foo = u32\n")]
-#[case("#/*comment*/[attribute]\ntype Foo = u32\n")]
-fn bare_hash_is_rejected(#[case] source: &str) {
+#[case(SourceText::from("# foo\n"))]
+#[case(SourceText::from("# [attribute]\ntype Foo = u32\n"))]
+#[case(SourceText::from("#/*comment*/[attribute]\ntype Foo = u32\n"))]
+fn bare_hash_is_rejected(#[case] source: SourceText) {
     let bare = parse_err(source);
-    assert_reserved_token_error(bare.errors(), RESERVED_BARE_HASH_ERROR, 0..1);
+    assert_reserved_token_error(bare.errors(), ExpectedReservedToken::BareHash, 0..1);
 }
 
 #[test]
@@ -150,44 +147,43 @@ fn attribute_hash_is_preserved() {
 }
 
 #[rstest]
-#[case("Output(x) :- Source(x), bigint.\n", "bigint", RESERVED_BIGINT_ERROR)]
-#[case("Output(x) :- x <=> y = z.\n", "<=>", RESERVED_SPACESHIP_ERROR)]
-#[case(
+#[case(ReservedTokenScenario::new(
+    "Output(x) :- Source(x), bigint.\n",
+    ExpectedReservedToken::Bigint
+))]
+#[case(ReservedTokenScenario::new(
+    "Output(x) :- x <=> y = z.\n",
+    ExpectedReservedToken::Spaceship
+))]
+#[case(ReservedTokenScenario::new(
     "for (x in Items(x)) Process(x <=> 1).",
-    "<=>",
-    RESERVED_SPACESHIP_ERROR
-)]
-fn reserved_errors_are_not_duplicated(
-    #[case] source: &str,
-    #[case] token: &str,
-    #[case] message: &str,
-) {
-    let parsed = parse_err(source);
-    assert_reserved_token_error(parsed.errors(), message, token_span(source, token));
+    ExpectedReservedToken::Spaceship
+))]
+fn reserved_errors_are_not_duplicated(#[case] scenario: ReservedTokenScenario) {
+    let span = token_span(scenario.source.as_ref(), scenario.expected);
+    let parsed = parse_err(scenario.source);
+    assert_reserved_token_error(parsed.errors(), scenario.expected, span);
 }
 
 #[rstest]
-#[case("1 <=> 2 <=> 3", "<=>", RESERVED_SPACESHIP_ERROR)]
-#[case("1 <=> bigint + float", "<=>", RESERVED_SPACESHIP_ERROR)]
-#[case("1 <=> bigint + float", "bigint", RESERVED_BIGINT_ERROR)]
-#[case("1 <=> bigint + float", "float", RESERVED_FLOAT_ERROR)]
-#[case("# value", "#", RESERVED_BARE_HASH_ERROR)]
-#[case("1 <=> # value", "#", RESERVED_BARE_HASH_ERROR)]
-#[case("# [value]", "#", RESERVED_BARE_HASH_ERROR)]
-#[case("#/*comment*/[value]", "#", RESERVED_BARE_HASH_ERROR)]
-fn expression_failures_report_every_reserved_token(
-    #[case] source: &str,
-    #[case] token: &str,
-    #[case] message: &str,
-) {
+#[case(ReservedTokenScenario::new("1 <=> 2 <=> 3", ExpectedReservedToken::Spaceship))]
+#[case(ReservedTokenScenario::new("1 <=> bigint + float", ExpectedReservedToken::Spaceship))]
+#[case(ReservedTokenScenario::new("1 <=> bigint + float", ExpectedReservedToken::Bigint))]
+#[case(ReservedTokenScenario::new("1 <=> bigint + float", ExpectedReservedToken::Float))]
+#[case(ReservedTokenScenario::new("# value", ExpectedReservedToken::BareHash))]
+#[case(ReservedTokenScenario::new("1 <=> # value", ExpectedReservedToken::BareHash))]
+#[case(ReservedTokenScenario::new("# [value]", ExpectedReservedToken::BareHash))]
+#[case(ReservedTokenScenario::new("#/*comment*/[value]", ExpectedReservedToken::BareHash))]
+fn expression_failures_report_every_reserved_token(#[case] scenario: ReservedTokenScenario) {
+    let source = scenario.source.as_ref();
     let Err(errors) = parse_expression(source) else {
         panic!("reserved expression must fail");
     };
     let expected = source
-        .match_indices(token)
+        .match_indices(scenario.expected.lexeme())
         .map(|(start, text)| start..start + text.len())
         .collect::<Vec<_>>();
-    assert_eq!(reserved_token_spans(&errors, message), expected);
+    assert_eq!(reserved_token_spans(&errors, scenario.expected), expected);
 }
 
 #[test]
@@ -205,34 +201,45 @@ fn many_reserved_operators_report_once_each() {
     let parsed = parse_err(source);
 
     assert_eq!(
-        count_custom_parse_errors(parsed.errors(), RESERVED_SPACESHIP_ERROR),
+        count_custom_parse_errors(parsed.errors(), ExpectedReservedToken::Spaceship),
         EXPRESSION_COUNT,
     );
     assert_eq!(
-        reserved_token_spans(parsed.errors(), RESERVED_SPACESHIP_ERROR),
+        reserved_token_spans(parsed.errors(), ExpectedReservedToken::Spaceship),
         expected_spans,
     );
 }
 
-fn count_custom_parse_errors(errors: &[Simple<SyntaxKind>], expected: &str) -> usize {
+fn count_custom_parse_errors(
+    errors: &[Simple<SyntaxKind>],
+    expected: ExpectedReservedToken,
+) -> usize {
     reserved_token_spans(errors, expected).len()
 }
 
-fn assert_reserved_token_error(errors: &[Simple<SyntaxKind>], expected: &str, span: Range<usize>) {
+fn assert_reserved_token_error(
+    errors: &[Simple<SyntaxKind>],
+    expected: ExpectedReservedToken,
+    span: Range<usize>,
+) {
     assert_eq!(reserved_token_spans(errors, expected), vec![span]);
 }
 
-fn reserved_token_spans(errors: &[Simple<SyntaxKind>], expected: &str) -> Vec<Range<usize>> {
+fn reserved_token_spans(
+    errors: &[Simple<SyntaxKind>],
+    expected: ExpectedReservedToken,
+) -> Vec<Range<usize>> {
     errors
         .iter()
         .filter(
-            |error| matches!(error.reason(), SimpleReason::Custom(message) if message == expected),
+            |error| matches!(error.reason(), SimpleReason::Custom(message) if message == expected.message()),
         )
         .map(|error| error.span().clone())
         .collect()
 }
 
-fn token_span(source: &str, token: &str) -> Range<usize> {
+fn token_span(source: &str, expected: ExpectedReservedToken) -> Range<usize> {
+    let token = expected.lexeme();
     let Some(start) = source.find(token) else {
         panic!("missing token {token:?} in source {source:?}");
     };
