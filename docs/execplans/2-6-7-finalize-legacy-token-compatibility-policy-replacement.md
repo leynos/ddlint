@@ -1,13 +1,14 @@
 # 2.6.7 legacy-token diagnostic follow-up
 
-Status: LOCAL REPAIR ACCEPTANCE PASSED; hosted review and checks pending
+Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
 
 ## PR #354 CodeScene repair
 
-- Base: `353bb48b4900bcaf9322246f3911c371c175140c`; candidate: `71ebe4c` plus
-  supervisor-owned typed-fixture edits. Current diff: 48 files and net +662
-  Rust lines, within the 800-line limit. The earlier 54-file count is
-  historical. Runtime and API code are unchanged.
+- Implementation head: `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
+  `353bb48b4900bcaf9322246f3911c371c175140c`. The diff is 48 files and net +662
+  Rust lines, within the 800-line limit; the earlier 54-file count remains
+  historical. Runtime and API code are unchanged. Hosted results below apply to
+  this implementation head, not to these later documentation edits.
 - At `71ebe4c`, hosted CI was green, but CodeScene check `7920932` failed:
   String Heavy Function Arguments was 84.6% across 17 functions against a 39%
   threshold. This was not cleared by retaining string fixtures; that earlier
@@ -19,15 +20,22 @@ Status: LOCAL REPAIR ACCEPTANCE PASSED; hosted review and checks pending
   separate typed source builder. `SourceText` carries source input only. No
   `TOKEN` placeholder, suppression, or threshold change is used; all 44 cases
   remain.
-- Local gates passed sequentially: `make check-fmt`, `make lint`, `make test`
-  (1,209 passed), `make typecheck`, workflow contracts (16),
-  `make markdownlint`, and `make nixie`; `make fmt` passed on the parent.
-  Focused CodeScene reviews of both reserved-token Rust test files scored 10.0.
-  CodeScene reported no introduced findings for the working-tree delta from
+- Local receipts record sequential gates passing: `make check-fmt`, `make lint`,
+  `make test` (1,209 passed), `make typecheck`, workflow contracts (16),
+  `make markdownlint`, and `make nixie`; parent `make fmt` passed. Focused
+  CodeScene reviews of both reserved-token Rust test files scored 10.0.
+  CodeScene found no introduced findings in the working-tree delta from
   `353bb48`; its staged-delta check was empty. Logs:
   `/tmp/ddlint-pr354-repair-*`.
-- Hosted review and checks remain pending. These are local results, not hosted
-  success; publication and hosted verification are separate delivery gates.
+- Exact-head hosted acceptance passed:
+  [build-test](https://github.com/leynos/ddlint/actions/runs/38302396367/job/114988225290)
+  and [CodeScene](https://codescene.io/projects/69278/delta/results/7921317).
+  Hosted logs verify 44 reserved-token unit tests, 15 integration tests, and 16
+  workflow contracts. The
+  [CodeRabbit assessment reply](https://github.com/leynos/ddlint/pull/354#issuecomment-6131906604)
+  clears all six implementation dispositions; local receipts were supplied and
+  its hosted logs verified. The assessment is not formal PR approval. Formal
+  review and merge remain pending.
 
 ## Rebase receipt (2026-10-12)
 
@@ -102,8 +110,8 @@ checkpoint, branch scope counting this continuation plan was 54 files and net
   history; replay-head documentation gates passed as recorded above.
 - Pre-rebase CodeScene's test-file score and finding remain historical; the
   current correct-path test assessment is recorded in the receipt above.
-- Obtain a new hosted review; prior-head remote results below do not validate
-  the current head.
+- Formal PR review and merge remain pending; the CodeRabbit assessment above is
+  implementation evidence, not formal approval.
 - Logs:
   `/tmp/*-d0264bd8-554b-49e7-ab08-b42ea6541172-2-6-7-finalize-legacy-token-compatibility-policy-replacement*`.
 
@@ -116,9 +124,9 @@ sentinels.
 
 The authorized follow-up is limited to the diagnostic-path placement,
 deduplication, and acceptance work above. Do not infer approval for broader
-parser changes or a larger code-line budget. Replay-head local acceptance
-passed as recorded above; hosted review and checks remain pending. Do not claim
-full PR completion.
+parser changes or a larger code-line budget. Implementation and exact-head
+hosted acceptance are recorded above; formal review and merge remain pending.
+Do not claim full PR completion.
 
 ## Remote baseline
 
@@ -126,6 +134,6 @@ At commit `00d695e`, GitHub `build-test` reported **SUCCESS**
 ([job 95013385605](https://github.com/leynos/ddlint/actions/runs/31885199898/job/95013385605))
 and CodeScene health reported **FAILURE**
 ([result 7771601](https://codescene.io/projects/69278/delta/results/7771601)).
-These are the starting baseline only. The local review is recorded above; new
-remote results for the current head are pending. Prior-head checks remain
-separate from follow-up review.
+These are historical starting-baseline results. Exact-head hosted results for
+the implementation head are recorded above; prior-head checks remain separate
+from formal review.

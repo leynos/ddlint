@@ -4,14 +4,15 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: LOCAL REPAIR ACCEPTANCE PASSED; hosted review and checks pending
+Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
 
 ## PR #354 CodeScene repair
 
-- Base: `353bb48b4900bcaf9322246f3911c371c175140c`; candidate: `71ebe4c` plus
-  supervisor-owned typed-fixture edits. Current diff: 48 files and net +662
-  Rust lines, within the 800-line limit. The earlier 54-file count is
-  historical. Runtime and API code are unchanged.
+- Implementation head: `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
+  `353bb48b4900bcaf9322246f3911c371c175140c`. The diff is 48 files and net +662
+  Rust lines, within the 800-line limit; the earlier 54-file count remains
+  historical. Runtime and API code are unchanged. Hosted results below apply to
+  this implementation head, not to these later documentation edits.
 - At `71ebe4c`, hosted CI was green, but CodeScene check `7920932` failed:
   String Heavy Function Arguments was 84.6% across 17 functions against a 39%
   threshold. This was not cleared by retaining string fixtures; that earlier
@@ -23,13 +24,22 @@ Status: LOCAL REPAIR ACCEPTANCE PASSED; hosted review and checks pending
   separate typed source builder. `SourceText` carries source input only. No
   `TOKEN` placeholder, suppression, or threshold change is used; all 44 cases
   remain.
-- Local gates passed sequentially: `make check-fmt`, `make lint`, `make test`
-  (1,209 passed), `make typecheck`, workflow contracts (16),
-  `make markdownlint`, and `make nixie`; `make fmt` passed on the parent.
-  Focused CodeScene reviews of both reserved-token Rust test files scored 10.0.
-  CodeScene reported no introduced findings for the working-tree delta from
+- Local receipts record sequential gates passing: `make check-fmt`, `make lint`,
+  `make test` (1,209 passed), `make typecheck`, workflow contracts (16),
+  `make markdownlint`, and `make nixie`; parent `make fmt` passed. Focused
+  CodeScene reviews of both reserved-token Rust test files scored 10.0.
+  CodeScene found no introduced findings in the working-tree delta from
   `353bb48`; its staged-delta check was empty. Logs:
   `/tmp/ddlint-pr354-repair-*`.
+- Exact-head hosted acceptance passed:
+  [build-test](https://github.com/leynos/ddlint/actions/runs/38302396367/job/114988225290)
+  and [CodeScene](https://codescene.io/projects/69278/delta/results/7921317).
+  Hosted logs verify 44 reserved-token unit tests, 15 integration tests, and 16
+  workflow contracts. The
+  [CodeRabbit assessment reply](https://github.com/leynos/ddlint/pull/354#issuecomment-6131906604)
+  clears all six implementation dispositions; local receipts were supplied and
+  its hosted logs verified. The assessment is not formal PR approval. Formal
+  review and merge remain pending.
 - Hosted review and checks remain pending. These are local results, not hosted
   success; publication and hosted verification are separate delivery gates.
 
@@ -306,22 +316,21 @@ scope tolerance below, stop and escalate.
   old head `a4302fe…` and remain historical, not evidence for replay head
   `2cf5b8f…`.
 
-- [x] (2026-10-12) Record the remote baseline; refresh after new results:
-  GitHub `build-test` was **SUCCESS** at `00d695e`
+- [x] (2026-10-12) Record the original remote baseline; exact-head results are
+  recorded in the PR #354 receipt above: GitHub `build-test` was **SUCCESS** at
+  `00d695e`
   ([job 95013385605](https://github.com/leynos/ddlint/actions/runs/31885199898/job/95013385605));
   CodeScene health was **FAILURE**
   ([result 7771601](https://codescene.io/projects/69278/delta/results/7771601)).
-  Local review is recorded below; new remote results are pending.
+  These remain historical baseline results, separate from the exact-head
+  hosted acceptance recorded above.
 
-- [ ] (2026-10-12) Continue diagnostic-path and acceptance follow-up on branch
-  `2-6-7-finalize-legacy-token-compatibility-policy-replacement`; see
-  `docs/execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md`.
-  The plan's implementation baseline is reconciled to 54 files, including
-  semantic fixture and example migrations. Current narrow diagnostic fixes move
-  final reserved-token deduplication after top-level `for` processing and
-  complete the policy at the full-expression boundary. Local behavioural
-  acceptance is satisfied; final formatting passed. Final documentation
-  validation is required before publication; remote review remains pending.
+- [x] (2026-10-12) Complete diagnostic-path and acceptance follow-up on
+  implementation head `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
+  `353bb48b4900bcaf9322246f3911c371c175140c`; see the replacement plan. Hosted
+  build-test and CodeScene passed for this head, and the six implementation
+  dispositions are cleared. Formal review and merge remain pending; the
+  CodeRabbit assessment is not formal approval.
 - (2026-10-12) Local behavioural acceptance passed: 44 focused unit tests
   and 15 integration tests. `make check-fmt`, `make lint`, `make test`,
   `make typecheck`, `make test-workflow-contracts` (6 passed),
@@ -434,8 +443,9 @@ scope tolerance below, stop and escalate.
   ([job 95013385605](https://github.com/leynos/ddlint/actions/runs/31885199898/job/95013385605));
   CodeScene health reported **FAILURE**
   ([result 7771601](https://codescene.io/projects/69278/delta/results/7771601)).
-  These are baseline results, not results for the current follow-up. The local
-  review is recorded below; refreshed remote results remain pending.
+  These are historical baseline results, not results for implementation head
+  `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`; exact-head results are linked in
+  the PR #354 receipt above.
 - The current parser already *accepts* `typedef` and exposes the result via
   `root.type_defs()` in `src/parser/tests/parser.rs` (lines 272–282). Closing
   this conformance item therefore requires changing existing positive test
