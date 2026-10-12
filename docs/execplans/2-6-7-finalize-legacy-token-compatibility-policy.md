@@ -40,8 +40,6 @@ Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
   clears all six implementation dispositions; local receipts were supplied and
   its hosted logs verified. The assessment is not formal PR approval. Formal
   review and merge remain pending.
-- Hosted review and checks remain pending. These are local results, not hosted
-  success; publication and hosted verification are separate delivery gates.
 
 ## Purpose / big picture
 
@@ -310,11 +308,10 @@ scope tolerance below, stop and escalate.
   9.68 and its String Heavy Function Arguments finding did not satisfy the
   hosted gate; the retain-string-fixtures decision is superseded by the typed
   remedy above. Logs: `/tmp/ddlint-rebase-*.out`.
-- **Hosted review and checks remain pending.** Scrutineer's final report
-  confirms the local gates passed; this is not hosted success or full PR
-  completion. Earlier local results recorded elsewhere in this plan belong to
-  old head `a4302fe…` and remain historical, not evidence for replay head
-  `2cf5b8f…`.
+- **Historical pre-publication status at the rebase checkpoint:** hosted review
+  and checks were pending then. The implementation-head hosted acceptance is
+  recorded above; earlier local results for old head `a4302fe…` remain
+  historical and do not apply to replay head `2cf5b8f…`.
 
 - [x] (2026-10-12) Record the original remote baseline; exact-head results are
   recorded in the PR #354 receipt above: GitHub `build-test` was **SUCCESS** at
@@ -339,8 +336,9 @@ scope tolerance below, stop and escalate.
   infrastructural EAGAIN thread/fork error; retry passed with exit code 0 at
   `/tmp/ddlint-diagnostics-final-fmt-2929239.out`. `make check-fmt`,
   `make nixie`, and explicit continuation-plan lint also passed. The latest
-  `markdownlint` found four spelling errors, now corrected. Final documentation
-  validation is required before publication; remote review remains pending.
+  `markdownlint` found four spelling errors, now corrected. At this
+  pre-publication checkpoint, final documentation validation and remote review
+  remained pending; the later implementation-head acceptance is recorded above.
   Logs:
   `/tmp/*-d0264bd8-554b-49e7-ab08-b42ea6541172-2-6-7-finalize-legacy-token-compatibility-policy-replacement*`.
   At the pre-format checkpoint, branch scope counting the continuation plan
@@ -620,16 +618,18 @@ scope tolerance below, stop and escalate.
 
 The prior implementation was recorded as matching the closed policy matrix in
 spec section `9.1`; local behavioural acceptance for the diagnostic-path
-follow-up passed on 2026-10-12. Final formatting passed. Final documentation
-validation is required before publication; remote review remains pending.
-Current full-program diagnostic completion is performed by
-`complete_reserved_token_errors` in `src/parser/mod.rs`, after top-level `for`
-diagnostics and validators. Full-expression completion is performed by the same
-helper from `src/parser/expression/pratt.rs`, after Pratt parsing and
-unexpected-token handling. The shared classification and deduplication logic
-lives in `src/parser/reserved_tokens.rs`. `type`, `import X as Y`, and `#[...]`
-remain accepted. The owned examples and parser/linter fixtures were migrated
-away from legacy `typedef` and `bit<N>` syntax.
+follow-up passed on 2026-10-12. At that pre-publication checkpoint, final
+documentation validation and remote review remained pending. Implementation and
+exact-head hosted acceptance are recorded in the current receipt above; formal
+review and merge remain pending. Current full-program diagnostic completion is
+performed by `complete_reserved_token_errors` in `src/parser/mod.rs`, after
+top-level `for` diagnostics and validators. Full-expression completion is
+performed by the same helper from `src/parser/expression/pratt.rs`, after Pratt
+parsing and unexpected-token handling. The shared classification and
+deduplication logic lives in `src/parser/reserved_tokens.rs`. `type`,
+`import X as Y`, and `#[...]` remain accepted. The owned examples and
+parser/linter fixtures were migrated away from legacy `typedef` and `bit<N>`
+syntax.
 
 The prior implementation's deterministic gates passed on 2026-06-26:
 
@@ -642,9 +642,10 @@ The prior implementation's deterministic gates passed on 2026-06-26:
 
 CodeRabbit reviewed the prior pushed implementation commit and reported zero
 findings. That review and the remote checks recorded earlier do not cover the
-current follow-up head. Local acceptance and check results are recorded in
-`Progress` and `Surprises & Discoveries`. Final formatting validation and a new
-hosted review remain pending; this plan does not claim full PR completion.
+current follow-up head. Local acceptance and exact-head hosted results are
+recorded above. At that earlier pre-publication checkpoint, final formatting
+validation and a new hosted review remained pending; formal review and merge
+remain pending now. This plan does not claim full PR completion.
 
 The main implementation lesson was that `typedef` compatibility had leaked into
 tests whose purpose was not compatibility: attribute placement and

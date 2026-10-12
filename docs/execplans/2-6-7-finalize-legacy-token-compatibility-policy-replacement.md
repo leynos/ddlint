@@ -75,11 +75,10 @@ Status: IMPLEMENTATION AND HOSTED ACCEPTANCE RECORDED; formal review pending
   9.68 and its String Heavy Function Arguments finding did not satisfy the
   hosted gate; the retain-string-fixtures decision is superseded by the typed
   remedy above. Logs: `/tmp/ddlint-rebase-*.out`.
-- **Hosted review and checks remain pending.** Scrutineer's final report
-  confirms the local gates passed; this is not hosted success or full PR
-  completion. Earlier local results recorded in the original plan belong to old
-  head `a4302fe…` and remain historical, not evidence for replay head
-  `2cf5b8f…`.
+- **Historical pre-publication status at the rebase checkpoint:** hosted review
+  and checks were pending then. The implementation-head hosted acceptance is
+  recorded above; earlier local results for old head `a4302fe…` remain
+  historical and do not apply to replay head `2cf5b8f…`.
 
 This continuation supplements the
 [original 2.6.7 plan](./2-6-7-finalize-legacy-token-compatibility-policy.md).
