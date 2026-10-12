@@ -7,6 +7,7 @@
 pub(super) mod functions;
 pub(super) mod imports;
 pub(super) mod indexes;
+mod indexes_support;
 pub(super) mod relations;
 pub(super) mod rules;
 pub(super) mod transformers;

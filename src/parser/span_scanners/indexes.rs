@@ -9,8 +9,7 @@ use crate::{Span, SyntaxKind};
 
 use super::utils::State;
 
-#[path = "indexes_support.rs"]
-mod support;
+use super::indexes_support as support;
 
 use support::{
     ScanResult, TypeDepths, adjust_type_depths, consume_kind, consume_kind_or_invalid,

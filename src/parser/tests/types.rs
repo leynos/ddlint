@@ -11,6 +11,7 @@ use rstest::rstest;
 /// Declaration boundaries preserve complete records and independent type nodes.
 #[rstest]
 #[case("type A = A{\n value: u32,\n nested: (u32, string)\n}; type B = u64;")]
+#[case("type A = Vec<Map<string,\n u64>>;\ntype B = u64;")]
 #[case("type A = u32; type B = u64;")]
 #[case("extern type A; type B = u64;")]
 #[case("type A = u32\ntype B = u64\n")]

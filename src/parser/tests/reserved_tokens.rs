@@ -201,7 +201,7 @@ fn many_reserved_operators_report_once_each() {
     let parsed = parse_err(source);
 
     assert_eq!(
-        count_custom_parse_errors(parsed.errors(), ExpectedReservedToken::Spaceship),
+        reserved_token_spans(parsed.errors(), ExpectedReservedToken::Spaceship).len(),
         EXPRESSION_COUNT,
     );
     assert_eq!(
@@ -210,11 +210,57 @@ fn many_reserved_operators_report_once_each() {
     );
 }
 
-fn count_custom_parse_errors(
-    errors: &[Simple<SyntaxKind>],
-    expected: ExpectedReservedToken,
-) -> usize {
-    reserved_token_spans(errors, expected).len()
+proptest::proptest! {
+    /// Real lexical streams conserve unrelated errors and complete one error per reserved span.
+    #[test]
+    fn reserved_completion_is_a_conservative_idempotent_union(
+        parts in proptest::collection::vec((proptest::sample::select(ExpectedReservedToken::ALL), 0usize..4), 0..128),
+        prefix in proptest::bool::ANY,
+        rotation in proptest::num::usize::ANY,
+    ) {
+        use chumsky::Error as _;
+        use crate::parser::reserved_tokens::complete_reserved_token_errors;
+        use crate::tokenize_with_trivia;
+        let mut source = if prefix { "1 " } else { "" }.to_owned();
+        source.push_str("#[cold] /* bigint */ \"signed\" ");
+        let unrelated = Simple::expected_input_found(0..0, [Some(SyntaxKind::T_IDENT)], None);
+        let custom = Simple::custom(0..0, "ordinary");
+        let mut errors = vec![unrelated.clone(), unrelated.clone(), custom.clone()];
+        let mut expected = Vec::new();
+        for (kind, copies) in parts {
+            let start = source.len();
+            source.push_str(kind.lexeme());
+            let span = start..source.len();
+            source.push(' ');
+            errors.extend((0..copies).map(|_| Simple::custom(span.clone(), kind.message())));
+            expected.push((kind.message(), span));
+        }
+        let rotation = rotation.checked_rem(errors.len()).unwrap_or_default();
+        errors.rotate_left(rotation);
+        let is_ordinary = |error: &Simple<SyntaxKind>| !matches!(error.reason(), SimpleReason::Custom(message) if ExpectedReservedToken::ALL.iter().any(|kind| kind.message() == message));
+        let before: Vec<_> = errors.iter().filter(|error| is_ordinary(error)).cloned().collect();
+        complete_reserved_token_errors(&tokenize_with_trivia(&source), &mut errors);
+        let expression_errors = parse_expression(&source).err().unwrap_or_default();
+        for &kind in ExpectedReservedToken::ALL {
+            let spans: Vec<_> = expected.iter().filter(|(message, _)| *message == kind.message()).map(|(_, span)| span.clone()).collect();
+            for actual in [&errors, &expression_errors] {
+                let mut reported = reserved_token_spans(actual, kind);
+                reported.sort_by_key(|span| span.start);
+                proptest::prop_assert_eq!(&reported, &spans);
+            }
+        }
+        let after: Vec<_> = errors.iter().filter(|error| is_ordinary(error)).cloned().collect();
+        proptest::prop_assert_eq!(&after, &before);
+        for (actual, expected) in after.iter().zip(&before) {
+            proptest::prop_assert!(actual.expected().eq(expected.expected()));
+        }
+        let once = errors.clone();
+        complete_reserved_token_errors(&tokenize_with_trivia(&source), &mut errors);
+        proptest::prop_assert_eq!(&errors, &once);
+        for (actual, expected) in errors.iter().zip(&once) {
+            proptest::prop_assert!(actual.expected().eq(expected.expected()));
+        }
+    }
 }
 
 fn assert_reserved_token_error(

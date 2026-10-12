@@ -6,50 +6,29 @@
 //! forms without `type`; `reserved_tokens` owns the compatibility diagnostic
 //! for the legacy keyword.
 
-use chumsky::prelude::*;
+use chumsky::error::Simple;
 
-use crate::parser::lexer_helpers::balanced_block;
 use crate::{Span, SyntaxKind};
 
+use super::indexes_support::{TypeDepths, adjust_type_depths, is_trivia};
 use super::utils::State;
 
 /// Keep balanced groups inside a type span, stopping at a top-level terminator.
-/// Fall back to skipping the current line if span parsing fails.
 fn push_type_span(st: &mut State<'_>, start: usize) {
-    let src = st.stream.src();
-    let terminator = filter(move |kind: &SyntaxKind| *kind == SyntaxKind::T_SEMI).or(filter_map(
-        move |span: Span, kind| {
-            if src
-                .get(span.clone())
-                .is_some_and(|text| text.contains('\n'))
-            {
-                Ok(kind)
-            } else {
-                Err(Simple::expected_input_found(span, Vec::new(), Some(kind)))
-            }
-        },
-    ));
-    let content = choice((
-        balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
-        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
-        balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
-        terminator.not().ignored(),
-    ));
-    let parser = content
-        .repeated()
-        .then_ignore(terminator.or_not())
-        .map_with_span(|_, span: Span| start..span.end);
-    let input = chumsky::Stream::from_iter(
-        start..src.len(),
-        st.stream.tokens().iter().skip(st.stream.cursor()).cloned(),
-    );
-    let (span, _) = parser.parse_recovery(input);
-    if let Some(span) = span {
-        st.stream.skip_until(span.end);
-        st.spans.push(span);
-    } else {
-        st.skip_line();
+    let mut depths = TypeDepths::default();
+    let mut end = st.stream.src().len();
+    while let Some((kind, span)) = st.stream.peek().cloned() {
+        let text = st.stream.src().get(span.clone()).unwrap_or_default();
+        let terminates = depths.at_top_level()
+            && (kind == SyntaxKind::T_SEMI || (is_trivia(kind) && text.contains('\n')));
+        adjust_type_depths(kind, &mut depths);
+        end = span.end;
+        st.stream.advance();
+        if terminates {
+            break;
+        }
     }
+    st.spans.push(start..end);
 }
 
 /// Collect complete `type` and `extern type` declarations.

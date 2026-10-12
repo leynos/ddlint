@@ -1,7 +1,8 @@
-//! Token-walking support for the index declaration scanner.
+//! Token-walking support shared by index and type span scanners.
 //!
-//! Houses the cursor helpers, delimiter bookkeeping, and error builders
-//! shared by the `indexes` scanner module.
+//! Provides delimiter-depth tracking for both scanners. The remaining cursor
+//! helpers, delimiter-stack operations, and error builders serve the `indexes`
+//! scanner.
 
 use chumsky::prelude::*;
 
@@ -145,11 +146,11 @@ pub(super) fn consume_kind_or_invalid(
         }
         Some((_, span)) => Err(Box::new(Simple::custom(
             span.clone(),
-            super::INVALID_INDEX_FIELD_LIST,
+            super::indexes::INVALID_INDEX_FIELD_LIST,
         ))),
         None => Err(Box::new(Simple::custom(
             src.len()..src.len(),
-            super::INVALID_INDEX_FIELD_LIST,
+            super::indexes::INVALID_INDEX_FIELD_LIST,
         ))),
     }
 }

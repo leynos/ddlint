@@ -22,6 +22,17 @@ pub(super) enum ExpectedReservedToken {
 }
 
 impl ExpectedReservedToken {
+    pub(super) const ALL: &[Self] = &[
+        Self::Typedef,
+        Self::Bigint,
+        Self::Bit,
+        Self::Double,
+        Self::Float,
+        Self::Signed,
+        Self::BareHash,
+        Self::Spaceship,
+    ];
+
     pub(super) const fn lexeme(self) -> &'static str {
         match self {
             Self::Typedef => "typedef",
