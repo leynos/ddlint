@@ -60,8 +60,38 @@ assert!(diagnostics.is_empty());
 
 ## Logging and diagnostics output
 
-`ddlint` uses the `log` API for parser warnings. Initialize a logger in your
+Legacy parser warnings use the `log` API. Initialize a logger in the host
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
+For structured parser-attempt and diagnostic events, pass a `ParseObserver` to
+`parse_with_observer`; this is opt-in and does not require a telemetry runtime.
+Applications can implement and pass their own `ParseObserver` without enabling
+`observability`; that feature is needed only for the supplied
+`TelemetryObserver` adapter. The optional `observability` Cargo feature
+supplies a `tracing` and `metrics` adapter. See the
+[parser observability guide](parser-observability.md) for export and alerting
+guidance. The library never initializes host subscribers or recorders.
+
+Enable the supplied adapter in the application dependency:
+
+```toml
+[dependencies]
+ddlint = { version = "0.1.0", features = ["observability"] }
+```
+
+Initialize the application's tracing subscriber and metrics recorder, then
+construct one `TelemetryObserver` and reuse it for parser calls:
+
+```rust,no_run
+use ddlint::{TelemetryObserver, parse_with_observer};
+
+fn parse_sources(sources: &[&str]) {
+    // Configure application telemetry before constructing the observer.
+    let observer = TelemetryObserver::new();
+    for source in sources {
+        let _parsed = parse_with_observer(source, &observer);
+    }
+}
+```
 
 ## Relation declarations
 
@@ -107,18 +137,20 @@ The parser emits deterministic diagnostics for invalid relation forms:
 <!-- markdownlint-disable MD013 --><!-- Diagnostic table messages stay intact
 for reviewability. -->
 
+Codes beginning with `D-REL` identify relation diagnostics.
+
 Table 1. Relation diagnostics.
 
-| Code      | Cause                                        | Message                                                                                 |
-| --------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
-| D-REL-001 | Kind keyword before role keyword             | `relation role keyword (input/output) must precede the kind keyword`                    |
-| D-REL-002 | More than one role keyword                   | `at most one role keyword (input, output) is permitted`                                 |
-| D-REL-003 | More than one kind keyword                   | `at most one kind keyword (relation, stream, multiset) is permitted`                    |
-| D-REL-004 | Bracket body with a primary-key clause       | `bracket-form relations cannot declare a primary key clause`                            |
-| D-REL-005 | Empty bracket body                           | `bracket-form relations require a single element type between '[' and ']'`              |
-| D-REL-006 | Primary-key clause on a non-`input` relation | `primary key clauses are only valid on input relations`                                 |
-| D-REL-007 | Stray or malformed `primary key` clause      | `unexpected or malformed primary key clause`                                            |
-| D-REL-008 | Bracket-wrapped primary-key clause           | `bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']'` |
+| Code        | Cause                                        | Message                                                                                            |
+| ----------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `D-REL-001` | Kind keyword before role keyword             | `D-REL-001: relation role keyword (input/output) must precede the kind keyword`                    |
+| `D-REL-002` | More than one role keyword                   | `D-REL-002: at most one role keyword (input, output) is permitted`                                 |
+| `D-REL-003` | More than one kind keyword                   | `D-REL-003: at most one kind keyword (relation, stream, multiset) is permitted`                    |
+| `D-REL-004` | Bracket body with a primary-key clause       | `D-REL-004: bracket-form relations cannot declare a primary key clause`                            |
+| `D-REL-005` | Empty bracket body                           | `D-REL-005: bracket-form relations require a single element type between '[' and ']'`              |
+| `D-REL-006` | Primary-key clause on a non-`input` relation | `D-REL-006: primary key clauses are only valid on input relations`                                 |
+| `D-REL-007` | Stray or malformed `primary key` clause      | `D-REL-007: unexpected or malformed primary key clause`                                            |
+| `D-REL-008` | Bracket-wrapped primary-key clause           | `D-REL-008: bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']'` |
 
 <!-- markdownlint-enable MD013 -->
 

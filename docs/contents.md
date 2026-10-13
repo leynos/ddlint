@@ -30,6 +30,8 @@
 - [Parser conformance register](./parser-conformance-register.md): Tracker for
   specification and implementation deltas, resolved contradictions, and open
   parser design decisions.
+- [Parser observability](./parser-observability.md): How to export parser
+  attempt and diagnostic events to downstream logging and metrics backends.
 - [Haskell parser analysis](./haskell-parser-analysis.md): Reference analysis
   of the upstream DDlog parser behaviour used when validating parser
   compatibility.

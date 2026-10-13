@@ -9,7 +9,14 @@ mod preamble;
 
 use chumsky::error::Simple;
 
+use crate::parser::diagnostics::DiagnosticCode;
 use crate::{Span, SyntaxKind};
+
+const D_REL_004: &str = DiagnosticCode::RelationBracketPrimaryKey.message_text();
+const D_REL_005: &str = DiagnosticCode::RelationInvalidBracketElementType.message_text();
+const D_REL_006: &str = DiagnosticCode::RelationPrimaryKeyOnNonInput.message_text();
+const D_REL_007: &str = DiagnosticCode::RelationMalformedPrimaryKey.message_text();
+const D_REL_008: &str = DiagnosticCode::RelationBracketWrappedPrimaryKey.message_text();
 
 use cursor::{
     adjust_stack, consume_kind, consume_text, current_span, is_trivia, parse_balanced_block,
@@ -20,13 +27,6 @@ use preamble::{RelationRole, parse_preamble};
 use super::utils::State;
 
 pub(super) type ScanResult<T> = Result<T, Box<Simple<SyntaxKind>>>;
-
-const D_REL_004: &str = "D-REL-004: bracket-form relations cannot declare a primary key clause";
-const D_REL_005: &str =
-    "D-REL-005: bracket-form relations require a single element type between '[' and ']'";
-const D_REL_006: &str = "D-REL-006: primary key clauses are only valid on input relations";
-pub(super) const D_REL_007: &str = "D-REL-007: unexpected or malformed primary key clause";
-const D_REL_008: &str = "D-REL-008: bracket-wrapped primary key clauses are not supported; remove the surrounding '['/']'";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BodyForm {

@@ -43,16 +43,11 @@
 
 use chumsky::{Error, error::Simple};
 
+use crate::parser::diagnostics::DiagnosticCode;
 use crate::{Span, SyntaxKind};
 
 use super::cursor::skip_trivia;
 use super::{ScanResult, custom_error};
-
-const D_REL_001: &str =
-    "D-REL-001: relation role keyword (input/output) must precede the kind keyword";
-const D_REL_002: &str = "D-REL-002: at most one role keyword (input, output) is permitted";
-const D_REL_003: &str =
-    "D-REL-003: at most one kind keyword (relation, stream, multiset) is permitted";
 
 /// Relation role annotation parsed from a relation preamble keyword.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -174,10 +169,16 @@ impl PreambleState {
         cursor: &mut usize,
     ) -> ScanResult<()> {
         if self.saw_kind_first {
-            return Err(Box::new(custom_error(span, D_REL_001)));
+            return Err(Box::new(custom_error(
+                span,
+                DiagnosticCode::RelationKindBeforeRole.message_text(),
+            )));
         }
         if self.role.is_some() {
-            return Err(Box::new(custom_error(span, D_REL_002)));
+            return Err(Box::new(custom_error(
+                span,
+                DiagnosticCode::RelationDuplicateRole.message_text(),
+            )));
         }
         self.role = Some(role);
         advance_preamble(tokens, cursor);
@@ -191,7 +192,10 @@ impl PreambleState {
         cursor: &mut usize,
     ) -> ScanResult<()> {
         if self.has_kind {
-            return Err(Box::new(custom_error(span, D_REL_003)));
+            return Err(Box::new(custom_error(
+                span,
+                DiagnosticCode::RelationDuplicateKind.message_text(),
+            )));
         }
         self.has_kind = true;
         advance_preamble(tokens, cursor);

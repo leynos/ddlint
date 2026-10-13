@@ -5,10 +5,11 @@
 
 use chumsky::{Error, error::Simple};
 
+use crate::parser::diagnostics::DiagnosticCode;
 use crate::parser::lexer_helpers::token_display;
 use crate::{Span, SyntaxKind};
 
-use super::{D_REL_007, ScanResult, custom_error};
+use super::{ScanResult, custom_error};
 
 /// Parse a balanced block opened by the delimiter matching `close`.
 ///
@@ -91,8 +92,14 @@ pub(super) fn consume_text(
             *cursor += 1;
             Ok(span.end)
         }
-        Some((_, span)) => Err(Box::new(custom_error(span, D_REL_007))),
-        None => Err(Box::new(custom_error(&(src.len()..src.len()), D_REL_007))),
+        Some((_, span)) => Err(Box::new(custom_error(
+            span,
+            DiagnosticCode::RelationMalformedPrimaryKey.message_text(),
+        ))),
+        None => Err(Box::new(custom_error(
+            &(src.len()..src.len()),
+            DiagnosticCode::RelationMalformedPrimaryKey.message_text(),
+        ))),
     }
 }
 
@@ -202,7 +209,7 @@ fn consume_open_for_close(
         _ => {
             return Err(Box::new(custom_error(
                 &current_span(tokens, src, *cursor),
-                D_REL_007,
+                DiagnosticCode::RelationMalformedPrimaryKey.message_text(),
             )));
         }
     };
