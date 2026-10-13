@@ -195,11 +195,12 @@ This register tracks parser behaviour against the syntax specification.
 
 ## Stable diagnostic compatibility surface
 
-Issue `#304` establishes a backend-neutral observability precursor to ADR-001
-Phase 2. `DiagnosticCode` freezes `D-REL-001` through `D-REL-008` as stable
-identifiers, while `DiagnosticCategory` classifies every current scanner and
-parser orchestration merge point. Existing code meanings do not change; adding
-a code is additive. Consumers must not treat human-facing message text as an
+Issue `#304` establishes a backend-neutral observability precursor to Phase 2 of
+[Architectural Decision Record 001 (ADR-001)](./adr-001-parser-crate-split.md).
+`DiagnosticCode` freezes `D-REL-001` through `D-REL-008` as stable identifiers,
+while `DiagnosticCategory` classifies every current scanner and parser
+orchestration merge point. Existing code meanings do not change; adding a code
+is additive. Consumers must not treat human-facing message text as an
 identifier.
 
 `parse_with_observer()` reports attempt and diagnostic records without changing
