@@ -22,6 +22,75 @@ pub(super) fn parse_tokens(
     src: &str,
     observer: &dyn ParseObserver,
 ) -> (ParsedSpans, Vec<chumsky::error::Simple<SyntaxKind>>) {
+    let scanned = scan_non_rule_spans(tokens, src, observer);
+    let excluded_spans = scanned.merged_for_rule_scanning();
+    let (rule_spans, expr_spans, rule_errors) = observe_rule_scan(observer, || {
+        collect_rule_spans(tokens, src, &excluded_spans)
+    });
+    let mut errors = rule_errors;
+    errors.extend(observe_error_scan(observer, || lexer_errors(tokens)));
+
+    build_parsed_spans(
+        observer,
+        SpanBuildInput {
+            scanned,
+            rule_spans,
+            expr_spans,
+            errors,
+        },
+    )
+}
+
+type ScanErrors = Vec<chumsky::error::Simple<SyntaxKind>>;
+
+struct NonRuleScanResults {
+    attributes: Vec<Span>,
+    imports: Vec<Span>,
+    typedefs: Vec<Span>,
+    relations: Vec<Span>,
+    indexes: Vec<Span>,
+    functions: Vec<Span>,
+    transformers: Vec<Span>,
+    applys: Vec<Span>,
+    errors: ScanErrors,
+}
+
+struct SpanBuildInput {
+    scanned: NonRuleScanResults,
+    rule_spans: Vec<Span>,
+    expr_spans: Vec<Span>,
+    errors: ScanErrors,
+}
+
+impl NonRuleScanResults {
+    fn merged_for_rule_scanning(&self) -> Vec<Span> {
+        let span_capacity = self.attributes.len()
+            + self.imports.len()
+            + self.typedefs.len()
+            + self.relations.len()
+            + self.indexes.len()
+            + self.functions.len()
+            + self.transformers.len()
+            + self.applys.len();
+
+        let mut spans = Vec::with_capacity(span_capacity);
+        spans.extend(self.attributes.iter().cloned());
+        spans.extend(self.imports.iter().cloned());
+        spans.extend(self.typedefs.iter().cloned());
+        spans.extend(self.relations.iter().cloned());
+        spans.extend(self.indexes.iter().cloned());
+        spans.extend(self.functions.iter().cloned());
+        spans.extend(self.transformers.iter().cloned());
+        spans.extend(self.applys.iter().cloned());
+        merge_spans(spans)
+    }
+}
+
+fn scan_non_rule_spans(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    observer: &dyn ParseObserver,
+) -> NonRuleScanResults {
     let (attribute_spans, attribute_errors) =
         observe_span_scan(observer, DiagnosticCategory::Attribute, || {
             collect_attribute_spans(tokens, src)
@@ -55,54 +124,47 @@ pub(super) fn parse_tokens(
             collect_apply_spans(tokens, src)
         });
 
-    let non_rule_span_capacity = attribute_spans.len()
-        + import_spans.len()
-        + typedef_spans.len()
-        + relation_spans.len()
-        + index_spans.len()
-        + function_spans.len()
-        + transformer_spans.len()
-        + apply_spans.len();
+    let mut errors = attribute_errors;
+    errors.extend(import_errors);
+    errors.extend(typedef_errors);
+    errors.extend(relation_errors);
+    errors.extend(index_errors);
+    errors.extend(function_errors);
+    errors.extend(transformer_errors);
+    errors.extend(apply_errors);
 
-    let mut non_rule_spans = Vec::with_capacity(non_rule_span_capacity);
-    non_rule_spans.extend(attribute_spans.iter().cloned());
-    non_rule_spans.extend(import_spans.iter().cloned());
-    non_rule_spans.extend(typedef_spans.iter().cloned());
-    non_rule_spans.extend(relation_spans.iter().cloned());
-    non_rule_spans.extend(index_spans.iter().cloned());
-    non_rule_spans.extend(function_spans.iter().cloned());
-    non_rule_spans.extend(transformer_spans.iter().cloned());
-    non_rule_spans.extend(apply_spans.iter().cloned());
-    let non_rule_spans = merge_spans(non_rule_spans);
+    NonRuleScanResults {
+        attributes: attribute_spans,
+        imports: import_spans,
+        typedefs: typedef_spans,
+        relations: relation_spans,
+        indexes: index_spans,
+        functions: function_spans,
+        transformers: transformer_spans,
+        applys: apply_spans,
+        errors,
+    }
+}
 
-    let (rule_spans, expr_spans, rule_errors) = observe_rule_scan(observer, || {
-        collect_rule_spans(tokens, src, &non_rule_spans)
-    });
-
-    let mut all_errors = attribute_errors;
-    all_errors.extend(import_errors);
-    all_errors.extend(typedef_errors);
-    all_errors.extend(relation_errors);
-    all_errors.extend(index_errors);
-    all_errors.extend(function_errors);
-    all_errors.extend(transformer_errors);
-    all_errors.extend(apply_errors);
-    all_errors.extend(rule_errors);
-    let lexer_errors = observe_error_scan(observer, || lexer_errors(tokens));
-    all_errors.extend(lexer_errors);
+fn build_parsed_spans(
+    observer: &dyn ParseObserver,
+    input: SpanBuildInput,
+) -> (ParsedSpans, ScanErrors) {
+    let mut all_errors = input.scanned.errors;
+    all_errors.extend(input.errors);
 
     observer.parse_attempt_started(DiagnosticCategory::SpanBuilder);
     let span_result = ParsedSpans::builder()
-        .attributes(attribute_spans)
-        .imports(import_spans)
-        .typedefs(typedef_spans)
-        .relations(relation_spans)
-        .indexes(index_spans)
-        .functions(function_spans)
-        .transformers(transformer_spans)
-        .applys(apply_spans)
-        .rules(rule_spans)
-        .expressions(expr_spans)
+        .attributes(input.scanned.attributes)
+        .imports(input.scanned.imports)
+        .typedefs(input.scanned.typedefs)
+        .relations(input.scanned.relations)
+        .indexes(input.scanned.indexes)
+        .functions(input.scanned.functions)
+        .transformers(input.scanned.transformers)
+        .applys(input.scanned.applys)
+        .rules(input.rule_spans)
+        .expressions(input.expr_spans)
         .build();
 
     let spans = match span_result {
@@ -120,8 +182,6 @@ pub(super) fn parse_tokens(
 
     (spans, all_errors)
 }
-
-type ScanErrors = Vec<chumsky::error::Simple<SyntaxKind>>;
 
 fn observe_span_scan(
     observer: &dyn ParseObserver,

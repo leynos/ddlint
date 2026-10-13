@@ -129,6 +129,10 @@ global subscriber or recorder. Only host applications initialize exporters. See
 the [parser observability guide](parser-observability.md) for the stable
 taxonomy, adapter usage, and export/alert guidance.
 
+The private `NonRuleScanResults` and `SpanBuildInput` types are single-call
+pipeline carriers in `span_scanner.rs`. Keep them local to one parse so scanner
+outputs and error order cannot be reused across parser calls.
+
 ## Contributor workflow
 
 Run these gates in order before committing:
