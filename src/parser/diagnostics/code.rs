@@ -138,7 +138,11 @@ impl DiagnosticCode {
             Self::RelationBracketWrappedPrimaryKey,
         ]
         .into_iter()
-        .find(|code| message.starts_with(code.as_str()))
+        .find(|code| {
+            message
+                .strip_prefix(code.as_str())
+                .is_some_and(|rest| rest.starts_with(':'))
+        })
     }
 }
 
@@ -173,6 +177,13 @@ mod tests {
             DiagnosticCode::from_message(&format!("{expected}: message")),
             Some(code)
         );
+    }
+
+    #[rstest]
+    #[case("D-REL-0010: message")]
+    #[case("D-REL-001message")]
+    fn message_code_match_requires_a_separator(#[case] message: &str) {
+        assert_eq!(DiagnosticCode::from_message(message), None);
     }
 
     #[rstest]

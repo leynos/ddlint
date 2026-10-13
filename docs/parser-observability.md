@@ -20,7 +20,7 @@ Only the host application initializes global telemetry.
 For a custom backend, implement `ParseObserver` and copy any borrowed
 diagnostic data needed after the callback:
 
-```rust
+```rust,no_run
 use ddlint::{
     DiagnosticContext, ParseAttemptContext, ParseObserver, parse_with_observer,
 };
@@ -63,7 +63,7 @@ ddlint = { version = "0.1", features = ["observability"] }
 Initialize the application's existing tracing subscriber and metrics recorder,
 then pass `TelemetryObserver`:
 
-```rust
+```rust,no_run
 use ddlint::{TelemetryObserver, parse_with_observer};
 
 // The application initializes its subscriber, recorder, and exporters first.
