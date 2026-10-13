@@ -1,4 +1,7 @@
 //! Diagnostic codes and their owning parser categories.
+//!
+//! The `D-REL-001` through `D-REL-008` identifiers are the frozen compatibility
+//! surface established by ADR-001 Phase 2.
 
 use std::fmt;
 
@@ -8,17 +11,6 @@ use crate::parser::error_messages::{
     RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR, RELATION_KIND_BEFORE_ROLE_ERROR,
     RELATION_MALFORMED_PRIMARY_KEY_ERROR, RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
 };
-
-const RELATION_DIAGNOSTIC_CODES: [DiagnosticCode; 8] = [
-    DiagnosticCode::RelationKindBeforeRole,
-    DiagnosticCode::RelationDuplicateRole,
-    DiagnosticCode::RelationDuplicateKind,
-    DiagnosticCode::RelationBracketPrimaryKey,
-    DiagnosticCode::RelationInvalidBracketElementType,
-    DiagnosticCode::RelationPrimaryKeyOnNonInput,
-    DiagnosticCode::RelationMalformedPrimaryKey,
-    DiagnosticCode::RelationBracketWrappedPrimaryKey,
-];
 
 /// Stable parser diagnostic families.
 ///
@@ -87,81 +79,115 @@ impl fmt::Display for DiagnosticCategory {
     }
 }
 
-/// Stable parser diagnostic codes.
-///
-/// Code strings are compatibility identifiers. Consumers should use
-/// [`DiagnosticCode::as_str`] rather than deriving labels from variant names or
-/// diagnostic message text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum DiagnosticCode {
-    /// A relation kind appears before its role keyword.
-    RelationKindBeforeRole,
-    /// A relation declaration contains more than one role keyword.
-    RelationDuplicateRole,
-    /// A relation declaration contains more than one kind keyword.
-    RelationDuplicateKind,
-    /// A bracket-form relation declares a primary-key clause.
-    RelationBracketPrimaryKey,
-    /// A bracket-form relation does not contain exactly one element type.
-    RelationInvalidBracketElementType,
-    /// A non-input relation declares a primary-key clause.
-    RelationPrimaryKeyOnNonInput,
-    /// A relation contains an unexpected or malformed primary-key clause.
-    RelationMalformedPrimaryKey,
-    /// A relation uses an unsupported bracket-wrapped primary-key clause.
-    RelationBracketWrappedPrimaryKey,
+macro_rules! define_diagnostic_codes {
+    ($( $(#[$variant_doc:meta])* $variant:ident {
+        code: $code:literal,
+        category: $category:ident,
+        message: $message:path,
+    }),+ $(,)?) => {
+        /// Stable parser diagnostic codes.
+        ///
+        /// Code strings are compatibility identifiers. Consumers should use
+        /// [`DiagnosticCode::as_str`] rather than deriving labels from variant
+        /// names or diagnostic message text.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[non_exhaustive]
+        pub enum DiagnosticCode {
+            $(
+                $(#[$variant_doc])*
+                $variant,
+            )+
+        }
+
+        const DIAGNOSTIC_CODES: &[DiagnosticCode] = &[
+            $(DiagnosticCode::$variant,)+
+        ];
+
+        impl DiagnosticCode {
+            /// Return the stable external diagnostic identifier.
+            #[must_use]
+            pub const fn as_str(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $code,)+
+                }
+            }
+
+            /// Return the parser category that owns this diagnostic.
+            #[must_use]
+            pub const fn category(self) -> DiagnosticCategory {
+                match self {
+                    $(Self::$variant => DiagnosticCategory::$category,)+
+                }
+            }
+
+            /// Return the canonical human-facing message for this diagnostic.
+            pub(crate) const fn message_text(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $message,)+
+                }
+            }
+
+            /// Identify a diagnostic from the stable code prefix in its message.
+            pub(crate) fn from_message(message: &str) -> Option<Self> {
+                let identifier = message.split_once(':')?.0;
+                DIAGNOSTIC_CODES
+                    .iter()
+                    .copied()
+                    .find(|code| code.as_str() == identifier)
+            }
+        }
+    };
 }
 
-impl DiagnosticCode {
-    /// Return the stable external diagnostic identifier.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::RelationKindBeforeRole => "D-REL-001",
-            Self::RelationDuplicateRole => "D-REL-002",
-            Self::RelationDuplicateKind => "D-REL-003",
-            Self::RelationBracketPrimaryKey => "D-REL-004",
-            Self::RelationInvalidBracketElementType => "D-REL-005",
-            Self::RelationPrimaryKeyOnNonInput => "D-REL-006",
-            Self::RelationMalformedPrimaryKey => "D-REL-007",
-            Self::RelationBracketWrappedPrimaryKey => "D-REL-008",
-        }
-    }
-
-    /// Return the parser category that owns this diagnostic.
-    #[must_use]
-    pub const fn category(self) -> DiagnosticCategory {
-        match self {
-            Self::RelationKindBeforeRole
-            | Self::RelationDuplicateRole
-            | Self::RelationDuplicateKind
-            | Self::RelationBracketPrimaryKey
-            | Self::RelationInvalidBracketElementType
-            | Self::RelationPrimaryKeyOnNonInput
-            | Self::RelationMalformedPrimaryKey
-            | Self::RelationBracketWrappedPrimaryKey => DiagnosticCategory::Relation,
-        }
-    }
-
-    pub(crate) const fn message_text(self) -> &'static str {
-        match self {
-            Self::RelationKindBeforeRole => RELATION_KIND_BEFORE_ROLE_ERROR,
-            Self::RelationDuplicateRole => RELATION_DUPLICATE_ROLE_ERROR,
-            Self::RelationDuplicateKind => RELATION_DUPLICATE_KIND_ERROR,
-            Self::RelationBracketPrimaryKey => RELATION_BRACKET_PRIMARY_KEY_ERROR,
-            Self::RelationInvalidBracketElementType => RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR,
-            Self::RelationPrimaryKeyOnNonInput => RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
-            Self::RelationMalformedPrimaryKey => RELATION_MALFORMED_PRIMARY_KEY_ERROR,
-            Self::RelationBracketWrappedPrimaryKey => RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR,
-        }
-    }
-
-    pub(crate) fn from_message(message: &str) -> Option<Self> {
-        RELATION_DIAGNOSTIC_CODES
-            .iter()
-            .find_map(|code| (code.message_text() == message).then_some(*code))
-    }
+define_diagnostic_codes! {
+    /// A relation kind appears before its role keyword.
+    RelationKindBeforeRole {
+        code: "D-REL-001",
+        category: Relation,
+        message: RELATION_KIND_BEFORE_ROLE_ERROR,
+    },
+    /// A relation declaration contains more than one role keyword.
+    RelationDuplicateRole {
+        code: "D-REL-002",
+        category: Relation,
+        message: RELATION_DUPLICATE_ROLE_ERROR,
+    },
+    /// A relation declaration contains more than one kind keyword.
+    RelationDuplicateKind {
+        code: "D-REL-003",
+        category: Relation,
+        message: RELATION_DUPLICATE_KIND_ERROR,
+    },
+    /// A bracket-form relation declares a primary-key clause.
+    RelationBracketPrimaryKey {
+        code: "D-REL-004",
+        category: Relation,
+        message: RELATION_BRACKET_PRIMARY_KEY_ERROR,
+    },
+    /// A bracket-form relation does not contain exactly one element type.
+    RelationInvalidBracketElementType {
+        code: "D-REL-005",
+        category: Relation,
+        message: RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR,
+    },
+    /// A non-input relation declares a primary-key clause.
+    RelationPrimaryKeyOnNonInput {
+        code: "D-REL-006",
+        category: Relation,
+        message: RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
+    },
+    /// A relation contains an unexpected or malformed primary-key clause.
+    RelationMalformedPrimaryKey {
+        code: "D-REL-007",
+        category: Relation,
+        message: RELATION_MALFORMED_PRIMARY_KEY_ERROR,
+    },
+    /// A relation uses an unsupported bracket-wrapped primary-key clause.
+    RelationBracketWrappedPrimaryKey {
+        code: "D-REL-008",
+        category: Relation,
+        message: RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR,
+    },
 }
 
 impl fmt::Display for DiagnosticCode {
@@ -199,11 +225,19 @@ mod tests {
     }
 
     #[rstest]
-    #[case("D-REL-001: message")]
+    #[case("D-REL-999: message")]
     #[case("D-REL-0010: message")]
     #[case("D-REL-001message")]
     fn message_code_match_requires_a_known_message(#[case] message: &str) {
         assert_eq!(DiagnosticCode::from_message(message), None);
+    }
+
+    #[test]
+    fn message_code_match_ignores_wording_after_the_stable_prefix() {
+        assert_eq!(
+            DiagnosticCode::from_message("D-REL-001: wording may evolve"),
+            Some(DiagnosticCode::RelationKindBeforeRole)
+        );
     }
 
     #[rstest]

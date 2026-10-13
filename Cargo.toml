@@ -20,7 +20,7 @@ metrics = { version = "0.24.6", default-features = false, optional = true }
 tracing = { version = "0.1.44", default-features = false, optional = true }
 
 [features]
-observability = ["dep:metrics", "dep:tracing"]
+observability = ["dep:metrics", "dep:tracing", "tracing/std"]
 test-support = []
 
 [dev-dependencies]

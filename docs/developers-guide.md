@@ -123,11 +123,11 @@ read-only integration boundary: callbacks cannot affect parsing, and its
 diagnostic context separates stable codes, categories, severity, spans, and
 message text. Message text and spans must not become metric labels.
 
-The optional `observability` feature exposes `TelemetryObserver`, which
-forwards events to the `tracing` and `metrics` facades without installing a
-global subscriber or recorder. Only host applications initialize exporters. See
-the [parser observability guide](parser-observability.md) for the stable
-taxonomy, adapter usage, and export/alert guidance.
+The optional `observability` feature exposes `TelemetryObserver`. It forwards
+events to the `tracing` and `metrics` facades without installing a global
+subscriber or recorder. Only host applications initialize exporters. See the
+[parser observability guide](parser-observability.md) for the stable taxonomy,
+adapter usage, and export/alert guidance.
 
 The private `NonRuleScanResults` and `SpanBuildInput` types are single-call
 pipeline carriers in `span_scanner.rs`. Keep them local to one parse so scanner

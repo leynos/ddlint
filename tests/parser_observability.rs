@@ -169,6 +169,48 @@ fn valid_parse_attempts_cover_every_parser_category_in_order() {
 }
 
 #[test]
+fn parser_completion_summarizes_child_diagnostics_without_reemitting_them() {
+    let observer = RecordingParseObserver::default();
+    let source = "relation input R(id: u32)\noutput R(id: u32)";
+
+    let parsed = parse_with_observer(source, &observer);
+    let events = observer.events();
+
+    assert_eq!(parsed.errors().len(), 1);
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, RecordedParseEvent::Diagnostic { .. }))
+            .count(),
+        1
+    );
+
+    let relation_counts: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            RecordedParseEvent::AttemptCompleted {
+                category: DiagnosticCategory::Relation,
+                diagnostic_count,
+            } => Some(*diagnostic_count),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(relation_counts, [1]);
+
+    let parser_counts: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            RecordedParseEvent::AttemptCompleted {
+                category: DiagnosticCategory::Parser,
+                diagnostic_count,
+            } => Some(*diagnostic_count),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(parser_counts, [1]);
+}
+
+#[test]
 fn observer_events_and_parser_output_are_deterministic() {
     let source = concat!(
         "relation input Broken(id: u32)\n",

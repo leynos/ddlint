@@ -1,8 +1,6 @@
 //! Compile-fail tests for parser API compatibility boundaries.
 
-use rstest::rstest;
-
-#[rstest]
+#[test]
 fn parser_api_compatibility_contracts_are_checked_for_consumers() {
     let cases = trybuild::TestCases::new();
     cases.compile_fail("tests/ui/non_exhaustive_diagnostic_category.rs");

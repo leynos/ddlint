@@ -17,8 +17,8 @@ Only the host application initializes global telemetry.
 
 ## Choose an observer
 
-For a custom backend, implement `ParseObserver` and copy any borrowed
-diagnostic data needed after the callback:
+Implement `ParseObserver` for a custom backend. Copy any borrowed diagnostic
+data needed after the callback:
 
 ```rust,no_run
 use ddlint::{
@@ -66,14 +66,14 @@ then pass `TelemetryObserver`:
 ```rust,no_run
 use ddlint::{TelemetryObserver, parse_with_observer};
 
-// The application initializes its subscriber, recorder, and exporters first.
+// Initialize host telemetry first, then construct and reuse one observer.
 let observer = TelemetryObserver::new();
 let parsed = parse_with_observer(source, &observer);
 ```
 
-Without a configured subscriber or recorder, the facades discard events and
-parsing remains deterministic. Calling `parse(source)` uses `NoopParseObserver`
-and does not require a telemetry runtime.
+The facades discard events when the host has not configured a subscriber or
+recorder. Parsing remains deterministic in that case. Calling `parse(source)`
+uses `NoopParseObserver` and does not require a telemetry runtime.
 
 ## Export logs and metrics
 
@@ -91,6 +91,10 @@ severity are bounded enums. The adapter emits attempt start/completion events at
 `DEBUG` and diagnostics at `WARN` under the `ddlint::parser` tracing target.
 Diagnostic events include `code`, `category`, `severity`, `span_start`,
 `span_end`, and `message` fields.
+
+The top-level `Parser` completion carries the aggregate diagnostic count from
+its child phases. It is a summary, not another diagnostic event; do not add it
+to the per-phase counts when aggregating totals.
 
 Configure the host's normal OpenTelemetry, Prometheus, or vendor exporter to
 collect these facade events. Keep exporter lifecycle, batching, retries, and
