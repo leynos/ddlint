@@ -69,6 +69,28 @@ adapter. See the [parser observability guide](parser-observability.md) for
 export and alerting guidance. The library never initializes host subscribers or
 recorders.
 
+Enable the supplied adapter in the application dependency:
+
+```toml
+[dependencies]
+ddlint = { version = "0.1.0", features = ["observability"] }
+```
+
+Initialize the application's tracing subscriber and metrics recorder, then
+construct one `TelemetryObserver` and reuse it for parser calls:
+
+```rust,no_run
+use ddlint::{TelemetryObserver, parse_with_observer};
+
+fn parse_sources(sources: &[&str]) {
+    // Configure application telemetry before constructing the observer.
+    let observer = TelemetryObserver::new();
+    for source in sources {
+        let _parsed = parse_with_observer(source, &observer);
+    }
+}
+```
+
 ## Relation declarations
 
 Relation declarations may combine an optional role, optional kind, optional

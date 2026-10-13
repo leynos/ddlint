@@ -106,10 +106,6 @@ mod tests {
         },
     };
 
-    #[expect(
-        clippy::expect_used,
-        reason = "the test asserts that each emitted metric counter exists"
-    )]
     #[test]
     fn emits_attempt_and_diagnostic_counters_with_bounded_labels() {
         let recorder = DebuggingRecorder::new();
@@ -135,6 +131,10 @@ mod tests {
         let attempt = snapshot
             .iter()
             .find(|(key, _, _, _)| key.key().name() == ATTEMPT_METRIC);
+        #[expect(
+            clippy::expect_used,
+            reason = "the test asserts that the emitted attempt counter exists"
+        )]
         let (attempt_key, _, _, attempt_value) = attempt.expect("expected attempt counter");
         assert_eq!(*attempt_value, DebugValue::Counter(1));
         assert_eq!(
@@ -145,6 +145,10 @@ mod tests {
         let diagnostic = snapshot
             .iter()
             .find(|(key, _, _, _)| key.key().name() == DIAGNOSTIC_METRIC);
+        #[expect(
+            clippy::expect_used,
+            reason = "the test asserts that the emitted diagnostic counter exists"
+        )]
         let (diagnostic_key, _, _, diagnostic_value) =
             diagnostic.expect("expected diagnostic counter");
         assert_eq!(*diagnostic_value, DebugValue::Counter(1));
@@ -155,6 +159,52 @@ mod tests {
                 ("code", "D-REL-002"),
                 ("severity", "error"),
             ])
+        );
+    }
+
+    #[test]
+    fn emits_structured_attempt_tracing_fields() {
+        let observer = TelemetryObserver::new();
+        let subscriber = RecordingSubscriber::default();
+        let events = Arc::clone(&subscriber.events);
+        let dispatch = tracing::Dispatch::new(subscriber);
+
+        tracing::dispatcher::with_default(&dispatch, || {
+            observer.parse_attempt_started(DiagnosticCategory::Relation);
+            observer
+                .parse_attempt_completed(ParseAttemptContext::new(DiagnosticCategory::Relation, 2));
+        });
+
+        let events = events
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert_eq!(events.len(), 2);
+        assert_eq!(
+            events
+                .iter()
+                .map(|event| event.fields.get("message").map(String::as_str))
+                .collect::<Vec<_>>(),
+            [
+                Some("parser attempt started"),
+                Some("parser attempt completed")
+            ]
+        );
+
+        let [started, completed] = events.as_slice() else {
+            panic!("expected start and completion tracing events, got {events:?}");
+        };
+        for event in [started, completed] {
+            assert_eq!(event.target, "ddlint::parser");
+            assert_eq!(event.level, "DEBUG");
+            assert_eq!(
+                event.fields.get("category").map(String::as_str),
+                Some("relation")
+            );
+        }
+        assert!(!started.fields.contains_key("diagnostic_count"));
+        assert_eq!(
+            completed.fields.get("diagnostic_count").map(String::as_str),
+            Some("2")
         );
     }
 
