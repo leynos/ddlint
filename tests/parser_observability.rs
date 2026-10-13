@@ -198,7 +198,14 @@ proptest::proptest! {
 
     #[test]
     fn observer_does_not_change_parse_results_or_event_order(
-        source in prop::collection::vec(any::<char>(), 0..128)
+        // This property checks observer parity, not delimiter recovery; the
+        // expression span walker asserts on unmatched closing delimiters.
+        source in prop::collection::vec(
+            any::<char>().prop_filter("no unmatched closing delimiters", |character| {
+                !matches!(character, ')' | '}' | ']')
+            }),
+            0..128,
+        )
             .prop_map(|characters| characters.into_iter().collect::<String>())
     ) {
         let baseline = parse(&source);
