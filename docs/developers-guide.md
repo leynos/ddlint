@@ -114,6 +114,21 @@ parsing pipeline.
 - Keep typed consumer-facing relation metadata in `ast/relation.rs`, and
   inspection-only CST traversal in `ast/relation/inspect.rs`.
 
+## Parser observability
+
+`parse` uses a no-op observer and remains independent of telemetry runtimes.
+Applications that need parser-attempt and diagnostic callbacks can call
+`parse_with_observer` with a `ParseObserver` implementation. The observer is a
+read-only integration boundary: callbacks cannot affect parsing, and its
+diagnostic context separates stable codes, categories, severity, spans, and
+message text. Message text and spans must not become metric labels.
+
+The optional `observability` feature exposes `TelemetryObserver`, which
+forwards events to the `tracing` and `metrics` facades without installing a
+global subscriber or recorder. Only host applications initialize exporters. See
+the [parser observability guide](parser-observability.md) for the stable
+taxonomy, adapter usage, and export/alert guidance.
+
 ## Contributor workflow
 
 Run these gates in order before committing:

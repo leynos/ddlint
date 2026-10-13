@@ -84,9 +84,11 @@ and does not require a telemetry runtime.
 | `ddlint_parser_attempts_total`    | `category`                     | Parser or scanner attempts started |
 | `ddlint_parser_diagnostics_total` | `code`, `category`, `severity` | Diagnostics emitted                |
 
+_Table 1: Parser metrics exposed by the optional telemetry adapter._
+
 The `code` label is the stable diagnostic code or `uncoded`. Categories and
 severity are bounded enums. The adapter emits attempt start/completion events at
-`DEBUG` and diagnostics at `ERROR` under the `ddlint::parser` tracing target.
+`DEBUG` and diagnostics at `WARN` under the `ddlint::parser` tracing target.
 Diagnostic events include `code`, `category`, `severity`, `span_start`,
 `span_end`, and `message` fields.
 
@@ -132,6 +134,8 @@ message wording may become clearer, so automation must match `DiagnosticCode` or
 | `D-REL-007` | Malformed primary-key clause                   |
 | `D-REL-008` | Unsupported bracket-wrapped primary-key clause |
 
+_Table 2: Stable relation diagnostic codes and their failure conditions._
+
 Uncoded diagnostics retain a stable category. Current categories are `parser`,
 `attribute`, `import`, `typedef`, `relation`, `index`, `function`,
 `transformer`, `apply`, `rule`, `lexer`, `span_builder`, `top_level_for`, and
@@ -142,3 +146,6 @@ Uncoded diagnostics retain a stable category. Current categories are `parser`,
 - [Parser implementation notes](./parser-implementation-notes.md)
 - [Parser conformance register](./parser-conformance-register.md)
 - [ADR-001: parser crate split](./adr-001-parser-crate-split.md)
+
+Triage: [type:docstyle] Table captions follow the repository style guide and
+appear below their tables.

@@ -1,6 +1,7 @@
 //! Integration tests for backend-neutral parser observability.
 
 use ddlint::{DiagnosticCategory, DiagnosticCode, DiagnosticSeverity, parse, parse_with_observer};
+use proptest::prelude::*;
 use rstest::rstest;
 
 #[path = "support/observability.rs"]
@@ -81,6 +82,20 @@ fn relation_diagnostics_emit_stable_code_and_span(
     assert_eq!(*severity, DiagnosticSeverity::Error);
     assert!(message.starts_with(expected_code.as_str()));
     assert!(!parsed.errors().is_empty());
+    assert_eq!(
+        observer
+            .events()
+            .into_iter()
+            .filter_map(|event| match event {
+                RecordedParseEvent::AttemptCompleted {
+                    category: DiagnosticCategory::Relation,
+                    diagnostic_count,
+                } => Some(diagnostic_count),
+                _ => None,
+            })
+            .collect::<Vec<_>>(),
+        [1]
+    );
 }
 
 #[test]
@@ -175,5 +190,28 @@ fn observer_events_and_parser_output_are_deterministic() {
         } else {
             expected_events = Some(events);
         }
+    }
+}
+
+proptest::proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    #[test]
+    fn observer_does_not_change_parse_results_or_event_order(
+        source in prop::collection::vec(any::<char>(), 0..128)
+            .prop_map(|characters| characters.into_iter().collect::<String>())
+    ) {
+        let baseline = parse(&source);
+        let first_observer = RecordingParseObserver::default();
+        let first_parse = parse_with_observer(&source, &first_observer);
+        let first_events = first_observer.events();
+        let second_observer = RecordingParseObserver::default();
+        let second_parse = parse_with_observer(&source, &second_observer);
+
+        proptest::prop_assert_eq!(first_parse.green(), baseline.green());
+        proptest::prop_assert_eq!(first_parse.errors(), baseline.errors());
+        proptest::prop_assert_eq!(second_parse.green(), baseline.green());
+        proptest::prop_assert_eq!(second_parse.errors(), baseline.errors());
+        proptest::prop_assert_eq!(second_observer.events(), first_events);
     }
 }

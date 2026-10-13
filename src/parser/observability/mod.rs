@@ -20,6 +20,7 @@ pub use telemetry::TelemetryObserver;
 
 /// Severity of a parser diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum DiagnosticSeverity {
     /// The parser could not accept or validate part of the source.
     Error,

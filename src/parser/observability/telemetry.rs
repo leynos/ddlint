@@ -69,7 +69,7 @@ impl ParseObserver for TelemetryObserver {
             "severity" => severity
         )
         .increment(1);
-        tracing::error!(
+        tracing::warn!(
             target: "ddlint::parser",
             code,
             category,
@@ -79,5 +79,80 @@ impl ParseObserver for TelemetryObserver {
             message,
             "parser diagnostic"
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Tests for the optional metrics and tracing adapter.
+
+    use std::collections::BTreeMap;
+
+    use metrics_util::debugging::{DebugValue, DebuggingRecorder};
+
+    use super::{ATTEMPT_METRIC, DIAGNOSTIC_METRIC, TelemetryObserver};
+    use crate::parser::{
+        diagnostics::{DiagnosticCategory, DiagnosticCode},
+        observability::{
+            DiagnosticContext, DiagnosticSeverity, ParseAttemptContext, ParseObserver,
+        },
+    };
+
+    #[test]
+    fn emits_attempt_and_diagnostic_counters_with_bounded_labels() {
+        let recorder = DebuggingRecorder::new();
+        let snapshotter = recorder.snapshotter();
+
+        metrics::with_local_recorder(&recorder, || {
+            let observer = TelemetryObserver::new();
+            observer.parse_attempt_started(DiagnosticCategory::Relation);
+            observer
+                .parse_attempt_completed(ParseAttemptContext::new(DiagnosticCategory::Relation, 1));
+            observer.diagnostic_emitted(&DiagnosticContext {
+                code: Some(DiagnosticCode::RelationDuplicateRole),
+                category: DiagnosticCategory::Relation,
+                span: 6..12,
+                severity: DiagnosticSeverity::Error,
+                message: "D-REL-002: duplicate role",
+            });
+        });
+
+        let snapshot = snapshotter.snapshot().into_vec();
+        assert_eq!(snapshot.len(), 2);
+
+        let attempt = snapshot
+            .iter()
+            .find(|(key, _, _, _)| key.key().name() == ATTEMPT_METRIC);
+        let Some((attempt_key, _, _, attempt_value)) = attempt else {
+            panic!("expected attempt counter");
+        };
+        assert_eq!(*attempt_value, DebugValue::Counter(1));
+        assert_eq!(
+            labels(attempt_key),
+            BTreeMap::from([("category", "relation")])
+        );
+
+        let diagnostic = snapshot
+            .iter()
+            .find(|(key, _, _, _)| key.key().name() == DIAGNOSTIC_METRIC);
+        let Some((diagnostic_key, _, _, diagnostic_value)) = diagnostic else {
+            panic!("expected diagnostic counter");
+        };
+        assert_eq!(*diagnostic_value, DebugValue::Counter(1));
+        assert_eq!(
+            labels(diagnostic_key),
+            BTreeMap::from([
+                ("category", "relation"),
+                ("code", "D-REL-002"),
+                ("severity", "error"),
+            ])
+        );
+    }
+
+    fn labels(key: &metrics_util::CompositeKey) -> BTreeMap<&str, &str> {
+        key.key()
+            .labels()
+            .map(|label| (label.key(), label.value()))
+            .collect()
     }
 }

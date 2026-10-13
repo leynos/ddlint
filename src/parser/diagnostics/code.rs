@@ -8,6 +8,7 @@ use std::fmt;
 /// suitable for bounded metrics labels and remain available while individual
 /// scanner families acquire more specific diagnostic codes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum DiagnosticCategory {
     /// The complete parser entry point.
     Parser,
@@ -74,6 +75,7 @@ impl fmt::Display for DiagnosticCategory {
 /// [`DiagnosticCode::as_str`] rather than deriving labels from variant names or
 /// diagnostic message text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum DiagnosticCode {
     /// A relation kind appears before its role keyword.
     RelationKindBeforeRole,

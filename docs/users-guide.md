@@ -60,8 +60,14 @@ assert!(diagnostics.is_empty());
 
 ## Logging and diagnostics output
 
-`ddlint` uses the `log` API for parser warnings. Initialize a logger in your
-binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
+Legacy parser warnings use the `log` API. Initialize a logger in your binary
+and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`). For
+structured parser-attempt and diagnostic events, pass a `ParseObserver` to
+`parse_with_observer`; this is opt-in and does not require a telemetry runtime.
+The optional `observability` Cargo feature supplies a `tracing` and `metrics`
+adapter. See the [parser observability guide](parser-observability.md) for
+export and alerting guidance. The library never initializes host subscribers or
+recorders.
 
 ## Relation declarations
 

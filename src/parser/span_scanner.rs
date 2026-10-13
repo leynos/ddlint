@@ -107,10 +107,7 @@ pub(super) fn parse_tokens(
 
     let spans = match span_result {
         Ok(spans) => {
-            observer.parse_attempt_completed(super::observability::ParseAttemptContext::new(
-                DiagnosticCategory::SpanBuilder,
-                0,
-            ));
+            complete_attempt(observer, DiagnosticCategory::SpanBuilder, &[]);
             spans
         }
         Err(err) => {
