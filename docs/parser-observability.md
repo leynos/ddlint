@@ -102,9 +102,9 @@ Alert on rates and ratios over a sustained window rather than raw counter
 values:
 
 1. Use `ddlint_parser_attempts_total{category="parser"}` as the parse-volume
-   denominator.
-2. Alert when the diagnostic-to-parser-attempt ratio exceeds the
-   application's error budget after a minimum traffic threshold.
+   denominator; this category records one attempt per top-level parse.
+2. Alert when the diagnostics-per-parse ratio exceeds the application's error
+   budget after a minimum traffic threshold.
 3. Group failures by `category` to distinguish scanner regressions from lexer,
    span-builder, top-level-`for`, or name-validation failures.
 4. Add focused alerts for unexpected increases in `D-REL-001` through

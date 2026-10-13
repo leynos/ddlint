@@ -9,39 +9,15 @@ use crate::parser::error_messages::{
     RELATION_MALFORMED_PRIMARY_KEY_ERROR, RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
 };
 
-const RELATION_DIAGNOSTICS: [(DiagnosticCode, &str); 8] = [
-    (
-        DiagnosticCode::RelationKindBeforeRole,
-        RELATION_KIND_BEFORE_ROLE_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationDuplicateRole,
-        RELATION_DUPLICATE_ROLE_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationDuplicateKind,
-        RELATION_DUPLICATE_KIND_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationBracketPrimaryKey,
-        RELATION_BRACKET_PRIMARY_KEY_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationInvalidBracketElementType,
-        RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationPrimaryKeyOnNonInput,
-        RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationMalformedPrimaryKey,
-        RELATION_MALFORMED_PRIMARY_KEY_ERROR,
-    ),
-    (
-        DiagnosticCode::RelationBracketWrappedPrimaryKey,
-        RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR,
-    ),
+const RELATION_DIAGNOSTIC_CODES: [DiagnosticCode; 8] = [
+    DiagnosticCode::RelationKindBeforeRole,
+    DiagnosticCode::RelationDuplicateRole,
+    DiagnosticCode::RelationDuplicateKind,
+    DiagnosticCode::RelationBracketPrimaryKey,
+    DiagnosticCode::RelationInvalidBracketElementType,
+    DiagnosticCode::RelationPrimaryKeyOnNonInput,
+    DiagnosticCode::RelationMalformedPrimaryKey,
+    DiagnosticCode::RelationBracketWrappedPrimaryKey,
 ];
 
 /// Stable parser diagnostic families.
@@ -170,21 +146,21 @@ impl DiagnosticCode {
 
     pub(crate) const fn message_text(self) -> &'static str {
         match self {
-            Self::RelationKindBeforeRole => RELATION_DIAGNOSTICS[0].1,
-            Self::RelationDuplicateRole => RELATION_DIAGNOSTICS[1].1,
-            Self::RelationDuplicateKind => RELATION_DIAGNOSTICS[2].1,
-            Self::RelationBracketPrimaryKey => RELATION_DIAGNOSTICS[3].1,
-            Self::RelationInvalidBracketElementType => RELATION_DIAGNOSTICS[4].1,
-            Self::RelationPrimaryKeyOnNonInput => RELATION_DIAGNOSTICS[5].1,
-            Self::RelationMalformedPrimaryKey => RELATION_DIAGNOSTICS[6].1,
-            Self::RelationBracketWrappedPrimaryKey => RELATION_DIAGNOSTICS[7].1,
+            Self::RelationKindBeforeRole => RELATION_KIND_BEFORE_ROLE_ERROR,
+            Self::RelationDuplicateRole => RELATION_DUPLICATE_ROLE_ERROR,
+            Self::RelationDuplicateKind => RELATION_DUPLICATE_KIND_ERROR,
+            Self::RelationBracketPrimaryKey => RELATION_BRACKET_PRIMARY_KEY_ERROR,
+            Self::RelationInvalidBracketElementType => RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR,
+            Self::RelationPrimaryKeyOnNonInput => RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
+            Self::RelationMalformedPrimaryKey => RELATION_MALFORMED_PRIMARY_KEY_ERROR,
+            Self::RelationBracketWrappedPrimaryKey => RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR,
         }
     }
 
     pub(crate) fn from_message(message: &str) -> Option<Self> {
-        RELATION_DIAGNOSTICS
+        RELATION_DIAGNOSTIC_CODES
             .iter()
-            .find_map(|(code, expected)| (*expected == message).then_some(*code))
+            .find_map(|code| (code.message_text() == message).then_some(*code))
     }
 }
 
