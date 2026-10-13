@@ -163,6 +163,39 @@ mod tests {
     }
 
     #[test]
+    fn labels_diagnostics_without_a_code_as_uncoded() {
+        let recorder = DebuggingRecorder::new();
+        let snapshotter = recorder.snapshotter();
+
+        metrics::with_local_recorder(&recorder, || {
+            let observer = TelemetryObserver::new();
+            observer.diagnostic_emitted(&DiagnosticContext {
+                code: None,
+                category: DiagnosticCategory::Rule,
+                span: 4..9,
+                severity: DiagnosticSeverity::Error,
+                message: "rule diagnostic without a stable code",
+            });
+        });
+
+        let snapshot = snapshotter.snapshot().into_vec();
+        let [(key, _, _, value)] = snapshot.as_slice() else {
+            panic!("expected one uncoded diagnostic counter, got {snapshot:?}");
+        };
+
+        assert_eq!(key.key().name(), DIAGNOSTIC_METRIC);
+        assert_eq!(*value, DebugValue::Counter(1));
+        assert_eq!(
+            labels(key),
+            BTreeMap::from([
+                ("category", "rule"),
+                ("code", "uncoded"),
+                ("severity", "error"),
+            ])
+        );
+    }
+
+    #[test]
     fn emits_structured_attempt_tracing_fields() {
         let observer = TelemetryObserver::new();
         let subscriber = RecordingSubscriber::default();
