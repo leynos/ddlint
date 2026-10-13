@@ -7,7 +7,7 @@ metrics, or alerts.
 
 ## Prerequisites
 
-- A host application that calls `ddlint::parse`.
+- A host application that calls `ddlint::parse_with_observer`.
 - An existing logging or metrics backend if events must leave the process.
 - The `observability` feature only when using the supplied `tracing` and
   `metrics` adapter. Custom observers do not need this feature.

@@ -2,6 +2,48 @@
 
 use std::fmt;
 
+use crate::parser::error_messages::{
+    RELATION_BRACKET_PRIMARY_KEY_ERROR, RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR,
+    RELATION_DUPLICATE_KIND_ERROR, RELATION_DUPLICATE_ROLE_ERROR,
+    RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR, RELATION_KIND_BEFORE_ROLE_ERROR,
+    RELATION_MALFORMED_PRIMARY_KEY_ERROR, RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
+};
+
+const RELATION_DIAGNOSTICS: [(DiagnosticCode, &str); 8] = [
+    (
+        DiagnosticCode::RelationKindBeforeRole,
+        RELATION_KIND_BEFORE_ROLE_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationDuplicateRole,
+        RELATION_DUPLICATE_ROLE_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationDuplicateKind,
+        RELATION_DUPLICATE_KIND_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationBracketPrimaryKey,
+        RELATION_BRACKET_PRIMARY_KEY_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationInvalidBracketElementType,
+        RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationPrimaryKeyOnNonInput,
+        RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationMalformedPrimaryKey,
+        RELATION_MALFORMED_PRIMARY_KEY_ERROR,
+    ),
+    (
+        DiagnosticCode::RelationBracketWrappedPrimaryKey,
+        RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR,
+    ),
+];
+
 /// Stable parser diagnostic families.
 ///
 /// Categories identify the parser phase that produced a diagnostic. They are
@@ -126,23 +168,23 @@ impl DiagnosticCode {
         }
     }
 
+    pub(crate) const fn message_text(self) -> &'static str {
+        match self {
+            Self::RelationKindBeforeRole => RELATION_DIAGNOSTICS[0].1,
+            Self::RelationDuplicateRole => RELATION_DIAGNOSTICS[1].1,
+            Self::RelationDuplicateKind => RELATION_DIAGNOSTICS[2].1,
+            Self::RelationBracketPrimaryKey => RELATION_DIAGNOSTICS[3].1,
+            Self::RelationInvalidBracketElementType => RELATION_DIAGNOSTICS[4].1,
+            Self::RelationPrimaryKeyOnNonInput => RELATION_DIAGNOSTICS[5].1,
+            Self::RelationMalformedPrimaryKey => RELATION_DIAGNOSTICS[6].1,
+            Self::RelationBracketWrappedPrimaryKey => RELATION_DIAGNOSTICS[7].1,
+        }
+    }
+
     pub(crate) fn from_message(message: &str) -> Option<Self> {
-        [
-            Self::RelationKindBeforeRole,
-            Self::RelationDuplicateRole,
-            Self::RelationDuplicateKind,
-            Self::RelationBracketPrimaryKey,
-            Self::RelationInvalidBracketElementType,
-            Self::RelationPrimaryKeyOnNonInput,
-            Self::RelationMalformedPrimaryKey,
-            Self::RelationBracketWrappedPrimaryKey,
-        ]
-        .into_iter()
-        .find(|code| {
-            message
-                .strip_prefix(code.as_str())
-                .is_some_and(|rest| rest.starts_with(':'))
-        })
+        RELATION_DIAGNOSTICS
+            .iter()
+            .find_map(|(code, expected)| (*expected == message).then_some(*code))
     }
 }
 
@@ -173,16 +215,18 @@ mod tests {
         assert_eq!(code.as_str(), expected);
         assert_eq!(code.to_string(), expected);
         assert_eq!(code.category(), DiagnosticCategory::Relation);
+        assert!(code.message_text().starts_with(expected));
         assert_eq!(
-            DiagnosticCode::from_message(&format!("{expected}: message")),
+            DiagnosticCode::from_message(code.message_text()),
             Some(code)
         );
     }
 
     #[rstest]
+    #[case("D-REL-001: message")]
     #[case("D-REL-0010: message")]
     #[case("D-REL-001message")]
-    fn message_code_match_requires_a_separator(#[case] message: &str) {
+    fn message_code_match_requires_a_known_message(#[case] message: &str) {
         assert_eq!(DiagnosticCode::from_message(message), None);
     }
 

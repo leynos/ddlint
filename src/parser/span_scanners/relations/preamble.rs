@@ -43,10 +43,7 @@
 
 use chumsky::{Error, error::Simple};
 
-use crate::parser::error_messages::{
-    RELATION_DUPLICATE_KIND_ERROR as D_REL_003, RELATION_DUPLICATE_ROLE_ERROR as D_REL_002,
-    RELATION_KIND_BEFORE_ROLE_ERROR as D_REL_001,
-};
+use crate::parser::diagnostics::DiagnosticCode;
 use crate::{Span, SyntaxKind};
 
 use super::cursor::skip_trivia;
@@ -172,10 +169,16 @@ impl PreambleState {
         cursor: &mut usize,
     ) -> ScanResult<()> {
         if self.saw_kind_first {
-            return Err(Box::new(custom_error(span, D_REL_001)));
+            return Err(Box::new(custom_error(
+                span,
+                DiagnosticCode::RelationKindBeforeRole.message_text(),
+            )));
         }
         if self.role.is_some() {
-            return Err(Box::new(custom_error(span, D_REL_002)));
+            return Err(Box::new(custom_error(
+                span,
+                DiagnosticCode::RelationDuplicateRole.message_text(),
+            )));
         }
         self.role = Some(role);
         advance_preamble(tokens, cursor);
@@ -189,7 +192,10 @@ impl PreambleState {
         cursor: &mut usize,
     ) -> ScanResult<()> {
         if self.has_kind {
-            return Err(Box::new(custom_error(span, D_REL_003)));
+            return Err(Box::new(custom_error(
+                span,
+                DiagnosticCode::RelationDuplicateKind.message_text(),
+            )));
         }
         self.has_kind = true;
         advance_preamble(tokens, cursor);

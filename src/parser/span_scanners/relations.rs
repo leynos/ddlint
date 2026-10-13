@@ -9,14 +9,14 @@ mod preamble;
 
 use chumsky::error::Simple;
 
-use crate::parser::error_messages::{
-    RELATION_BRACKET_PRIMARY_KEY_ERROR as D_REL_004,
-    RELATION_BRACKET_WRAPPED_PRIMARY_KEY_ERROR as D_REL_008,
-    RELATION_INVALID_BRACKET_ELEMENT_TYPE_ERROR as D_REL_005,
-    RELATION_MALFORMED_PRIMARY_KEY_ERROR as D_REL_007,
-    RELATION_PRIMARY_KEY_ON_NON_INPUT_ERROR as D_REL_006,
-};
+use crate::parser::diagnostics::DiagnosticCode;
 use crate::{Span, SyntaxKind};
+
+const D_REL_004: &str = DiagnosticCode::RelationBracketPrimaryKey.message_text();
+const D_REL_005: &str = DiagnosticCode::RelationInvalidBracketElementType.message_text();
+const D_REL_006: &str = DiagnosticCode::RelationPrimaryKeyOnNonInput.message_text();
+const D_REL_007: &str = DiagnosticCode::RelationMalformedPrimaryKey.message_text();
+const D_REL_008: &str = DiagnosticCode::RelationBracketWrappedPrimaryKey.message_text();
 
 use cursor::{
     adjust_stack, consume_kind, consume_text, current_span, is_trivia, parse_balanced_block,
