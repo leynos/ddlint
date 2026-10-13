@@ -64,10 +64,12 @@ Legacy parser warnings use the `log` API. Initialize a logger in the host
 binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
 For structured parser-attempt and diagnostic events, pass a `ParseObserver` to
 `parse_with_observer`; this is opt-in and does not require a telemetry runtime.
-The optional `observability` Cargo feature supplies a `tracing` and `metrics`
-adapter. See the [parser observability guide](parser-observability.md) for
-export and alerting guidance. The library never initializes host subscribers or
-recorders.
+Applications can implement and pass their own `ParseObserver` without enabling
+`observability`; that feature is needed only for the supplied
+`TelemetryObserver` adapter. The optional `observability` Cargo feature
+supplies a `tracing` and `metrics` adapter. See the
+[parser observability guide](parser-observability.md) for export and alerting
+guidance. The library never initializes host subscribers or recorders.
 
 Enable the supplied adapter in the application dependency:
 

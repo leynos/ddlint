@@ -79,10 +79,10 @@ uses `NoopParseObserver` and does not require a telemetry runtime.
 
 `TelemetryObserver` emits the following counters:
 
-| Metric                            | Labels                         | Meaning                            |
-| --------------------------------- | ------------------------------ | ---------------------------------- |
-| `ddlint_parser_attempts_total`    | `category`                     | Parser or scanner attempts started |
-| `ddlint_parser_diagnostics_total` | `code`, `category`, `severity` | Diagnostics emitted                |
+| Metric                            | Labels                         | Meaning                       |
+| --------------------------------- | ------------------------------ | ----------------------------- |
+| `ddlint_parser_attempts_total`    | `category`                     | Parser phase attempts started |
+| `ddlint_parser_diagnostics_total` | `code`, `category`, `severity` | Diagnostics emitted           |
 
 _Table 1: Parser metrics exposed by the optional telemetry adapter._
 
