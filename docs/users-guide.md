@@ -60,9 +60,9 @@ assert!(diagnostics.is_empty());
 
 ## Logging and diagnostics output
 
-Legacy parser warnings use the `log` API. Initialize a logger in your binary
-and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`). For
-structured parser-attempt and diagnostic events, pass a `ParseObserver` to
+Legacy parser warnings use the `log` API. Initialize a logger in the host
+binary and use `RUST_LOG` to control verbosity (for example `RUST_LOG=warn`).
+For structured parser-attempt and diagnostic events, pass a `ParseObserver` to
 `parse_with_observer`; this is opt-in and does not require a telemetry runtime.
 The optional `observability` Cargo feature supplies a `tracing` and `metrics`
 adapter. See the [parser observability guide](parser-observability.md) for

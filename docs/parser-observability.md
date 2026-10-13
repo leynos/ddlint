@@ -118,7 +118,8 @@ route alerts to the team that owns its input pipeline.
 
 ## Stable diagnostic contract
 
-The diagnostic-code list is a compatibility surface under ADR-001 Phase 2.
+The diagnostic-code list is a compatibility surface under
+[Architectural Decision Record (ADR) 001, Phase 2](./adr-001-parser-crate-split.md).
 Existing code meanings do not change; new codes may be added. Human-facing
 message wording may become clearer, so automation must match `DiagnosticCode` or
 `DiagnosticCategory`, not message text.
