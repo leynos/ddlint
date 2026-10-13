@@ -1,7 +1,7 @@
 # 2.6.7 legacy-token diagnostic follow-up
 
-Status: FINAL-MODEL LOCAL GATES PASSED; hosted/current-head assessment, formal
-review, and merge pending
+Status: FINAL-MODEL LOCAL GATES PASSED; implementation and hosted assessment
+recorded; formal review and merge pending
 
 ## PR #354 CodeScene repair
 
@@ -19,23 +19,27 @@ review, and merge pending
   reuses `ExpectedReservedToken::ALL` and `reserved_token_spans`, retaining all
   44 cases without the redundant length wrapper. Its oracle compares foreign
   error vectors in exact order and full `Simple` fields, expected 0/1 symbol
-  sets, idempotence, both public entry paths, and counts/spans across all eight
-  enum classes. The positive property passed once at
+  sets, idempotence, and counts/spans across all eight enum classes. Randomized
+  inputs exercise direct `complete_reserved_token_errors` and failing inputs
+  through public `parse_expression`; they do not call public `parse()` or
+  establish successful Expr API path coverage. Existing deterministic `parse()`
+  /cast tests and source inspection cover both Pratt outcomes. The bounded
+  randomized property makes no formal-proof or general type-grammar claim. The
+  positive property passed once at
   `/tmp/ddlint-pr354-property-restored-positive.out`; index integration (5),
   generic boundary (5), and types (16) focused tests passed. Negative control
   #2 killed the collector as expected: the minimal Typedef case changed expected
   `30..37` to actual `[]`, recorded in
   `/tmp/ddlint-pr354-property-negative-control-2.log`. The exact original
-  production line is restored. The property is bounded randomized testing, not
-  a proof or validation of general type grammar. All seven final-model Make
-  gates passed: 1,215 tests across 32 suites and 16 workflow contracts. Gate
-  logs follow this template:
+  production line is restored. All seven final-model Make gates passed: 1,215
+  tests across 32 suites and 16 workflow contracts. Gate logs follow this
+  template:
   `/tmp/<target>-d0264bd8-554b-49e7-ab08-b42ea6541172-2-6-7-finalize-legacy-token-compatibility-policy-replacement-final-model-3.out`;
   formatting log: `/tmp/ddlint-pr354-final-model-fmt-3.out`.
 - Net Rust delta is 799 lines across 52 files, within the unchanged 800-line
   and 54-file limits. The larger 132-line property draft is unused; the
-  1,000-line approval request is superseded. Record final Markdown receipt
-  validation in the delivery ledger before commit.
+  1,000-line approval request is superseded. Final documentation receipt
+  validation is recorded in the delivery ledger.
 - Focused local CodeScene checks for `typedefs.rs`, `reserved_tokens.rs`, and
   `fixtures.rs` scored 10.0; this is not a whole-branch score. Wyvern confirmed
   the two details arose in `353..e1c8da3` and remain unchanged from `e1c8da3`
@@ -47,16 +51,24 @@ review, and merge pending
   covered these details. Neither the HEAD boundary block nor the current
   generic case changes the three named type-function bodies. These details are
   not regressions from this follow-up; no broader refactor is needed.
-  Hosted/current-head assessment remains pending.
+- Hosted CI
+  [run 38324124185](https://github.com/leynos/ddlint/actions/runs/38324124185/job/115058756211)
+  passed on clean head `df32`. CodeScene
+  [result 7923543](https://codescene.io/projects/69278/delta/results/7923543)
+  passed with approval `5497156449`. CodeRabbit
+  [assessment 6135024630](https://github.com/leynos/ddlint/pull/354#issuecomment-6135024630)
+  inspected exact head `df32` against base `353` and cleared implementation,
+  boundary, and property concerns. These receipts do not establish formal
+  review or merge approval.
 - The E1 reviews (`5495972133`, `5495921966`) requested changes across four
   premerge rows and reported the P1; they predate and do not cover the current
-  type-depth rewrite. Original P1 cases were cleared in `4252727667`; the new
-  generic follow-up and formal review have not yet been assessed. Reply
-  `6133461317` could not recover the reported 82 denominator; independent
-  enumeration found 79, so that numeric warning remains an unverified advisory.
-  Documentation records 12 purposeful source docs, preserved `Runner`
-  semantics, and the `Unreleased` migration correction without inventing a
-  `0.2` version. Review reconciliation remains pending.
+  type-depth rewrite. Original P1 cases were cleared in `4252727667`; assessment
+  `6135024630` cleared the new generic follow-up. Formal review and merge
+  remain pending. Reply `6133461317` could not recover the reported 82
+  denominator; independent enumeration found 79, so that numeric warning
+  remains an unverified advisory. Documentation records 12 purposeful source
+  docs, preserved `Runner` semantics, and the `Unreleased` migration correction
+  without inventing a `0.2` version. Review reconciliation remains pending.
 
 - Implementation head: `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
   `353bb48b4900bcaf9322246f3911c371c175140c`. The diff is 48 files and net +662
