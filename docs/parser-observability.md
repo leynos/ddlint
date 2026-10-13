@@ -147,6 +147,3 @@ Uncoded diagnostics retain a stable category. Current categories are `parser`,
 - [Parser implementation notes](./parser-implementation-notes.md)
 - [Parser conformance register](./parser-conformance-register.md)
 - [ADR-001: parser crate split](./adr-001-parser-crate-split.md)
-
-Triage: [type:docstyle] Table captions follow the repository style guide and
-appear below their tables.
