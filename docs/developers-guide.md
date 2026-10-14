@@ -157,6 +157,13 @@ The private `NonRuleScanResults` and `SpanBuildInput` types are single-call
 pipeline carriers in `span_scanner.rs`. Keep them local to one parse so scanner
 outputs and error order cannot be reused across parser calls.
 
+## Lint execution
+
+`Runner::new` records whether `Parsed::errors()` is non-empty. When parsing
+reports errors, `Runner::run` skips registered rules and returns no lint
+diagnostics; recovery CST nodes are not linted. Callers must report parser
+errors separately from the returned lint diagnostics.
+
 ## Contributor workflow
 
 Run these gates in order before committing:

@@ -1,7 +1,13 @@
 # 2.6.7 legacy-token diagnostic follow-up
 
-Status: FINAL-MODEL LOCAL GATES PASSED; implementation and hosted assessment
-recorded; formal review and merge pending
+Status: IMPLEMENTATION COMPLETE; source review approved; delivery tracked in
+[PR #354](https://github.com/leynos/ddlint/pull/354)
+
+Formal review
+[5497951857](https://github.com/leynos/ddlint/pull/354#pullrequestreview-5497951857)
+approved source on `1e4737e` with no actionable code comments.
+Developer-contract documentation reconciliation and merge are tracked
+separately.
 
 ## PR #354 CodeScene repair
 
@@ -67,14 +73,17 @@ recorded; formal review and merge pending
   remain pending. Reply `6133461317` could not recover the reported 82
   denominator; independent enumeration found 79, so that numeric warning
   remains an unverified advisory. Documentation records 12 purposeful source
-  docs, preserved `Runner` semantics, and the `Unreleased` migration correction
+  docs. These documentation-only repairs do not alter the already-implemented
+  `Runner` parse-error short-circuit. The `Unreleased` migration was clarified
   without inventing a `0.2` version. Review reconciliation remains pending.
 
 - Implementation head: `d21d9e34d16f3ccf5bcde40f0d719927db6c8c9b`, based on
   `353bb48b4900bcaf9322246f3911c371c175140c`. The diff is 48 files and net +662
   Rust lines, within the 800-line limit; the earlier 54-file count remains
-  historical. Runtime and API code are unchanged. Hosted results below apply to
-  this implementation head, not to these later documentation edits.
+  historical. The typed-fixture repair changed no runtime or API behaviour.
+  Separately, the PR changes the `Runner` parse-error contract. Hosted results
+  below apply to this implementation head, not to these later documentation
+  edits.
 - At `71ebe4c`, hosted CI was green, but CodeScene check `7920932` failed:
   String Heavy Function Arguments was 84.6% across 17 functions against a 39%
   threshold. This was not cleared by retaining string fixtures; that earlier
