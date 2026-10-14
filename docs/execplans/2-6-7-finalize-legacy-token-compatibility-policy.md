@@ -4,7 +4,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: IMPLEMENTATION COMPLETE; source review approved; delivery tracked in
+Status: REBASED; observer integration repair awaits scope approval; delivery in
 [PR #354](https://github.com/leynos/ddlint/pull/354)
 
 Formal review
@@ -12,6 +12,18 @@ Formal review
 approved source on `1e4737e` with no actionable code comments.
 Developer-contract documentation reconciliation and merge are tracked
 separately.
+
+## Rebase close-out (2026-10-14)
+
+Replayed the branch-owned series onto `54f609b`, preserving the target's parser
+observability and workflow updates. Native merge handling retained observer
+orchestration in `span_scanner.rs` and final reserved-token completion in
+`parse_with_observer`. Both developer-guide sections remain. The implementation
+remains within the 800-line Rust tolerance at 799 net lines. Sequential local
+gates passed: formatting, lint, typecheck, 1,261 tests, 16 workflow-contract
+tests, Markdown, spelling, and diagrams. Earlier hosted checks and approvals
+apply to their recorded heads; fresh hosted checks and affected assessments
+remain pending for this rebased candidate. PR #354 tracks delivery.
 
 ## PR #354 CodeScene repair
 
