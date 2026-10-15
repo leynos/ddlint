@@ -18,21 +18,17 @@ const D_REL_006: &str = DiagnosticCode::RelationPrimaryKeyOnNonInput.message_tex
 const D_REL_007: &str = DiagnosticCode::RelationMalformedPrimaryKey.message_text();
 const D_REL_008: &str = DiagnosticCode::RelationBracketWrappedPrimaryKey.message_text();
 
+use super::{BodyForm, RelationSuffixContext};
 use cursor::{
     adjust_stack, consume_kind, consume_text, current_span, is_trivia, parse_balanced_block,
     skip_inline_trivia, skip_trivia, skip_trivia_end, token_text, token_text_at,
 };
-use preamble::{RelationRole, parse_preamble};
+pub(super) use preamble::RelationRole;
+use preamble::parse_preamble;
 
 use super::utils::State;
 
 pub(super) type ScanResult<T> = Result<T, Box<Simple<SyntaxKind>>>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BodyForm {
-    Record,
-    Bracket,
-}
 
 #[derive(Debug)]
 struct ParsedRelation {
@@ -122,7 +118,12 @@ fn parse_relation_decl(
         return Ok(None);
     }
 
-    parse_relation_suffix(tokens, src, cursor, preamble.role, body, body_end).map(Some)
+    let context = RelationSuffixContext {
+        role: preamble.role,
+        body,
+        body_end,
+    };
+    parse_relation_suffix(tokens, src, cursor, context).map(Some)
 }
 
 fn parse_body(
@@ -152,10 +153,9 @@ fn parse_relation_suffix(
     tokens: &[(SyntaxKind, Span)],
     src: &str,
     mut cursor: usize,
-    role: Option<RelationRole>,
-    body: BodyForm,
-    body_end: usize,
+    context: RelationSuffixContext,
 ) -> ScanResult<ParsedRelation> {
+    let body_end = context.body_end;
     let mut trailing_end = skip_trivia_end(tokens, &mut cursor, body_end);
 
     if starts_bracket_wrapped_primary_key(tokens, src, cursor) {
@@ -178,12 +178,12 @@ fn parse_relation_suffix(
         });
     }
 
-    if body == BodyForm::Bracket {
+    if context.body == BodyForm::Bracket {
         let recovery_end = parse_primary_key_clause(tokens, src, &mut cursor)?;
         return Ok(recoverable_relation(body_end, recovery_end, D_REL_004));
     }
 
-    if role != Some(RelationRole::Input) {
+    if context.role != Some(RelationRole::Input) {
         let recovery_end = parse_primary_key_clause(tokens, src, &mut cursor)?;
         return Ok(recoverable_relation(body_end, recovery_end, D_REL_006));
     }

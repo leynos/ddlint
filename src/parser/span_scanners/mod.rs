@@ -27,3 +27,24 @@ pub(super) mod attributes;
 mod tests;
 pub(super) use apply::collect_apply_spans;
 pub(super) use attributes::collect_attribute_spans;
+
+/// Relation body delimiters retained for suffix eligibility checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BodyForm {
+    /// Parenthesized record columns.
+    Record,
+    /// Bracketed element type.
+    Bracket,
+}
+
+/// Body information used only to validate and recover a relation suffix.
+/// For example, an input record permits a primary key, while a bracket body does not.
+#[derive(Clone, Copy)]
+struct RelationSuffixContext {
+    /// Explicit preamble role determining primary-key eligibility.
+    role: Option<relations::RelationRole>,
+    /// Parsed body form determining whether primary keys are permitted.
+    body: BodyForm,
+    /// Body end retained when an invalid suffix must be skipped during recovery.
+    body_end: usize,
+}

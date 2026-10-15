@@ -51,7 +51,7 @@ use super::{ScanResult, custom_error};
 
 /// Relation role annotation parsed from a relation preamble keyword.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum RelationRole {
+pub(in crate::parser::span_scanners) enum RelationRole {
     /// Input relation role introduced by the `input` keyword.
     Input,
     /// Output relation role introduced by the `output` keyword.

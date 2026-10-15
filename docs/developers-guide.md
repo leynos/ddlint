@@ -207,6 +207,17 @@ spans only for its Cargo JSON reader. Keep that boundary local to this policy
 contract; other validation commands should use their own supported diagnostic
 formats rather than depend on its specimen-specific checks.
 
+### Rule-behaviour setup ownership
+
+The rule-behaviour integration target owns its fallible rule extractor and
+mixed-rule fixture under `tests/support/rule_behaviour.rs`. The extractor
+reports parse and missing-rule failures; the fixture composes it with the
+shared source used by the classification and flattened-order tests. Only those
+two tests consume that fixture and retain their own assertions. Neither setup
+boundary asserts or panics. Other test families keep their existing fixtures;
+wider reuse requires an explicit ownership decision rather than extending this
+file-local setup implicitly.
+
 ## Spelling policy
 
 Run the spelling gate with `make spelling`. It enforces British English with

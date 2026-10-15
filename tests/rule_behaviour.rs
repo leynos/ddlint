@@ -3,23 +3,11 @@
 
 use ddlint::parse;
 use ddlint::parser::ast::{AggregationSource, Rule, RuleBodyTerm};
+use rstest::rstest;
 
-/// Parse source and extract the first rule, asserting no CST errors occur.
-#[expect(clippy::expect_used, reason = "test helper expects valid source")]
-fn parse_and_extract_rule(src: &str) -> Rule {
-    let parsed = parse(src);
-    assert!(
-        parsed.errors().is_empty(),
-        "unexpected parse errors: {:?}",
-        parsed.errors()
-    );
-    parsed
-        .root()
-        .rules()
-        .first()
-        .cloned()
-        .expect("rule missing")
-}
+#[path = "support/rule_behaviour.rs"]
+mod rule_setup;
+use rule_setup::{mixed_rule, parse_and_extract_rule};
 
 /// Call `body_terms()` expecting `Ok`, returning terms on success or panicking.
 fn assert_body_terms_ok(rule: &Rule) -> Vec<RuleBodyTerm> {
@@ -30,11 +18,11 @@ fn assert_body_terms_ok(rule: &Rule) -> Vec<RuleBodyTerm> {
 }
 
 /// Call `body_terms()` expecting `Err`, asserting the error list contains `expected_msg`.
-#[expect(clippy::expect_used, reason = "test helper asserts error presence")]
+#[track_caller]
 fn assert_body_terms_error_contains(rule: &Rule, expected_msg: &str) {
-    let result = rule.body_terms();
-    assert!(result.is_err(), "expected body_terms error");
-    let errors = result.expect_err("expected errors");
+    let Err(errors) = rule.body_terms() else {
+        panic!("expected body_terms error");
+    };
     let has_error = errors
         .iter()
         .any(|e| format!("{e:?}").contains(expected_msg));
@@ -56,7 +44,7 @@ fn assert_expression_term_sexpr(terms: &[RuleBodyTerm], index: usize, expected_s
 #[test]
 fn parses_rules_with_flatmap_and_group_by_terms() {
     let src = "Totals(user, total) :- Orders(user, amt), var rows = FlatMap(fetch_rows(amt)), group_by(sum(amt), user), total = __group.";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 4);
     assert!(matches!(terms.get(1), Some(RuleBodyTerm::Assignment(_))));
@@ -70,7 +58,7 @@ fn parses_rules_with_flatmap_and_group_by_terms() {
 #[test]
 fn rule_body_terms_non_aggregation_classification() {
     let src = "NonAgg(x) :- some_predicate(1, 2), var x = FlatMap(some_function(3)), another_predicate(x, 4).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 3);
     assert!(matches!(terms.first(), Some(RuleBodyTerm::Expression(_))));
@@ -130,7 +118,7 @@ fn parses_multi_head_rules_with_adornments_and_ref_new_lowering() {
 #[test]
 fn rejects_multiple_group_by_in_rule_body() {
     let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     assert_body_terms_error_contains(
         &rule,
         "at most one aggregation (group_by or Aggregate) is permitted per rule body",
@@ -145,7 +133,7 @@ fn rejects_multiple_group_by_in_rule_body() {
 fn multiple_aggregation_error_spans_point_to_correct_locations() {
     // End-to-end test verifying the error span points to the second aggregation.
     let src = "X(x) :- group_by(sum(x), k), group_by(count(x), k).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
 
     let errors = rule.body_terms().expect_err("expected errors");
     assert_eq!(errors.len(), 1, "expected exactly one error");
@@ -167,7 +155,7 @@ fn multiple_aggregation_error_spans_point_to_correct_locations() {
 fn rejects_mixed_aggregation_types_in_rule_body() {
     // Test that mixing group_by and Aggregate also triggers the error.
     let src = "X(x) :- Aggregate((k), sum(x)), group_by(count(x), k).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     assert_body_terms_error_contains(
         &rule,
         "at most one aggregation (group_by or Aggregate) is permitted per rule body",
@@ -178,7 +166,7 @@ fn rejects_mixed_aggregation_types_in_rule_body() {
 fn three_aggregations_produce_two_errors() {
     // When three aggregations appear, we should get two errors (one for each duplicate).
     let src = "X(x) :- group_by(a, k), group_by(b, k), group_by(c, k).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
 
     let errors = rule.body_terms().expect_err("expected errors");
     assert_eq!(
@@ -192,7 +180,7 @@ fn three_aggregations_produce_two_errors() {
 fn parses_legacy_aggregate_and_normalizes_arguments() {
     let src =
         "Totals(user, total) :- Orders(user, amt), Aggregate((user), sum(amt)), total = __group.";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     // Find the aggregation term.
     let aggregation = terms.iter().find_map(|term| {
@@ -218,7 +206,7 @@ fn parses_legacy_aggregate_and_normalizes_arguments() {
 #[test]
 fn for_loop_in_rule_body_is_classified_as_for_term() {
     let src = "ItemsProcessed(count) :- for (entry in Items(entry)) Process(entry).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 1);
     assert!(matches!(terms.first(), Some(RuleBodyTerm::ForLoop(_))));
@@ -227,7 +215,7 @@ fn for_loop_in_rule_body_is_classified_as_for_term() {
 #[test]
 fn for_loop_with_guard_has_guard_expression() {
     let src = "FilteredItems(x) :- for (x in Items(x) if valid(x)) Accept(x).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
         panic!("expected ForLoop term");
@@ -246,7 +234,7 @@ fn for_loop_with_guard_has_guard_expression() {
 #[test]
 fn nested_for_loops_preserve_structure() {
     let src = "Pairs(a, b) :- for (a in A(a)) for (b in B(b)) Match(a, b).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 1);
 
@@ -265,7 +253,7 @@ fn nested_for_loops_preserve_structure() {
 #[test]
 fn flattened_terms_expand_for_loop_to_components() {
     let src = "R(x) :- for (x in Source(x) if pred(x)) Target(x).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let flattened = rule
         .flattened_body_terms()
         .expect("should flatten successfully");
@@ -280,7 +268,7 @@ fn flattened_terms_expand_for_loop_to_components() {
 #[test]
 fn flattened_nested_for_loops_expand_correctly() {
     let src = "R(a, b) :- for (a in A(a)) for (b in B(b)) Pair(a, b).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let flattened = rule
         .flattened_body_terms()
         .expect("should flatten successfully");
@@ -292,10 +280,9 @@ fn flattened_nested_for_loops_expand_correctly() {
     assert_expression_term_sexpr(&flattened, 2, "(call Pair a b)");
 }
 
-#[test]
-fn mixed_for_loop_and_regular_terms() {
-    let src = "R(x, y) :- Pre(x), for (y in Items(y)) Process(y), Post(x, y).";
-    let rule = parse_and_extract_rule(src);
+#[rstest]
+fn mixed_for_loop_and_regular_terms(#[from(mixed_rule)] rule_res: Result<Rule, String>) {
+    let rule = rule_res.expect("mixed rule fixture should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 3);
 
@@ -313,7 +300,7 @@ fn mixed_for_loop_and_regular_terms() {
 fn for_loop_with_aggregation_in_body() {
     let src =
         "Totals(user, total) :- for (order in Orders(order)) group_by(sum(order.amt), order.user).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 1);
 
@@ -332,7 +319,7 @@ fn for_loop_with_aggregation_in_body() {
 #[test]
 fn for_loop_pattern_is_preserved() {
     let src = "R(k, v) :- for ((k, v) in Pairs(k, v)) Accept(k, v).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
 
     let Some(RuleBodyTerm::ForLoop(for_loop)) = terms.first() else {
@@ -347,7 +334,7 @@ fn for_loop_pattern_is_preserved() {
 fn rejects_multiple_aggregations_inside_for_loop() {
     // Aggregation inside for-loop should count toward the one-aggregation limit.
     let src = "R(x) :- for (x in X(x)) group_by(sum(x), x), group_by(count(x), x).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     assert_body_terms_error_contains(
         &rule,
         "at most one aggregation (group_by or Aggregate) is permitted per rule body",
@@ -358,7 +345,7 @@ fn rejects_multiple_aggregations_inside_for_loop() {
 fn rejects_aggregation_inside_and_outside_for_loop() {
     // Aggregation inside for-loop plus aggregation outside should trigger error.
     let src = "R(x) :- for (x in X(x)) group_by(sum(x), x), group_by(count(x), k).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     assert_body_terms_error_contains(
         &rule,
         "at most one aggregation (group_by or Aggregate) is permitted per rule body",
@@ -370,7 +357,7 @@ fn for_loop_with_sequence_body_flattens_correctly() {
     // Test for-loop with semicolon-sequence body: (Pre(x); Inner(x))
     // Note: DDlog uses `;` for sequences, not `,` in braces
     let src = "R(x) :- for (x in Source(x)) (Pre(x); Inner(x)).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 1);
 
@@ -404,7 +391,7 @@ fn mixed_body_nested_for_loop_preserves_structure() {
     // But the for-loop body classifier unwraps sequences, so the outer for-loop body is:
     //   [Pre(a), for (b in B(b)) Match(a, b), Post(a)]
     let src = "Pairs(a, b) :- for (a in A(a)) (Pre(a); for (b in B(b)) Match(a, b); Post(a)).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
 
     // Still a single top-level for-loop term
@@ -439,11 +426,10 @@ fn mixed_body_nested_for_loop_preserves_structure() {
     assert!(has_nested_for, "expected at least one nested ForLoop term");
 }
 
-#[test]
-fn mixed_for_loop_and_regular_terms_flattened() {
+#[rstest]
+fn mixed_for_loop_and_regular_terms_flattened(#[from(mixed_rule)] rule_res: Result<Rule, String>) {
     // Verify flattened_body_terms preserves order for mixed for-loop and regular terms.
-    let src = "R(x, y) :- Pre(x), for (y in Items(y)) Process(y), Post(x, y).";
-    let rule = parse_and_extract_rule(src);
+    let rule = rule_res.expect("mixed rule fixture should parse and contain a rule");
     let flattened = rule
         .flattened_body_terms()
         .expect("should flatten successfully");
@@ -466,7 +452,7 @@ fn field_access_dot_inside_parentheses_not_treated_as_terminator() {
     // rule-terminating dot. This was the original bug that caused parse errors.
     let src =
         "Totals(user, total) :- for (order in Orders(order)) group_by(sum(order.amt), order.user).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 1);
 
@@ -485,7 +471,7 @@ fn multiple_field_accesses_in_rule_body() {
     // More complex case: multiple field accesses in a rule body
     // Tests that dots in field access expressions don't terminate the rule body
     let src = "R(a, b) :- Source(x, y), filter(x.valid and y.active).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 2);
 }
@@ -494,7 +480,7 @@ fn multiple_field_accesses_in_rule_body() {
 fn implies_inside_parentheses_not_treated_as_body_start() {
     // Test that `=>` (imply operator) inside parentheses doesn't cause issues.
     let src = "R(x) :- filter((a => b)), Source(x).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 2);
 }
@@ -503,7 +489,7 @@ fn implies_inside_parentheses_not_treated_as_body_start() {
 fn nested_parens_with_field_access_preserve_body_bounds() {
     // Test that dots inside nested parentheses are handled correctly
     let src = "R(x) :- Source(x), filter(x.field), Result(x).";
-    let rule = parse_and_extract_rule(src);
+    let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 3);
 }
