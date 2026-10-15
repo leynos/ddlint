@@ -53,6 +53,8 @@ _Figure 1: Compact repository tree for contributor orientation._
   parser behaviour checks. Keep examples small and representative.
 - `src/`: Rust library and command-line implementation. Modules must start with
   module-level documentation comments.
+- `scripts/`: Runnable Python validation contracts, including the Clippy policy
+  contract launched separately from Cargo's test process.
 - `tests/`: Integration and behavioural tests. Shared integration helpers
   belong under `tests/support/`.
 

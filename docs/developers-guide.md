@@ -178,16 +178,34 @@ Two consequences follow.
 - `clippy::expect_used` remains denied outside recognized `#[test]` and
   `#[rstest]` bodies. `clippy.toml` sets `allow-expect-in-tests = true`, which
   permits reasoned `.expect("reason")` calls in those bodies. Fixtures, setup
-  code, ordinary helpers and BDD steps gain no permission from `#[cfg(test)]`;
-  keep them fallible. Whitaker's `no_expect_outside_tests` lint provides the
-  complementary check. Module-wide lint allowances or expectations remain
-  forbidden because they mask code beyond the test body.
+  code, ordinary helpers and behaviour-driven development (BDD) steps gain no
+  permission from `#[cfg(test)]`; keep them fallible. Whitaker's
+  `no_expect_outside_tests` lint provides the complementary check. Module-wide
+  lint allowances or expectations remain forbidden because they mask code
+  beyond the test body.
 - Shared rule assertions are macros, not functions. `assert_body_assignment`,
   `assert_body_terms_error` and `assert_multiple_aggregation_error` expand at
   the call site, so a failure names the calling test rather than the helper,
   and the arrangement's unwrap lands inside a test body. A function that wraps
   an assertion macro puts that unwrap back outside a test body, and the lint
   reports it again.
+
+`make test-clippy-policy` measures this boundary with the repository's pinned
+Clippy and existing `rstest` dependency. It runs separately from `cargo test`
+to avoid a nested Cargo lock. `make lint`, and therefore CI's lint step, runs
+it sequentially. The integration target `tests/clippy_expect_policy.rs` owns
+the positive test bodies and deliberately rejected helper and fixture
+specimens. Only this contract activates `clippy_policy_negative`; ordinary test
+runs leave that module disabled. The Python runner under `scripts/` checks lint
+codes and primary source locations, refuses unrelated compiler errors, and
+removes the permission in a temporary configuration as a negative control.
+These specimens test the local invocation contract, rather than providing
+reusable setup helpers.
+
+The runner's private `_expect_locations` helper validates primary diagnostic
+spans only for its Cargo JSON reader. Keep that boundary local to this policy
+contract; other validation commands should use their own supported diagnostic
+formats rather than depend on its specimen-specific checks.
 
 ## Spelling policy
 

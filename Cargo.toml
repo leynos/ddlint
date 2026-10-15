@@ -37,6 +37,7 @@ features = ["debugging"]
 
 [lints.rust]
 missing_docs = "deny"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(clippy_policy_negative)'] }
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
