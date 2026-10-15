@@ -13,6 +13,30 @@ approved source on `1e4737e` with no actionable code comments.
 Developer-contract documentation reconciliation and merge are tracked
 separately.
 
+## Rebase checkpoint (2026-10-15)
+
+Replayed all 22 branch commits from the verified `54f609b` boundary onto
+`224723b`, producing `ab3bbad`. The two conflicts combined modern type fixtures
+and the split rule-behaviour suite with the target's test-body lint expectation
+cleanup. Ordinary-helper expectations remain. All 48 target-only paths are
+byte-identical to the target. The source audit found 227 Rust files, all at or
+below 400 lines. The branch delta is 806 net Rust lines after the
+user-authorized module split and inherited lint cleanup.
+
+Sequential local gates passed on `ab3bbad`: `make fmt`, `make check-fmt`,
+`make lint`, `make typecheck`, `make test` (1,261 tests),
+`make test-workflow-contracts` (16 tests), `make markdownlint`, and
+`make nixie`. Gate exit records are under
+`/tmp/ddlint-pr354-rebase-gates.N90JSe/`; detailed logs are in `/tmp/`.
+CodeScene found no regression from `ac2eeae` to `ab3bbad`; all five split
+rule-behaviour modules score 10.0 with no findings. The frozen-base delta still
+reports inherited type-test duplication (9.38) and infix complexity (9.68);
+neither was introduced by the rebase. The earlier formal approval on `1e4737e`
+does not apply to this head. Hosted checks, a current-head assessment, and
+formal review remain pending. The observer callback defect remains confirmed;
+the bounded repair and proposed 900-line ceiling await the user's scope
+response. No merge eligibility is claimed.
+
 ## Module-size follow-up (2026-10-15)
 
 The user requested that Rust files stay within 400 lines and that oversized
