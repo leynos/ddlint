@@ -30,9 +30,15 @@ tests, including all 27 `rule_behaviour` cases), `make test-workflow-contracts`
 modules and `tests/support/rule_behaviour.rs` 10.0 with zero issues; the
 working-tree delta reported no findings. The frozen-base delta retains
 inherited type-test duplication (9.38) and infix complexity (9.68), with
-unchanged categories and scores. Hosted checks, a current-head assessment, and
-formal review remain pending. The observer callback defect and proposed
-900-line ceiling still await scope resolution. No merge eligibility is claimed.
+unchanged categories and scores.
+
+Hosted CI run `38792160864`, attempt 1, job `116619192779`, and CodeScene result
+`7975337` passed for implementation checkpoint `ada3043`, based on `6be8ff8`;
+its Rust content matches the full local gate run.
+[PR #354](https://github.com/leynos/ddlint/pull/354) tracks checks for later
+documentation updates. A current-head assessment and formal review remain
+pending. The observer callback defect and proposed 900-line ceiling still await
+scope resolution. No merge eligibility is claimed.
 
 ## Rebase checkpoint (2026-10-15)
 
