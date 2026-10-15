@@ -289,6 +289,13 @@ publishes no coverage artefact, never contacts CodeScene, and never receives
 `CS_ACCESS_TOKEN`, so a change in CodeScene's application programming interface
 (API) cannot hold a pull request.
 
+The ratchet holds its stored reference within one percentage point: it fails
+only when measured coverage is more than one point below the reference, and
+advances the value only when measurement is more than one point above it. A new
+cache generation can save the same numeric value. The restore `cache-hit` flag
+records an exact-key hit, so a `restore=miss` metric can accompany a successful
+fallback restore.
+
 `coverage-main.yml` is the only publisher. On each push to `main` it refreshes
 the ratchet baseline and uploads the report to CodeScene. It also runs on
 demand through `workflow_dispatch`, for merges that fire no push event: a
