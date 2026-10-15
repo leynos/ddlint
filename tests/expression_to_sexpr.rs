@@ -1,11 +1,5 @@
 //! Focused tests for the `Expr::to_sexpr` formatting.
 
-#![expect(
-    clippy::expect_used,
-    clippy::expect_fun_call,
-    reason = "tests assert exact behaviour"
-)]
-
 use ddlint::parser::expression::parse_expression;
 use rstest::rstest;
 
@@ -14,7 +8,7 @@ use rstest::rstest;
 #[case(r#""quote \"marks\"""#)]
 #[case(r#""(paren)""#)]
 fn string_literals_preserve_quoting(#[case] src: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("string literal should parse");
     let inner = src
         .strip_prefix('"')
         .and_then(|s| s.strip_suffix('"'))
@@ -26,7 +20,7 @@ fn string_literals_preserve_quoting(#[case] src: &str) {
 #[case("foo(bar(baz()))", "(call foo (call bar (call baz)))")]
 #[case("foo.bar(baz()).qux()", "(method (method foo bar (call baz)) qux)")]
 fn nested_invocations_format_stably(#[case] src: &str, #[case] expected: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("nested invocation should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }
 
@@ -34,7 +28,7 @@ fn nested_invocations_format_stably(#[case] src: &str, #[case] expected: &str) {
 #[case("Foo { a: 1, b: 2 }", "(struct Foo (a 1) (b 2))")]
 #[case("Foo { b: 2, a: 1 }", "(struct Foo (b 2) (a 1))")]
 fn struct_field_order_is_stable(#[case] src: &str, #[case] expected: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("struct literal should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }
 
@@ -68,14 +62,14 @@ fn struct_field_order_is_stable(#[case] src: &str, #[case] expected: &str) {
     "(for entry (call items entry) (field entry active) (call process entry))"
 )]
 fn more_variants(#[case] src: &str, #[case] expected: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("expression variant should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }
 
 #[rstest]
 #[case("|x, y| x + y", "(closure (x y) (+ x y))")]
 fn closures_format(#[case] src: &str, #[case] expected: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("closure should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }
 
@@ -87,7 +81,7 @@ fn closures_format(#[case] src: &str, #[case] expected: &str) {
 #[case("[x, y + 1]", "(vec x (+ y 1))")]
 #[case("[[1, 2], [3, 4]]", "(vec (vec 1 2) (vec 3 4))")]
 fn vector_literals_format(#[case] src: &str, #[case] expected: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("vector literal should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }
 
@@ -104,6 +98,6 @@ fn vector_literals_format(#[case] src: &str, #[case] expected: &str) {
 #[case("{k: x or y}", "(map (entry k (or x y)))")]
 #[case("{k: a != b, m: c < d}", "(map (entry k (!= a b)) (entry m (< c d)))")]
 fn map_literals_format(#[case] src: &str, #[case] expected: &str) {
-    let expr = parse_expression(src).expect(&format!("source {src:?} errors"));
+    let expr = parse_expression(src).expect("map literal should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }

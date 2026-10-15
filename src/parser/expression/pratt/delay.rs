@@ -65,7 +65,6 @@ mod tests {
     use crate::{Span, SyntaxKind};
 
     #[test]
-    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
     fn parses_atom_delay_postfix() {
         let expr = parse_expression("signal-<3>").expect("delay expression should parse");
 
@@ -73,7 +72,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::expect_used, reason = "test asserts exact parser error")]
     fn rejects_non_numeric_delay_value() {
         let errors =
             parse_expression("signal -< delay").expect_err("non-numeric delay should fail");
@@ -85,7 +83,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
     fn parse_delay_postfix_accepts_max_u32_delay() {
         let mut parser = delay_parser("-<4294967295>");
 

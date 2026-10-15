@@ -7,7 +7,6 @@ use rstest::rstest;
 #[test]
 fn relation_name() {
     let parsed = parse("input relation R(x: u32)");
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()
@@ -27,7 +26,6 @@ fn relation_name_span_points_to_declaration_identifier() {
     let source = "input relation Source(Source: u32)";
     let parsed = parse(source);
     crate::test_util::assert_no_parse_errors(parsed.errors());
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()
@@ -47,7 +45,6 @@ fn relation_name_span_points_to_declaration_identifier() {
 fn relation_preamble_defaults_for_bare_relation() {
     let parsed = parse("R(x: u32)");
     crate::test_util::assert_no_parse_errors(parsed.errors());
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()
@@ -81,7 +78,6 @@ fn malformed_preamble_delimiters_do_not_leak_body_names(#[case] src: &str) {
 fn relation_kind_and_ref_are_exposed() {
     let parsed = parse("output stream & Events(event: Event)");
     crate::test_util::assert_no_parse_errors(parsed.errors());
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()
@@ -99,7 +95,6 @@ fn relation_kind_and_ref_are_exposed() {
 fn bracket_body_exposes_element_type() {
     let parsed = parse("input multiset Items[Map<string, Vec<u32>>]");
     crate::test_util::assert_no_parse_errors(parsed.errors());
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()
@@ -122,7 +117,6 @@ fn bracket_body_exposes_element_type() {
 fn record_relation_body_accessors_are_ok() {
     let parsed = parse("input relation R(x: u32, y: string)");
     crate::test_util::assert_no_parse_errors(parsed.errors());
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()
@@ -157,7 +151,6 @@ fn record_relation_body_accessors_are_ok() {
 fn input_record_primary_key_is_ok(#[case] src: &str, #[case] expected: Vec<String>) {
     let parsed = parse(src);
     crate::test_util::assert_no_parse_errors(parsed.errors());
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let rel = parsed
         .root()
         .relations()

@@ -38,7 +38,6 @@ fn invalid_rule_cases(
 ) {
     let parsed = parse_err(input);
     let errors = parsed.errors();
-    #[expect(clippy::expect_used, reason = "tests expect at least one parse error")]
     let first = errors.first().expect("expected parse error");
     assert_parse_error(std::slice::from_ref(first), pattern, start, end);
 }

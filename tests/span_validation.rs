@@ -9,10 +9,6 @@ fn parse_builds_with_valid_spans() {
     assert_eq!(parsed.root().imports().len(), 1);
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect to confirm error paths"
-)]
 #[test]
 fn builder_errs_on_invalid_spans_in_public_api() {
     let err = ParsedSpans::builder()

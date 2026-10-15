@@ -101,7 +101,6 @@ mod tests {
     use crate::parse;
 
     #[test]
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     fn parses_apply_lists() {
         let src = "apply transform(RelA, func_b) -> (Out1, Out2)";
         let parsed = parse(src);

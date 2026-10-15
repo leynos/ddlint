@@ -287,7 +287,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::expect_used, reason = "test asserts exact parser output")]
     fn assignment_literal_becomes_assignment_term() {
         let src = "var item = FlatMap(items)";
         let mut first_aggregation_span = None;
@@ -306,7 +305,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::expect_used, reason = "test asserts exact parser error")]
     fn second_aggregation_reports_error() {
         let src = "group_by(count(), key)";
         let mut first_aggregation_span = Some(0..4);

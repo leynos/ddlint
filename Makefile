@@ -1,6 +1,6 @@
 .PHONY: help all clean test build release check lint typecheck fmt check-fmt \
         markdownlint spelling nixie tools \
-        test-workflow-contracts interrogate
+        test-workflow-contracts test-clippy-policy interrogate
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
@@ -60,6 +60,10 @@ test-workflow-contracts: ## Validate the mutation-testing and CodeScene coverage
 	$(CV005_CONTRACTS) check --repository .
 	uv run --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
 
+# Run outside cargo test: a nested Cargo process could wait on its parent's lock.
+test-clippy-policy: ## Prove Clippy accepts test bodies and rejects panicking helpers
+	CLIPPY_POLICY_CARGO="$(CARGO)" RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(UV) run --with 'pytest>=8' --with 'plumbum>=1.9,<2' pytest scripts/clippy_expect_policy_test.py -q
+
 target/%/$(APP): ## Build binary in debug or release mode
 	$(if $(filter release,$*),RUSTFLAGS="$${RUSTFLAGS-}",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
 
@@ -67,7 +71,7 @@ target/%/$(APP): ## Build binary in debug or release mode
 # owns. Add a new Python directory to INTERROGATE_TARGETS. No `--python` pin: a
 # managed interpreter would be downloaded, and a PyO3 build could link it.
 INTERROGATE_VERSION ?= 1.7.0
-INTERROGATE_TARGETS ?= tests
+INTERROGATE_TARGETS ?= tests scripts
 # Level 2 prints a MISSED row per undocumented definition, which the
 # `interrogate` target fails on: the rounded percentage alone passes a lone gap.
 INTERROGATE_FLAGS ?= -vv --fail-under 100
@@ -88,6 +92,7 @@ interrogate: ## Enforce complete Python docstring coverage
 
 lint: interrogate ## Run Clippy and the Whitaker Dylint suite with warnings denied
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
+	+$(MAKE) test-clippy-policy
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(WHITAKER) --all -- --all-targets --all-features
 	+$(MAKE) spelling
 

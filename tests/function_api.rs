@@ -39,7 +39,6 @@ fn function_api(
     let parsed = parse(src);
     assert_no_parse_errors(parsed.errors());
     let funcs = parsed.root().functions();
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let func = funcs.first().expect("function missing");
     assert_eq!(func.name().as_deref(), Some(name));
     assert_eq!(func.is_extern(), is_extern);

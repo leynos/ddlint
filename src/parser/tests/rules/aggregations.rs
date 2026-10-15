@@ -68,7 +68,6 @@ fn body_terms_detect_group_by_aggregation() {
     let src =
         "Totals(user, total) :- Orders(user, amt), group_by(sum(amt), user), total = __group.";
     let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -89,10 +88,6 @@ fn body_terms_detect_group_by_aggregation() {
     assert_eq!(aggregation.key, var("user"));
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "tests assert aggregation is present when parsing Aggregate literals"
-)]
 #[test]
 fn body_terms_detect_legacy_aggregate_aggregation() {
     let src = "Totals(user, total) :- \
@@ -100,7 +95,6 @@ fn body_terms_detect_legacy_aggregate_aggregation() {
                Aggregate((user), sum(amt)), \
                total = __group.";
     let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -210,7 +204,6 @@ fn body_terms_error_on_multiple_aggregations(#[case] src: &str, #[case] second_l
 fn body_terms_error_on_three_aggregations_reports_two_errors() {
     let src = "X(x) :- group_by(a, k), group_by(b, k), group_by(c, k).";
     let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -235,7 +228,6 @@ fn duplicate_aggregations_excluded_from_terms() {
     // Err(...) only include the first aggregation.
     let src = "X(x) :- A(x), group_by(sum(x), k), group_by(count(x), k), B(x).";
     let parsed = parse_ok(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()

@@ -8,13 +8,15 @@ use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_erro
 use rstest::rstest;
 
 #[test]
-fn canonical_index_declaration_parses() -> Result<(), Box<dyn std::error::Error>> {
+fn canonical_index_declaration_parses() {
     let parsed = parse("index OrdersByUser(user: UserId, ts: Timestamp) on Orders[user, ts]");
     assert_no_parse_errors(parsed.errors());
 
     let indexes = parsed.root().indexes();
     assert_eq!(indexes.len(), 1, "expected one parsed index");
-    let index = indexes.first().ok_or("index missing")?;
+    let index = indexes
+        .first()
+        .expect("canonical index declaration should produce an index");
     assert_eq!(index.name().as_deref(), Some("OrdersByUser"));
     assert_eq!(
         index.fields(),
@@ -24,7 +26,6 @@ fn canonical_index_declaration_parses() -> Result<(), Box<dyn std::error::Error>
         ])
     );
     assert_eq!(index.on_target().as_deref(), Some("Orders[user,ts]"));
-    Ok(())
 }
 
 #[rstest]

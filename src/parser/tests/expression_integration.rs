@@ -3,7 +3,6 @@
 use crate::test_util::assert_no_parse_errors;
 use crate::{SyntaxKind, parse};
 
-#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 #[test]
 fn rule_body_expression_creates_node() {
     let src = "R(x) :- 1 + 2 * 3.";

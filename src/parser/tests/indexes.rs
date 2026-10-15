@@ -66,10 +66,6 @@ fn parses_indexes(
     #[case] fields: Vec<(String, String)>,
     #[case] on_target: &str,
 ) {
-    #[expect(
-        clippy::expect_used,
-        reason = "arrangement failure is this test's verdict"
-    )]
     let idx = parse_index(src).expect("expected a single index");
     assert_eq!(idx.name().as_deref(), Some(name));
     assert_eq!(idx.fields(), Ok(fields));
@@ -77,7 +73,6 @@ fn parses_indexes(
 }
 
 #[rstest]
-#[expect(clippy::expect_used, reason = "fixture invariant")]
 fn index_missing_on_is_error(index_invalid_missing_on: &str) {
     let parsed = crate::parse(index_invalid_missing_on);
     let start = index_invalid_missing_on
@@ -109,10 +104,6 @@ fn index_declaration_whitespace_variations(#[case] src: &str) {
     assert_eq!(indexes.len(), 1);
     let printed = pretty_print(parsed.root().syntax());
     assert_eq!(normalize_whitespace(&printed), normalize_whitespace(src));
-    #[expect(
-        clippy::expect_used,
-        reason = "arrangement failure is this test's verdict"
-    )]
     let idx = parse_index(src).expect("expected a single index");
     assert_eq!(idx.name().as_deref(), Some("Idx_User_ws"));
     assert_eq!(

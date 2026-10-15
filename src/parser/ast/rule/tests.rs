@@ -59,7 +59,6 @@ mod helpers {
     }
 }
 
-#[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
 #[test]
 fn rule_head_and_body() {
     let parsed = parse("A(x) :- B(x).");
@@ -73,7 +72,6 @@ fn rule_head_and_body() {
     assert_eq!(rule.body_literals(), vec!["B(x)".to_string()]);
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed expressions")]
 #[test]
 fn body_expressions_parse_control_flow() {
     // Note: For-loops are now classified as RuleBodyTerm::ForLoop, not Expression,
@@ -100,7 +98,6 @@ fn body_expressions_parse_control_flow() {
     assert!(matches!(terms.get(1), Some(RuleBodyTerm::Expression(_))));
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed expressions")]
 #[test]
 fn parses_multi_head_rules_with_location_delay_and_diff() {
     let src = "A(a)@site(x) -<10>, B'(b) :- Src(a, b).";
@@ -124,7 +121,6 @@ fn parses_multi_head_rules_with_location_delay_and_diff() {
     assert!(matches!(second.atom, Expr::AtomDiff { .. }));
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed expressions")]
 #[test]
 fn lowers_by_ref_heads_to_ref_new() {
     let src = "&RefOrder{ id: id, amt: amt } :- incoming_order(id, amt).";
@@ -144,7 +140,6 @@ fn lowers_by_ref_heads_to_ref_new() {
     ));
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed terms")]
 #[test]
 fn classifies_top_level_for_loop_as_for_term() {
     let src = "R(x) :- for (item in Items(item)) Process(item).";
@@ -161,7 +156,6 @@ fn classifies_top_level_for_loop_as_for_term() {
     assert!(matches!(terms.first(), Some(RuleBodyTerm::ForLoop(_))));
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed terms")]
 #[test]
 fn for_loop_with_guard_extracts_guard() {
     let src = "R(x) :- for (item in Items(item) if ready(item)) Process(item).";
@@ -180,7 +174,6 @@ fn for_loop_with_guard_extracts_guard() {
     assert!(for_loop.guard.is_some());
 }
 
-#[expect(clippy::expect_used, reason = "test requires parsed terms")]
 #[test]
 fn nested_for_loops_produce_nested_structure() {
     let src = "R(a, b) :- for (a in A(a)) for (b in B(b)) Pair(a, b).";

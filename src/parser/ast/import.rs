@@ -61,7 +61,6 @@ mod tests {
     #[test]
     fn parses_simple_import() {
         let parsed = parse("import foo");
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let first = parsed
             .root()
             .imports()
@@ -75,7 +74,6 @@ mod tests {
     #[test]
     fn parses_import_with_alias() {
         let parsed = parse("import foo::bar as baz");
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let first = parsed
             .root()
             .imports()
@@ -89,7 +87,6 @@ mod tests {
     #[test]
     fn parses_complex_path() {
         let parsed = parse("import std::collections::HashMap");
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let first = parsed
             .root()
             .imports()

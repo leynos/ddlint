@@ -69,10 +69,6 @@ fn skip_until_advances_past_span() {
 /// let newline = src.find('\n').expect("newline missing");
 /// assert_eq!(end, newline + 1);
 /// ```
-#[expect(
-    clippy::expect_used,
-    reason = "tests require a newline span to compare against line_end"
-)]
 #[rstest]
 fn line_end_returns_span_end(typedef_stream: (String, Vec<(SyntaxKind, Span)>)) {
     let (src, tokens) = typedef_stream;

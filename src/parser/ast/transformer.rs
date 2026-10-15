@@ -51,7 +51,6 @@ mod tests {
     //! Tests for transformer node parsing.
     use crate::parse;
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn transformer_name() {
         let parsed = parse("extern transformer t(x: A): B");
@@ -65,7 +64,6 @@ mod tests {
         assert_eq!(tr.name().as_deref(), Some("t"));
     }
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn multiple_inputs_outputs() {
         let src = "extern transformer t(a: X, b: Y): Out1, Out2";

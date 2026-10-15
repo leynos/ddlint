@@ -67,7 +67,6 @@ fn rule_parsing_tests(#[case] rule_input: &str, #[case] should_have_errors: bool
     };
     let rules = parsed.root().rules();
     assert_eq!(rules.len(), 1);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = rules.first().expect("rule missing");
     assert_eq!(
         pretty_print(rule.syntax()),

@@ -197,7 +197,6 @@ mod tests {
     //! Tests for index node parsing.
     use crate::parse;
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn index_fields_and_target() {
         let parsed = parse("index I(name: string) on R[lower(name)]");

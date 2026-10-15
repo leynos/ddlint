@@ -5,8 +5,6 @@
 //! builder-call sequences, and that `Parsed::semantic_rules()` does not
 //! synthesize collection-specific semantic rules.
 
-#![allow(clippy::expect_used, reason = "test assertions use expect for clarity")]
-
 use ddlint::parse;
 use ddlint::parser::ast::Expr;
 use ddlint::test_util::assert_no_parse_errors;

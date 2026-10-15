@@ -147,13 +147,10 @@ fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case
         })
         .collect();
     let open_span = if opener_kind == SyntaxKind::T_LPAREN {
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         spans.last().copied().expect("opening token missing")
     } else {
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         spans.first().copied().expect("opening token missing")
     };
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let err = errors
         .iter()
         .find(|e| {
@@ -231,7 +228,6 @@ fn parse_error_cases(
     let _ = src;
     let (_pairs, errors) = parse_name_type_pairs(tokens_for.into_iter());
     assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let err = errors.first().expect("missing error");
     expectation.assert_matches(err);
 }
@@ -320,7 +316,6 @@ fn missing_colon_does_not_consume_closing_paren() {
     let (pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
     assert!(pairs.is_empty());
     assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let err = errors.first().expect("missing error");
     assert!(matches!(err, ParseError::MissingColon { .. }));
 
@@ -340,11 +335,9 @@ fn missing_closing_paren_error() {
     let (pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
     assert!(pairs.is_empty(), "pairs: {pairs:?}");
     assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let err = errors.first().expect("missing UnclosedDelimiter error");
     match err {
         ParseError::UnclosedDelimiter { delimiter, span } if *delimiter == ')' => {
-            #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
             let open_span = elements
                 .iter()
                 .find_map(|e| match e {

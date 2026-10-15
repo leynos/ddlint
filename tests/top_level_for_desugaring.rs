@@ -119,7 +119,6 @@ fn top_level_for_behaviour(
     );
 
     if let Some(expected_head) = expected_head {
-        #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
         let rule = parsed
             .semantic_rules()
             .first()
@@ -128,12 +127,10 @@ fn top_level_for_behaviour(
     }
 
     if let Some(expected_first_body) = expected_first_body {
-        #[expect(clippy::expect_used, reason = "test expects one semantic rule")]
         let rule = parsed
             .semantic_rules()
             .first()
             .expect("missing semantic rule");
-        #[expect(clippy::expect_used, reason = "test expects one body term")]
         let first_body = rule.body().first().expect("missing body term");
         assert_eq!(first_body.to_sexpr(), expected_first_body);
     }

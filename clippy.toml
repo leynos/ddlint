@@ -1,2 +1,4 @@
 # Align with CodeScene’s ceiling
 cognitive-complexity-threshold = 12     # default is 25
+
+allow-expect-in-tests = true
