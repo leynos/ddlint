@@ -289,6 +289,13 @@ publishes no coverage artefact, never contacts CodeScene, and never receives
 `CS_ACCESS_TOKEN`, so a change in CodeScene's application programming interface
 (API) cannot hold a pull request.
 
+The ratchet holds its stored reference within one percentage point: it fails
+only when measured coverage is more than one point below the reference, and
+advances the value only when measurement is more than one point above it. A new
+cache generation can save the same numeric value. The restore `cache-hit` flag
+records an exact-key hit, so a `restore=miss` metric can accompany a successful
+fallback restore.
+
 `coverage-main.yml` is the only publisher. On each push to `main` it refreshes
 the ratchet baseline and uploads the report to CodeScene. It also runs on
 demand through `workflow_dispatch`, for merges that fire no push event: a
@@ -298,23 +305,28 @@ No `env` binds `CS_ACCESS_TOKEN`: a check step writes whether the secret is
 set, from an expression evaluated before its shell runs, and the upload step
 receives the token only as its `access-token` input, because the uploader is a
 composite action that would pass its step's `env` to its nested steps. The
-upload runs only when the token is present and the ref is `refs/heads/main`, so
-a dispatch from a branch cannot publish that branch's coverage as the trunk's.
+upload runs only when the token is present and the ref is `refs/heads/main`.
+The job declares the protected `codescene` environment, whose deployment branch
+policy admits `main` only, and administrative bypass is enabled. The token is
+provisioned in that environment; it is absent from the repository's Actions
+secrets. Branch dispatches remain subject to the job's environment protection,
+and the upload step retains its independent main-ref guard.
 
-The publisher's concurrency group is keyed on the ref alone and never cancels a
-run in progress, so runs on `main` never overlap, and a newer trigger replaces
-an older pending run rather than queueing behind it. GitHub does not promise to
-start runs in trigger order, so this does not guarantee commit order: an older
-run that starts late can publish its commit's coverage after a newer one, and
-the next push supersedes it. A manual re-run of an older run keeps its SHA and
-its run id: it republishes that commit's coverage to CodeScene, but replaces no
-ratchet baseline while the original run's cache entry survives, because the
-shared action saves each baseline under a key that includes the run id. If that
-entry is gone, never saved or since evicted, a re-run of a push saves the older
-commit's baseline again, the shared action restores the newest entry under the
-key prefix, and later ratchets read the older baseline until the next push
-saves a newer one. That stale-order risk is accepted. A re-run of a dispatch
-saves no baseline, since the shared action saves one only on a push.
+The publisher's concurrency group is keyed on the workflow and ref and never
+cancels a run in progress, so runs on `main` never overlap, and a newer trigger
+replaces an older pending run rather than queueing behind it. GitHub does not
+promise to start runs in trigger order, so this does not guarantee commit
+order: an older run that starts late can publish its commit's coverage after a
+newer one, and the next push supersedes it. A manual re-run of an older run
+keeps its SHA and its run id: it republishes that commit's coverage to
+CodeScene, but replaces no ratchet baseline while the original run's cache
+entry survives, because the shared action saves each baseline under a key that
+includes the run id. If that entry was never saved or has since been evicted, a
+re-run of a push saves the older commit's baseline again, the shared action
+restores the newest entry under the key prefix, and later ratchets read the
+older baseline until the next push saves a newer one. That stale-order risk is
+accepted. A re-run of a dispatch saves no baseline, since the shared action
+saves one only on a push.
 
 Two gaps are known and accepted, and both are tracked in
 [shared-actions issue 518](https://github.com/leynos/shared-actions/issues/518):
@@ -343,15 +355,19 @@ therefore a pin bump. The target needs `uv`, which fetches the Python 3.13 the
 library runs under. The repository's parameters are in `.github/cv005.toml`: its
 `repository` name and the `[selection]` inputs the baseline measures, which
 the publisher's generator must carry and every pull-request lane must match.
-The library's own suite proves each rule refuses the shape it exists to refuse,
-so this repository keeps no copy of the readers or the refusal cases. Its rules
-read every workflow a pull request can start, from its own events, reviews and
-comments, a merge queue, or a push not confined to `main` or tags, following
-local reusable-workflow calls, `workflow_run` chains and local composite
-actions, and refuse any mention of the CodeScene host, uploader, client, or
-token there. They also refuse `continue-on-error` wherever it would turn a
-failed ratchet or upload green, and they read workflows strictly, so a
-duplicate key is refused rather than silently resolved.
+The target also runs consumer-specific regressions, including
+`tests/workflow_contracts/coverage_publisher_test.py`. Its private strict YAML
+reader checks only the publisher's exact workflow/ref concurrency and canonical
+token-step contract; it is test-local support, not a reusable baseline auditor.
+The shared library owns the transitive pull-request workflow closure,
+secret-route, and baseline-writer rules. Those rules read every workflow a pull
+request can start, from its own events, reviews and comments, a merge queue, or
+a push not confined to `main` or tags, following local reusable-workflow calls,
+`workflow_run` chains and local composite actions, and refuse any mention of
+the CodeScene host, uploader, client, or token there. They also refuse
+`continue-on-error` wherever it would turn a failed ratchet or upload green,
+and they read workflows strictly, so a duplicate key is refused rather than
+silently resolved.
 
 ## The build standard
 
