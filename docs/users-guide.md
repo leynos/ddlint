@@ -156,23 +156,21 @@ Table 1. Relation diagnostics.
 
 ### Build standard
 
-Development builds (`make test`, `make lint`, `make typecheck` and the debug
-build) use the parallel `rustc` frontend (`-Zthreads=8`) and, on Linux, the
-`mold` linker. Install `mold` before building on Linux: the configuration names
-it, so a build without it fails at link time (on Debian or Ubuntu,
-`sudo apt-get install mold`). macOS keeps its platform linker, because mold
-ships for Linux only.
+Use `make` or `make build` for a debug build and `make release` for a release
+build. Each Make build entrypoint invokes Cargo, which decides whether work is
+already up to date. `build`, `test`, `typecheck` and `test-clippy-policy`
+preflight the selected Rust toolchain and required Linux linker. `lint` checks
+tools after `interrogate`. Formatting via `check-fmt` does not require linker
+preflight. If setup is missing, run `make install-build-tools` to install the
+pinned `mold` 2.41.0 release for supported Linux x86-64 and 64-bit ARM hosts.
+The installer does not support other Linux architectures. macOS and Windows
+keep their platform linker.
 
-The flags live in `.cargo/config.toml`, but Cargo applies exactly one
-`rustflags` source and an assigned `RUSTFLAGS` replaces every configuration
-source. The Makefile therefore restates the flags in each recipe and keeps any
-`RUSTFLAGS` you set, appending the standard flags after yours. Two builds are
-held out on purpose: the coverage build assigns its own flags, because a
-measurement should not depend on the fast flags, and the release build.
-`make release` keeps your `RUSTFLAGS` and names neither fast flag, so a shipped
-artefact links with the platform linker. A bare `cargo build --release` is
-different: it takes the configuration's flags unless you assign `RUSTFLAGS`
-yourself, for example `RUSTFLAGS="" cargo build --release`.
-
-Cranelift is not adopted; the developers' guide records the measurement and the
-reason. See [ADR 003](adr-003-rust-build-standard.md) for the reasoning.
+Development and test builds use the parallel `rustc` frontend (`-Zthreads=8`)
+and, on Linux, the `mold` linker. Make appends these standard flags after
+inherited `RUSTFLAGS`; any caller-supplied flags remain the caller's
+responsibility. Release and coverage builds assign flags explicitly and do not
+add these development defaults. Direct Cargo commands use the configuration in
+`.cargo/config.toml` unless an assigned `RUSTFLAGS` replaces it. Maintainers
+can find the full command and prerequisite contract in the
+[developer's guide](developers-guide.md#the-build-standard).

@@ -43,8 +43,9 @@ _Figure 1: Compact repository tree for contributor orientation._
 - `Cargo.toml` and `Cargo.lock`: Rust workspace package metadata and dependency
   lock state. Keep dependency requirements compatible with the policy in
   `AGENTS.md`.
-- `Makefile`: Canonical command entrypoints for build, format, lint, test, and
-  documentation validation. Prefer these targets over direct tool invocations.
+- `Makefile`: Canonical command entrypoints for build, tool checks and setup,
+  format, lint, test, and documentation validation. Prefer these targets over
+  direct tool invocations.
 - `README.md`: Public project overview and entrypoint. Keep it high-level and
   link to deeper documentation rather than duplicating it.
 - `docs/`: Long-lived project documentation, design records, guides, and
