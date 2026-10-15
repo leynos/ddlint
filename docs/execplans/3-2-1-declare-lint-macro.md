@@ -40,10 +40,11 @@ Observable success is:
 
 ## Constraints
 
-- Treat [docs/ddlint-design.md](docs/ddlint-design.md) section `3.2` as the
-  normative design source for this milestone. The roadmap still references
-  `docs/ddlint-design-and-road-map.md`, but that file does not exist in the
-  current repository.
+- Treat
+  [docs/ddlint-design.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/ddlint-design.md)
+  section `3.2` as the normative design source for this milestone. The roadmap
+  still references `docs/ddlint-design-and-road-map.md`, but that file does not
+  exist in the current repository.
 - Keep scope limited to roadmap item `3.2.1`. Do not implement CLI commands,
   configuration-file parsing, semantic-analysis passes, or concrete production
   lint rules from phase `4`.
@@ -58,9 +59,11 @@ Observable success is:
 - Keep files below 400 lines by splitting unit tests or helpers when needed.
 - Validate with both unit tests and behavioural tests.
 - Record final design decisions in
-  [docs/ddlint-design.md](docs/ddlint-design.md).
-- When editing [docs/roadmap.md](docs/roadmap.md) for this milestone, also fix
-  stale references to the missing `docs/ddlint-design-and-road-map.md` file.
+  [docs/ddlint-design.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/ddlint-design.md).
+- When editing
+  [docs/roadmap.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/roadmap.md)
+  for this milestone, also fix stale references to the missing
+  `docs/ddlint-design-and-road-map.md` file.
 - Use Make targets for final quality gates and run every gate with
   `set -o pipefail` and `tee`.
 - Use en-GB-oxendict spelling in comments and documentation.
@@ -94,7 +97,8 @@ Observable success is:
 
 - Risk: exporting the macro from the wrong module will make external use
   awkward or impossible. Severity: medium. Likelihood: medium. Mitigation:
-  define the macro in a dedicated [src/linter/macros.rs](src/linter/macros.rs)
+  define the macro in a dedicated
+  [src/linter/macros.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/macros.rs)
   module and export it with `#[macro_export]`, making `ddlint::declare_lint!`
   the stable public path.
 
@@ -134,18 +138,18 @@ Observable success is:
 
 - Observation: the roadmap points to `docs/ddlint-design-and-road-map.md`, but
   the actual design document present in the repository is
-  [docs/ddlint-design.md](docs/ddlint-design.md). Evidence:
-  `rg --files docs | rg 'ddlint-design|road-map|roadmap'` returned only
-  `docs/ddlint-design.md` and `docs/roadmap.md`. Impact: this ExecPlan, and the
-  implementation that follows it, must treat `docs/ddlint-design.md` as the
-  authoritative design source.
+  [docs/ddlint-design.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/ddlint-design.md).
+  Evidence: `rg --files docs | rg 'ddlint-design|road-map|roadmap'` returned
+  only `docs/ddlint-design.md` and `docs/roadmap.md`. Impact: this ExecPlan,
+  and the implementation that follows it, must treat `docs/ddlint-design.md` as
+  the authoritative design source.
 
 - Observation: the current `Rule` trait exposes `name`, `group`, and `docs`,
   but no severity or level metadata. Evidence:
-  [src/linter/rule.rs](src/linter/rule.rs) defines only those three metadata
-  methods. Impact: implementing the macro exactly as described in the design
-  document requires an additive metadata extension instead of a pure macro-only
-  change.
+  [src/linter/rule.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/rule.rs)
+  defines only those three metadata methods. Impact: implementing the macro
+  exactly as described in the design document requires an additive metadata
+  extension instead of a pure macro-only change.
 
 - Observation: standard Rust doc comments become `#[doc = " ..."]` attributes
   with a leading space on non-empty lines, and stable `macro_rules!` cannot
@@ -157,12 +161,14 @@ Observable success is:
 
 ## Decision Log
 
-- Decision: treat [docs/ddlint-design.md](docs/ddlint-design.md) as the
-  normative design document for this milestone and plan to repair stale roadmap
-  references during implementation. Rationale: the roadmap path is stale, while
-  `docs/ddlint-design.md` contains the actual `declare_lint!` design text in
-  section `3.2`. Fixing the roadmap in the same change removes an already-known
-  source of confusion for the next milestone. Date/Author: 2026-03-07 / Codex.
+- Decision: treat
+  [docs/ddlint-design.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/ddlint-design.md)
+  as the normative design document for this milestone and plan to repair stale
+  roadmap references during implementation. Rationale: the roadmap path is
+  stale, while `docs/ddlint-design.md` contains the actual `declare_lint!`
+  design text in section `3.2`. Fixing the roadmap in the same change removes
+  an already-known source of confusion for the next milestone. Date/Author:
+  2026-03-07 / Codex.
 
 - Decision: extend `Rule` with a first-class default-level API for this
   milestone. Rationale: the design text for `declare_lint!`, the initial rule
@@ -231,29 +237,32 @@ handler body wants to call `self.name()` naturally.
 
 ## Context and orientation
 
-The current linter engine lives in [src/linter](src/linter):
+The current linter engine lives in
+[src/linter](https://github.com/leynos/ddlint/tree/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter):
 
-- [src/linter/rule.rs](src/linter/rule.rs) defines `LintDiagnostic`,
-  `RuleConfigValue`, `RuleConfig`, `RuleCtx`, the `Rule` trait, the `CstRule`
-  trait, and unit tests for those primitives.
-- [src/linter/store.rs](src/linter/store.rs) defines `CstRuleStore`, which
-  indexes `Arc<dyn CstRule>` by `SyntaxKind`.
-- [src/linter/runner.rs](src/linter/runner.rs) defines `Runner`, which walks
-  the parsed CST and invokes matching rules in parallel.
-- [src/linter/mod.rs](src/linter/mod.rs) wires those modules together and
-  re-exports the current public linter API.
+- [src/linter/rule.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/rule.rs)
+  defines `LintDiagnostic`, `RuleConfigValue`, `RuleConfig`, `RuleCtx`, the
+  `Rule` trait, the `CstRule` trait, and unit tests for those primitives.
+- [src/linter/store.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/store.rs)
+  defines `CstRuleStore`, which indexes `Arc<dyn CstRule>` by `SyntaxKind`.
+- [src/linter/runner.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/runner.rs)
+  defines `Runner`, which walks the parsed CST and invokes matching rules in
+  parallel.
+- [src/linter/mod.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/mod.rs)
+  wires those modules together and re-exports the current public linter API.
 
-At the start of this milestone, the crate root was [src/lib.rs](src/lib.rs),
+At the start of this milestone, the crate root was
+[src/lib.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/lib.rs),
 and no public linter macro was exported there. Existing macro usage in the
 repository was limited to private helper macros in parser and test utilities.
 
 At the start of this milestone, rule definitions in tests showed the
 boilerplate this work was meant to remove:
 
-- [tests/linter_rule_store.rs](tests/linter_rule_store.rs) hand-writes several
-  `Rule` and `CstRule` impls just to test dispatch.
-- [tests/linter_runner/main.rs](tests/linter_runner/main.rs) depends on
-  similar handwritten rules to exercise end-to-end runner behaviour.
+- [tests/linter_rule_store.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/tests/linter_rule_store.rs)
+  hand-writes several `Rule` and `CstRule` impls just to test dispatch.
+- [tests/linter_runner/main.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/tests/linter_runner/main.rs)
+  depends on similar handwritten rules to exercise end-to-end runner behaviour.
 
 For this plan, "default level" means the rule's built-in severity before a
 future configuration file overrides it. "Zero-state rule" means a rule with no
@@ -263,10 +272,12 @@ fields; it is just a type that carries metadata and behaviour.
 
 ### Stage A: add the missing metadata contract first
 
-Edit [src/linter/rule.rs](src/linter/rule.rs) to introduce a small `RuleLevel`
-enum for the severity values already named in
-[docs/ddlint-design.md](docs/ddlint-design.md): `allow`, `hint`, `warn`, and
-`error`. Re-export this type from [src/linter/mod.rs](src/linter/mod.rs).
+Edit
+[src/linter/rule.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/rule.rs)
+to introduce a small `RuleLevel` enum for the severity values already named in
+[docs/ddlint-design.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/ddlint-design.md):
+`allow`, `hint`, `warn`, and `error`. Re-export this type from
+[src/linter/mod.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/mod.rs).
 
 Add a new `fn default_level(&self) -> RuleLevel` method to `Rule` with a
 default implementation so existing handwritten rules continue to compile
@@ -280,10 +291,12 @@ runner, store, or parser, stop and escalate before implementing the macro.
 
 ### Stage B: add the macro module and write the red tests
 
-Create [src/linter/macros.rs](src/linter/macros.rs) with a module-level `//!`
-comment and a `#[macro_export] macro_rules! declare_lint` definition. Wire the
-module through [src/linter/mod.rs](src/linter/mod.rs) so the file is compiled
-as part of the crate.
+Create
+[src/linter/macros.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/macros.rs)
+with a module-level `//!` comment and a
+`#[macro_export] macro_rules! declare_lint` definition. Wire the module through
+[src/linter/mod.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/src/linter/mod.rs)
+so the file is compiled as part of the crate.
 
 The macro syntax should be explicit and stable. Implement this shape:
 
@@ -340,11 +353,11 @@ These red tests should cover:
 ### Stage C: prove end-to-end compatibility with the existing engine
 
 Add a behavioural test file such as
-[tests/linter_declare_lint_macro.rs](tests/linter_declare_lint_macro.rs). Use
-`ddlint::declare_lint!` to define one or two test-only rules in the test
+[tests/linter_declare_lint_macro.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/tests/linter_declare_lint_macro.rs).
+Use `ddlint::declare_lint!` to define one or two test-only rules in the test
 module, parse an existing fixture such as
-[examples/hello_join.dl](examples/hello_join.dl), and run the rules through both
-`CstRuleStore` and `Runner`.
+[examples/hello_join.dl](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/examples/hello_join.dl),
+and run the rules through both `CstRuleStore` and `Runner`.
 
 The behavioural suite should prove these outcomes:
 
@@ -357,16 +370,19 @@ The behavioural suite should prove these outcomes:
   `dyn CstRule` trait object.
 
 Use the existing behavioural suites in
-[tests/linter_rule_store.rs](tests/linter_rule_store.rs) and
-[tests/linter_runner/main.rs](tests/linter_runner/main.rs) as reference
-patterns. Do not rewrite those files unless a small shared helper extraction is
-needed to stay within file-size limits.
+[tests/linter_rule_store.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/tests/linter_rule_store.rs)
+and
+[tests/linter_runner/main.rs](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/tests/linter_runner/main.rs)
+as reference patterns. Do not rewrite those files unless a small shared helper
+extraction is needed to stay within file-size limits.
 
 ### Stage D: document the final contract and close the roadmap item
 
-Update [docs/ddlint-design.md](docs/ddlint-design.md) section `3.2` to reflect
-the actual implemented macro shape. The current example names a struct, group,
-and default severity conceptually, but the final document must also explain:
+Update
+[docs/ddlint-design.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/ddlint-design.md)
+section `3.2` to reflect the actual implemented macro shape. The current
+example names a struct, group, and default severity conceptually, but the final
+document must also explain:
 
 - that the caller provides an explicit kebab-case `name`;
 - that the macro expands into both `Rule` and `CstRule`;
@@ -375,9 +391,10 @@ and default severity conceptually, but the final document must also explain:
   `Rule`.
 
 Then update stale `docs/ddlint-design-and-road-map.md` references in
-[docs/roadmap.md](docs/roadmap.md) so they point at `docs/ddlint-design.md`.
-Mark roadmap items `3.2.1` and `3.2.2` as done once the behavioural suite
-proves registration and runtime dispatch through the existing linter engine.
+[docs/roadmap.md](https://github.com/leynos/ddlint/blob/0caf102ada0ce3557ba92693f6ad5f98f06b88a3/docs/roadmap.md)
+so they point at `docs/ddlint-design.md`. Mark roadmap items `3.2.1` and
+`3.2.2` as done once the behavioural suite proves registration and runtime
+dispatch through the existing linter engine.
 
 Finish by running formatting, Markdown validation, Rust formatting checks,
 Clippy, and the full test suite. Do not consider the milestone complete until
