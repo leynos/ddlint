@@ -132,6 +132,25 @@ This repository is written in Rust and uses Cargo for building and dependency
 management. Contributors should follow these best practices when working on the
 project:
 
+- Use `make` or `make build` for a debug build and `make release` for a release
+  build. These entrypoints invoke Cargo on every request, leaving freshness and
+  incremental compilation to Cargo.
+- `build`, `test`, `typecheck` and `test-clippy-policy` preflight the selected
+  Rust toolchain and, on Linux, the pinned linker. `lint` runs `interrogate`
+  first, then checks the build tools before Clippy. `check-fmt` does not need
+  linker preflight. Use `make check-build-tools` to run the check directly and
+  `make install-build-tools` if setup is needed. The installer ensures the
+  selected Rust toolchain has `rustfmt`, `clippy` and `rust-analyzer`, and
+  provisions the pinned `mold` 2.41.0 release on Linux x86-64 and 64-bit ARM.
+  Other Linux architectures are unsupported by this installer; on other
+  operating systems, Cargo uses the platform linker.
+- The development flags are `-Zthreads=8` and, on Linux,
+  `-Clink-arg=-fuse-ld=mold`. Make build recipes append these after inherited
+  `RUSTFLAGS`; caller-supplied flags remain the caller's responsibility.
+  Release and coverage recipes retain their explicit flag assignments. See
+  [the developer's guide](docs/developers-guide.md#the-build-standard) for the
+  local setup and target details.
+
 - Run `make fmt`, `make check-fmt`, `make lint`, `make test`,
   `make markdownlint`, and `make nixie` before committing. These targets wrap
   the following commands, so contributors understand the exact behaviour and
@@ -158,15 +177,19 @@ project:
     Python definition under `tests` without a docstring (and on any `MISSED`
     row, since interrogate rounds its percentage to one decimal;
     `tests/workflow_contracts/interrogate_gate_test.py` asserts the wiring),
-    and then executes:
+    then checks the build tools, and then executes:
 
     ```sh
+    $(MAKE) check-build-tools
     $(CARGO) clippy $(CLIPPY_FLAGS)
+    $(MAKE) test-clippy-policy
     RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
+    $(MAKE) spelling
     ```
 
     linting every target with all features enabled and denying all warnings.
-    The lint target also runs the gate described in [Spelling](#spelling).
+    `test-clippy-policy` also checks the build tools before running. The lint
+    target's final step is the gate described in [Spelling](#spelling).
   - `make test` executes:
 
     ```sh
@@ -175,6 +198,8 @@ project:
     ```
 
     running the full workspace test suite with warnings treated as errors.
+  - `make check` runs `check-fmt`, `typecheck`, `lint`, and `test` as sequential
+    submakes.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.
