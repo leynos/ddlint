@@ -34,11 +34,25 @@ fn assert_body_terms_error_contains(rule: &Rule, expected_msg: &str) {
 
 /// Assert that a flattened body term at a given index is an Expression
 /// with the expected S-expression representation.
+#[track_caller]
 fn assert_expression_term_sexpr(terms: &[RuleBodyTerm], index: usize, expected_sexpr: &str) {
     let Some(RuleBodyTerm::Expression(expr)) = terms.get(index) else {
         panic!("expected expression term at index {index}");
     };
     assert_eq!(expr.to_sexpr(), expected_sexpr);
+}
+
+/// Assert that flattened rule terms match an ordered S-expression sequence.
+#[track_caller]
+fn assert_flattened_expression_terms(terms: &[RuleBodyTerm], expected: [&str; 3]) {
+    assert_eq!(
+        terms.len(),
+        expected.len(),
+        "flattened terms must match the expected expression count"
+    );
+    for (index, expected_sexpr) in expected.into_iter().enumerate() {
+        assert_expression_term_sexpr(terms, index, expected_sexpr);
+    }
 }
 
 #[test]
@@ -259,10 +273,10 @@ fn flattened_terms_expand_for_loop_to_components() {
         .expect("should flatten successfully");
 
     // Should be: Source(x), pred(x), Target(x)
-    assert_eq!(flattened.len(), 3);
-    assert_expression_term_sexpr(&flattened, 0, "(call Source x)");
-    assert_expression_term_sexpr(&flattened, 1, "(call pred x)");
-    assert_expression_term_sexpr(&flattened, 2, "(call Target x)");
+    assert_flattened_expression_terms(
+        &flattened,
+        ["(call Source x)", "(call pred x)", "(call Target x)"],
+    );
 }
 
 #[test]
@@ -274,10 +288,7 @@ fn flattened_nested_for_loops_expand_correctly() {
         .expect("should flatten successfully");
 
     // Should be: A(a), B(b), Pair(a, b)
-    assert_eq!(flattened.len(), 3);
-    assert_expression_term_sexpr(&flattened, 0, "(call A a)");
-    assert_expression_term_sexpr(&flattened, 1, "(call B b)");
-    assert_expression_term_sexpr(&flattened, 2, "(call Pair a b)");
+    assert_flattened_expression_terms(&flattened, ["(call A a)", "(call B b)", "(call Pair a b)"]);
 }
 
 #[rstest]
