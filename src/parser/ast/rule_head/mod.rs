@@ -372,5 +372,5 @@ fn parse_delay_suffix(
 }
 
 #[cfg(test)]
-#[path = "rule_head/tests.rs"]
+#[path = "tests.rs"]
 mod tests;

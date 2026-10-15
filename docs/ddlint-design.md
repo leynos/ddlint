@@ -514,7 +514,7 @@ the diagnostics sink. This design keeps the logic for each rule encapsulated
 and testable in isolation.
 
 The current implementation for roadmap items `3.1.1` and `3.1.2` lives in
-`src/linter/rule.rs` and defines the following public contracts:
+`src/linter/rule/mod.rs` and defines the following public contracts:
 
 ```rust,no_run
 pub enum RuleLevel {
