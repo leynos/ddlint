@@ -314,7 +314,7 @@ newer one, and the next push supersedes it. A manual re-run of an older run
 keeps its SHA and its run id: it republishes that commit's coverage to
 CodeScene, but replaces no ratchet baseline while the original run's cache
 entry survives, because the shared action saves each baseline under a key that
-includes the run id. If that entry is gone, never saved or since evicted, a
+includes the run id. If that entry was never saved or has since been evicted, a
 re-run of a push saves the older commit's baseline again, the shared action
 restores the newest entry under the key prefix, and later ratchets read the
 older baseline until the next push saves a newer one. That stale-order risk is
@@ -348,15 +348,19 @@ therefore a pin bump. The target needs `uv`, which fetches the Python 3.13 the
 library runs under. The repository's parameters are in `.github/cv005.toml`: its
 `repository` name and the `[selection]` inputs the baseline measures, which
 the publisher's generator must carry and every pull-request lane must match.
-The library's own suite proves each rule refuses the shape it exists to refuse,
-so this repository keeps no copy of the readers or the refusal cases. Its rules
-read every workflow a pull request can start, from its own events, reviews and
-comments, a merge queue, or a push not confined to `main` or tags, following
-local reusable-workflow calls, `workflow_run` chains and local composite
-actions, and refuse any mention of the CodeScene host, uploader, client, or
-token there. They also refuse `continue-on-error` wherever it would turn a
-failed ratchet or upload green, and they read workflows strictly, so a
-duplicate key is refused rather than silently resolved.
+The target also runs consumer-specific regressions, including
+`tests/workflow_contracts/coverage_publisher_test.py`. Its private strict YAML
+reader checks only the publisher's exact workflow/ref concurrency and canonical
+token-step contract; it is test-local support, not a reusable baseline auditor.
+The shared library owns the transitive pull-request workflow closure,
+secret-route, and baseline-writer rules. Those rules read every workflow a pull
+request can start, from its own events, reviews and comments, a merge queue, or
+a push not confined to `main` or tags, following local reusable-workflow calls,
+`workflow_run` chains and local composite actions, and refuse any mention of
+the CodeScene host, uploader, client, or token there. They also refuse
+`continue-on-error` wherever it would turn a failed ratchet or upload green,
+and they read workflows strictly, so a duplicate key is refused rather than
+silently resolved.
 
 ## The build standard
 
