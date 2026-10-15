@@ -105,9 +105,10 @@ semantic, and linter behaviours. Shared fixtures and helper code belong under
 Keep each Rust file within 400 lines. When an integration suite grows beyond
 that limit, use a module directory with `main.rs` as the Cargo test entrypoint
 and private child modules grouped by behaviour. The `rule_behaviour` suite
-keeps its shared helpers in the entrypoint and its aggregation, head, for-loop,
-and body-boundary cases in sibling modules. These helpers belong to that suite
-only; helpers shared across suites belong under `tests/support/`.
+keeps assertion helpers in its entrypoint and groups aggregation, head,
+for-loop, and body-boundary cases in sibling modules. Its fallible extractor and
+`mixed_rule` fixture live in `tests/support/rule_behaviour.rs`; only the two
+mixed-rule cases consume that fixture, so it does not imply broader reuse.
 
 Keep test data close to the tests that own it unless it becomes large enough to
 justify a dedicated fixture directory. When a helper mutates process-global

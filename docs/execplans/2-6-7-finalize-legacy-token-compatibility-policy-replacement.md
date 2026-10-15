@@ -9,6 +9,27 @@ approved source on `1e4737e` with no actionable code comments.
 Developer-contract documentation reconciliation and merge are tracked
 separately.
 
+## Target refresh (2026-10-15)
+
+Replayed the 23-commit series (`224723b..00d0f77`) onto `6be8ff8`, producing
+`8fb1fb3`. Conflict resolution retained the upstream grouped relation arguments
+and fallible shared rule-set setup, alongside the five split modules, all 25
+feature cases, and two upstream helper cases. The refreshed tree has 228 Rust
+files, all at or below 400 lines, and 804 net Rust lines after formatting.
+
+Fresh sequential local gates passed on the formatted `8fb1fb3` candidate:
+`make fmt`, `make check-fmt`, `make lint`, `make typecheck`, `make test` (1,265
+tests, including all 27 `rule_behaviour` cases), `make test-workflow-contracts`
+(38 tests), `make markdownlint`, and `make nixie`. Exit records are under
+`/tmp/ddlint-pr354-third-rebase-gates.YeaGP5/`; detailed logs are under
+`/tmp/ddlint-pr354-third-rebase-<target>.out`. CodeScene scored all five split
+modules and `tests/support/rule_behaviour.rs` 10.0 with zero issues; the
+working-tree delta reported no findings. The frozen-base delta retains
+inherited type-test duplication (9.38) and infix complexity (9.68), with
+unchanged categories and scores. Hosted checks, a current-head assessment, and
+formal review remain pending. The observer callback defect and proposed
+900-line ceiling still await scope resolution. No merge eligibility is claimed.
+
 ## Rebase checkpoint (2026-10-15)
 
 Replayed all 22 branch commits from the verified `54f609b` boundary onto
@@ -20,7 +41,7 @@ below 400 lines. The branch delta is 806 net Rust lines after the
 user-authorized module split and inherited lint cleanup.
 
 Sequential local gates passed on `ab3bbad`: `make fmt`, `make check-fmt`,
-`make lint`, `make typecheck`, `make test` (1,261 tests),
+`make lint`, `make typecheck`, `make test` (1,263 tests),
 `make test-workflow-contracts` (16 tests), `make markdownlint`, and
 `make nixie`. Gate exit records are under
 `/tmp/ddlint-pr354-rebase-gates.N90JSe/`; detailed logs are in `/tmp/`.

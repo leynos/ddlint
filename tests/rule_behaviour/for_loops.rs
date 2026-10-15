@@ -226,9 +226,7 @@ fn mixed_body_nested_for_loop_preserves_structure() {
 }
 
 #[rstest::rstest]
-fn mixed_for_loop_and_regular_terms_flattened(
-    #[from(mixed_rule)] rule_res: Result<Rule, String>,
-) {
+fn mixed_for_loop_and_regular_terms_flattened(#[from(mixed_rule)] rule_res: Result<Rule, String>) {
     // Verify flattened_body_terms preserves order for mixed for-loop and regular terms.
     let rule = rule_res.expect("mixed rule fixture should parse and contain a rule");
     let flattened = rule
