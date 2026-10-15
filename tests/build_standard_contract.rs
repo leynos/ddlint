@@ -27,6 +27,12 @@ mod injected;
 mod make;
 #[path = "build_standard_support/process.rs"]
 mod process;
+#[cfg(all(
+    target_os = "linux",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+#[path = "build_standard_support/provisioning.rs"]
+mod provisioning;
 #[path = "build_standard_support/shell.rs"]
 mod shell;
 #[path = "build_standard_support/workflow_exhaustive.rs"]
