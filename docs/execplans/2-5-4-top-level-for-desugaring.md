@@ -131,7 +131,7 @@ Testing layout:
 
 - Parser unit tests live under `src/parser/tests/`.
 - Behavioural parser tests live under `tests/`.
-- Existing for-loop tests are rule-body-centric in `tests/rule_behaviour.rs`.
+- Existing for-loop tests are rule-body-centric in `tests/rule_behaviour/`.
 
 ## Plan of work
 

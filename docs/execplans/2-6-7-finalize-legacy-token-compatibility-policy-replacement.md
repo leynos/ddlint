@@ -9,6 +9,27 @@ approved source on `1e4737e` with no actionable code comments.
 Developer-contract documentation reconciliation and merge are tracked
 separately.
 
+## Module-size follow-up (2026-10-15)
+
+The user requested that Rust files stay within 400 lines and that oversized
+modules become module directories. The sole oversized source file was
+`tests/rule_behaviour.rs`, at 517 lines. Its 25 behavioural cases and four
+existing helpers have moved into `tests/rule_behaviour/`, with cases grouped by
+aggregation, head parsing, loops, and body boundaries. This explicitly
+authorized structural refactor permits the necessary module-wiring and
+documentation changes. The two duplicate loop-flattening tests are now named
+cases of one parameterized test, retaining both inputs and expected outputs.
+This does not approve the separate observer repair or the requested 900-line
+budget. The pre-refactor and split suites each passed all 25 cases. Full local
+validation passed `make fmt`, `make check-fmt`, `make lint`, `make typecheck`,
+`make test` (1,261 tests), `make test-workflow-contracts` (16 tests),
+`make markdownlint`, and `make nixie`. All five new modules scored 10.0 in
+CodeScene, and its staged delta reported no new issues. The final source audit
+found 226 Rust files, all at or below 400 lines; the largest new module has 246
+lines. Logs are retained under
+`/tmp/ddlint-rule-behaviour-split-validation.T7p3xQ/`. The observer integration
+gap and its separate scope decision still prevent merge.
+
 ## Rebase close-out (2026-10-14)
 
 Replayed the branch-owned series onto `54f609b`, preserving the target's parser

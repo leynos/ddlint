@@ -145,8 +145,8 @@ feature than the conformance-alignment task captured here.
 
 - Existing tests already imply the helper-stage contract. Unit tests in
   `src/parser/tests/rules/aggregations.rs` and behavioural tests in
-  `tests/rule_behaviour.rs` call `rule.body_terms()` directly to observe
-  aggregation classification and errors.
+  `tests/rule_behaviour/aggregations.rs` call `rule.body_terms()` directly to
+  observe aggregation classification and errors.
 
 - The archived parser plan in `docs/archive/parser-plan.md` already describes
   aggregation extraction during `Rule::body_terms()` rule-body analysis. The
@@ -196,7 +196,7 @@ The implementation files most relevant to this change are:
 - `src/parser/cst_builder/mod.rs`
 - `src/parser/ast/rule.rs`
 - `src/parser/tests/rules/aggregations.rs`
-- `tests/rule_behaviour.rs`
+- `tests/rule_behaviour/aggregations.rs`
 
 The documents that must be aligned in the same change are:
 
