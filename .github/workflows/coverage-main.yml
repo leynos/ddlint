@@ -17,8 +17,8 @@ on:
   # GITHUB_TOKEN fire no push event. A dispatch on main uploads a fresh report,
   # but the shared action writes a new baseline only on a push to
   # refs/heads/main, so the ratchet catches up at the next push. The upload
-  # step below checks the ref, so a dispatch aimed at a branch publishes
-  # nothing.
+  # job's protected environment admits main under its deployment branch policy;
+  # administrative bypass is enabled. The upload step also checks the ref.
   workflow_dispatch:
 
 # One group per ref, never cancelled. A cancelled run abandons both its upload
@@ -34,7 +34,7 @@ on:
 # dispatch saves no baseline. The group is not keyed on the event, which would
 # let a dispatch and a push to main run at once.
 concurrency:
-  group: coverage-main-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -78,7 +78,7 @@ jobs:
       # too, and it binds the token itself from its access-token input. Actions
       # evaluates this expression to true or false before the shell runs, so a
       # fork without the secret skips the upload rather than failing it.
-      - name: Check for the CodeScene token
+      - name: Check CodeScene token
         id: codescene-token
         run: echo "available=${{ secrets.CS_ACCESS_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
       - name: Upload coverage data to CodeScene
