@@ -3,7 +3,6 @@
 use super::*;
 use crate::parser::ast::Pattern;
 
-#[expect(clippy::expect_used, reason = "tests assert patterns parse")]
 #[test]
 fn parses_var_and_wildcard_patterns() {
     assert_eq!(
@@ -19,7 +18,6 @@ fn parses_var_and_wildcard_patterns() {
     );
 }
 
-#[expect(clippy::expect_used, reason = "tests assert patterns parse")]
 #[test]
 fn parses_tuple_patterns() {
     assert_eq!(
@@ -37,14 +35,12 @@ fn parses_tuple_patterns() {
     );
 }
 
-#[expect(clippy::expect_used, reason = "tests assert patterns parse")]
 #[test]
 fn parses_struct_patterns() {
     let pat = parse_pattern("Point { x: var a, y: _ }").expect("pattern should parse");
     assert_eq!(pat.to_source(), "Point { x: var a, y: _ }".to_string());
 }
 
-#[expect(clippy::expect_used, reason = "tests assert patterns parse")]
 #[test]
 fn parses_typed_patterns() {
     let pat = parse_pattern("var x: Vec<u32>").expect("pattern should parse");

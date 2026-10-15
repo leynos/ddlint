@@ -85,7 +85,6 @@ mod tests {
     //! Tests for function node parsing.
     use crate::{parse, test_util::span_text};
 
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     #[test]
     fn function_name() {
         let parsed = parse("function foo() {}");
@@ -104,7 +103,6 @@ mod tests {
         let source = "function project(project: u32): u32 { project }";
         let parsed = parse(source);
         crate::test_util::assert_no_parse_errors(parsed.errors());
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let func = parsed
             .root()
             .functions()

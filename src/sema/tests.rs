@@ -207,10 +207,6 @@ fn relation_use_origins_distinguish_heads_from_reads(
 }
 
 #[rstest]
-#[expect(
-    clippy::expect_used,
-    reason = "tests should fail with concise lookup messages"
-)]
 fn assignment_binding_becomes_visible_after_its_literal(
     #[with("Output(x) :- Before(x), var x = Seed(x), After(x).")]
     semantic_model: super::SemanticModel,
@@ -250,10 +246,6 @@ fn wildcard_variable_uses_are_ignored(
 }
 
 #[rstest]
-#[expect(
-    clippy::expect_used,
-    reason = "tests should fail with concise lookup messages"
-)]
 fn for_loop_bindings_do_not_escape_loop_scope(
     #[with("Output(x) :- Source(x), for (y in Items(x)) Inner(y), After(y).")]
     semantic_model: super::SemanticModel,
@@ -315,10 +307,6 @@ fn top_level_for_semantic_rules_participate_in_analysis(
 }
 
 #[rstest]
-#[expect(
-    clippy::expect_used,
-    reason = "tests should fail with concise lookup messages"
-)]
 fn relation_use_prefers_relation_over_function_with_same_name(
     #[with(concat!(
         "input relation Foo(x: u32)\n",
@@ -351,10 +339,6 @@ fn relation_use_prefers_relation_over_function_with_same_name(
 }
 
 #[rstest]
-#[expect(
-    clippy::expect_used,
-    reason = "tests should fail with concise lookup messages"
-)]
 fn relation_read_helpers_ignore_head_only_and_unresolved_uses(
     #[with(concat!(
         "input relation Source(x: u32)\n",

@@ -17,10 +17,6 @@ fn validate_expression_reports_out_of_bounds() {
     }
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "tests unwrap spans to aid debugging on failure"
-)]
 #[test]
 fn splits_rule_body_literals() {
     let src = "R(x) :- A(x), if cond(x) { B(x) } else { C(x) }.";

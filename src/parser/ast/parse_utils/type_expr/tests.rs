@@ -62,7 +62,6 @@ fn type_expr_unclosed_delimiter_span() {
     skip_to_top_level_colon(&mut iter);
     let (_ty, errors) = parse_type_expr(&mut iter);
     assert_eq!(errors.len(), 1);
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let angle_span = elements
         .iter()
         .find_map(|e| match e {
@@ -70,7 +69,6 @@ fn type_expr_unclosed_delimiter_span() {
             _ => None,
         })
         .expect("angle token missing");
-    #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
     let err = errors.first().expect("no error");
     match err {
         ParseError::UnclosedDelimiter {

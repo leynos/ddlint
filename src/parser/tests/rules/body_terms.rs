@@ -85,7 +85,6 @@ fn body_terms_shift_assignment_pattern_error_spans() {
 
     let src = format!("Bad() :- Source(), {pattern_src} = FlatMap(foo()).");
     let parsed = parse_err(src.as_str());
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -121,7 +120,6 @@ fn body_terms_shift_assignment_value_error_spans() {
 
     let src = format!("Bad() :- Source(), x = {value_src}.");
     let parsed = parse_err(src.as_str());
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -147,7 +145,6 @@ fn body_terms_shift_assignment_value_error_spans() {
 fn body_terms_rejects_whitespace_only_value() {
     let src = "Bad() :- Source(), x =   .";
     let parsed = parse_err(src);
-    #[expect(clippy::expect_used, reason = "tests require a single rule")]
     let rule = parsed
         .root()
         .rules()

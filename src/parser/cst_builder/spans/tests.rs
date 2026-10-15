@@ -37,10 +37,6 @@ fn validate_spans_sorted_ok_on_sorted() {
     assert!(validate_spans_sorted(&spans).is_ok());
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect for validation failures"
-)]
 #[test]
 fn validate_span_lists_sorted_reports_list_name() {
     let imports = vec![2..4, 1..2];
@@ -50,10 +46,6 @@ fn validate_span_lists_sorted_reports_list_name() {
     assert_eq!(issue.list(), "imports");
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect for valid spans"
-)]
 #[test]
 fn builder_succeeds_on_sorted_spans() {
     let spans = vec![0..2, 2..4];
@@ -64,10 +56,6 @@ fn builder_succeeds_on_sorted_spans() {
     assert_eq!(parsed.imports(), spans.as_slice());
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect for invalid spans"
-)]
 fn expect_build_err(spans: Vec<Span>) -> SpanListValidationError {
     ParsedSpans::builder()
         .imports(spans)
@@ -83,10 +71,6 @@ fn builder_errs_on_invalid_spans(#[case] spans: Vec<Span>) {
     assert!(err.to_string().contains("imports not sorted"));
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "test assertions prefer expect for invalid spans"
-)]
 #[test]
 fn builder_reports_all_errors() {
     let imports = vec![1..2, 0..1];

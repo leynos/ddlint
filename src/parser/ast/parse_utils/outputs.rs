@@ -90,7 +90,6 @@ mod tests {
     fn collects_output_names() {
         let src = "extern transformer t(a: X): Out1, Out2";
         let parsed = parse(src);
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let tr = parsed
             .root()
             .transformers()
@@ -105,7 +104,6 @@ mod tests {
     fn collects_single_output_name() {
         let src = "extern transformer t(a: X): Out1";
         let parsed = parse(src);
-        #[expect(clippy::expect_used, reason = "Using expect for clearer test failures")]
         let tr = parsed
             .root()
             .transformers()

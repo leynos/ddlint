@@ -87,7 +87,6 @@ fn parses_multi_head_rules_with_adornments_and_ref_new_lowering() {
         "unexpected parse errors: {:?}",
         parsed.errors()
     );
-    #[expect(clippy::expect_used, reason = "test expects a single rule")]
     let rule = parsed
         .root()
         .rules()
@@ -139,7 +138,6 @@ fn rejects_multiple_group_by_in_rule_body() {
 }
 
 #[expect(
-    clippy::expect_used,
     clippy::indexing_slicing,
     reason = "test expects specific literals and span structures"
 )]
@@ -176,7 +174,6 @@ fn rejects_mixed_aggregation_types_in_rule_body() {
     );
 }
 
-#[expect(clippy::expect_used, reason = "test expects specific error structures")]
 #[test]
 fn three_aggregations_produce_two_errors() {
     // When three aggregations appear, we should get two errors (one for each duplicate).
@@ -191,7 +188,6 @@ fn three_aggregations_produce_two_errors() {
     );
 }
 
-#[expect(clippy::expect_used, reason = "test asserts aggregation presence")]
 #[test]
 fn parses_legacy_aggregate_and_normalizes_arguments() {
     let src =
@@ -266,7 +262,6 @@ fn nested_for_loops_preserve_structure() {
     assert_eq!(inner.iterable.to_sexpr(), "(call B b)");
 }
 
-#[expect(clippy::expect_used, reason = "test helper expects valid source")]
 #[test]
 fn flattened_terms_expand_for_loop_to_components() {
     let src = "R(x) :- for (x in Source(x) if pred(x)) Target(x).";
@@ -282,7 +277,6 @@ fn flattened_terms_expand_for_loop_to_components() {
     assert_expression_term_sexpr(&flattened, 2, "(call Target x)");
 }
 
-#[expect(clippy::expect_used, reason = "test helper expects valid source")]
 #[test]
 fn flattened_nested_for_loops_expand_correctly() {
     let src = "R(a, b) :- for (a in A(a)) for (b in B(b)) Pair(a, b).";
@@ -371,7 +365,6 @@ fn rejects_aggregation_inside_and_outside_for_loop() {
     );
 }
 
-#[expect(clippy::expect_used, reason = "test helper expects valid source")]
 #[test]
 fn for_loop_with_sequence_body_flattens_correctly() {
     // Test for-loop with semicolon-sequence body: (Pre(x); Inner(x))
@@ -446,7 +439,6 @@ fn mixed_body_nested_for_loop_preserves_structure() {
     assert!(has_nested_for, "expected at least one nested ForLoop term");
 }
 
-#[expect(clippy::expect_used, reason = "test helper expects valid source")]
 #[test]
 fn mixed_for_loop_and_regular_terms_flattened() {
     // Verify flattened_body_terms preserves order for mixed for-loop and regular terms.

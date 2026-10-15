@@ -134,10 +134,6 @@ fn rule_statement_reports_errors(#[case] src: &str) {
     }
 }
 
-#[expect(
-    clippy::expect_used,
-    reason = "tests unwrap spans to provide crisp failure messages"
-)]
 #[test]
 fn collects_expression_spans_for_each_literal() {
     let src = "\n  R(x) :- Atom(x), if ready(x) { Accept(x) } else { Skip() }.";

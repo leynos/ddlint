@@ -131,10 +131,6 @@ mod tests {
         let attempt = snapshot
             .iter()
             .find(|(key, _, _, _)| key.key().name() == ATTEMPT_METRIC);
-        #[expect(
-            clippy::expect_used,
-            reason = "the test asserts that the emitted attempt counter exists"
-        )]
         let (attempt_key, _, _, attempt_value) = attempt.expect("expected attempt counter");
         assert_eq!(*attempt_value, DebugValue::Counter(1));
         assert_eq!(
@@ -145,10 +141,6 @@ mod tests {
         let diagnostic = snapshot
             .iter()
             .find(|(key, _, _, _)| key.key().name() == DIAGNOSTIC_METRIC);
-        #[expect(
-            clippy::expect_used,
-            reason = "the test asserts that the emitted diagnostic counter exists"
-        )]
         let (diagnostic_key, _, _, diagnostic_value) =
             diagnostic.expect("expected diagnostic counter");
         assert_eq!(*diagnostic_value, DebugValue::Counter(1));
