@@ -26,6 +26,13 @@ jobs:
         with:
           python-version: '3.13'
           enable-cache: true
+          # Python tool requirements are inline in Make; hash their real inputs
+          # rather than the absent dependency manifests in setup-uv's defaults.
+          cache-dependency-glob: |
+            Makefile
+            .github/workflows/ci.yml
+            tests/workflow_contracts/**/*.py
+            scripts/**/*.py
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
