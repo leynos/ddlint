@@ -340,6 +340,18 @@ for missing outputs to keep in sync. Function and other top-level declaration
 scanners follow the same newline-bounded recovery pattern for malformed
 declaration heads.
 
+### Relation suffix ownership
+
+The span-scanner module owns the private relation body form and suffix context.
+Only the relation scanner constructs and consumes the context: it groups the
+parsed role, body form, and body end for primary-key validation and recovery.
+These values define the handoff from relation-body recognition to suffix
+validation without changing cursor, diagnostic, or span policy. The preamble
+role is visible only within the span-scanner module so the context can retain
+the original typed value. These types are not a shared parser context or public
+API. Reuse across other scanners requires a separate ownership decision; their
+existing scanner state remains authoritative.
+
 ## Diagnostics policy
 
 The parser prefers localized, span-precise diagnostics and recovery over hard
