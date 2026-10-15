@@ -234,11 +234,11 @@ Add repository-only proper names or quoted upstream terms to
 ## Workflow pins and Dependabot
 
 Dependabot owns the upgrade of GitHub Actions and reusable workflows, including
-calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
-commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
-the test fails until a human edits the pinned constant to match. That defeats
-the purpose of automated dependency updates and turns a routine bump into a
-manual chore.
+calls into `leynos/shared-actions`. For Dependabot-managed reusable-workflow
+callers, contract tests that assert an exact commit SHA create a lockstep
+dependency: every time Dependabot opens a bump PR, the test fails until a human
+edits the pinned constant to match. That defeats the purpose of automated
+dependency updates and turns a routine bump into a manual chore.
 
 Contract tests may still verify the *shape* of a reusable-workflow caller. They
 must not verify the specific SHA value.
@@ -262,9 +262,24 @@ def test_uses_pinned_full_sha(caller_step):
     assert SHA_RE.match(ref), f"expected a 40-hex commit SHA, got {ref!r}"
 ```
 
-If a workflow's behaviour genuinely depends on a feature only present from a
-particular commit onwards, express that as a comment or a changelog note, not
-as a test assertion on the SHA string.
+For these reusable-workflow callers, a dependency on a feature introduced in a
+particular commit belongs in a comment or changelog note rather than an exact
+SHA assertion.
+
+### Direct Setup uv cache inputs
+
+The direct Setup uv action keeps caching enabled and hashes the repository's
+inline Python tool inputs: `Makefile`, `.github/workflows/ci.yml`,
+`tests/workflow_contracts/**/*.py`, and `scripts/**/*.py`. Its default
+dependency manifest patterns do not match this Rust repository's tracked files.
+
+`make test-workflow-contracts` checks that every configured pattern matches
+tracked repository files and that the inputs cover the dependency definitions
+and owned Python contracts. It also checks the direct action's verified
+immutable revision. Updating this consumer pin requires verifying that the new
+revision supports `cache-dependency-glob` and updating the contract's checked
+reference together. This interface check is separate from the reusable-workflow
+pin convention above.
 
 ## Coverage publication
 

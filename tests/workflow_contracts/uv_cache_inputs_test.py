@@ -12,6 +12,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 import subprocess
+from typing import Any
 
 import pytest
 import yaml
@@ -34,7 +35,7 @@ class UniqueKeyLoader(yaml.SafeLoader):
     """Reject duplicate workflow mappings instead of silently overwriting them."""
 
 
-def _unique_mapping(loader: UniqueKeyLoader, node: yaml.MappingNode) -> dict:
+def _unique_mapping(loader: UniqueKeyLoader, node: yaml.MappingNode) -> dict[object, Any]:
     """Read one unambiguous workflow mapping."""
     mapping = {}
     for key_node, value_node in node.value:
@@ -50,7 +51,7 @@ UniqueKeyLoader.add_constructor(
 )
 
 
-def _direct_step(document: dict) -> dict:
+def _direct_step(document: dict[str | bool, Any]) -> dict[str, Any]:
     """Locate the actual direct action, without inspecting nested Setup Rust."""
     steps = [
         step
@@ -65,7 +66,7 @@ def _direct_step(document: dict) -> dict:
 
 
 @pytest.fixture
-def workflow() -> dict:
+def workflow() -> dict[str | bool, Any]:
     """Read the actual workflow with duplicate-key rejection."""
     return yaml.load((ROOT / WORKFLOW).read_text(encoding="utf-8"), Loader=UniqueKeyLoader)
 
@@ -83,7 +84,7 @@ def tracked_paths() -> set[str]:
     return set(result.stdout.rstrip("\0").split("\0"))
 
 
-def _validate(step: dict, tracked: set[str]) -> None:
+def _validate(step: dict[str, Any], tracked: set[str]) -> None:
     """Require non-vacuous inputs covering this caller's inline tool sources."""
     inputs = step.get("with", {})
     assert inputs.get("enable-cache") in (True, "true"), "direct uv cache must stay enabled"
@@ -104,14 +105,14 @@ def _validate(step: dict, tracked: set[str]) -> None:
     assert required <= covered, f"cache inputs omit owned tool sources: {sorted(required - covered)}"
 
 
-def test_direct_uv_cache_covers_owned_tool_inputs(workflow: dict, tracked_paths: set[str]) -> None:
+def test_direct_uv_cache_covers_owned_tool_inputs(workflow: dict[str | bool, Any], tracked_paths: set[str]) -> None:
     """The actual direct step must hash real inline dependency and contract sources."""
     _validate(_direct_step(workflow), tracked_paths)
 
 
 @pytest.mark.parametrize("removed", PATTERNS)
 def test_removing_an_input_family_is_rejected(
-    workflow: dict, tracked_paths: set[str], removed: str
+    workflow: dict[str | bool, Any], tracked_paths: set[str], removed: str
 ) -> None:
     """Dropping any owned input family must fail the caller contract."""
     step = deepcopy(_direct_step(workflow))
@@ -124,7 +125,7 @@ def test_removing_an_input_family_is_rejected(
 
 @pytest.mark.parametrize("replacement", ["", "requirements-does-not-exist.txt"])
 def test_empty_or_unmatched_inputs_are_rejected(
-    workflow: dict, tracked_paths: set[str], replacement: str
+    workflow: dict[str | bool, Any], tracked_paths: set[str], replacement: str
 ) -> None:
     """An empty input or placeholder dependency file cannot hide the warning."""
     step = deepcopy(_direct_step(workflow))
@@ -133,7 +134,7 @@ def test_empty_or_unmatched_inputs_are_rejected(
         _validate(step, tracked_paths)
 
 
-def test_disabling_cache_is_rejected(workflow: dict, tracked_paths: set[str]) -> None:
+def test_disabling_cache_is_rejected(workflow: dict[str | bool, Any], tracked_paths: set[str]) -> None:
     """Removing the useful cache must not substitute for fixing its inputs."""
     step = deepcopy(_direct_step(workflow))
     step["with"].update({"enable-cache": False, "cache-dependency-glob": "\n".join(PATTERNS)})
@@ -141,7 +142,7 @@ def test_disabling_cache_is_rejected(workflow: dict, tracked_paths: set[str]) ->
         _validate(step, tracked_paths)
 
 
-def test_unverified_action_revision_is_rejected(workflow: dict) -> None:
+def test_unverified_action_revision_is_rejected(workflow: dict[str | bool, Any]) -> None:
     """A different full SHA needs cache-input interface verification first."""
     changed = deepcopy(workflow)
     _direct_step(changed)["uses"] = "astral-sh/setup-uv@" + "0" * 40
