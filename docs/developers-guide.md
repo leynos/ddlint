@@ -175,13 +175,13 @@ helper and says `item missing`, with nothing about which test wanted what.
 
 Two consequences follow.
 
-- `clippy::expect_used` stays denied, and each intentional unwrap carries its
-  own narrowly scoped `#[expect(clippy::expect_used, reason = "...")]`. Put
-  that attribute on the `let` statement that owns the unwrap, not on the test
-  function. `#[rstest]` moves a function-level attribute onto its generated
-  per-case wrappers, so the base function holding the body stays unlinted and
-  the expectation is reported unfulfilled. Module-wide `#![expect(...)]` is
-  forbidden: it disarms the lint for code nobody has written yet.
+- `clippy::expect_used` remains denied outside recognized `#[test]` and
+  `#[rstest]` bodies. `clippy.toml` sets `allow-expect-in-tests = true`, which
+  permits reasoned `.expect("reason")` calls in those bodies. Fixtures, setup
+  code, ordinary helpers and BDD steps gain no permission from `#[cfg(test)]`;
+  keep them fallible. Whitaker's `no_expect_outside_tests` lint provides the
+  complementary check. Module-wide lint allowances or expectations remain
+  forbidden because they mask code beyond the test body.
 - Shared rule assertions are macros, not functions. `assert_body_assignment`,
   `assert_body_terms_error` and `assert_multiple_aggregation_error` expand at
   the call site, so a failure names the calling test rather than the helper,
