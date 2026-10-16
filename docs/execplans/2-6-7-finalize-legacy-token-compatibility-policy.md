@@ -4,7 +4,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Tolerances`, `Risks`, `Progress`, `Surprises & Discoveries`, `Decision Log`,
 and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Status: REBASED; observer integration repair awaits scope approval; delivery in
+Status: IMPLEMENTED; local validation passed; delivery tracked in
 [PR #354](https://github.com/leynos/ddlint/pull/354)
 
 Formal review
@@ -12,6 +12,33 @@ Formal review
 approved source on `1e4737e` with no actionable code comments.
 Developer-contract documentation reconciliation and merge are tracked
 separately.
+
+## Observer callback repair (2026-10-16)
+
+The approved 900 net Rust-line ceiling applies to this repair only; unrelated
+scope limits and the 400-line per-file rule remain. The repair is implemented
+at 866 net Rust lines. All 228 tracked Rust files are at or below 400 lines;
+`relations.rs` is largest at 400. Four changed Rust files scored 10.0 in
+CodeScene, and the working-tree delta reported no new findings. The frozen-base
+delta retains the same inherited type-test duplication (9.38) and infix
+complexity (9.68).
+
+The red baseline exposed eight missing callbacks while the child-expression
+case passed; all nine regression cases passed after the repair. `make fmt` and
+`make check-fmt` passed. Sequential gates passed `make lint` (Clippy, all three
+Clippy policy tests, Whitaker, and spelling), `make typecheck`, `make test`
+(1,274 passed, 0 failed across 35 summary rows), `make test-workflow-contracts`
+(38 tests), `make markdownlint`, and `make nixie`. The 2026-10-16 admission
+failure was superseded by the full 2026-10-17 retry. Gate logs are in `/tmp`,
+with the common `observer-resume20261017.out` suffix; focused regression logs
+are `/tmp/ddlint-pr354-observer-red.out` and
+`/tmp/ddlint-pr354-observer-green.out`.
+
+After publication, [PR #354](https://github.com/leynos/ddlint/pull/354) is the
+live record for hosted checks, current-head assessment, and formal review;
+these must cover the published repair before merge. The earlier review on
+`1e4737e` does not cover this repair. No new formal approval or merge
+eligibility is claimed.
 
 ## Target refresh (2026-10-15)
 
@@ -37,8 +64,9 @@ Hosted CI run `38792160864`, attempt 1, job `116619192779`, and CodeScene result
 its Rust content matches the full local gate run.
 [PR #354](https://github.com/leynos/ddlint/pull/354) tracks checks for later
 documentation updates. A current-head assessment and formal review remain
-pending. The observer callback defect and proposed 900-line ceiling still await
-scope resolution. No merge eligibility is claimed.
+pending. At the 2026-10-15 checkpoint, the observer defect and scope request
+were unresolved. The dated update above records the later approval and current
+repair status. No merge eligibility is claimed.
 
 ## Rebase checkpoint (2026-10-15)
 
@@ -290,11 +318,12 @@ scope tolerance below, stop and escalate.
   pre-implementation audit. The subsequent implementation baseline is 54 files,
   including semantic fixture and example migrations. The user has authorized
   reconciling the plan to that 54-file baseline and the narrow diagnostic-path
-  fixes described in the continuation plan. This does not authorize adjacent
-  parser work or establish a new line budget; the existing 800
-  net-new-code-line limit remains. Stop and escalate before expanding beyond
-  that baseline and narrow follow-up, or pulling in relation-form, brace-group,
-  or unrelated terminator policy work.
+  fixes described in the continuation plan. The 2026-10-16 user approval
+  supersedes the earlier 800-line ceiling only for the bounded observer
+  callback repair, allowing up to 900 net Rust lines. The 400-line per-file
+  limit and unrelated scope restrictions remain. Stop and escalate before
+  expanding beyond that baseline and narrow follow-up, or pulling in
+  relation-form, brace-group, or unrelated terminator policy work.
 - Interface: if the only coherent fix requires removing
   `Import::alias()`, reshaping the attribute scanner, or changing the public
   `Parsed` surface, stop and escalate.
@@ -754,6 +783,11 @@ scope tolerance below, stop and escalate.
   net-new-code-line limit remains. Rationale: the observed implementation
   baseline and remaining acceptance follow-up exceed the earlier file-count
   tolerance without changing the token-policy scope.
+- Decision: on 2026-10-16, the user approved a 900 net Rust-line ceiling for
+  the bounded observer callback repair only, superseding the earlier 800-line
+  ceiling for that repair. All Rust files remain at or below 400 lines, and
+  unrelated scope restrictions remain. Rationale: the bounded completion fix
+  and its regression cases stay within the approved parser-policy scope.
 - Decision: exclude the one-time `make fmt` Markdown baseline from the
   parser-policy file-count tolerance while keeping all semantic parser,
   example, and documentation edits inside the raised scope. Rationale: the

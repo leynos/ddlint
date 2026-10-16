@@ -147,6 +147,13 @@ read-only integration boundary: callbacks cannot affect parsing, and its
 diagnostic context separates stable codes, categories, severity, spans, and
 message text. Message text and spans must not become metric labels.
 
+Top-level `Parser` completion includes every final `Parsed::errors()` entry,
+including reserved-token diagnostics appended after child phases. Report only
+that newly appended suffix through the existing
+`observability::report_diagnostics` before the completion callback. Diagnostics
+already reported by child phases are not emitted again. This reuses the current
+reporter and adds no separate observability abstraction.
+
 The optional `observability` feature exposes `TelemetryObserver`. It forwards
 events to the `tracing` and `metrics` facades without installing a global
 subscriber or recorder. Only host applications initialize exporters. See the

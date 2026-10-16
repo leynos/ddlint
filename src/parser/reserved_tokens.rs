@@ -50,10 +50,13 @@ pub(crate) fn reserved_token_error(span: Span, message: &'static str) -> Simple<
 
 /// Complete the reserved-token policy after every parser error producer runs.
 /// Preserve other diagnostics while retaining one reserved message per span.
+/// Return the start of diagnostics appended after deduplication.
+/// For example, if one diagnostic survives deduplication and two are missing,
+/// return `1` so the caller can report only the two newly appended errors.
 pub(crate) fn complete_reserved_token_errors(
     tokens: &[(SyntaxKind, Span)],
     errors: &mut Vec<Simple<SyntaxKind>>,
-) {
+) -> usize {
     let mut seen = HashSet::new();
     errors.retain(|error| match error.reason() {
         SimpleReason::Custom(message) => {
@@ -61,7 +64,9 @@ pub(crate) fn complete_reserved_token_errors(
         }
         _ => true,
     });
+    let appended_start = errors.len();
     errors.extend(collect_reserved_token_errors(tokens, errors));
+    appended_start
 }
 
 /// Collect missing reserved-token diagnostics from the supplied token stream.
