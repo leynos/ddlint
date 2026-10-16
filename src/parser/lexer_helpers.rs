@@ -159,161 +159,66 @@ pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> 
         .padded_by(ws)
 }
 
-/// Parser for a balanced token block such as parentheses or braces.
-///
-/// The parser consumes the opening delimiter, then all tokens until the
-/// matching closing delimiter while tracking nested pairs. Whitespace, and
-/// comments, are permitted between tokens. An error is produced if a closing
-/// token appears without a corresponding opener.
-fn balanced_block_with_min(
+/// Build one level of a balanced block from its nested-block parser.
+fn balanced_block_body<P>(
     open: SyntaxKind,
     close: SyntaxKind,
+    block: P,
     min: usize,
-) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    use std::cell::Cell;
-
-    let depth = Cell::new(0usize);
+) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone
+where
+    P: Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone,
+{
     just(open)
         .padded_by(inline_ws().repeated())
         .ignore_then(
-            filter_map(move |span, kind| match kind {
-                k if k == open => {
-                    depth.set(depth.get() + 1);
-                    Ok(())
-                }
-                k if k == close => {
-                    if depth.get() == 0 {
-                        Err(Simple::custom(
-                            span,
-                            format!("unexpected '{}'", token_display(close)),
-                        ))
-                    } else {
-                        depth.set(depth.get() - 1);
-                        Ok(())
-                    }
-                }
-                _ => Ok(()),
-            })
-            .padded_by(inline_ws().repeated())
-            .repeated()
-            .at_least(min),
+            block
+                .or(filter(move |kind: &SyntaxKind| *kind != open && *kind != close).ignored())
+                .padded_by(inline_ws().repeated())
+                .repeated()
+                .at_least(min),
         )
         .then_ignore(just(close))
         .ignored()
 }
 
+/// Parser for a balanced token block such as parentheses or braces.
+///
+/// Nested blocks use the same delimiter pair. The first matching closing
+/// token ends the current block; other delimiter kinds are ordinary tokens.
+/// Whitespace and comments are permitted between tokens. Recursive parsing
+/// keeps nesting state local to each parse, so a failed parse cannot affect a
+/// later use of the parser.
+///
+/// # Examples
+///
+/// ```rust
+/// # use ddlint::parse;
+/// let parsed = parse(concat!(
+///     "Totals(user, total) :- Orders(user, amt), ",
+///     "Aggregate((user), sum(amt)), total = __group.",
+/// ));
+/// assert!(parsed.errors().is_empty());
+/// assert_eq!(parsed.root().rules().len(), 1);
+/// ```
 pub(super) fn balanced_block(
     open: SyntaxKind,
     close: SyntaxKind,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    balanced_block_with_min(open, close, 0)
+    recursive(|block| balanced_block_body(open, close, block, 0))
 }
 
-/// As [`balanced_block`] but requires at least one token inside the delimiters.
+/// As [`balanced_block`] but requires at least one item inside the delimiters.
+///
+/// Nested blocks use the ordinary, possibly empty, balanced-block grammar.
 #[cfg(test)]
 pub(super) fn balanced_block_nonempty(
     open: SyntaxKind,
     close: SyntaxKind,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    balanced_block_with_min(open, close, 1)
+    balanced_block_body(open, close, balanced_block(open, close), 1)
 }
 
 #[cfg(test)]
-mod tests {
-    //! Unit tests for the lexer helper utilities.
-    use super::*;
-    use crate::{Span, parser::token_stream::TokenStream, test_util::tokenize};
-    use chumsky::Stream;
-    use rstest::rstest;
-
-    #[rstest]
-    #[case(SyntaxKind::T_LPAREN, "(")]
-    #[case(SyntaxKind::T_RPAREN, ")")]
-    #[case(SyntaxKind::T_LBRACE, "{")]
-    #[case(SyntaxKind::T_RBRACE, "}")]
-    #[case(SyntaxKind::T_LBRACKET, "[")]
-    #[case(SyntaxKind::T_RBRACKET, "]")]
-    #[case(SyntaxKind::T_COMMA, ",")]
-    #[case(SyntaxKind::T_COLON, ":")]
-    #[case(SyntaxKind::T_SEMI, ";")]
-    #[case(SyntaxKind::K_IMPORT, "")]
-    fn display_matches(#[case] kind: SyntaxKind, #[case] expected: &str) {
-        assert_eq!(token_display(kind), expected);
-    }
-
-    #[test]
-    fn dispatch_invokes_handlers() {
-        struct State<'a> {
-            stream: TokenStream<'a>,
-            out: Vec<&'static str>,
-        }
-
-        fn lp(st: &mut State<'_>, _span: Span) {
-            st.stream.advance();
-            st.out.push("lp");
-        }
-
-        fn rp(st: &mut State<'_>, _span: Span) {
-            st.stream.advance();
-            st.out.push("rp");
-        }
-
-        let src = "()";
-        let tokens = tokenize(src);
-        let mut st = State {
-            stream: TokenStream::new(&tokens, src),
-            out: Vec::new(),
-        };
-
-        token_dispatch!(st, {
-            SyntaxKind::T_LPAREN => lp,
-            SyntaxKind::T_RPAREN => rp,
-        });
-
-        assert_eq!(st.out, vec!["lp", "rp"]);
-    }
-
-    #[test]
-    fn inline_ws_consumes_ws_and_comments() {
-        let src = " \t//c";
-        let tokens = tokenize(src);
-        let parser = inline_ws().repeated();
-        let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
-        assert!(res.is_ok());
-    }
-
-    #[test]
-    fn ident_parses_with_padding() {
-        let src = "  foo  ";
-        let tokens = tokenize(src);
-        let res = ident().parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
-        assert!(res.is_ok());
-    }
-
-    #[test]
-    fn atom_accepts_optional_args() {
-        let src = "foo(bar)";
-        let tokens = tokenize(src);
-        let parser = atom();
-        let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
-        assert!(res.is_ok());
-    }
-
-    #[test]
-    fn balanced_block_parses_nested() {
-        let src = "(a(b)c)";
-        let tokens = tokenize(src);
-        let parser = balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
-        let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
-        assert!(res.is_ok());
-    }
-
-    #[test]
-    fn balanced_block_nonempty_fails_on_empty() {
-        let src = "()";
-        let tokens = tokenize(src);
-        let parser = balanced_block_nonempty(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN);
-        let res = parser.parse(Stream::from_iter(0..src.len(), tokens.into_iter()));
-        assert!(res.is_err());
-    }
-}
+#[path = "lexer_helpers_tests.rs"]
+mod tests;

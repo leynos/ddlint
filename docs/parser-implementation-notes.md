@@ -340,6 +340,22 @@ for missing outputs to keep in sync. Function and other top-level declaration
 scanners follow the same newline-bounded recovery pattern for malformed
 declaration heads.
 
+### Balanced token blocks
+
+`src/parser/lexer_helpers.rs::balanced_block` uses a recursive Chumsky
+combinator for blocks whose nested levels share one delimiter pair. At each
+level, the first matching close token ends that block. Other delimiter kinds
+are ordinary tokens, and whitespace or comments may occur between items.
+`balanced_block_nonempty` is test-only and requires an item only in the outer
+block; nested blocks may still be empty.
+
+The recursive parser keeps nesting state local to a parse, so a failed parse
+does not affect later uses of the same parser. Its call-stack use grows with
+the nesting depth, unlike the previous iterative `Cell` depth counter. The
+relation scanner's `relations/cursor.rs::parse_balanced_block` has different
+delimiter-stack semantics and remains unchanged; use that scanner when the
+grammar must track multiple delimiter kinds together.
+
 ### Relation suffix ownership
 
 The span-scanner module owns the private relation body form and suffix context.
