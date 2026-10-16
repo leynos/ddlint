@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
+import os
 import re
 import shutil
 import subprocess
@@ -45,7 +46,8 @@ NON_SUITE_CARGO_COMMANDS = {
     "version",
 }
 UPDATE_TARGET = re.compile(
-    rf"update target ['\"]{re.escape(PROVISIONING_TARGET)}['\"]"
+    rf"^Makefile:\d+: (?:update target ['\"]{re.escape(PROVISIONING_TARGET)}['\"](?: due to: .*)?"
+    rf"|target ['\"]{re.escape(PROVISIONING_TARGET)}['\"] does not exist)$"
 )
 RUNNER_OS = re.compile(r"(?:^|[^a-z])(ubuntu|linux|windows|macos|osx)(?:-|$)")
 
@@ -198,6 +200,7 @@ def evaluate_make_goal(goal: str | None) -> MakeEvaluation:
         check=False,
         capture_output=True,
         text=True,
+        env={**os.environ, "LC_ALL": "C"},
     )
     output = result.stdout + result.stderr
     if result.returncode != 0:
