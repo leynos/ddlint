@@ -129,6 +129,11 @@ subscriber or recorder. Only host applications initialize exporters. See the
 [parser observability guide](parser-observability.md) for the stable taxonomy,
 adapter usage, and export/alert guidance.
 
+In CST construction, `SPAN_CURSOR_KINDS` order defines nesting for spans with
+equal starts. At a shared end, the innermost open node closes first. Starts
+must align with token starts, and spans of different kinds must nest properly;
+`ParsedSpansBuilder` does not validate cross-list nesting or token alignment.
+
 The private `NonRuleScanResults` and `SpanBuildInput` types are single-call
 pipeline carriers in `span_scanner.rs`. Keep them local to one parse so scanner
 outputs and error order cannot be reused across parser calls.
