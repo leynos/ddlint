@@ -1,7 +1,7 @@
 //! Scanner for attribute spans and placement validation.
 //!
 //! Detects `#[…]` attribute syntax, records attribute spans, and validates
-//! that attributes precede only permitted item kinds (typedef, function,
+//! that attributes precede only permitted item kinds (type, function,
 //! relation).
 
 use chumsky::error::Simple;
@@ -13,7 +13,7 @@ type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
 /// Whether the given keyword may directly begin an attributed item.
 ///
-/// Permitted targets per spec §5.1: `Typedef`, `Function`, and
+/// Permitted targets per spec §5.1: `TypeDef`, `Function`, and
 /// `RelationDecl`. Relation declarations may be prefixed with role keywords
 /// (`input`, `output`, `stream`, `multiset`).
 ///
@@ -23,8 +23,7 @@ type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 fn is_simple_attribute_target(kind: SyntaxKind) -> bool {
     matches!(
         kind,
-        SyntaxKind::K_TYPEDEF
-            | SyntaxKind::K_TYPE
+        SyntaxKind::K_TYPE
             | SyntaxKind::K_FUNCTION
             | SyntaxKind::K_INPUT
             | SyntaxKind::K_OUTPUT
@@ -72,9 +71,6 @@ fn consume_attribute(st: &mut State<'_>) -> Option<Span> {
     let (_, hash_span) = st.stream.peek()?.clone();
     let start = hash_span.start;
     st.stream.advance(); // consume T_HASH
-
-    // Skip optional inline whitespace between # and [
-    st.stream.skip_ws_inline();
 
     // Must be followed by T_LBRACKET to form an attribute
     let next = st.stream.peek()?;

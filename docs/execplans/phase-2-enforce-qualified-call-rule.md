@@ -140,7 +140,7 @@ Relevant implementation areas:
 - Unit parser tests: `src/parser/tests/expression.rs` and
   `src/parser/tests/rules/body_terms.rs`.
 - Behavioural tests: `tests/expression_var_and_call.rs`,
-  `tests/expression_postfix.rs`, and `tests/rule_behaviour.rs`.
+  `tests/expression_postfix.rs`, and `tests/rule_behaviour/`.
 - Design/roadmap docs:
   `docs/differential-datalog-parser-syntax-spec-updated.md`,
   `docs/pratt-parser-for-ddlog-expressions.md`, `docs/parser-plan.md`, and

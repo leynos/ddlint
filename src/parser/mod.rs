@@ -14,6 +14,7 @@ mod lexer_helpers;
 mod token_stream;
 
 pub(crate) mod error_messages;
+pub(crate) mod reserved_tokens;
 pub(crate) mod span_utils;
 
 mod span_collector;
@@ -110,6 +111,12 @@ pub fn parse_with_observer(src: &str, observer: &dyn ParseObserver) -> Parsed {
     let name_errors = validators::validate_name_uniqueness(&root);
     complete_attempt(observer, DiagnosticCategory::NameUniqueness, &name_errors);
     errors.extend(name_errors);
+    let appended_start = reserved_tokens::complete_reserved_token_errors(&tokens, &mut errors);
+    observability::report_diagnostics(
+        observer,
+        DiagnosticCategory::Parser,
+        errors.get(appended_start..).unwrap_or_default(),
+    );
 
     observer.parse_attempt_completed(ParseAttemptContext::new(
         DiagnosticCategory::Parser,

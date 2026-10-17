@@ -102,6 +102,14 @@ semantic, and linter behaviours. Shared fixtures and helper code belong under
 `tests/support/`, while command-line runner scenarios belong under
 `tests/linter_runner/`.
 
+Keep each Rust file within 400 lines. When an integration suite grows beyond
+that limit, use a module directory with `main.rs` as the Cargo test entrypoint
+and private child modules grouped by behaviour. The `rule_behaviour` suite
+keeps assertion helpers in its entrypoint and groups aggregation, head,
+for-loop, and body-boundary cases in sibling modules. Its fallible extractor and
+`mixed_rule` fixture live in `tests/support/rule_behaviour.rs`; only the two
+mixed-rule cases consume that fixture, so it does not imply broader reuse.
+
 Keep test data close to the tests that own it unless it becomes large enough to
 justify a dedicated fixture directory. When a helper mutates process-global
 state, wrap that state behind a shared guard rather than duplicating local

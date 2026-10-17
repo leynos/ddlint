@@ -90,19 +90,26 @@ ______________________________________________________________________
 function calls at parse time. A bare `name(…)` parses as a variable application
 and is disambiguated later during name resolution.
 
+These case classes describe the intended naming categories. The current parser
+uses the generic `T_IDENT` token for identifiers and does not enforce the
+initial-case distinction in every context.
+
 ### 2.3 Reserved words and symbols
 
 The following **keywords** and **reserved operators** cannot be used as
 identifiers (final list should be kept 1:1 with the lexer):
 
 - **Keywords:** `type`, `function`, `extern`, `transformer`, `input`, `output`,
-  `relation`,`stream`,`multiset`,`index`,`on`,`primary`,`key`,`apply`,`match`,`if`,`else`,`for`,`in`,`then`,`skip`,`true`,`false`,`var`,`mut`,`return`,`break`,`continue`.
+  `relation`, `stream`, `multiset`, `index`, `on`, `primary`, `key`, `apply`,
+  `match`, `if`, `else`, `for`, `in`, `then`, `skip`, `true`, `false`, `var`,
+  `mut`, `return`, `break`, `continue`, and `as`.
 - **Special tokens:** `@`, `:-`, `,`, `;`, `:`, `::`, `.`, `&`, `'` (diff
   marker), `-<` (delay introducer), `=>` (implies), brackets and braces
-  `()[]{}`.
+  `()[]{}`, and `#` when it starts an attribute prefix `#[...]`.
 
-Reserved but not part of the grammar: `#`, `<=>`. Implementations must reject
-their use with a clear diagnostic.
+Reserved but not part of the grammar: `<=>` and bare `#` tokens not followed by
+`[` as an attribute prefix. Implementations must reject their use with a clear
+diagnostic.
 
 #### 2.3.1 Host‑language keyword reservation
 
@@ -184,7 +191,10 @@ intentional. -->
 
 **Note:** `++` (concatenation) and `^` (bit‑xor) are part of the operator table
 and are recognized as operators. `&` in row 13 is expression-only; head
-semantics are described in §7.3.
+semantics are described in §7.3. `:` is the implemented expression
+type-ascription operator, and `as` is the implemented expression cast operator;
+both use the type-operator binding level between shifts and bitwise operators.
+`as` is also the import alias keyword.
 
 ______________________________________________________________________
 
@@ -209,7 +219,7 @@ Attribute     ::= '#[' AttrBody ']'
 ### 5.2 Imports and types
 
 ```ebnf
-Import   ::= 'import' ScopedPath ';'
+Import   ::= 'import' ScopedPath ('as' LcName)? ';'
 Typedef  ::= 'type' UcName TypeParams? '=' Type ';'
 Type     ::= UcName TypeArgs? | TupleType | MapType | VecType | Primitive
 
@@ -219,6 +229,10 @@ VecType   ::= '[' Type ']'
 Primitive ::= 'bool' | 'i8' | 'u8' | 'i16' | … | 'u128'
             | 'f32' | 'f64' | 'string' | 'interned'
 ```
+
+The import alias uses the documented `LcName` category. The current parser
+accepts the generic identifier token here and does not enforce that case
+restriction.
 
 ### 5.3 Functions and closures
 
@@ -553,19 +567,66 @@ ______________________________________________________________________
 ## 9.1 Legacy and compatibility tokens
 
 Implementations may encounter historical tokens from older DDlog parsers. This
-spec defines their treatment to aid migration:
+spec defines their treatment to aid migration. The lexer keeps the token kinds
+so diagnostics can point at the exact source span; unsupported uses are
+rejected by the parser.
 
 - `Aggregate(…)`: accepted and normalized during rule-body semantic
   extraction to the same canonical `(project, key)` aggregation contract used
   for `group_by(project, key)`; linters may emit a deprecation diagnostic.
-- `FlatMap`/`Inspect`: not language keywords; represent flatmap via RHS pattern
-  binds instead. If used as keywords, reject with a targeted message.
-- `typedef`: not supported; use `type` definitions. Emit an error with a fix
-  hint.
-- Legacy type names such as `bigint`, `bit`, `double`, `float`, `signed`:
-  not in the grammar. Use sized integer types (`iN`/`uN`), and `f32`/`f64` for
-  floating‑point.
-- `as`: not a keyword in the updated grammar; reject its use as a keyword.
+- `FlatMap`/`Inspect`: retained as lexer compatibility tokens; neither is in the
+  reserved-token rejection set. `FlatMap(…)` is accepted as an identifier-like
+  RHS call, and both names are accepted in pattern positions. FlatMap-style
+  binds use RHS patterns.
+- `typedef`: rejected.
+
+  ```plaintext
+  `typedef` is a legacy DDlog keyword; use `type` instead
+  ```
+
+- `as`: accepted as the import alias keyword and the implemented expression
+  cast operator; `:` is the implemented expression type-ascription operator.
+- `bigint`: rejected.
+
+  ```plaintext
+  `bigint` is a legacy type name; use a sized integer such as `i64` or `u64`
+  ```
+
+- `bit`: rejected.
+
+  ```plaintext
+  `bit` is a legacy type name; use an unsigned sized integer such as `u32`
+  ```
+
+- `double`: rejected.
+
+  ```plaintext
+  `double` is a legacy type name; use `f64`
+  ```
+
+- `float`: rejected.
+
+  ```plaintext
+  `float` is a legacy type name; use `f32`
+  ```
+
+- `signed`: rejected.
+
+  ```plaintext
+  `signed` is a legacy type name; use a signed sized integer such as `i32`
+  ```
+
+- `#`: accepted only as `#[...]`; bare uses are rejected.
+
+  ```plaintext
+  `#` is reserved; only `#[...]` attribute syntax is accepted
+  ```
+
+- `<=>`: rejected.
+
+  ```plaintext
+  `<=>` was reserved upstream but has no semantics in DDlog; remove it
+  ```
 
 Rationale and resolution status for the aggregation boundary:
 

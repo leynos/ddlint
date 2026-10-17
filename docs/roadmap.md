@@ -228,7 +228,7 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
 - [ ] 2.6.6.1. Add typed AST access for spec-form relation primary-key
   expressions. The parser currently preserves the expression as opaque CST text
   and `Relation::primary_key()` exposes only the binder/list names.
-- [ ] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
+- [x] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
   legacy type names, `#`, `<=>`) with deterministic diagnostics. See
   docs/parser-conformance-register.md item 14.
 - [ ] 2.6.8. Decide brace-group extension policy (`{ expr }`): codify or

@@ -1,6 +1,7 @@
 //! Infix operator handling for the Pratt parser.
 
 use crate::parser::ast::{Expr, infix_binding_power};
+use crate::parser::reserved_tokens::rejection_for;
 use crate::{Span, SyntaxKind};
 
 use super::pratt::Pratt;
@@ -28,6 +29,14 @@ where
             // When parsing map keys, treat `:` as a terminator
             if colon_terminates && op_kind == SyntaxKind::T_COLON {
                 break;
+            }
+
+            if let Some(message) = rejection_for(op_kind) {
+                let Some((_, op_span)) = self.ts.next_tok() else {
+                    unreachable!("peeked reserved token");
+                };
+                self.ts.push_reserved_error(op_span, message);
+                return None;
             }
 
             let Some((l_bp, r_bp, op)) = infix_binding_power(op_kind) else {

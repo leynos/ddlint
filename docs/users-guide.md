@@ -51,6 +51,10 @@ let diagnostics = runner.run();
 assert!(diagnostics.is_empty());
 ```
 
+When parsing produces errors, `Runner::run` returns no lint diagnostics and
+does not run rules against the recovered parse tree. Inspect and report the
+parser errors separately.
+
 ## Rule authorship (high level)
 
 - Implement `Rule` for metadata (`name`, `group`, `docs`) and `CstRule` for CST
@@ -92,6 +96,30 @@ fn parse_sources(sources: &[&str]) {
     }
 }
 ```
+
+## Legacy DDlog tokens
+
+### Unreleased migration
+
+Sources using the rejected legacy syntax below now produce parser errors and no
+lint diagnostics from `Runner::run`. Migrate the syntax before relying on lint
+results.
+
+The parser keeps legacy token kinds in the lexer so diagnostics can point to
+the exact source span, but unsupported legacy syntax is rejected during parsing.
+
+- Use `type Foo = ...` instead of `typedef Foo = ...`.
+- Use sized integer types such as `i64`, `u64`, and `u32` instead of `bigint`
+  or `bit<N>`.
+- Use `f64` instead of `double`.
+- Use `f32` instead of `float`.
+- Use signed sized integer types such as `i32` instead of `signed<N>`.
+- Remove `<=>`; it was reserved upstream but has no DDlog semantics in
+  `ddlint`.
+- Use `#[...]` for attributes. A bare `#` is rejected.
+
+`as` remains valid in supported grammar positions, including import aliases
+such as `import foo::bar as baz`.
 
 ## Relation declarations
 

@@ -55,13 +55,6 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
         (self.spans, self.extra)
     }
 
-    /// Record a span starting at `start` up to the end of the current line.
-    pub(crate) fn push_line_span(&mut self, start: usize) {
-        let end = self.stream.line_end(self.stream.cursor());
-        self.stream.skip_until(end);
-        self.spans.push(start..end);
-    }
-
     /// Skip tokens up to the end of the current line without recording a span.
     pub(crate) fn skip_line(&mut self) {
         let end = self.stream.line_end(self.stream.cursor());

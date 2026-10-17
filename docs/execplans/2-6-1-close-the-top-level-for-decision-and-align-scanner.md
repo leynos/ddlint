@@ -272,7 +272,7 @@ Key files:
 - `src/parser/expression/control_flow.rs` — `for` expression parser
   (`parse_for_expression`, line 275).
 - `src/parser/tests/rules/` — rule parsing unit tests.
-- `tests/rule_behaviour.rs` — behavioural tests for rules.
+- `tests/rule_behaviour/` — behavioural tests for rules.
 - `src/parser/span_scanners/transformers.rs` — reference pattern for
   unsupported-construct diagnostics.
 - `docs/parser-conformance-register.md` — conformance tracking.

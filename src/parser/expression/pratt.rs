@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use chumsky::error::Simple;
 
 use crate::parser::ast::{Expr, StringLiteral};
+use crate::parser::reserved_tokens::{complete_reserved_token_errors, rejection_for};
 use crate::{Span, SyntaxKind, tokenize_without_trivia};
 
 use super::token_stream::TokenStream;
@@ -89,21 +90,27 @@ impl StructLiteralState {
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let mut parser = Pratt::new(tokenize_without_trivia(src).into_iter(), src);
     let expr = parser.parse_expr(0);
-    if let Some(expr_val) = expr {
+    if expr.is_some() {
         for (kind, sp) in parser.ts.drain_unexpected_tokens() {
-            parser
-                .ts
-                .push_error(sp, format!("unexpected token: {kind:?}"));
-        }
-        if !parser.ts.has_errors() {
-            return Ok(expr_val);
+            if let Some(message) = rejection_for(kind) {
+                parser.ts.push_reserved_error(sp, message);
+            } else {
+                parser
+                    .ts
+                    .push_error(sp, format!("unexpected token: {kind:?}"));
+            }
         }
     } else if !parser.ts.has_errors() {
         parser
             .ts
             .push_error(parser.ts.eof_span(), "invalid expression");
     }
-    Err(parser.ts.take_errors())
+    let mut errors = parser.ts.take_errors();
+    complete_reserved_token_errors(&crate::tokenize_with_trivia(src), &mut errors);
+    match expr {
+        Some(expr) if errors.is_empty() => Ok(expr),
+        _ => Err(errors),
+    }
 }
 
 impl<I> Pratt<'_, I>

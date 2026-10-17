@@ -70,6 +70,18 @@ parsing pipeline.
 - Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
   and recovery in `relations.rs`.
 
+### `src/parser/span_scanners/typedefs.rs`
+
+- Collects spans for `type` and `extern type` declarations; it finds statement
+  boundaries rather than validating the complete type grammar. A top-level
+  semicolon or newline ends a span, while nested delimiters keep internal
+  newlines within it.
+- Reuses `TypeDepths` and `adjust_type_depths` from
+  `src/parser/span_scanners/indexes_support.rs` to track `()`, `[]`, `{}`, and
+  `<>`; `>>` closes two angle levels. This support is shared with the index
+  scanner. Legacy `typedef` diagnostics remain owned by
+  `src/parser/reserved_tokens.rs`.
+
 ### `src/parser/expression/pratt/postfix.rs`
 
 - Owns postfix dispatch for the Pratt parser.
@@ -113,6 +125,18 @@ parsing pipeline.
   (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
 - Keep typed consumer-facing relation metadata in `ast/relation.rs`, and
   inspection-only CST traversal in `ast/relation/inspect.rs`.
+- Route reserved-token diagnostics through `src/parser/reserved_tokens.rs`.
+  That module owns the parser-internal messages and the `rejection_for`
+  predicate for unsupported legacy tokens. The canonical public policy table
+  lives in `docs/differential-datalog-parser-syntax-spec-updated.md` section
+  `9.1`; avoid duplicating it in code comments or local scanner modules.
+- Keep expected-token types private to parser test fixtures:
+  `ExpectedReservedToken` pairs lexemes with diagnostic constants, and
+  `ReservedTokenScenario` owns `SourceText` plus that expectation;
+  `DeclarationPosition` is a separate typed source builder. `SourceText`
+  carries source input only, and tests must not call production `rejection_for`
+  to derive expectations. Follow `SpannedErrorCase` for typed
+  source-and-diagnostic-span fixtures.
 
 ## Parser observability
 
@@ -123,6 +147,13 @@ read-only integration boundary: callbacks cannot affect parsing, and its
 diagnostic context separates stable codes, categories, severity, spans, and
 message text. Message text and spans must not become metric labels.
 
+Top-level `Parser` completion includes every final `Parsed::errors()` entry,
+including reserved-token diagnostics appended after child phases. Report only
+that newly appended suffix through the existing
+`observability::report_diagnostics` before the completion callback. Diagnostics
+already reported by child phases are not emitted again. This reuses the current
+reporter and adds no separate observability abstraction.
+
 The optional `observability` feature exposes `TelemetryObserver`. It forwards
 events to the `tracing` and `metrics` facades without installing a global
 subscriber or recorder. Only host applications initialize exporters. See the
@@ -132,6 +163,13 @@ adapter usage, and export/alert guidance.
 The private `NonRuleScanResults` and `SpanBuildInput` types are single-call
 pipeline carriers in `span_scanner.rs`. Keep them local to one parse so scanner
 outputs and error order cannot be reused across parser calls.
+
+## Lint execution
+
+`Runner::new` records whether `Parsed::errors()` is non-empty. When parsing
+reports errors, `Runner::run` skips registered rules and returns no lint
+diagnostics; recovery CST nodes are not linted. Callers must report parser
+errors separately from the returned lint diagnostics.
 
 ## Contributor workflow
 

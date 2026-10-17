@@ -1,6 +1,7 @@
 //! Parsing of prefix expressions for the Pratt parser.
 
 use crate::parser::ast::{Expr, prefix_binding_power};
+use crate::parser::reserved_tokens::rejection_for;
 use crate::{Span, SyntaxKind};
 
 use super::pratt::Pratt;
@@ -9,6 +10,10 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
+    /// Parse the next token as a prefix expression, literal, or prefix operator.
+    ///
+    /// Unsupported reserved tokens emit their shared policy diagnostic and
+    /// return no expression; ordinary unexpected tokens retain parser errors.
     pub(super) fn parse_prefix(&mut self) -> Option<Expr> {
         let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {
@@ -36,6 +41,10 @@ where
             SyntaxKind::K_CONTINUE => Some(Self::parse_continue_expression()),
             SyntaxKind::K_RETURN => self.parse_return_expression(),
             k => {
+                if let Some(message) = rejection_for(k) {
+                    self.ts.push_reserved_error(span.clone(), message);
+                    return None;
+                }
                 let Some((bp, op)) = prefix_binding_power(k) else {
                     self.ts
                         .push_error(span.clone(), format!("unexpected token: {k:?}"));

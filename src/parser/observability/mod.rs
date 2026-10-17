@@ -139,8 +139,9 @@ pub trait ParseObserver {
 
     /// Observe completion of a parser or scanner attempt.
     ///
-    /// The top-level `Parser` completion summarizes diagnostics reported by
-    /// its child phases. It does not emit those diagnostics again.
+    /// The top-level `Parser` completion summarizes all final diagnostics,
+    /// including reserved-token completion. Child diagnostics are not emitted
+    /// again; newly completed diagnostics are reported before completion.
     fn parse_attempt_completed(&self, _context: ParseAttemptContext) {}
 
     /// Observe one parser diagnostic.

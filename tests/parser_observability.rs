@@ -264,3 +264,54 @@ proptest::proptest! {
         proptest::prop_assert_eq!(second_observer.events(), first_events);
     }
 }
+
+#[rstest]
+#[case::typedef("typedef Old = u32;", "typedef")]
+#[case::bigint("type Number = bigint;", "bigint")]
+#[case::bit("type Word = bit<32>;", "bit")]
+#[case::double("type Number = double;", "double")]
+#[case::float("type Number = float;", "float")]
+#[case::signed("type Number = signed<32>;", "signed")]
+#[case::hash("#", "#")]
+#[case::spaceship("type Number = A <=> B;", "<=>")]
+#[case::child_expression("for (x in Items(x)) Items(x <=> x).", "<=>")]
+fn completed_reserved_diagnostics_are_observed_once(#[case] source: &str, #[case] token: &str) {
+    let observer = RecordingParseObserver::default();
+    let parsed = parse_with_observer(source, &observer);
+    let start = source
+        .find(token)
+        .expect("reserved token should be present");
+    let expected_span = start..start + token.len();
+    let expected = parsed
+        .errors()
+        .iter()
+        .find(|error| {
+            error.span() == expected_span
+                && matches!(error.reason(), chumsky::error::SimpleReason::Custom(_))
+        })
+        .expect("reserved diagnostic should be retained");
+    let chumsky::error::SimpleReason::Custom(expected_message) = expected.reason() else {
+        panic!("reserved diagnostic should have a custom message");
+    };
+    assert!(expected_message.starts_with(&format!("`{token}`")));
+    let events = observer.events();
+    let matching: Vec<_> = events
+        .iter()
+        .filter(|event| {
+            matches!(event, RecordedParseEvent::Diagnostic { code: None, span, message, .. }
+                if *span == expected_span && message == expected_message)
+        })
+        .collect();
+    assert_eq!(
+        matching.len(),
+        1,
+        "one callback per retained reserved diagnostic"
+    );
+    assert_eq!(
+        events.last(),
+        Some(&RecordedParseEvent::AttemptCompleted {
+            category: DiagnosticCategory::Parser,
+            diagnostic_count: parsed.errors().len(),
+        })
+    );
+}
