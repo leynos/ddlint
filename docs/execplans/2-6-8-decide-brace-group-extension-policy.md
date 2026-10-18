@@ -96,7 +96,7 @@ declarations inside blocks remain unsupported and keep their existing
 
 - Do not change the meaning of any existing `DiagnosticCode` (`D-REL-001` to
   `D-REL-008`) or `DiagnosticCategory`; the conformance register freezes them.
-- Do not change parenthesised forms: `( e )` must still yield `Expr::Group`,
+- Do not change parenthesized forms: `( e )` must still yield `Expr::Group`,
   `()` must still yield `Expr::Tuple(vec![])`, and `(a, b)` must still yield
   `Expr::Tuple`.
 - Do not change non-empty map literal parsing or its colon-terminating key
@@ -271,12 +271,12 @@ declarations inside blocks remain unsupported and keep their existing
   map, codify only non-empty blocks, and document `{}` as a ddlint-specific
   divergence. Choosing the alternative removes `BG-D6`, keeps
   `tests/expression_prefix.rs` unchanged for `{}`, and leaves upstream programs
-  that use `{}` as empty bodies mis-parsed. Date/Author: 2026-10-18, planning
-  agent; requires user approval.
+  that use `{}` as empty bodies parsed incorrectly. Date/Author: 2026-10-18,
+  planning agent; requires user approval.
 
 - Decision: do not add a Verus or Kani lane for this item. Rationale: see
   `Verification plan`; the obligations are correspondence properties of the
-  hand-written token-stream parser, and the one pure kernel is a finite
+  handwritten token-stream parser, and the one pure kernel is a finite
   classifier that exhaustive enumeration discharges completely. Date/Author:
   2026-10-18, planning agent.
 
@@ -299,7 +299,7 @@ tokenizer (`src/tokenizer.rs`, using `logos`) produces `SyntaxKind` tokens
 top-level declarations, and a concrete syntax tree (CST, a lossless tree that
 keeps every token) is built with `rowan`. Expressions are not stored as typed
 CST nodes; instead an abstract syntax tree (AST, a typed tree that drops
-punctuation) is built on demand by a hand-written Pratt parser (a
+punctuation) is built on demand by a handwritten Pratt parser (a
 precedence-climbing parser driven by a binding-power table).
 
 The files that matter for this item are:
@@ -429,13 +429,13 @@ relation `R` maps an abstract block to a `BlockExpr`:
 
 - `V-I1` (no bare sequence items): no element of `statements`, and not
   `value`, is an `Expr::Binary { op: BinaryOp::Seq, .. }` at its root. A
-  parenthesised sequence `{ (a; b) }` is allowed because its root is
+  parenthesized sequence `{ (a; b) }` is allowed because its root is
   `Expr::Group`.
 - `V-I2` (order preservation): the left-to-right source order of block items
   equals the order of `statements` followed by `value`.
 - `V-I3` (brace/parenthesis separation): the parser never produces
   `Expr::Group` for a brace-delimited form and never produces `Expr::Block` for
-  a parenthesised form.
+  a parenthesized form.
 - `V-I4` (semantic transparency): for any expression `e`, the semantic
   helpers (`sema` relation and variable collection, rule-body classification)
   return the same results for `{ e }` as for `( e )` and for `e`.
@@ -514,7 +514,7 @@ split them.
   about the executable code, which a proof over a model would not.
 - Domain: `n` from 0 to 6, `t` drawn independently (with `n = 0` forcing
   `t = false`), item sources from a bounded recursive generator of identifiers,
-  integer literals, `+`, `and`, calls, tuples, parenthesised sequences, and
+  integer literals, `+`, `and`, calls, tuples, parenthesized sequences, and
   nested blocks up to depth 3.
 - Artefact: `src/parser/tests/block_expression_proptest.rs`.
 - Evidence: `cargo test --all-features block_expression_proptest` passes with
@@ -522,7 +522,7 @@ split them.
   braces still produce `Expr::Group`.
 - Non-vacuity: the generator is built with `prop_oneof!` so every class
   (`n = 0`, `n = 1` with and without `t`, `n ≥ 2`, nested depth ≥ 2,
-  parenthesised sequence item) is a distinct weighted branch, never a filter; a
+  parenthesized sequence item) is a distinct weighted branch, never a filter; a
   companion `rstest` table gives one deterministic witness per class. Seeded
   faults that must each fail a property: reversing `statements`; dropping the
   final `;` flag (returning `value = Some(last)` for `{ a; }`); parsing items
@@ -573,7 +573,7 @@ split them.
 ### Where Verus and Kani are and are not warranted
 
 No Verus proof is planned. The lemmas above are about the correspondence
-between a grammar and ddlint's hand-written, `Vec`-backed token-stream parser,
+between a grammar and ddlint's handwritten, `Vec`-backed token-stream parser,
 which calls into `chumsky` error types and `rowan`-adjacent helpers. Verifying
 that code in Verus would require re-implementing the parser in Verus's
 supported subset, so a proof would establish a property of a model rather than
@@ -750,7 +750,7 @@ item 2.6.8 done. Set this plan's status to `COMPLETE` after reconciling
   seeded-fault evidence recorded in `Artefacts and notes`.
 - Conformance check:
   - All of `V-L1` to `V-L5` and `V-I1` to `V-I5` have passing artefacts.
-  - Parenthesised forms, non-empty maps, reserved tokens, and top-level `for`
+  - Parenthesized forms, non-empty maps, reserved tokens, and top-level `for`
     behave as before.
   - Only the planned public interface change occurred.
   - No dependency change beyond EP-M2.
@@ -866,7 +866,7 @@ Feature: Block expressions
   Scenario: Braces and parentheses stay distinct
     Given the expression source "( x )"
     When the expression is parsed
-    Then the result is a parenthesised group
+    Then the result is a parenthesized group
 
   Scenario: A comma without a colon is rejected
     Given the expression source "{ a, b }"
@@ -933,7 +933,7 @@ Out(x) :- Items(x), for (y in Items(y)) { Check(y); Check(x) }.
 
 It asserts no parse errors, that rule-body classification yields the iterable,
 both `Check` terms in order, and that the linter `Runner` reports the same
-diagnostics as for the parenthesised `( Check(y); Check(x) )` variant. A second
+diagnostics as for the parenthesized `( Check(y); Check(x) )` variant. A second
 case asserts `for (x in Items(x)) { Out(x) }.` at top level still reports the
 existing unsupported-head diagnostic (`BG-D8`).
 
@@ -994,7 +994,7 @@ impl BlockExpr {
 
 In `src/parser/ast/expr.rs`, add `Block(BlockExpr)` to `Expr` with the doc
 comment "Brace-delimited block expression; see `BlockExpr`.", and change the
-`Group` doc comment to "Parenthesised expression `( e )`.".
+`Group` doc comment to "Parenthesized expression `( e )`.".
 
 In `src/parser/expression/block.rs` (new, private to the expression parser):
 
