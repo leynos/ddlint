@@ -50,7 +50,7 @@ expression, and they never hide the binder names.
 Lossless CST round-tripping is unchanged. The parse-time diagnostics
 (`Parsed::errors()`) are unchanged for every input that is well formed today.
 They change for two classes of malformed input that the scanner currently
-mis-handles, both fixed in milestone `EP-M1`:
+mishandles, both fixed in milestone `EP-M1`:
 
 - a statement terminator `;` after a key clause is swallowed into the key
   expression, together with any declaration that follows on the same line;
@@ -583,13 +583,13 @@ decomposition.
 
 ### Axioms (trusted, not verified here)
 
-- `AX-ROWAN`: `rowan` preserves token text losslessly, and
+- `AXIOM-ROWAN`: `rowan` preserves token text losslessly, and
   `SyntaxElement::text_range()` is source-absolute for trees built from the
   full source.
-- `AX-CHUMSKY`: `parse_expression` reports error spans relative to its input
+- `AXIOM-CHUMSKY`: `parse_expression` reports error spans relative to its input
   string. `shift_errors` adds the offset to every span in each `Simple`,
   including the inner `Unclosed` span, using saturating arithmetic.
-- `AX-TOKENIZER`: line-comment tokens exclude the newline, and `\r\n` is a
+- `AXIOM-TOKENIZER`: line-comment tokens exclude the newline, and `\r\n` is a
   single whitespace token.
 
 ### Methods per obligation
@@ -716,9 +716,9 @@ Verus is not warranted for this item, and Kani is not used.
 
 The obligations concern agreement between the scanner, `rowan`'s token ranges,
 and `chumsky`'s error spans. Each external piece is trusted as an axiom
-(`AX-ROWAN`, `AX-CHUMSKY`, `AX-TOKENIZER`). A Verus proof would need models of
-those interfaces, so it would prove a model of the integration rather than the
-integration itself.
+(`AXIOM-ROWAN`, `AXIOM-CHUMSKY`, `AXIOM-TOKENIZER`). A Verus proof would need
+models of those interfaces, so it would prove a model of the integration rather
+than the integration itself.
 
 The only pure kernel is the non-trivia hull of the tokens after the first
 balanced group: about fifteen lines of straight-line iteration with a single
