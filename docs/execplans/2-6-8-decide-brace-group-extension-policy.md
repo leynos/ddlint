@@ -245,7 +245,8 @@ Explicitly out of scope, recorded rather than changed:
   verification and testing, API and architecture, delivery and documentation)
   completed.
 - [x] (2026-10-23T09:00Z) Draft revised to address every review finding.
-- [ ] Draft plan pushed and opened as a draft pull request.
+- [x] (2026-10-23T09:30Z) Draft plan pushed and opened as draft pull
+  request #408.
 - [ ] Plan approved by the user.
 - [ ] EP-M1: decision recorded (ADR-004, design document, register items
   16 and 17, roadmap items 2.6.9 and 2.6.10).
