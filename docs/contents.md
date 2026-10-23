@@ -86,6 +86,8 @@
   Plan for transformer declaration grammar alignment.
 - [2.6.6 resolve relation form coverage](./execplans/2-6-6-resolve-relation-form-coverage.md):
   Plan for relation form coverage and modelling alignment.
+- [2.6.6.1 typed AST access for spec-form primary-key expressions](./execplans/2-6-6-1-ast-access-for-spec-form-primary-key-exprs.md):
+  Plan for typed primary-key clause and expression access.
 - [2.6.7 finalize legacy token compatibility policy](./execplans/2-6-7-finalize-legacy-token-compatibility-policy.md):
   Plan for closing the legacy-token compatibility policy.
 - [2.6.7 legacy token policy diagnostic follow-up](./execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md):
