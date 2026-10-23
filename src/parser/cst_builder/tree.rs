@@ -133,7 +133,7 @@ pub(crate) fn build_green_tree(
         }
         cursors.advance_and_start(&mut builder, span.start);
 
-        push_token(&mut builder, kind, span.clone(), src);
+        push_token(&mut builder, kind, span, src);
 
         cursors.finish(&mut builder, span.end);
     }
@@ -142,8 +142,8 @@ pub(crate) fn build_green_tree(
     builder.finish()
 }
 
-fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: Span, src: &str) {
-    let text = src.get(span.clone()).map_or_else(
+fn push_token(builder: &mut GreenNodeBuilder, kind: SyntaxKind, span: &Span, src: &str) {
+    let text = src.get(span.start..span.end).map_or_else(
         || {
             warn!(
                 "token span {:?} out of bounds for source of length {}",
@@ -192,6 +192,27 @@ mod tests {
         let green = build_green_tree(&tokens, src, &spans);
         let root = crate::parser::ast::Root::from_green(green);
         assert_eq!(root.text(), src);
+    }
+
+    #[test]
+    fn build_green_tree_keeps_token_on_utf8_boundary_fallback() {
+        let src = "é";
+        let spans = ParsedSpans::builder()
+            .build()
+            .expect("empty parsed spans should be valid");
+        let tokens = vec![(SyntaxKind::T_IDENT, 0..1)];
+
+        let green = build_green_tree(&tokens, src, &spans);
+        let root = Root::from_green(green);
+        assert_eq!(root.text(), "");
+
+        let token = root
+            .syntax()
+            .descendants_with_tokens()
+            .find_map(rowan::NodeOrToken::into_token)
+            .expect("UTF-8 boundary fallback should retain the token");
+        assert_eq!(token.kind(), SyntaxKind::T_IDENT);
+        assert_eq!(token.text(), "");
     }
 
     #[cfg(debug_assertions)]
