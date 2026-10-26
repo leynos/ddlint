@@ -867,11 +867,13 @@ Key command-line arguments, and their flags, will include:
   (default) will use `miette` for beautiful, annotated output. `json` will
   provide machine-readable output for integration with other tools, and
   `compact` will be a simpler, single-line format. The selected format is also
-  configurable through the lint configuration namespace. Its clap default is
-  absent for precedence, so a file or environment value can replace `rich`.
+  configurable through the lint configuration namespace. The Clap argument is
+  optional and declares no parser default; the configuration model supplies
+  `rich` after lower-precedence sources have been loaded.
 
-- `--config`, `-c` `<PATH>`: Selects one configuration file, suppressing
-  automatic discovery. A missing explicitly selected file is an error.
+- `--config <PATH>` or `-c <PATH>`: Selects one configuration file,
+  suppressing automatic discovery. A missing explicitly selected file is an
+  error.
 
 - `--no-ignore`: Disables the default ignore patterns (e.g., for `.git` or
   `target` directories), allowing all files to be processed. This and the file
@@ -898,36 +900,40 @@ scenarios.[^10]
 To provide persistent and project-specific configuration, `ddlint` will support
 a TOML file named `ddlint.toml`. The application package uses the published
 `ortho_config` v0.10.0 facade with its default features enabled.[^11] TOML is
-the only file format enabled. JSON5 and YAML remain optional future choices.
-The root library does not depend on OrthoConfig and does not inherit the
-application package's Rust 1.89 MSRV.
+the only file format enabled. JavaScript Object Notation 5 (JSON5) and YAML
+remain optional features and are not enabled by the application. The root
+library does not depend on OrthoConfig and does not inherit the application
+package's Rust 1.89 minimum supported Rust version (MSRV).
 
 The precedence order is defaults < files < environment < command line. The
-`format` field has a clap default of `rich` marked `cli_default_as_absent`, so
-that generated parser default does not override a file or environment value.
-Explicit `--format` input still wins. The application converts the loaded
-values into validated settings before passing domain values, such as
-`ddlint::linter::RuleLevel`, to library operations.
+application-owned `AppConfig` derives `OrthoConfig` and loads the nested
+`[cmds.lint]` settings. A separate Clap DTO stores `--format` as an optional
+value with no parser default, so it cannot mask file or environment values. The
+configuration model supplies the effective `rich` default, and an explicit
+`--format` value is applied last. No field uses `cli_default_as_absent`; a
+future combined parser that declares a Clap default must use that attribute.
+The application converts loaded values into validated settings before passing
+domain values, such as `ddlint::linter::RuleLevel`, to library operations.
 
-The environment prefix is `DDLINT_`. The lint subcommand's settings are
-namespaced under `DDLINT_CMDS_LINT_`; for example,
-`DDLINT_CMDS_LINT_FORMAT=json` overrides the `format` setting from a file.
-There are no legacy environment names or configuration files to preserve.
-`extends` files use OrthoConfig's v0.10.0 single-parent TOML inheritance.
+The environment prefix is `DDLINT_`. Nested keys use OrthoConfig's `__`
+separator, so `DDLINT_CMDS__LINT__FORMAT=json` overrides the `format` setting
+from a file. There are no legacy environment names or configuration files to
+preserve. `extends` files use OrthoConfig's v0.10.0 single-parent TOML
+inheritance.
 
 Automatic discovery uses OrthoConfig's first-wins policy in this order:
 
 1. `--config` or `-c`, when explicitly supplied;
 2. `DDLINT_CONFIG_PATH`, when non-empty;
-3. the XDG configuration directories, including the user configuration home
-   and configured system directories;
+3. the XDG Base Directory Specification (XDG) locations, including the user
+   configuration home and configured system directories;
 4. the platform's native application configuration directory, when available;
 5. the home configuration locations; and
 6. `ddlint.toml` and `.ddlint.toml` in the current working directory.
 
-The application name is `ddlint`; XDG and native configuration locations use the
-`ddlint` application directory and `ddlint.toml`, while the home dotfile is
-`.ddlint.toml`. Discovery does not walk parent directories. An absent
+The application-owned configuration type names `ddlint.toml` for application
+configuration directories and the current project, and `.ddlint.toml` for the
+home dotfile. Discovery does not walk parent directories. An absent
 automatically discovered file is optional and leaves defaults in place. A
 selected path is exclusive and required, so a missing or unreadable explicit
 file is an actionable configuration error rather than a fallback to defaults.

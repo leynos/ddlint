@@ -103,7 +103,8 @@
 - [2.6.7 legacy token policy diagnostic follow-up](./execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md):
   Continuation for diagnostic-path acceptance and validation follow-up.
 - [Issue 411 OrthoConfig CLI configuration spine](./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md):
-  Plan for the v0.10.0 configuration package, source-aware tests, and draft PR.
+  Plan for the v0.10.0 configuration package, source-aware tests, and draft
+  pull request (PR).
 - [3.1.1 core rule and CST rule traits](./execplans/3-1-1-core-rule-and-cst-rule-traits.md):
   Plan for lint rule trait foundations.
 - [3.1.2 rule context struct](./execplans/3-1-2-rule-context-struct.md):

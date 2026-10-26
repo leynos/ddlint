@@ -19,10 +19,10 @@ placeholder binary. The CLI design and roadmap plan file linting, `rules`, and
 
 OrthoConfig v0.10.0 has a Rust 1.89 floor and provides layered TOML,
 environment, Clap integration, subcommand namespaces, and source injection.
-Adding it to the root package would expose its dependency and MSRV requirements
-to users of the reusable library. The configuration work must also remain part
-of the roadmapped CLI item rather than introducing command execution ahead of
-the planned surface.
+Adding it to the root package would expose its dependency and minimum supported
+Rust version (MSRV) requirements to users of the reusable library. The
+configuration work must also remain part of the roadmapped CLI item rather than
+introducing command execution ahead of the planned surface.
 
 ## Decision drivers
 
@@ -61,25 +61,39 @@ with default features enabled. The existing dated nightly is retained if its
 compiler is at least Rust 1.89. No direct `ortho_l10n` dependency is needed
 because the CLI is not localized.
 
+The application-owned `AppConfig` derives `OrthoConfig` and loads the complete
+configuration document, including its nested `cmds.lint` table. A separate Clap
+DTO carries command-line-only fields and explicit settings; the app applies
+only explicitly supplied values after loading configuration. The general
+source-aware loader supports the planned file name and explicit `--config`
+selector. The subcommand-specific loader has fixed filename candidates, so it
+is not the entry point for this contract. The derive configures
+`app_name = "ddlint"`, `config_file_name = "ddlint.toml"`,
+`dotfile_name = ".ddlint.toml"`, `project_file_name = "ddlint.toml"`,
+`config_cli_long = "config"`, and `config_cli_short = 'c'`.
+
 The planned lint configuration uses:
 
 - the filename `ddlint.toml`, with `.ddlint.toml` as the home/project dotfile;
-- automatic first-wins discovery in OrthoConfig's XDG/system, native platform,
-  home, and current-project locations, without ancestor traversal;
-- explicit `--config`/`-c` selection, with `DDLINT_CONFIG_PATH` as the
-  environment selector; a selected path is exclusive and required;
-- the `DDLINT_` environment prefix and the `[cmds.lint]` namespace;
+- automatic first-wins discovery using the XDG Base Directory Specification
+  (XDG), native platform, home, and current-project locations, without ancestor
+  traversal;
+- explicit `--config <PATH>` or `-c <PATH>` selection, with
+  `DDLINT_CONFIG_PATH` as the environment selector; a selected path is
+  exclusive and required;
+- the `DDLINT_` environment prefix, with nested keys separated by `__`, and the
+  `[cmds.lint]` namespace;
 - defaults < files < environment < explicit command-line values;
 - TOML only, with OrthoConfig v0.10.0 `extends` support;
 - configurable `format`, `ignore_patterns`, and rule severity overrides;
-- `cli_default_as_absent` on the `format` parser default, so `rich` does not
-  mask a file or environment setting; and
+- no Clap parser default for `format`; the configuration model supplies `rich`
+  and the optional parser DTO overrides it only when explicitly supplied; and
 - rejection of unknown configuration fields and unknown rule names.
 
-File operands, `--config`, `--no-ignore`, and future `--fix` behaviour are
-command-line-only. `rules` and `explain` have no configuration fields and will
-not load configuration. Named profiles are not offered. Help and parse errors
-remain English. This is not a Cargo subcommand.
+File operands, `--config <PATH>`/`-c <PATH>`, `--no-ignore`, and future `--fix`
+behaviour are command-line-only. `rules` and `explain` have no configuration
+fields and will not load configuration. Named profiles are not offered. Help
+and parse errors remain English. This is not a Cargo subcommand.
 
 Configuration loading returns errors to the application boundary. The app
 converts configuration into validated settings and passes only domain types,

@@ -19,10 +19,10 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
 ## Constraints
 
 - Keep the imported OrthoConfig guides byte-for-byte identical to commit
-  `38812c563e3953a490e3efc202609f37e21a0517` and preserve their recorded
-  SHA-256 checksums.
+  `38812c563e3953a490e3efc202609f37e21a0517` and preserve their recorded Secure
+  Hash Algorithm 256-bit (SHA-256) checksums.
 - Keep `ortho_config` out of the reusable root `ddlint` package and leave that
-  package's dependency set and MSRV unchanged.
+  package's dependency set and minimum supported Rust version (MSRV) unchanged.
 - Put OrthoConfig types in an application-owned `ddlint-cli` workspace package
   with Rust 1.89 as its MSRV. Keep the published library surface out of that
   package.
@@ -69,7 +69,7 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   checkout at baseline `7450d4a031c54f56ce22e8801b015548f4a1ef82`, renamed the
   branch, and recorded `rustc 1.92.0-nightly` identity.
 - [x] (2026-10-26 12:16Z) Confirmed issue #411 is open, the requested remote
-  branch is absent, and no adoption PR exists.
+  branch is absent, and no adoption pull request (PR) exists.
 - [x] (2026-10-26 12:16Z) Fetched and resolved the upstream `v0.10.0` tag;
   imported both guides from the immutable commit and recorded their SHA-256
   checksums.
@@ -81,11 +81,11 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   repository callers.
 - [x] (2026-10-26) Baseline `make test` passed: 35 summaries, 1,274 passed,
   zero failed, zero ignored, including the trybuild compatibility contract.
-- [x] (2026-10-26) Complete the configuration design, ADR, roadmap update, and
-  plan; `make fmt`, `make check-fmt`, `make markdownlint`, and `make nixie`
-  pass.
-- [ ] Commit and CodeRabbit-review the documentation milestone before starting
-  implementation.
+- [x] (2026-10-26) Complete the configuration design, architectural decision
+  record (ADR), roadmap update, and plan; `make fmt`, `make check-fmt`,
+  `make markdownlint`, and `make nixie` pass.
+- [x] (2026-10-26) Commit the documentation milestone and address the
+  deterministic documentation findings from its CodeRabbit review.
 - [ ] Implement the application-owned OrthoConfig configuration spine and
   source-injected tests; validate and review the code milestone.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
@@ -98,8 +98,9 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   placeholder line and exits 1; `rg` found no `assert_cmd` or `CARGO_BIN_EXE`
   tests. Impact: use a child-process regression test for the existing
   placeholder contract while validating the new configuration type separately.
-- Observation: CodeGraph and Leta MCP tools are not exposed in this workspace.
-  Evidence: tool discovery returned no CodeGraph/LSP tools. Impact: use the
+- Observation: CodeGraph and Leta tools using the Model Context Protocol (MCP)
+  are not exposed in this workspace. Evidence: tool discovery returned no
+  CodeGraph or Language Server Protocol (LSP) tools. Impact: use the
   documented-path and literal-search fallback, and make no semantic-index
   claims.
 
@@ -119,12 +120,13 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   placeholder binary will move with its exact behaviour into that app package.
   Date/Author: 2026-10-26, Codex.
 - Decision: use `DDLINT_`, `ddlint.toml`, TOML only, and the `cmds.lint`
-  namespace. File, environment, and explicit CLI values follow OrthoConfig's
-  defaults < files < environment < CLI order. The lint format is configurable;
-  file inputs and `--no-ignore` remain CLI-only. `rules` and `explain` have no
-  settings yet and will not load configuration. Profiles and localization are
-  not offered. Date/Author: 2026-10-26, Codex under the user's explicit
-  implementation request.
+  namespace. Nested environment keys use `__`, for example
+  `DDLINT_CMDS__LINT__FORMAT`. File, environment, and explicit CLI values
+  follow OrthoConfig's defaults < files < environment < CLI order. The lint
+  format is configurable; file inputs and `--no-ignore` remain CLI-only.
+  `rules` and `explain` have no settings yet and will not load configuration.
+  Profiles and localization are not offered. Date/Author: 2026-10-26, Codex
+  under the user's explicit implementation request.
 - Decision: use first-wins file discovery at OrthoConfig's configured system,
   user, and current-project locations; do not search every parent directory. A
   selected `--config` path is exclusive and required. Rationale: these are the
@@ -135,9 +137,12 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
 
 The upstream documentation import and its source identity are verified. The
 baseline suite passed, and the design, roadmap, ADR, user and developer
-guidance, and provenance are documented. Formatting, Markdown, spelling, and
-Mermaid gates pass. The M1 commit and CodeRabbit review, configuration code,
-full code gates, and PR delivery remain outstanding.
+guidance, and provenance are documented. The initial M1 commit and CodeRabbit
+review are complete. Nine actionable documentation findings were fixed; the
+reported missing reference in the imported users' guide was a false positive
+because that label is not linked in the byte-preserved source. A compatibility
+symlink resolves the imported migration guide's relative link without changing
+its bytes. Corrected M1 documentation gates and follow-up review remain.
 
 ## Context and orientation
 
@@ -190,7 +195,7 @@ are recorded in `docs/ortho-config-provenance.md`.
 - `docs/ddlint-design.md` §4.1–4.3 and `docs/roadmap.md` §5.1; these are the
   current project design artefacts. No Terms of Reference or earlier
   CLI-specific ADR existed.
-- ADR-004 records the application/library boundary and configuration
+- ADR 004 records the application/library boundary and configuration
   contract.
 - Upstream `leynos/ortho-config` tag object
   `996e5a1c9f22ace4f55bf5dcc196d2c0524262bf`, peeled to commit
@@ -221,8 +226,11 @@ of distinct, explicit witnesses is more direct than property or model checking.
 Obligation: for each lint setting, defaults < file < environment < explicit
 CLI; a clap parser default must not hide lower layers.
 
-Method: parameterized tests against OrthoConfig v0.10.0's real
-`_with_sources`/match-aware APIs, using `MapEnv` and an explicit TOML file.
+Method: parameterized tests against OrthoConfig v0.10.0's real general
+`load_from_iter_with_sources` API, using `MapEnv` and an explicit TOML file.
+The general derive loader is required because its discovery attributes support
+the chosen names and `--config` selector; the subcommand helper uses fixed
+filename candidates.
 
 Domain: distinct default, file, environment, and CLI values for the
 configuration-bearing `lint` subcommand.
@@ -240,7 +248,7 @@ fail.
 
 ### INV-SUBCOMMAND-SCOPE
 
-Obligation: lint settings load from `[cmds.lint]` and the `DDLINT_CMDS_LINT_`
+Obligation: lint settings load from `[cmds.lint]` and the `DDLINT_CMDS__LINT__`
 environment namespace; unrelated command namespaces do not override lint values.
 
 Method: source-injected subcommand tests against the real derive and merge
@@ -316,7 +324,7 @@ directory; the asserted output and status are non-empty and non-zero.
 
 External axioms: OrthoConfig v0.10.0 implements its published derive,
 discovery, source-injection, and merge APIs as documented; Cargo resolves the
-published crate. This work verifies our integration, not third-party internals.
+published crate. This work verifies the integration, not third-party internals.
 
 ## Plan of work
 
@@ -337,8 +345,8 @@ the full sequential gates. Commit the coherent code milestone and request
 CodeRabbit review.
 
 Stage D: resolve review concerns, re-run the affected gates, confirm final
-checksums and exact branch head, push using SSH, and create a draft PR. Do not
-merge or publish a release.
+checksums and exact branch head, push using SSH, and create a draft pull
+request (PR). Do not merge or publish a release.
 
 ## Milestones and plateaus
 

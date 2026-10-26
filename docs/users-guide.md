@@ -41,13 +41,19 @@ can be supplied by the file and matching `DDLINT_*` environment variables;
 defaults < files < environment < command line
 ```
 
-Automatic discovery checks the configured XDG and system directories, the
-platform's native configuration directory, home configuration locations, and
-`ddlint.toml` or `.ddlint.toml` in the current working directory. Discovery
-does not search parent directories. The `DDLINT_CONFIG_PATH` variable or the
-planned `--config`/`-c` option selects one required file and suppresses
-automatic discovery. An absent automatic file leaves defaults in place; a
-missing selected file is an error.
+Nested environment names use double underscores between configuration keys. For
+example, `DDLINT_CMDS__LINT__FORMAT=json` sets the lint format, while
+`DDLINT_CONFIG_PATH=/path/to/ddlint.toml` selects one required configuration
+file.
+
+Automatic discovery checks the user and system directories from the XDG Base
+Directory Specification (XDG), the platform's native configuration directory,
+the home dotfile `.ddlint.toml`, and `ddlint.toml` in the current working
+directory. Application-specific files use the `ddlint` directory and the
+`ddlint.toml` name. Discovery does not search parent directories. The
+`DDLINT_CONFIG_PATH` variable, `--config <PATH>`, or `-c <PATH>` selects one
+required file and suppresses automatic discovery. An absent automatic file
+leaves defaults in place; a missing selected file is an error.
 
 `--no-ignore` and file operands remain command-line-only. Unknown configuration
 fields and unknown rule names are rejected. The `rules` and `explain` commands

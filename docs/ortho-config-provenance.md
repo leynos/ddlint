@@ -10,7 +10,7 @@ the upstream repository before import.
 - Peeled commit: `38812c563e3953a490e3efc202609f37e21a0517`
 - Imported source paths: `docs/users-guide.md` and
   `docs/v0-10-0-migration-guide.md`
-- Local paths and SHA-256 checksums:
+- Local paths and Secure Hash Algorithm 256-bit (SHA-256) checksums:
   - `docs/ortho-config-users-guide.md`:
     `84d1c97b77024224dc9220a12d4b749205d9bb2db54849185da21c969dda5575`
   - `docs/ortho-config-v0-10-0-migration-guide.md`:

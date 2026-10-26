@@ -197,18 +197,22 @@ command implementations; this guide does not duplicate them.
 
 ## CLI configuration boundary
 
-The planned CLI application package is `cli/` (`ddlint-cli`). It owns Clap
-parsing, OrthoConfig-derived settings, configuration loading, and conversion
-into validated domain settings. The root `ddlint` library remains free of
-OrthoConfig and CLI dependencies, and does not print or terminate on
-configuration errors.
+The planned CLI application package is `cli/` (`ddlint-cli`). Its
+application-owned `AppConfig` derives `OrthoConfig` and contains the
+`cmds.lint` configuration namespace. A separate Clap DTO carries CLI-only and
+explicit command-line values. The application loads defaults, files, and
+environment through source-aware OrthoConfig entry points, then applies only
+explicit CLI values. The root `ddlint` library remains free of OrthoConfig and
+CLI dependencies, and does not print or terminate on configuration errors.
 
-The app package targets Rust 1.89 for OrthoConfig v0.10.0. Its settings use
-injected `_with_sources` loaders, `MapEnv`, and explicit file sources in tests.
-Tests must not mutate the process environment. Validate parsed settings before
-passing domain values such as `ddlint::linter::RuleLevel` into library
-operations. Keep the placeholder binary's current output and exit status until
-the command-line roadmap items replace it.
+The app package targets Rust 1.89 for OrthoConfig v0.10.0. Keep the Clap
+`--format` value optional with no parser default; the configuration model
+supplies `rich`, so a file or environment value is not masked. Tests use
+injected `_with_sources` loaders, `MapEnv`, and explicit file sources without
+mutating the process environment. Validate settings before passing domain
+values such as `ddlint::linter::RuleLevel` into library operations. Keep the
+placeholder binary's current output and exit status until the command-line
+roadmap items replace it.
 
 ## Parser test helpers
 
