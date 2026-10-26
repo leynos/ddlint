@@ -13,6 +13,47 @@ user-facing behaviour.
 - The built-in command-line entrypoint currently only prints a placeholder
   message and exits with a non-zero status.
 
+## Planned CLI configuration
+
+The CLI remains a placeholder. Roadmap item 5.1.5 defines the configuration
+contract for the planned lint command; it becomes active when the command
+surface is implemented.
+
+The planned file is `ddlint.toml`, with TOML as the only enabled format. Lint
+settings live under `[cmds.lint]`, the configuration namespace for the default
+`ddlint <FILES...>` invocation:
+
+```toml
+[cmds.lint]
+format = "json"
+ignore_patterns = [".git/", "target/", "generated/"]
+
+[cmds.lint.rules]
+"unused-relation" = "warn"
+"unused-variable" = "error"
+```
+
+The default format is `rich`. `format`, ignore patterns, and rule severities
+can be supplied by the file and matching `DDLINT_*` environment variables;
+`--format` is the explicit command-line override. The precedence order is:
+
+```text
+defaults < files < environment < command line
+```
+
+Automatic discovery checks the configured XDG and system directories, the
+platform's native configuration directory, home configuration locations, and
+`ddlint.toml` or `.ddlint.toml` in the current working directory. Discovery
+does not search parent directories. The `DDLINT_CONFIG_PATH` variable or the
+planned `--config`/`-c` option selects one required file and suppresses
+automatic discovery. An absent automatic file leaves defaults in place; a
+missing selected file is an error.
+
+`--no-ignore` and file operands remain command-line-only. Unknown configuration
+fields and unknown rule names are rejected. The `rules` and `explain` commands
+have no settings and do not load configuration. Named profiles are not offered.
+These are planned interfaces, not current binary behaviour.
+
 ## Parse a program
 
 `parse` performs tokenization, CST construction, top-level `for` rule

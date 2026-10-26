@@ -195,6 +195,21 @@ gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
 command implementations; this guide does not duplicate them.
 
+## CLI configuration boundary
+
+The planned CLI application package is `cli/` (`ddlint-cli`). It owns Clap
+parsing, OrthoConfig-derived settings, configuration loading, and conversion
+into validated domain settings. The root `ddlint` library remains free of
+OrthoConfig and CLI dependencies, and does not print or terminate on
+configuration errors.
+
+The app package targets Rust 1.89 for OrthoConfig v0.10.0. Its settings use
+injected `_with_sources` loaders, `MapEnv`, and explicit file sources in tests.
+Tests must not mutate the process environment. Validate parsed settings before
+passing domain values such as `ddlint::linter::RuleLevel` into library
+operations. Keep the placeholder binary's current output and exit status until
+the command-line roadmap items replace it.
+
 ## Parser test helpers
 
 A test asserts; a helper arranges. Arrangement can fail, so the arrangement
