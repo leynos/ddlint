@@ -153,7 +153,10 @@ those sources. An exhaustive scan found no other missing local links. Run
 documentation gates and review before implementation. The review of `96d46a4`
 also flagged three compatibility links that used the movable `v0.10.0` tag; the
 ADR and both migration wrappers now point to the immutable commit recorded
-above. Re-run the documentation gates and review before implementation.
+above. The review of `cdc334c` also found that generated configuration
+selectors are hidden by default; the ADR now sets `config_cli_visible = true`
+to match its documented help contract. Re-run the documentation gates and
+review before implementation.
 
 ## Context and orientation
 

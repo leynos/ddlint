@@ -70,7 +70,8 @@ and explicit `--config` selector. The subcommand-specific loader has fixed
 filename candidates, so it is not the entry point for this contract. The derive
 macro configures `app_name = "ddlint"`, `config_file_name = "ddlint.toml"`,
 `dotfile_name = ".ddlint.toml"`, `project_file_name = "ddlint.toml"`,
-`config_cli_long = "config"`, and `config_cli_short = 'c'`.
+`config_cli_long = "config"`, `config_cli_short = 'c'`, and
+`config_cli_visible = true` so the generated selector appears in help.
 
 The planned lint configuration uses:
 
