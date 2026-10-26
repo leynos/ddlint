@@ -47,10 +47,11 @@ example, `DDLINT_CMDS__LINT__FORMAT=json` sets the lint format, while
 file.
 
 Automatic discovery checks the user and system directories from the XDG Base
-Directory Specification (XDG), the platform's native configuration directory,
-the home dotfile `.ddlint.toml`, and `ddlint.toml` in the current working
-directory. Application-specific files use the `ddlint` directory and the
-`ddlint.toml` name. Discovery does not search parent directories. The
+Directory Specification (XDG) and the platform's native configuration
+directories for `ddlint/ddlint.toml` and `.ddlint.toml`, then the home
+configuration locations, including `~/.ddlint.toml`, and finally `ddlint.toml`
+in the current working directory. Project discovery does not check
+`.ddlint.toml`, and discovery does not search parent directories. The
 `DDLINT_CONFIG_PATH` variable, `--config <PATH>`, or `-c <PATH>` selects one
 required file and suppresses automatic discovery. An absent automatic file
 leaves defaults in place; a missing selected file is an error.

@@ -74,10 +74,12 @@ is not the entry point for this contract. The derive configures
 
 The planned lint configuration uses:
 
-- the filename `ddlint.toml`, with `.ddlint.toml` as the home/project dotfile;
+- `ddlint.toml` as the application-directory and project filename, and
+  `.ddlint.toml` as a dotfile candidate in XDG, native, and home configuration
+  locations;
 - automatic first-wins discovery using the XDG Base Directory Specification
   (XDG), native platform, home, and current-project locations, without ancestor
-  traversal;
+  traversal; project discovery checks `ddlint.toml` only;
 - explicit `--config <PATH>` or `-c <PATH>` selection, with
   `DDLINT_CONFIG_PATH` as the environment selector; a selected path is
   exclusive and required;

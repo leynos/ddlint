@@ -85,7 +85,8 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   record (ADR), roadmap update, and plan; `make fmt`, `make check-fmt`,
   `make markdownlint`, and `make nixie` pass.
 - [x] (2026-10-26) Commit the documentation milestone and address the
-  deterministic documentation findings from its CodeRabbit review.
+  actionable findings from its initial CodeRabbit review.
+- [ ] Resolve and review the follow-up findings before starting implementation.
 - [ ] Implement the application-owned OrthoConfig configuration spine and
   source-injected tests; validate and review the code milestone.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
@@ -140,9 +141,12 @@ baseline suite passed, and the design, roadmap, ADR, user and developer
 guidance, and provenance are documented. The initial M1 commit and CodeRabbit
 review are complete. Nine actionable documentation findings were fixed; the
 reported missing reference in the imported users' guide was a false positive
-because that label is not linked in the byte-preserved source. A compatibility
-symlink resolves the imported migration guide's relative link without changing
-its bytes. Corrected M1 documentation gates and follow-up review remain.
+because that label is not linked in the byte-preserved source. A byte-for-byte
+compatibility copy resolves the imported migration guide's relative link. The
+follow-up review correctly identified the compatibility and discovery-filename
+issues; both are corrected. After those fixes, `make check-fmt`,
+`make markdownlint`, and `make nixie` passed. The final review of this
+candidate remains.
 
 ## Context and orientation
 

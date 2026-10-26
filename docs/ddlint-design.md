@@ -929,11 +929,13 @@ Automatic discovery uses OrthoConfig's first-wins policy in this order:
    configuration home and configured system directories;
 4. the platform's native application configuration directory, when available;
 5. the home configuration locations; and
-6. `ddlint.toml` and `.ddlint.toml` in the current working directory.
+6. `ddlint.toml` in the current working directory.
 
 The application-owned configuration type names `ddlint.toml` for application
-configuration directories and the current project, and `.ddlint.toml` for the
-home dotfile. Discovery does not walk parent directories. An absent
+configuration directories and the current project. OrthoConfig also checks
+`.ddlint.toml` as a base-level dotfile in XDG, native, and home configuration
+locations, including the home dotfile; it does not check `.ddlint.toml` in the
+current project. Discovery does not walk parent directories. An absent
 automatically discovered file is optional and leaves defaults in place. A
 selected path is exclusive and required, so a missing or unreadable explicit
 file is an actionable configuration error rather than a fallback to defaults.
