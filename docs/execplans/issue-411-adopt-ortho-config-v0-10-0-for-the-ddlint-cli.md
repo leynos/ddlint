@@ -114,9 +114,14 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   after all deterministic gates passed. The review returned two findings about
   isolating automatic file discovery in tests (one duplicate recommendation)
   and one finding to mark roadmap item 5.1.5 complete.
-- [ ] Isolate automatic discovery in the no-file test, complete roadmap item
-  5.1.5, rerun the full sequential gates, and clear the follow-up review before
-  M3.
+- [x] (2026-10-26) Isolate automatic discovery in a child process rooted at an
+  empty temporary directory, use explicit empty sources in error tests, and
+  mark roadmap item 5.1.5 complete. The full sequential gates passed again;
+  `make test` reported 39 suites, 1,288 passed, and zero failures or ignored
+  tests. Commit: `833f08a`.
+- [ ] Retry CodeRabbit review of exact HEAD `833f08a` after the required
+  randomized cooldown. The first attempt was rate-limited and produced no
+  findings or verdict.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -138,6 +143,11 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   deserialization; an environment list initially failed sequence
   deserialization. Impact: the app captures the generated selector internally
   and parses ignore-pattern environment values as JSON arrays.
+- Observation: CodeRabbit rate-limited the follow-up review of `833f08a` with
+  the response `Rate limit exceeded` and a reported 8-minute-32-second service
+  wait. The requested `vsleep` cooldown was randomized to 55 minutes and is
+  running. Impact: no review result exists yet; retry the exact current head
+  after the cooldown before beginning M3.
 
 ## Decision log
 
@@ -521,3 +531,9 @@ The app manifest uses caret requirements for `ortho_config = "0.10.0"` and
 Serde, keeps OrthoConfig default features enabled, and sets
 `rust-version = "1.89"`. The existing dated nightly remains only if its
 verified compiler meets that floor.
+
+## Revision note
+
+Recorded the M2 follow-up commit and its successful full gate results, then
+documented the CodeRabbit rate limit and 55-minute cooldown. M2 review
+clearance and all M3 delivery work remain pending.
