@@ -199,11 +199,12 @@ command implementations; this guide does not duplicate them.
 
 The planned CLI application package is `cli/` (`ddlint-cli`). Its
 application-owned `AppConfig` derives `OrthoConfig` and contains the
-`cmds.lint` configuration namespace. A separate Clap DTO carries CLI-only and
-explicit command-line values. The application loads defaults, files, and
-environment through source-aware OrthoConfig entry points, then applies only
-explicit CLI values. The root `ddlint` library remains free of OrthoConfig and
-CLI dependencies, and does not print or terminate on configuration errors.
+`cmds.lint` configuration namespace. A separate Clap data transfer object (DTO)
+carries CLI-only and explicit command-line values. The application loads
+defaults, files, and environment through source-aware OrthoConfig entry points,
+then applies only explicit CLI values. The root `ddlint` library remains free
+of OrthoConfig and CLI dependencies, and does not print or terminate on
+configuration errors.
 
 The app package targets Rust 1.89 for OrthoConfig v0.10.0. Keep the Clap
 `--format` value optional with no parser default; the configuration model

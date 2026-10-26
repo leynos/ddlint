@@ -63,12 +63,12 @@ because the CLI is not localized.
 
 The application-owned `AppConfig` derives `OrthoConfig` and loads the complete
 configuration document, including its nested `cmds.lint` table. A separate Clap
-DTO carries command-line-only fields and explicit settings; the app applies
-only explicitly supplied values after loading configuration. The general
-source-aware loader supports the planned file name and explicit `--config`
-selector. The subcommand-specific loader has fixed filename candidates, so it
-is not the entry point for this contract. The derive macro configures
-`app_name = "ddlint"`, `config_file_name = "ddlint.toml"`,
+data transfer object (DTO) carries command-line-only fields and explicit
+settings; the app applies only explicitly supplied values after loading
+configuration. The general source-aware loader supports the planned file name
+and explicit `--config` selector. The subcommand-specific loader has fixed
+filename candidates, so it is not the entry point for this contract. The derive
+macro configures `app_name = "ddlint"`, `config_file_name = "ddlint.toml"`,
 `dotfile_name = ".ddlint.toml"`, `project_file_name = "ddlint.toml"`,
 `config_cli_long = "config"`, and `config_cli_short = 'c'`.
 

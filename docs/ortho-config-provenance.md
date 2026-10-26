@@ -17,8 +17,12 @@ the upstream repository before import.
     `b5331aa6cfcc07b3dcd188c620db98d0a1a1f13b0c8ef96d88913d701bca25bf`
 - Local compatibility wrapper for the upstream guide's relative links:
   `docs/v0-10-0-migration-guide.md`. It preserves the imported sections and
-  headings while pointing six user-guide references at
+  headings while pointing ten user-guide references at
   `docs/ortho-config-users-guide.md`; its Secure Hash Algorithm 256-bit
   (SHA-256) checksum is
-  `43845dfce5e277d3ae379a297264942426a07da8ee0ce7a21371b4778f622ef5`. This is
+  `acf52400eb2a7c1d13c1f24f598b57181aa66f9ef85a06f728e320f8825ac41d`. This is
   separate from the byte-preserved source checksum.
+- Two compatibility pages preserve other relative links in the imported user's
+  guide: `docs/v0-9-0-migration-guide.md` and
+  `docs/adrs/adr-0004-cargo-external-subcommand-entry-point.md`. Both point to
+  the corresponding upstream v0.10.0 files.

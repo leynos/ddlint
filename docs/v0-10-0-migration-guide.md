@@ -139,9 +139,9 @@ cleanly and is simply never looked up.
 
 Rather than predicting identifiers, read them from the generated constants, as
 the user's guide shows in
-[Use the generated message identifiers](users-guide.md#use-the-generated-message-identifiers),
+[Use the generated message identifiers](ortho-config-users-guide.md#use-the-generated-message-identifiers),
 or export the whole inventory as described in
-[Export identifier artefacts for tooling](users-guide.md#export-identifier-artefacts-for-tooling).
+[Export identifier artefacts for tooling](ortho-config-users-guide.md#export-identifier-artefacts-for-tooling).
 Set `#[ortho_config(localization_base = "acme.cli")]` to choose the catalogue
 base explicitly; when it is omitted, the application name supplies the default.
 Normalized argument-identifier collisions within one derived struct are
@@ -197,7 +197,7 @@ from the command line, and `--excited=false` was rejected outright.
 
 Now `--flag=false` supplies an explicit `false` that overrides any lower layer,
 while omitting the flag still defers to it. With the
-[boolean example from the user's guide](users-guide.md#switch-a-boolean-off-from-the-command-line)
+[boolean example from the user's guide](ortho-config-users-guide.md#switch-a-boolean-off-from-the-command-line)
 and this `.acme.toml`:
 
 <!-- tested-example: migration-boolean-file -->
@@ -253,7 +253,7 @@ The generated `load_with_profile()` and `load_with_profile_from_iter(...)`
 entry points return a `ProfileLoadOutcome` that reports which profile was
 selected; `load()` and `load_from_iter()` keep their signatures. The user's
 guide section
-[Switch between named profiles](users-guide.md#switch-between-named-profiles)
+[Switch between named profiles](ortho-config-users-guide.md#switch-between-named-profiles)
 has a complete, tested walkthrough, including selection rules and errors.
 
 Weigh two things before adopting the attribute:

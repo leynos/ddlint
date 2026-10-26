@@ -27,8 +27,8 @@
 
 - [OrthoConfig user's guide, v0.10.0](./ortho-config-users-guide.md): Imported
   application guide for the exact dependency version used by the planned CLI.
-- [OrthoConfig v0.10.0 migration guide](./ortho-config-v0-10-0-migration-guide.md):
-  Imported release notes and migration guidance for v0.10.0.
+- [OrthoConfig v0.10.0 migration guide][ortho-config-migration-guide]:
+  Compatibility wrapper for the byte-preserved v0.10.0 migration guide.
 
 ## Parser and linter references
 
@@ -76,9 +76,9 @@
   structure.
 - [Architectural decision record 002: relation role and kind modelling](./adr-002-relation-role-kind-modelling.md):
   Decision record for typed relation role, kind, ref, and body accessors.
-- [Architectural decision record 004: OrthoConfig CLI boundary](./adr-004-ortho-config-cli-boundary.md):
-  Decision record for the application-owned configuration layer and library
-  boundary.
+- [Architectural decision record 004: OrthoConfig CLI
+  boundary][ortho-config-cli-adr]: Decision record for the application-owned
+  configuration layer and library boundary.
 
 ## Execution plans
 
@@ -102,9 +102,9 @@
   Plan for closing the legacy-token compatibility policy.
 - [2.6.7 legacy token policy diagnostic follow-up](./execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md):
   Continuation for diagnostic-path acceptance and validation follow-up.
-- [Issue 411 OrthoConfig CLI configuration spine](./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md):
-  Plan for the v0.10.0 configuration package, source-aware tests, and draft
-  pull request (PR).
+- [Issue 411 OrthoConfig CLI configuration
+  spine][issue-411-ortho-config-plan]: Plan for the v0.10.0 configuration
+  package, source-aware tests, and draft pull request (PR).
 - [3.1.1 core rule and CST rule traits](./execplans/3-1-1-core-rule-and-cst-rule-traits.md):
   Plan for lint rule trait foundations.
 - [3.1.2 rule context struct](./execplans/3-1-2-rule-context-struct.md):
@@ -142,3 +142,8 @@
   plan.
 - [Parser documentation analysis](./archive/documentation-analysis-parser-design.md):
   Historical analysis of parser documentation structure.
+
+[ortho-config-migration-guide]: ./v0-10-0-migration-guide.md
+[ortho-config-cli-adr]: ./adr-004-ortho-config-cli-boundary.md
+[issue-411-ortho-config-plan]:
+  ./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md
