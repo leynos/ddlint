@@ -119,9 +119,12 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   mark roadmap item 5.1.5 complete. The full sequential gates passed again;
   `make test` reported 39 suites, 1,288 passed, and zero failures or ignored
   tests. Commit: `833f08a`.
-- [ ] Retry CodeRabbit review of exact HEAD `833f08a` after the required
-  randomized cooldown. The first attempt was rate-limited and produced no
-  findings or verdict.
+- [x] (2026-10-26) After the 55-minute cooldown, CodeRabbit started a review of
+  `61b887a` but aborted with exit 134 after one heartbeat; no verdict or
+  findings were produced. One retry on the same exact head was rate-limited
+  with a reported 10-minute-43-second wait.
+- [ ] Complete another randomized 45–90-minute `vsleep`, then retry CodeRabbit
+  on the current exact head. Review clearance remains required before M3.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -146,8 +149,10 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
 - Observation: CodeRabbit rate-limited the follow-up review of `833f08a` with
   the response `Rate limit exceeded` and a reported 8-minute-32-second service
   wait. The requested `vsleep` cooldown was randomized to 55 minutes and is
-  running. Impact: no review result exists yet; retry the exact current head
-  after the cooldown before beginning M3.
+  completed. The review of `61b887a` then aborted with exit 134 after a single
+  heartbeat, and its retry was rate-limited with a reported 10-minute-43-second
+  wait. Impact: neither attempt produced a review verdict; follow the new
+  randomized cooldown and retry the current exact head before M3.
 
 ## Decision log
 
@@ -535,5 +540,5 @@ verified compiler meets that floor.
 ## Revision note
 
 Recorded the M2 follow-up commit and its successful full gate results, then
-documented the CodeRabbit rate limit and 55-minute cooldown. M2 review
-clearance and all M3 delivery work remain pending.
+documented the aborted CodeRabbit run and second rate limit. A new randomized
+cooldown and M2 review clearance remain pending, as does all M3 delivery work.
