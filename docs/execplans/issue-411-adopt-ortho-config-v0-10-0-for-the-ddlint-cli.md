@@ -138,18 +138,18 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
 
 The upstream documentation import and its source identity are verified. The
 baseline suite passed, and the design, roadmap, ADR, user and developer
-guidance, and provenance are documented. The initial M1 commit and CodeRabbit
-review are complete. Nine actionable documentation findings were fixed; the
-reported missing reference in the imported users' guide was a false positive
-because that label is not linked in the byte-preserved source. Compatibility
-pages preserve the upstream relative paths, and the migration wrapper points
-all user-guide links at the imported OrthoConfig guide. The final M1 reviews
-flagged documentation clarity and link targets: DTO expansions, contents-index
-targets and wrapping, imported-guide links, wrapper links, and source-link
-paragraph wrapping. These were corrected without changing either canonical
-imported guide. The current review also identified the first-use expansion of
-XDG and two compatibility targets for links into the upstream l10n README and
-Hello World example; both are addressed alongside that review. Re-run
+guidance, and provenance are documented. Nine actionable documentation findings
+were fixed; one reported missing reference was a false positive because its
+label is not linked in the byte-preserved source. Compatibility pages preserve
+the upstream relative paths, and the migration wrapper points all user-guide
+links at the imported OrthoConfig guide. Earlier M1 reviews flagged
+documentation clarity and link targets: DTO expansions, contents-index targets
+and wrapping, imported-guide links, wrapper links, and source-link paragraph
+wrapping. These were corrected without changing either canonical imported
+guide. The review of `09b3f8b` found two missing targets for the imported
+guide's cargo-orthohelp design and API links. Firecrawl verified both source
+files at the recorded upstream commit; the new compatibility pages link to
+those sources. An exhaustive scan found no other missing local links. Run
 documentation gates and review before implementation.
 
 ## Context and orientation

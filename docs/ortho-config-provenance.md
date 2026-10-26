@@ -22,11 +22,10 @@ the upstream repository before import.
   (SHA-256) checksum is
   `9ff2cb4c6e7362aecd40e9f96c7cd5309cd393bb37c022e01fc2e91d382a7263`. This is
   separate from the byte-preserved source checksum.
-- Two compatibility pages preserve other relative links in the imported user's
-  guide: `docs/v0-9-0-migration-guide.md` and
-  `docs/adrs/adr-0004-cargo-external-subcommand-entry-point.md`. Both point to
-  the corresponding upstream v0.10.0 files.
-- `ortho_l10n/README.md` and `examples/hello_world/README.md` are compatibility
-  targets for two more relative links in the byte-preserved user's guide. They
-  point to the matching README files at the same immutable upstream commit;
-  neither target copies upstream content into this repository.
+- Six compatibility targets preserve other relative links in the imported
+  user's guide: `docs/v0-9-0-migration-guide.md`,
+  `docs/adrs/adr-0004-cargo-external-subcommand-entry-point.md`,
+  `ortho_l10n/README.md`, `examples/hello_world/README.md`,
+  `docs/cargo-orthohelp-design.md`, and `docs/cargo-orthohelp-api-guide.md`.
+  Each points to its corresponding file at the same immutable upstream commit;
+  none copies upstream content into this repository.
