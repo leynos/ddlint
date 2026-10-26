@@ -155,8 +155,10 @@ also flagged three compatibility links that used the movable `v0.10.0` tag; the
 ADR and both migration wrappers now point to the immutable commit recorded
 above. The review of `cdc334c` also found that generated configuration
 selectors are hidden by default; the ADR now sets `config_cli_visible = true`
-to match its documented help contract. Re-run the documentation gates and
-review before implementation.
+to match its documented help contract. The review of `0363b17` found that the
+v0.9.0 migration compatibility page labelled its upstream source as v0.10.0;
+the link label now matches the source version. Re-run the documentation gates
+and review before implementation.
 
 ## Context and orientation
 
