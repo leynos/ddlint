@@ -141,12 +141,13 @@ baseline suite passed, and the design, roadmap, ADR, user and developer
 guidance, and provenance are documented. The initial M1 commit and CodeRabbit
 review are complete. Nine actionable documentation findings were fixed; the
 reported missing reference in the imported users' guide was a false positive
-because that label is not linked in the byte-preserved source. A byte-for-byte
-compatibility copy resolves the imported migration guide's relative link. The
-follow-up review correctly identified the compatibility and discovery-filename
-issues; both are corrected. After those fixes, `make check-fmt`,
-`make markdownlint`, and `make nixie` passed. The final review of this
-candidate remains.
+because that label is not linked in the byte-preserved source. A compatibility
+wrapper resolves the imported migration guide's relative links. The follow-up
+review identified a missing compatibility path and discovery-filename
+disagreement; both were corrected. Its final review found two minor issues:
+wording in ADR-004 and relative links in the wrapper. Both are fixed without
+changing the canonical imported guide. Re-run the documentation gates and final
+review before implementation.
 
 ## Context and orientation
 

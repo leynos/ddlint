@@ -490,9 +490,9 @@ precedence, and formatting reports.
 - [ ] Adopt profiles, stacked scopes, injected sources, behaviour metadata,
   and the Cargo helper only where the application needs them.
 
-[users-guide-behaviour]: users-guide.md#declare-behaviour-metadata-for-agents
-[users-guide-cargo]: users-guide.md#cargo-external-subcommand-entry-points
-[users-guide-discovery]: users-guide.md#choose-the-file-discovery-source
-[users-guide-policy]: users-guide.md#agent-native-policy-checking
-[users-guide-scoped-discovery]: users-guide.md#control-which-configuration-files-become-layers
-[users-guide-sources]: users-guide.md#resolve-discovery-and-merging-without-process-state
+[users-guide-behaviour]: ortho-config-users-guide.md#declare-behaviour-metadata-for-agents
+[users-guide-cargo]: ortho-config-users-guide.md#cargo-external-subcommand-entry-points
+[users-guide-discovery]: ortho-config-users-guide.md#choose-the-file-discovery-source
+[users-guide-policy]: ortho-config-users-guide.md#agent-native-policy-checking
+[users-guide-scoped-discovery]: ortho-config-users-guide.md#control-which-configuration-files-become-layers
+[users-guide-sources]: ortho-config-users-guide.md#resolve-discovery-and-merging-without-process-state
