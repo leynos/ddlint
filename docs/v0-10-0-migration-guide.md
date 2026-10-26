@@ -501,4 +501,4 @@ precedence, and formatting reports.
 [users-guide-sources]: ortho-config-users-guide.md#resolve-discovery-and-merging-without-process-state
 
 [ortho-config-migration-source]:
-  https://github.com/leynos/ortho-config/blob/v0.10.0/docs/v0-10-0-migration-guide.md
+  https://github.com/leynos/ortho-config/blob/38812c563e3953a490e3efc202609f37e21a0517/docs/v0-10-0-migration-guide.md

@@ -150,7 +150,10 @@ guide. The review of `09b3f8b` found two missing targets for the imported
 guide's cargo-orthohelp design and API links. Firecrawl verified both source
 files at the recorded upstream commit; the new compatibility pages link to
 those sources. An exhaustive scan found no other missing local links. Run
-documentation gates and review before implementation.
+documentation gates and review before implementation. The review of `96d46a4`
+also flagged three compatibility links that used the movable `v0.10.0` tag; the
+ADR and both migration wrappers now point to the immutable commit recorded
+above. Re-run the documentation gates and review before implementation.
 
 ## Context and orientation
 
