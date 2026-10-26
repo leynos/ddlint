@@ -86,7 +86,13 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   `make markdownlint`, and `make nixie` pass.
 - [x] (2026-10-26) Commit the documentation milestone and address the
   actionable findings from its initial CodeRabbit review.
-- [ ] Resolve and review the follow-up findings before starting implementation.
+- [x] (2026-10-26) Resolve and review M1 follow-up findings. Final CodeRabbit
+  review of `b419496d8bd1626402989d4d83893f2a158a6456` completed with zero
+  findings after formatting, Markdown/spelling lint, and Mermaid validation
+  passed.
+- [x] (2026-10-26) Start M2 only after M1 review clearance; the CLI
+  configuration package and source-injected tests are now the implementation
+  scope.
 - [ ] Implement the application-owned OrthoConfig configuration spine and
   source-injected tests; validate and review the code milestone.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
@@ -157,8 +163,10 @@ above. The review of `cdc334c` also found that generated configuration
 selectors are hidden by default; the ADR now sets `config_cli_visible = true`
 to match its documented help contract. The review of `0363b17` found that the
 v0.9.0 migration compatibility page labelled its upstream source as v0.10.0;
-the link label now matches the source version. Re-run the documentation gates
-and review before implementation.
+the link label now matches the source version. The final M1 review of
+`b419496d8bd1626402989d4d83893f2a158a6456` had zero findings, and the
+documentation gates passed. M1 is clear; continue with the application package
+and injected-source tests.
 
 ## Context and orientation
 
