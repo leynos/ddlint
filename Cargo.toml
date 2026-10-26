@@ -3,6 +3,11 @@ name = "ddlint"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = ["cli"]
+default-members = [".", "cli"]
+resolver = "3"
+
 [dependencies]
 rowan = { version = "0.17", default-features = false }
 num-derive = { version = "0.5", default-features = false }

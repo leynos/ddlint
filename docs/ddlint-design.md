@@ -917,9 +917,10 @@ domain values, such as `ddlint::linter::RuleLevel`, to library operations.
 
 The environment prefix is `DDLINT_`. Nested keys use OrthoConfig's `__`
 separator, so `DDLINT_CMDS__LINT__FORMAT=json` overrides the `format` setting
-from a file. There are no legacy environment names or configuration files to
-preserve. `extends` files use OrthoConfig's v0.10.0 single-parent TOML
-inheritance.
+from a file. The `ignore_patterns` environment value uses a JSON array of
+strings, for example `DDLINT_CMDS__LINT__IGNORE_PATTERNS='["target/"]'`. There
+are no legacy environment names or configuration files to preserve. `extends`
+files use OrthoConfig's v0.10.0 single-parent TOML inheritance.
 
 Automatic discovery uses OrthoConfig's first-wins policy in this order:
 
@@ -940,9 +941,10 @@ automatically discovered file is optional and leaves defaults in place. A
 selected path is exclusive and required, so a missing or unreadable explicit
 file is an actionable configuration error rather than a fallback to defaults.
 
-Unknown configuration fields are rejected. Configuration, file, environment,
-and merge errors are returned to the application boundary; library code does
-not print or terminate the process.
+Unknown configuration fields are rejected, except for the internal
+`config_path` key emitted by OrthoConfig's generated configuration selector.
+Configuration, file, environment, and merge errors are returned to the
+application boundary; library code does not print or terminate the process.
 
 ### 4.3. Configuration file schema (`ddlint.toml`)
 

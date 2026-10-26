@@ -215,6 +215,11 @@ values such as `ddlint::linter::RuleLevel` into library operations. Keep the
 placeholder binary's current output and exit status until the command-line
 roadmap items replace it.
 
+Environment values for `ignore_patterns` use a JSON string array because
+process environment variables carry scalar strings. The generated `config_path`
+selector is internal to the OrthoConfig merge and is excluded from user-facing
+configuration keys.
+
 ## Parser test helpers
 
 A test asserts; a helper arranges. Arrangement can fail, so the arrangement

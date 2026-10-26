@@ -93,8 +93,25 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
 - [x] (2026-10-26) Start M2 only after M1 review clearance; the CLI
   configuration package and source-injected tests are now the implementation
   scope.
-- [ ] Implement the application-owned OrthoConfig configuration spine and
-  source-injected tests; validate and review the code milestone.
+- [x] (2026-10-26) Add the `ddlint-cli` package, keep the root library
+  dependency/MSRV boundary, move the unchanged placeholder, and implement the
+  OrthoConfig-derived lint settings and source-aware loader. Focused tests
+  cover defaults, TOML, `MapEnv`, explicit CLI overrides, malformed/unreadable
+  and missing files, invalid values, unknown fields/rules, and the exact
+  placeholder process contract. Initial red and green logs are recorded under
+  `/tmp`.
+- [x] (2026-10-26) Resolve two v0.10.0 integration details from tests:
+  OrthoConfig's generated `config_path` participates in CLI merging, so the app
+  consumes it internally while retaining unknown-key rejection; environment
+  values are scalar strings, so `ignore_patterns` accepts a JSON-array string.
+  These choices are documented in the design, ADR, and guides.
+- [x] (2026-10-26) Run the complete sequential gate order on the corrected M2
+  candidate: `make fmt`, `make check-fmt`, `make lint`, `make test`,
+  `make markdownlint`, and `make nixie` all passed. The test gate reported 39
+  suites, 1,288 passed, and zero failures or ignored tests. The exact logs use
+  the `-4.out` suffix under `/tmp` for this worktree and branch.
+- [ ] Commit M2 after the boundary and documentation checks, then complete the
+  requested CodeRabbit review and resolve any concerns before M3.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -110,6 +127,12 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   CodeGraph or Language Server Protocol (LSP) tools. Impact: use the
   documented-path and literal-search fallback, and make no semantic-index
   claims.
+- Observation: the generated configuration selector is merged as the internal
+  `config_path` key, and the environment provider supplies scalar strings.
+  Evidence: the explicit-file test initially failed strict root
+  deserialization; an environment list initially failed sequence
+  deserialization. Impact: the app captures the generated selector internally
+  and parses ignore-pattern environment values as JSON arrays.
 
 ## Decision log
 
@@ -130,7 +153,9 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   namespace. Nested environment keys use `__`, for example
   `DDLINT_CMDS__LINT__FORMAT`. File, environment, and explicit CLI values
   follow OrthoConfig's defaults < files < environment < CLI order. The lint
-  format is configurable; file inputs and `--no-ignore` remain CLI-only.
+  format is configurable; environment ignore-pattern lists use JSON-array
+  strings; file inputs and `--no-ignore` remain CLI-only. The generated
+  `config_path` selector is an internal field, not a user configuration key.
   `rules` and `explain` have no settings yet and will not load configuration.
   Profiles and localization are not offered. Date/Author: 2026-10-26, Codex
   under the user's explicit implementation request.
@@ -155,18 +180,17 @@ wrapping. These were corrected without changing either canonical imported
 guide. The review of `09b3f8b` found two missing targets for the imported
 guide's cargo-orthohelp design and API links. Firecrawl verified both source
 files at the recorded upstream commit; the new compatibility pages link to
-those sources. An exhaustive scan found no other missing local links. Run
-documentation gates and review before implementation. The review of `96d46a4`
-also flagged three compatibility links that used the movable `v0.10.0` tag; the
-ADR and both migration wrappers now point to the immutable commit recorded
-above. The review of `cdc334c` also found that generated configuration
-selectors are hidden by default; the ADR now sets `config_cli_visible = true`
-to match its documented help contract. The review of `0363b17` found that the
-v0.9.0 migration compatibility page labelled its upstream source as v0.10.0;
-the link label now matches the source version. The final M1 review of
-`b419496d8bd1626402989d4d83893f2a158a6456` had zero findings, and the
-documentation gates passed. M1 is clear; continue with the application package
-and injected-source tests.
+those sources. An exhaustive scan found no other missing local links. The
+review of `96d46a4` also flagged three compatibility links that used the movable
+`v0.10.0` tag; the ADR and both migration wrappers now point to the immutable
+commit recorded above. The review of `cdc334c` also found that generated
+configuration selectors are hidden by default; the ADR now sets
+`config_cli_visible = true` to match its documented help contract. The review of
+`0363b17` found that the v0.9.0 migration compatibility page labelled its
+upstream source as v0.10.0; the link label now matches the source version. The
+final M1 review of `b419496d8bd1626402989d4d83893f2a158a6456` had zero
+findings, and the documentation gates passed. M1 is clear; continue with the
+application package and injected-source tests.
 
 ## Context and orientation
 
@@ -229,7 +253,8 @@ are recorded in `docs/ortho-config-provenance.md`.
 Trace links:
 
 - ISSUE-411-APP-BOUNDARY -> ADR-004 -> `cli/Cargo.toml` and
-  `cli/src/config.rs` -> EP-M2 -> dependency-boundary tests and workspace gates.
+  `cli/src/config/mod.rs` -> EP-M2 -> dependency-boundary tests and workspace
+  gates.
 - ISSUE-411-PRECEDENCE -> design §4.2 and ADR-004 -> `LintConfig` -> EP-M2 ->
   source-injected layer tests.
 - ISSUE-411-ERRORS -> design §4.2 and ADR-004 -> application error mapping ->
@@ -247,17 +272,18 @@ of distinct, explicit witnesses is more direct than property or model checking.
 
 ### INV-PRECEDENCE
 
-Obligation: for each lint setting, defaults < file < environment < explicit
-CLI; a clap parser default must not hide lower layers.
+Obligation: `format` follows defaults < file < environment < explicit CLI;
+`ignore_patterns` follows defaults < file < environment and supports the
+command-line `--no-ignore` clear; rule severities follow defaults < file <
+environment. No clap parser default may hide a lower layer.
 
-Method: parameterized tests against OrthoConfig v0.10.0's real general
+Method: focused tests against OrthoConfig v0.10.0's real general
 `load_from_iter_with_sources` API, using `MapEnv` and an explicit TOML file.
 The general derive loader is required because its discovery attributes support
 the chosen names and `--config` selector; the subcommand helper uses fixed
 filename candidates.
 
-Domain: distinct default, file, environment, and CLI values for the
-configuration-bearing `lint` subcommand.
+Domain: distinct source values for the `lint` configuration namespace.
 
 Artefact: `cli/tests/config_layers.rs`.
 
@@ -265,28 +291,26 @@ Evidence: `cargo test -p ddlint-cli --test config_layers`; pass only when each
 layer's distinct value wins at its tier and explicit CLI wins over all lower
 layers.
 
-Non-vacuity: every tier has a different witness value, the file contains the
-target key, the injected map contains the target environment key, and the
-matches include an explicitly supplied CLI value. A changed expected tier must
-fail.
+Non-vacuity: each supported source supplies a distinct value and the assertions
+verify the winning tier, including the explicit CLI format and no-ignore
+override. A changed expected tier must fail.
 
 ### INV-SUBCOMMAND-SCOPE
 
 Obligation: lint settings load from `[cmds.lint]` and the `DDLINT_CMDS__LINT__`
-environment namespace; unrelated command namespaces do not override lint values.
+environment namespace. Commands without settings do not load configuration.
 
-Method: source-injected subcommand tests against the real derive and merge
-entry point.
+Method: source-injected tests against the real derive and merge entry point.
 
-Domain: one valid lint namespace, one decoy namespace, and conflicting values.
+Domain: the configured lint namespace and its matching environment variables.
 
 Artefact: `cli/tests/config_layers.rs`.
 
-Evidence: the focused test above; a lint result must use the lint namespace
-even when the decoy namespace conflicts.
+Evidence: the focused test above; file and environment values under the lint
+namespace resolve while the `rules` and `explain` commands remain unimplemented.
 
-Non-vacuity: the values differ and both namespaces are present in the explicit
-file or map, so ignored namespace scoping changes the observed result.
+Non-vacuity: the values differ across source tiers and the file and environment
+keys use the full lint namespace.
 
 ### INV-FAILURES
 
@@ -336,11 +360,12 @@ placeholder line on stdout, leaves stderr empty, and exits 1.
 Method: isolated child-process integration test with an empty working directory
 and cleared child environment.
 
-Domain: no-argument and `--help` invocations with no config/environment values.
+Domain: a no-argument invocation with an empty child environment and no config
+file.
 
-Artefact: `cli/tests/placeholder_contract.rs`.
+Artefact: `cli/tests/placeholder_cli.rs`.
 
-Evidence: `cargo test -p ddlint-cli --test placeholder_contract` asserts exact
+Evidence: `cargo test -p ddlint-cli --test placeholder_cli` asserts exact
 streams and status.
 
 Non-vacuity: execute the actual built `ddlint` binary in a fresh empty
@@ -408,7 +433,8 @@ Requirements: ISSUE-411-APP-BOUNDARY, ISSUE-411-PRECEDENCE, ISSUE-411-ERRORS,
 and ISSUE-411-BASELINE.
 
 Acceptance evidence: focused tests, placeholder child-process test, package
-dependency/MSRV inspection, and all sequential canonical gates pass.
+dependency/MSRV inspection, and all sequential canonical gates pass. Current
+gate evidence: 1,288 tests passed; lint and all documentation gates are green.
 
 Conformance check: no CLI commands or lint execution implemented; v0.10.0
 default features enabled; application errors remain at the app boundary; docs

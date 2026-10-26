@@ -46,6 +46,10 @@ example, `DDLINT_CMDS__LINT__FORMAT=json` sets the lint format, while
 `DDLINT_CONFIG_PATH=/path/to/ddlint.toml` selects one required configuration
 file.
 
+The ignore-pattern setting is a list in TOML. Its environment value must be a
+JSON array of strings, for example
+`DDLINT_CMDS__LINT__IGNORE_PATTERNS='["target/", "build/"]'`.
+
 Automatic discovery checks the user and system directories from the XDG Base
 Directory Specification (XDG) and the platform's native configuration
 directories for `ddlint/ddlint.toml` and `.ddlint.toml`, then the home

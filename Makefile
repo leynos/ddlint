@@ -65,7 +65,7 @@ test-clippy-policy: ## Prove Clippy accepts test bodies and rejects panicking he
 	CLIPPY_POLICY_CARGO="$(CARGO)" RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(UV) run --with 'pytest>=8' --with 'plumbum>=1.9,<2' pytest scripts/clippy_expect_policy_test.py -q
 
 target/%/$(APP): ## Build binary in debug or release mode
-	$(if $(filter release,$*),RUSTFLAGS="$${RUSTFLAGS-}",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
+	$(if $(filter release,$*),RUSTFLAGS="$${RUSTFLAGS-}",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)") $(CARGO) build -p ddlint-cli $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
 
 # Interrogate measures docstring presence over every Python file the repository
 # owns. Add a new Python directory to INTERROGATE_TARGETS. No `--python` pin: a

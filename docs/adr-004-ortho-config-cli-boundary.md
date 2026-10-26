@@ -89,9 +89,11 @@ The planned lint configuration uses:
 - defaults < files < environment < explicit command-line values;
 - TOML only, with OrthoConfig v0.10.0 `extends` support;
 - configurable `format`, `ignore_patterns`, and rule severity overrides;
+- JSON-array strings for the `ignore_patterns` environment value;
 - no Clap parser default for `format`; the configuration model supplies `rich`
   and the optional parser DTO overrides it only when explicitly supplied; and
-- rejection of unknown configuration fields and unknown rule names.
+- rejection of unknown configuration fields and unknown rule names, while
+  consuming OrthoConfig's generated `config_path` selector internally.
 
 File operands, `--config <PATH>`/`-c <PATH>`, `--no-ignore`, and future `--fix`
 behaviour are command-line-only. `rules` and `explain` have no configuration
