@@ -2,6 +2,8 @@
 
 mod support;
 
+use std::process::Command;
+
 use ddlint::linter::RuleLevel;
 use ddlint_cli::config::{LintCliArgs, OutputFormat};
 use ortho_config::MapEnv;
@@ -11,18 +13,41 @@ use support::{ConfigFile, empty_environment, load, no_cli_overrides};
 /// The default lint settings are used when every optional source is absent.
 #[rstest]
 fn absent_sources_use_documented_defaults() -> Result<(), Box<dyn std::error::Error>> {
-    let settings = load(None, empty_environment(), &no_cli_overrides())?;
+    const CHILD_MARKER: &str = "DDLINT_ISOLATED_DISCOVERY_TEST_CHILD";
 
-    assert_eq!(settings.format, OutputFormat::Rich);
-    assert_eq!(
-        settings.ignore_patterns,
-        vec![
-            ".git/".to_owned(),
-            "build/".to_owned(),
-            "target/".to_owned()
-        ]
-    );
-    assert!(settings.rule_levels.is_empty());
+    if std::env::var_os(CHILD_MARKER).is_some() {
+        let settings = load(None, empty_environment(), &no_cli_overrides())?;
+
+        assert_eq!(settings.format, OutputFormat::Rich);
+        assert_eq!(
+            settings.ignore_patterns,
+            vec![
+                ".git/".to_owned(),
+                "build/".to_owned(),
+                "target/".to_owned()
+            ]
+        );
+        assert!(settings.rule_levels.is_empty());
+    } else {
+        let directory = tempfile::TempDir::new()?;
+        let output = Command::new(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "absent_sources_use_documented_defaults",
+                "--nocapture",
+            ])
+            .current_dir(directory.path())
+            .env_clear()
+            .env(CHILD_MARKER, "1")
+            .output()?;
+
+        assert!(
+            output.status.success(),
+            "isolated discovery child failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

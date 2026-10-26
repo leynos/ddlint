@@ -110,8 +110,13 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   `make markdownlint`, and `make nixie` all passed. The test gate reported 39
   suites, 1,288 passed, and zero failures or ignored tests. The exact logs use
   the `-4.out` suffix under `/tmp` for this worktree and branch.
-- [ ] Commit M2 after the boundary and documentation checks, then complete the
-  requested CodeRabbit review and resolve any concerns before M3.
+- [x] (2026-10-26) Commit M2 as `536f23c` and run `coderabbit review --agent`
+  after all deterministic gates passed. The review returned two findings about
+  isolating automatic file discovery in tests (one duplicate recommendation)
+  and one finding to mark roadmap item 5.1.5 complete.
+- [ ] Isolate automatic discovery in the no-file test, complete roadmap item
+  5.1.5, rerun the full sequential gates, and clear the follow-up review before
+  M3.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -318,7 +323,9 @@ Obligation: an absent automatic file is optional; a missing explicitly chosen
 file, malformed TOML, unreadable file, invalid enum value, and rejected unknown
 key each produce an error and never silently become defaults.
 
-Method: named integration cases with isolated temporary files and source maps.
+Method: named integration cases with isolated temporary files and source maps;
+verify optional automatic discovery in a child process rooted at an empty
+temporary directory.
 
 Domain: each listed failure plus a default-only control.
 

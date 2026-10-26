@@ -2,7 +2,6 @@
 
 mod support;
 
-use ddlint_cli::config::OutputFormat;
 use ortho_config::MapEnv;
 use rstest::rstest;
 use support::{ConfigFile, empty_environment, load, no_cli_overrides};
@@ -18,13 +17,9 @@ fn malformed_explicit_file_is_an_error() -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-/// An absent automatic file is optional, while a selected missing file is not.
+/// An explicitly selected missing file is required and reported.
 #[rstest]
-fn missing_automatic_file_is_optional_but_explicit_file_is_required()
--> Result<(), Box<dyn std::error::Error>> {
-    let settings = load(None, empty_environment(), &no_cli_overrides())?;
-    assert_eq!(settings.format, OutputFormat::Rich);
-
+fn missing_explicit_file_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
     let directory = tempfile::TempDir::new()?;
     let missing_path = directory.path().join("missing.toml");
     let error = load(
@@ -81,10 +76,12 @@ fn unknown_rule_name_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
 
 /// An environment value with an invalid enum spelling is not ignored.
 #[rstest]
-fn invalid_environment_value_is_an_error() {
+fn invalid_environment_value_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
+    let file = ConfigFile::new("")?;
     let environment = MapEnv::new().with_var("DDLINT_CMDS__LINT__FORMAT", "xml");
-    let error = load(None, environment, &no_cli_overrides())
+    let error = load(Some(file.path()), environment, &no_cli_overrides())
         .expect_err("invalid environment values must fail validation");
 
     assert!(error.to_string().contains("xml"), "{error:#?}");
+    Ok(())
 }
