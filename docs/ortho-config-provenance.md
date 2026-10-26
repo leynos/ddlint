@@ -20,7 +20,7 @@ the upstream repository before import.
   headings while pointing ten user-guide references at
   `docs/ortho-config-users-guide.md`; its Secure Hash Algorithm 256-bit
   (SHA-256) checksum is
-  `acf52400eb2a7c1d13c1f24f598b57181aa66f9ef85a06f728e320f8825ac41d`. This is
+  `9ff2cb4c6e7362aecd40e9f96c7cd5309cd393bb37c022e01fc2e91d382a7263`. This is
   separate from the byte-preserved source checksum.
 - Two compatibility pages preserve other relative links in the imported user's
   guide: `docs/v0-9-0-migration-guide.md` and

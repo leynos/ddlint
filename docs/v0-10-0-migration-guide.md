@@ -1,5 +1,8 @@
 # Migration guide: v0.9.0 to v0.10.0
 
+This compatibility copy preserves the
+[byte-preserved v0.10.0 migration source][ortho-config-migration-source].
+
 ## Who should read this
 
 Read this guide before upgrading an application or library from OrthoConfig
@@ -496,3 +499,6 @@ precedence, and formatting reports.
 [users-guide-policy]: ortho-config-users-guide.md#agent-native-policy-checking
 [users-guide-scoped-discovery]: ortho-config-users-guide.md#control-which-configuration-files-become-layers
 [users-guide-sources]: ortho-config-users-guide.md#resolve-discovery-and-merging-without-process-state
+
+[ortho-config-migration-source]:
+  https://github.com/leynos/ortho-config/blob/v0.10.0/docs/v0-10-0-migration-guide.md
