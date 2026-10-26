@@ -143,13 +143,14 @@ review are complete. Nine actionable documentation findings were fixed; the
 reported missing reference in the imported users' guide was a false positive
 because that label is not linked in the byte-preserved source. Compatibility
 pages preserve the upstream relative paths, and the migration wrapper points
-all user-guide links at the imported OrthoConfig guide. The final M1 review
-found six minor documentation issues: two expansions of DTO, the contents index
-target and wrapping, two imported-guide link targets, and four remaining
-wrapper link targets. These were corrected without changing either canonical
-imported guide. A later review found three source-link paragraphs to wrap; they
-now use reference links. Re-run documentation gates and review before
-implementation.
+all user-guide links at the imported OrthoConfig guide. The final M1 reviews
+flagged documentation clarity and link targets: DTO expansions, contents-index
+targets and wrapping, imported-guide links, wrapper links, and source-link
+paragraph wrapping. These were corrected without changing either canonical
+imported guide. The current review also identified the first-use expansion of
+XDG and two compatibility targets for links into the upstream l10n README and
+Hello World example; both are addressed alongside that review. Re-run
+documentation gates and review before implementation.
 
 ## Context and orientation
 

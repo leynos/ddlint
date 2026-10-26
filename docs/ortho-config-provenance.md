@@ -26,3 +26,7 @@ the upstream repository before import.
   guide: `docs/v0-9-0-migration-guide.md` and
   `docs/adrs/adr-0004-cargo-external-subcommand-entry-point.md`. Both point to
   the corresponding upstream v0.10.0 files.
+- `ortho_l10n/README.md` and `examples/hello_world/README.md` are compatibility
+  targets for two more relative links in the byte-preserved user's guide. They
+  point to the matching README files at the same immutable upstream commit;
+  neither target copies upstream content into this repository.

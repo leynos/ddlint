@@ -75,11 +75,11 @@ macro configures `app_name = "ddlint"`, `config_file_name = "ddlint.toml"`,
 The planned lint configuration uses:
 
 - `ddlint.toml` as the application-directory and project filename, and
-  `.ddlint.toml` as a dotfile candidate in XDG, native, and home configuration
-  locations;
-- automatic first-wins discovery using the XDG Base Directory Specification
-  (XDG), native platform, home, and current-project locations, without ancestor
-  traversal; project discovery checks `ddlint.toml` only;
+  `.ddlint.toml` as a dotfile candidate in XDG Base Directory Specification
+  (XDG), native, and home configuration locations;
+- automatic first-wins discovery using the XDG, native platform, home, and
+  current-project locations, without ancestor traversal; project discovery
+  checks `ddlint.toml` only;
 - explicit `--config <PATH>` or `-c <PATH>` selection, with
   `DDLINT_CONFIG_PATH` as the environment selector; a selected path is
   exclusive and required;
