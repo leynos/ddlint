@@ -609,10 +609,11 @@ file, so the replay used Git's built-in merge-file driver with `zdiff3`.
 counterparts; the target-to-branch audit retained the workspace, CLI, docs and
 test changes.
 
-Post-rebase validation: `make fmt`, `make check-fmt`, `make markdownlint` and
-`make nixie` passed. `make test` stopped during dependency compilation when
+Post-rebase local validation: `make fmt`, `make check-fmt`, `make markdownlint`
+and `make nixie` passed. `make test` stopped during dependency compilation when
 multiple rustc processes exited with `SIGBUS`; no tests ran. `make typecheck`
-and `make lint` remain unrun because `build-limits-status` exited 1 with:
+and `make lint` were not run locally because `build-limits-status` exited 1
+with:
 
 ```text
 /home/leynos/.local/share/uv/tools/buildlimits/bin/python: invalid time interval ‘/home/leynos/.local/bin/build-limits-status’
@@ -622,6 +623,13 @@ Try '/home/leynos/.local/share/uv/tools/buildlimits/bin/python --help' for more 
 The captured test log is
 `/tmp/test-4f6d8d4a-d324-4afc-9f1f-d54cd9a5b7dd-issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.out`.
 At the time of the failure, `/` and `/tmp` each had 128 GiB available and 63
-GiB of memory was available. The cause remains unresolved, so compile gates,
-CodeRabbit review and force-push are pending; do not treat this candidate as
-validated until those checks run successfully.
+GiB of memory was available. The cause remains unresolved.
+
+The requested lease-bound force-push succeeded. PR #414 remained open and draft
+at `1e352f57433ddf3b69e33f99c6ed2402c4a3eb38`; its required GitHub Actions run
+40430986810 passed. That workflow ran `make check-fmt`, `make lint`,
+workflow-contract tests and coverage, but did not invoke the `make test` or
+`make typecheck` targets directly. Keep the local SIGBUS and missing typecheck
+result visible; the hosted result does not replace those observations. The
+CodeRabbit review remains deferred until the deterministic gate gaps are
+resolved.
