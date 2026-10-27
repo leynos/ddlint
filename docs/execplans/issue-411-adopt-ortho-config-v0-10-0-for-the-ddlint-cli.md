@@ -3,7 +3,7 @@
 This ExecPlan is a living document. Keep its progress, discoveries, decisions,
 verification, outcomes, and conformance links current at each milestone.
 
-Status: IN PROGRESS
+Status: COMPLETE
 
 ## Purpose / big picture
 
@@ -142,8 +142,11 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   source correction was committed as `2469f27`.
 - [x] (2026-10-27) CodeRabbit reviewed exact HEAD `2469f27` and returned zero
   findings after the deterministic gates passed.
-- [ ] Run final gates, commit, push the requested branch, and create a draft
-  PR with the requested issue and Lody-session references.
+- [x] (2026-10-27) Push the issue branch over SSH, fetch its tracking ref, and
+  verify that local and remote heads matched at `d1bcb7e`.
+- [x] (2026-10-27) Create draft PR #414 on `main` with the requested title,
+  `Closes #411`, validation summary, and terminal Lody-session reference.
+  Readback confirmed the draft state, head/base names, title, and body.
 
 ## Surprises & discoveries
 
@@ -510,11 +513,13 @@ there are no existing command-line consumers to migrate.
 
 ### EP-M3: reviewed draft PR
 
-Outcome: exact branch head is pushed and a draft PR closes issue #411 and
-includes the Lody session link in terminal `## References`.
+Outcome: draft PR [#414](https://github.com/leynos/ddlint/pull/414) was created
+from the requested branch after exact-head review and full gate validation. Its
+body closes issue #411 and ends with the Lody session link in `## References`.
 
-Acceptance evidence: current-head gates/review reconciled; PR metadata read
-back; branch tracking points to the pushed head.
+Acceptance evidence: all canonical gates passed; CodeRabbit returned zero
+findings on the implementation head; PR metadata readback confirmed `main` as
+base and draft state; branch tracking matched the pushed head at PR creation.
 
 Recovery: no merge or release operation is performed; revise the same branch
 after review and revalidate.
@@ -579,6 +584,6 @@ verified compiler meets that floor.
 Recorded the M2 follow-up commits, successful gate runs, CodeRabbit tool
 failures, and review findings. The placeholder child working directory is
 isolated and its platform discovery roots are pinned; full gates pass again.
-Commit `2469f27` and its clean exact-head review complete M2. M3 delivery work
-remains. Review and validation timestamps use UTC to make the midnight boundary
-explicit.
+Commit `2469f27` and its clean exact-head review complete M2. Draft PR #414
+completes M3; this plan closeout update is being pushed to the same branch.
+Review and validation timestamps use UTC to make the midnight boundary explicit.
