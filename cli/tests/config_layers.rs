@@ -16,7 +16,16 @@ fn absent_sources_use_documented_defaults() -> Result<(), Box<dyn std::error::Er
     const CHILD_MARKER: &str = "DDLINT_ISOLATED_DISCOVERY_TEST_CHILD";
 
     if std::env::var_os(CHILD_MARKER).is_some() {
-        let settings = load(None, empty_environment(), &no_cli_overrides())?;
+        let isolated_root = std::env::current_dir()?;
+        // Pin every platform discovery rung so even `/etc/xdg` cannot supply
+        // host configuration to this defaults assertion.
+        let environment = MapEnv::new()
+            .with_var("HOME", isolated_root.as_os_str())
+            .with_var("USERPROFILE", isolated_root.as_os_str())
+            .with_var("XDG_CONFIG_HOME", isolated_root.as_os_str())
+            .with_var("XDG_CONFIG_DIRS", isolated_root.as_os_str())
+            .with_var("APPDATA", isolated_root.as_os_str());
+        let settings = load(None, environment, &no_cli_overrides())?;
 
         assert_eq!(settings.format, OutputFormat::Rich);
         assert_eq!(

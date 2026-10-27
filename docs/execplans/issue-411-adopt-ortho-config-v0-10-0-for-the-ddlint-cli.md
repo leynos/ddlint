@@ -134,7 +134,14 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   zero failures, and zero ignored tests. Commit `841f7ea` followed these gates.
 - [x] (2026-10-27) Commit the placeholder-test correction as `841f7ea` after
   the full sequential gate run.
-- [ ] Obtain a clean CodeRabbit review of the current exact head before M3.
+- [x] (2026-10-27) CodeRabbit reviewed `1ebdbd5` and found that the defaults
+  test still allowed host discovery through XDG and home-directory variables.
+- [x] (2026-10-27) Pin `HOME`, `USERPROFILE`, `XDG_CONFIG_HOME`,
+  `XDG_CONFIG_DIRS`, and `APPDATA` to the empty child directory. The full
+  sequential gates passed again: 39 suites, 1,288 passed, zero failures. The
+  source correction and this progress update are ready to commit.
+- [ ] Commit the discovery-root correction and obtain a clean exact-head
+  review before M3.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -171,6 +178,12 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   `4b8c83b` identified that automatic config discovery could still see a
   repository file. Impact: launch that child from a fresh temporary directory
   and retain the exact output/stream/status assertions.
+- Observation: injected `MapEnv` still needs every discovery variable pinned
+  when automatic discovery is under test. Evidence: v0.10.0 documents
+  `/etc/xdg` as the fallback for `XDG_CONFIG_DIRS`, and review of `1ebdbd5`
+  identified host XDG/home discovery in the defaults test. Impact: pin `HOME`,
+  `USERPROFILE`, `XDG_CONFIG_HOME`, `XDG_CONFIG_DIRS`, and `APPDATA` to the
+  isolated root; the test now does so and the full gates pass.
 - Observation: CodeRabbit described the 27 October progress records as future
   dated while the review completed across UTC midnight. Evidence: the review of
   `841f7ea` completed at 2026-10-27 00:15 UTC; the review of `4b8c83b`
@@ -564,7 +577,7 @@ verified compiler meets that floor.
 ## Revision note
 
 Recorded the M2 follow-up commits, successful gate runs, CodeRabbit tool
-failures, and review findings. The placeholder-test isolation and all
-deterministic gates are complete, and commit `841f7ea` records the correction.
-Only clean M2 review and all M3 delivery work remain. Review and validation
-timestamps now use UTC to make the midnight boundary explicit.
+failures, and review findings. The placeholder child working directory is
+isolated and its platform discovery roots are pinned; full gates pass again.
+The correction commit and clean M2 review remain, as does all M3 delivery work.
+Review and validation timestamps use UTC to make the midnight boundary explicit.
