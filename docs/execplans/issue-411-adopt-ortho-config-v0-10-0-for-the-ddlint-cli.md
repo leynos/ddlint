@@ -123,8 +123,17 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   `61b887a` but aborted with exit 134 after one heartbeat; no verdict or
   findings were produced. One retry on the same exact head was rate-limited
   with a reported 10-minute-43-second wait.
-- [ ] Complete another randomized 45–90-minute `vsleep`, then retry CodeRabbit
-  on the current exact head. Review clearance remains required before M3.
+- [x] (2026-10-27) After another randomized 58-minute cooldown, CodeRabbit
+  completed on `4b8c83b` with one trivial finding: the placeholder child
+  process inherited the repository working directory despite clearing its
+  environment.
+- [x] (2026-10-27) Run the placeholder child from a fresh temporary directory
+  while preserving its exact output, streams, and exit status. `make fmt`,
+  `make check-fmt`, `make lint`, `make test`, `make markdownlint`, and
+  `make nixie` all passed; the test gate reported 39 suites, 1,288 passed, zero
+  failures, and zero ignored tests. Commit and exact-head review remain.
+- [ ] Commit the placeholder-test correction and obtain a clean exact-head
+  CodeRabbit review before M3.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -151,8 +160,15 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
   wait. The requested `vsleep` cooldown was randomized to 55 minutes and is
   completed. The review of `61b887a` then aborted with exit 134 after a single
   heartbeat, and its retry was rate-limited with a reported 10-minute-43-second
-  wait. Impact: neither attempt produced a review verdict; follow the new
-  randomized cooldown and retry the current exact head before M3.
+  wait. Impact: those two attempts produced no verdict; after the next
+  cooldown, review completed on `4b8c83b` and found the placeholder test's
+  inherited working directory. The test now uses a fresh temporary directory;
+  all deterministic gates pass, while commit and follow-up review remain.
+- Observation: the placeholder regression child cleared its environment but
+  inherited the repository working directory. Evidence: CodeRabbit's review of
+  `4b8c83b` identified that automatic config discovery could still see a
+  repository file. Impact: launch that child from a fresh temporary directory
+  and retain the exact output/stream/status assertions.
 
 ## Decision log
 
@@ -539,6 +555,7 @@ verified compiler meets that floor.
 
 ## Revision note
 
-Recorded the M2 follow-up commit and its successful full gate results, then
-documented the aborted CodeRabbit run and second rate limit. A new randomized
-cooldown and M2 review clearance remain pending, as does all M3 delivery work.
+Recorded the M2 follow-up commits, successful gate runs, CodeRabbit tool
+failures, and review findings. The placeholder-test isolation and all
+deterministic gates are complete; its commit and clean M2 review remain
+pending, as does all M3 delivery work.

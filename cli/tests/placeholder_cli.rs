@@ -7,7 +7,9 @@ use rstest::rstest;
 /// With no configuration, the placeholder retains its exact output and status.
 #[rstest]
 fn placeholder_output_and_exit_status_are_unchanged() -> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::TempDir::new()?;
     let output = Command::new(env!("CARGO_BIN_EXE_ddlint"))
+        .current_dir(directory.path())
         .env_clear()
         .output()?;
 
