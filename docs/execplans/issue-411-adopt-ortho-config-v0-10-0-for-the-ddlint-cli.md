@@ -585,5 +585,5 @@ Recorded the M2 follow-up commits, successful gate runs, CodeRabbit tool
 failures, and review findings. The placeholder child working directory is
 isolated and its platform discovery roots are pinned; full gates pass again.
 Commit `2469f27` and its clean exact-head review complete M2. Draft PR #414
-completes M3; this plan closeout update is being pushed to the same branch.
-Review and validation timestamps use UTC to make the midnight boundary explicit.
+completes M3; the plan closeout is included in the pushed branch. Review and
+validation timestamps use UTC to make the midnight boundary explicit.
