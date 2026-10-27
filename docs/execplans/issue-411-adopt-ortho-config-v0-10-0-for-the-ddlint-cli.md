@@ -139,9 +139,9 @@ implement the still-planned file-lint command, `rules`, or `explain` commands.
 - [x] (2026-10-27) Pin `HOME`, `USERPROFILE`, `XDG_CONFIG_HOME`,
   `XDG_CONFIG_DIRS`, and `APPDATA` to the empty child directory. The full
   sequential gates passed again: 39 suites, 1,288 passed, zero failures. The
-  source correction and this progress update are ready to commit.
-- [ ] Commit the discovery-root correction and obtain a clean exact-head
-  review before M3.
+  source correction was committed as `2469f27`.
+- [x] (2026-10-27) CodeRabbit reviewed exact HEAD `2469f27` and returned zero
+  findings after the deterministic gates passed.
 - [ ] Run final gates, commit, push the requested branch, and create a draft
   PR with the requested issue and Lody-session references.
 
@@ -579,5 +579,6 @@ verified compiler meets that floor.
 Recorded the M2 follow-up commits, successful gate runs, CodeRabbit tool
 failures, and review findings. The placeholder child working directory is
 isolated and its platform discovery roots are pinned; full gates pass again.
-The correction commit and clean M2 review remain, as does all M3 delivery work.
-Review and validation timestamps use UTC to make the midnight boundary explicit.
+Commit `2469f27` and its clean exact-head review complete M2. M3 delivery work
+remains. Review and validation timestamps use UTC to make the midnight boundary
+explicit.
