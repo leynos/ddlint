@@ -587,3 +587,41 @@ isolated and its platform discovery roots are pinned; full gates pass again.
 Commit `2469f27` and its clean exact-head review complete M2. Draft PR #414
 completes M3; the plan closeout is included in the pushed branch. Review and
 validation timestamps use UTC to make the midnight boundary explicit.
+
+### Rebase onto `origin/main` (2026-10-27)
+
+The branch began at `7450d4a031c54f56ce22e8801b015548f4a1ef82`, as shown by the
+branch-rename reflog entry, and contained 22 linear issue commits. It was
+rebased onto fetched `origin/main` at
+`4a6c908414c6ee2068bc5a88a73d1ad85ad74c3e`. The new head is
+`f4ca65a2d1b51e57eb2d9d08f0d58e9787e3cd67`; recovery refs retain the old head,
+boundary and target.
+
+Main contributed the CI workflow updates in #413 and the `rstest = "0.28"`
+update in #412. The rebase retained both while adding the CLI workspace member.
+No shared code helper or tracked Cargo lockfile was added by main. The ignored
+local lockfile was reconciled after the rebase with `cargo update -p rstest`,
+which selected `rstest` and `rstest_macros` 0.28.0 under the Rust 1.89 floor.
+
+No conflicts occurred. Weave had been selected only by the user-wide attributes
+file, so the replay used Git's built-in merge-file driver with `zdiff3`.
+`git range-diff` matched all 22 original commits to their replayed
+counterparts; the target-to-branch audit retained the workspace, CLI, docs and
+test changes.
+
+Post-rebase validation: `make fmt`, `make check-fmt`, `make markdownlint` and
+`make nixie` passed. `make test` stopped during dependency compilation when
+multiple rustc processes exited with `SIGBUS`; no tests ran. `make typecheck`
+and `make lint` remain unrun because `build-limits-status` exited 1 with:
+
+```text
+/home/leynos/.local/share/uv/tools/buildlimits/bin/python: invalid time interval ‘/home/leynos/.local/bin/build-limits-status’
+Try '/home/leynos/.local/share/uv/tools/buildlimits/bin/python --help' for more information.
+```
+
+The captured test log is
+`/tmp/test-4f6d8d4a-d324-4afc-9f1f-d54cd9a5b7dd-issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.out`.
+At the time of the failure, `/` and `/tmp` each had 128 GiB available and 63
+GiB of memory was available. The cause remains unresolved, so compile gates,
+CodeRabbit review and force-push are pending; do not treat this candidate as
+validated until those checks run successfully.
