@@ -30,6 +30,9 @@ MUTATION_CARGO = f"{SHARED_ACTION_PREFIX}/workflows/mutation-cargo.yml@{APPROVED
 DEPENDABOT_AUTOMERGE = f"{SHARED_ACTION_PREFIX}/workflows/dependabot-automerge.yml@{APPROVED_SHARED_ACTIONS_REF}"
 COVERAGE_ACTION = f"{SHARED_ACTION_PREFIX}/actions/generate-coverage@{APPROVED_SHARED_ACTIONS_REF}"
 PROVISIONING_TARGET = "check-build-tools"
+# The pinned mold release this repository provisions, read from its own record
+# so the workflow contract and the Makefile installer cannot drift apart.
+MOLD_VERSION = (ROOT / "tools" / "mold" / "VERSION").read_text(encoding="utf-8").strip()
 MATRIX_VALUE = re.compile(r"^\$\{\{\s*matrix\.([A-Za-z0-9_-]+)\s*\}\}$")
 MAKE_CALL = re.compile(r"\bmake\b([^;&|\n]*)")
 CARGO_CALL = re.compile(
@@ -111,29 +114,34 @@ def _matrix_rows(job: Mapping[object, object], context: str) -> tuple[dict[str, 
     return tuple({name: value} for value in values)
 
 
+def _runner_label(value: str, row: Mapping[str, object], context: str) -> str:
+    """Resolve one runner label, following a matrix reference when present."""
+    expression = MATRIX_VALUE.fullmatch(value)
+    if expression:
+        name = expression.group(1)
+        resolved = row.get(name)
+        if not isinstance(resolved, str):
+            raise BuildProvisioningError(f"{context} cannot resolve matrix runner {name!r}")
+        return resolved
+    if "${{" in value or "}}" in value:
+        raise BuildProvisioningError(f"{context} has an unresolved runner expression {value!r}")
+    return value
+
+
 def _runner_labels(value: object, row: Mapping[str, object], context: str) -> tuple[str, ...]:
     """Resolve runner labels from scalar, list, or group-and-label mappings."""
     if isinstance(value, str):
-        expression = MATRIX_VALUE.fullmatch(value)
-        if expression:
-            name = expression.group(1)
-            resolved = row.get(name)
-            if not isinstance(resolved, str):
-                raise BuildProvisioningError(f"{context} cannot resolve matrix runner {name!r}")
-            return (resolved,)
-        if "${{" in value or "}}" in value:
-            raise BuildProvisioningError(f"{context} has an unresolved runner expression {value!r}")
-        return (value,)
+        return (_runner_label(value, row, context),)
     if isinstance(value, list):
         labels: list[str] = []
         for item in value:
             labels.extend(_runner_labels(item, row, context))
         return tuple(labels)
     if isinstance(value, Mapping):
-        labels = value.get("labels")
-        if labels is None:
+        nested = value.get("labels")
+        if nested is None:
             raise BuildProvisioningError(f"{context} runner mapping has no labels")
-        return _runner_labels(labels, row, context)
+        return _runner_labels(nested, row, context)
     raise BuildProvisioningError(f"{context}.runs-on has unsupported shape {value!r}")
 
 
@@ -159,10 +167,7 @@ def linux_runner_rows(job: Mapping[object, object], context: str) -> tuple[dict[
 def _make_goals(script: str) -> tuple[str | None, ...]:
     """Find simple Make goal lists, including the repository's default goal."""
     normalized = script.replace("\\\n", " ")
-    if MAKE_CALL.search(normalized) and re.search(r"(?:^|[\r\n;&|]\s*)(?:cd|pushd)\b", normalized):
-        raise BuildProvisioningError("Make suite calls must run from the repository root")
-    if MAKE_CALL.search(normalized) and re.search(r"\b(?:MAKEFLAGS|GNUMAKEFLAGS|MAKEFILES)\s*=", normalized):
-        raise BuildProvisioningError("Make environment overrides are unsupported")
+    _reject_unsupported_make_context(normalized)
     goals: list[str | None] = []
     for line in normalized.splitlines():
         command_line = line.partition("#")[0]
@@ -176,6 +181,14 @@ def _make_goals(script: str) -> tuple[str | None, ...]:
     return tuple(goals)
 
 
+def _reject_unsupported_make_context(normalized: str) -> None:
+    """Refuse Make suites that change directory or override Make's environment."""
+    if MAKE_CALL.search(normalized) and re.search(r"(?:^|[\r\n;&|]\s*)(?:cd|pushd)\b", normalized):
+        raise BuildProvisioningError("Make suite calls must run from the repository root")
+    if MAKE_CALL.search(normalized) and re.search(r"\b(?:MAKEFLAGS|GNUMAKEFLAGS|MAKEFILES)\s*=", normalized):
+        raise BuildProvisioningError("Make environment overrides are unsupported")
+
+
 def _rust_suite_line(line: str) -> bool:
     """Recognize development Rust suite commands in Make's printed recipe."""
     for match in CARGO_CALL.finditer(line):
@@ -183,7 +196,7 @@ def _rust_suite_line(line: str) -> bool:
         arguments = match.group("arguments")
         if command not in RUST_SUITE_COMMANDS and command not in NON_SUITE_CARGO_COMMANDS:
             raise BuildProvisioningError(f"unclassified Cargo command in Make output: {line.strip()}")
-        if command in RUST_SUITE_COMMANDS and (command != "build" or "--release" not in arguments):
+        if _is_suite_invocation(command, arguments):
             return True
     return False
 
@@ -214,6 +227,11 @@ def evaluate_make_goal(goal: str | None) -> MakeEvaluation:
     return MakeEvaluation(suite_lines, provisioning_lines)
 
 
+def _is_suite_invocation(command: str, arguments: str) -> bool:
+    """Report whether one Cargo command is a development suite invocation."""
+    return command in RUST_SUITE_COMMANDS and (command != "build" or "--release" not in arguments)
+
+
 def _cargo_routes(script: str, context: str) -> tuple[str, ...]:
     """Identify direct suite commands and reject unknown Cargo routes."""
     routes = []
@@ -222,7 +240,7 @@ def _cargo_routes(script: str, context: str) -> tuple[str, ...]:
         arguments = match.group("arguments")
         if command not in RUST_SUITE_COMMANDS and command not in NON_SUITE_CARGO_COMMANDS:
             raise BuildProvisioningError(f"{context} has an unclassified Cargo command {command!r}")
-        if command in RUST_SUITE_COMMANDS and (command != "build" or "--release" not in arguments):
+        if _is_suite_invocation(command, arguments):
             routes.append(f"{match.group('tool')}:{command}")
     if "cargo" in script and not CARGO_CALL.search(script):
         raise BuildProvisioningError(f"{context} has an unresolved Cargo command")
@@ -242,28 +260,56 @@ def _step_suites(
     suites: list[SuiteConsumer] = []
     for index, step_value in enumerate(steps_value):
         step = _mapping(step_value, f"{workflow_name}:{job_name}.steps[{index}]")
-        uses = step.get("uses")
-        if isinstance(uses, str) and uses.startswith(COVERAGE_ACTION.rsplit("@", 1)[0]):
-            if uses != COVERAGE_ACTION:
-                raise BuildProvisioningError(f"{workflow_name}:{job_name} uses an unapproved coverage action pin")
-            suites.append(SuiteConsumer(workflow_name, job_name, "coverage-action", index))
+        suites.extend(_coverage_suite(workflow_name, job_name, step, index))
+        suites.extend(
+            _run_step_suites(
+                workflow_name, job_name, step, index, has_default_working_directory
+            )
+        )
+    return tuple(suites)
 
-        run = step.get("run")
-        if run is None:
-            continue
-        if not isinstance(run, str):
-            raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps[{index}].run must be text")
-        for route in _cargo_routes(run, f"{workflow_name}:{job_name}.steps[{index}]"):
-            suites.append(SuiteConsumer(workflow_name, job_name, route, index))
-        goals = _make_goals(run)
-        if goals and (has_default_working_directory or "working-directory" in step):
-            raise BuildProvisioningError(f"{workflow_name}:{job_name} Make call has a custom working directory")
-        for goal in goals:
-            evaluation = evaluate_make_goal(goal)
-            if evaluation.suite_lines:
-                suites.append(
-                    SuiteConsumer(workflow_name, job_name, "make", index, goal)
-                )
+
+def _coverage_suite(
+    workflow_name: str, job_name: str, step: Mapping[object, object], index: int
+) -> tuple[SuiteConsumer, ...]:
+    """Return the coverage route for a step, refusing any unpinned variant."""
+    uses = step.get("uses")
+    if not isinstance(uses, str) or not uses.startswith(COVERAGE_ACTION.rsplit("@", 1)[0]):
+        return ()
+    if uses != COVERAGE_ACTION:
+        raise BuildProvisioningError(
+            f"{workflow_name}:{job_name} uses an unapproved coverage action pin"
+        )
+    return (SuiteConsumer(workflow_name, job_name, "coverage-action", index),)
+
+
+def _run_step_suites(
+    workflow_name: str,
+    job_name: str,
+    step: Mapping[object, object],
+    index: int,
+    has_default_working_directory: bool,
+) -> tuple[SuiteConsumer, ...]:
+    """Return the direct and Make suite routes declared by one `run` step."""
+    run = step.get("run")
+    if run is None:
+        return ()
+    if not isinstance(run, str):
+        raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps[{index}].run must be text")
+    suites = [
+        SuiteConsumer(workflow_name, job_name, route, index)
+        for route in _cargo_routes(run, f"{workflow_name}:{job_name}.steps[{index}]")
+    ]
+    goals = _make_goals(run)
+    if goals and (has_default_working_directory or "working-directory" in step):
+        raise BuildProvisioningError(
+            f"{workflow_name}:{job_name} Make call has a custom working directory"
+        )
+    suites.extend(
+        SuiteConsumer(workflow_name, job_name, "make", index, goal)
+        for goal in goals
+        if evaluate_make_goal(goal).suite_lines
+    )
     return tuple(suites)
 
 
@@ -295,105 +341,160 @@ def _local_workflow_name(uses: str) -> str:
     return path.name
 
 
-def discover_linux_suites(
-    workflows: Mapping[str, Mapping[object, object]],
+def _reusable_job_routes(
+    workflow_name: str,
+    job_name: str,
+    job: Mapping[object, object],
+    uses: str,
 ) -> tuple[SuiteConsumer, ...]:
-    """Find Linux suite routes, resolving every local reusable workflow call."""
-    if not workflows:
-        raise BuildProvisioningError("no workflow topology was supplied")
-    suites: list[SuiteConsumer] = []
+    """Classify a reusable-workflow job, rejecting unknown or unpinned calls."""
+    if uses.startswith("./"):
+        return ()
+    if uses == MUTATION_CARGO:
+        inputs = _mapping(job.get("with", {}), f"{workflow_name}:{job_name}.with")
+        if not _is_true(inputs.get("install-mold")):
+            raise BuildProvisioningError(
+                f"{workflow_name}:{job_name} must pass install-mold: true"
+            )
+        return (SuiteConsumer(workflow_name, job_name, "mutation-cargo", None),)
+    if uses == DEPENDABOT_AUTOMERGE:
+        # This immutable shared workflow calls the GitHub API and has no consumer checkout.
+        return ()
+    raise BuildProvisioningError(
+        f"{workflow_name}:{job_name} has an unknown reusable workflow {uses!r}"
+    )
 
-    def visit(workflow_name: str, stack: tuple[str, ...]) -> None:
+
+class _SuiteCollector:
+    """Walk the workflow topology once, following local reusable calls."""
+
+    def __init__(self, workflows: Mapping[str, Mapping[object, object]]) -> None:
+        """Record the topology that later visits resolve reusable calls against."""
+        self._workflows = workflows
+        self.suites: list[SuiteConsumer] = []
+
+    def visit(self, workflow_name: str, stack: tuple[str, ...]) -> None:
         """Visit one workflow and every local reusable workflow it calls."""
         if workflow_name in stack:
-            raise BuildProvisioningError(f"local reusable workflow cycle: {(*stack, workflow_name)!r}")
-        workflow = workflows.get(workflow_name)
+            raise BuildProvisioningError(
+                f"local reusable workflow cycle: {(*stack, workflow_name)!r}"
+            )
+        workflow = self._workflows.get(workflow_name)
         if workflow is None:
             raise BuildProvisioningError(f"local reusable workflow {workflow_name!r} is missing")
         jobs = _mapping(workflow.get("jobs"), f"{workflow_name}.jobs")
         if not jobs:
             raise BuildProvisioningError(f"{workflow_name}.jobs is empty")
         for job_name, job_value in jobs.items():
-            if not isinstance(job_name, str):
-                raise BuildProvisioningError(f"{workflow_name} has a non-text job name {job_name!r}")
-            job = _mapping(job_value, f"{workflow_name}:{job_name}")
-            uses = job.get("uses")
-            if "uses" in job and not isinstance(uses, str):
-                raise BuildProvisioningError(f"{workflow_name}:{job_name}.uses must be text")
-            if isinstance(uses, str):
-                if uses.startswith("./"):
-                    child = _local_workflow_name(uses)
-                    visit(child, (*stack, workflow_name))
-                elif uses == MUTATION_CARGO:
-                    inputs = _mapping(job.get("with", {}), f"{workflow_name}:{job_name}.with")
-                    if not _is_true(inputs.get("install-mold")):
-                        raise BuildProvisioningError(
-                            f"{workflow_name}:{job_name} must pass install-mold: true"
-                        )
-                    suites.append(SuiteConsumer(workflow_name, job_name, "mutation-cargo", None))
-                elif uses == DEPENDABOT_AUTOMERGE:
-                    # This immutable shared workflow calls the GitHub API and has no consumer checkout.
-                    continue
-                else:
-                    raise BuildProvisioningError(
-                        f"{workflow_name}:{job_name} has an unknown reusable workflow {uses!r}"
-                    )
-                continue
+            self._visit_job(workflow_name, workflow, job_name, job_value, stack)
 
-            has_directory = _has_working_directory(
-                workflow.get("defaults", {}), f"{workflow_name}.defaults"
-            ) or _has_working_directory(job.get("defaults", {}), f"{workflow_name}:{job_name}.defaults")
-            job_suites = _step_suites(workflow_name, job_name, job, has_directory)
-            if not job_suites:
-                continue
-            linux_rows = linux_runner_rows(job, f"{workflow_name}:{job_name}")
-            if linux_rows:
-                suites.extend(job_suites)
+    def _visit_job(
+        self,
+        workflow_name: str,
+        workflow: Mapping[object, object],
+        job_name: object,
+        job_value: object,
+        stack: tuple[str, ...],
+    ) -> None:
+        """Record one job's suites, descending into a local reusable workflow."""
+        if not isinstance(job_name, str):
+            raise BuildProvisioningError(f"{workflow_name} has a non-text job name {job_name!r}")
+        job = _mapping(job_value, f"{workflow_name}:{job_name}")
+        uses = job.get("uses")
+        if "uses" in job and not isinstance(uses, str):
+            raise BuildProvisioningError(f"{workflow_name}:{job_name}.uses must be text")
+        if isinstance(uses, str):
+            self.suites.extend(_reusable_job_routes(workflow_name, job_name, job, uses))
+            if uses.startswith("./"):
+                self.visit(_local_workflow_name(uses), (*stack, workflow_name))
+            return
+        self.suites.extend(_job_suites(workflow_name, job_name, workflow, job))
+
+
+def _job_suites(
+    workflow_name: str,
+    job_name: str,
+    workflow: Mapping[object, object],
+    job: Mapping[object, object],
+) -> tuple[SuiteConsumer, ...]:
+    """Return a job's suite routes when the job runs on a Linux runner."""
+    has_directory = _has_working_directory(
+        workflow.get("defaults", {}), f"{workflow_name}.defaults"
+    ) or _has_working_directory(job.get("defaults", {}), f"{workflow_name}:{job_name}.defaults")
+    job_suites = _step_suites(workflow_name, job_name, job, has_directory)
+    if not job_suites:
+        return ()
+    if not linux_runner_rows(job, f"{workflow_name}:{job_name}"):
+        return ()
+    return job_suites
+
+
+def discover_linux_suites(
+    workflows: Mapping[str, Mapping[object, object]],
+) -> tuple[SuiteConsumer, ...]:
+    """Find Linux suite routes, resolving every local reusable workflow call."""
+    if not workflows:
+        raise BuildProvisioningError("no workflow topology was supplied")
+    collector = _SuiteCollector(workflows)
     for name in workflows:
-        visit(name, ())
-    if not suites:
+        collector.visit(name, ())
+    if not collector.suites:
         raise BuildProvisioningError("no Linux Rust suite was found in the workflow topology")
-    return tuple(dict.fromkeys(suites))
+    return tuple(dict.fromkeys(collector.suites))
+
+
+def _is_bound_setup(step: object, context: str) -> bool:
+    """Report whether a step is the unconditional pinned setup-rust this gate accepts."""
+    setup = _mapping(step, context)
+    if setup.get("uses") != SETUP_RUST or "if" in setup:
+        return False
+    if setup.get("continue-on-error") not in (None, False, "false", "False"):
+        return False
+    inputs = _mapping(setup.get("with", {}), f"{context}.setup-rust.with")
+    return (
+        _is_true(inputs.get("install-mold"))
+        and inputs.get("mold-version", MOLD_VERSION) == MOLD_VERSION
+    )
+
+
+def _assert_job_provisioning(
+    workflow_name: str,
+    job_name: str,
+    job_suites: list[SuiteConsumer],
+    workflows: Mapping[str, Mapping[object, object]],
+) -> None:
+    """Require one job's suites to follow the bound setup and their Make preflight."""
+    job = _mapping(workflows[workflow_name]["jobs"], f"{workflow_name}.jobs")[job_name]
+    steps = _mapping(job, f"{workflow_name}:{job_name}").get("steps", [])
+    if not isinstance(steps, list):
+        raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps must be a list")
+    first_suite_index = min(
+        suite.step_index for suite in job_suites if suite.step_index is not None
+    )
+    if not any(
+        _is_bound_setup(step, f"{workflow_name}:{job_name}.steps[{index}]")
+        for index, step in enumerate(steps[:first_suite_index])
+    ):
+        raise BuildProvisioningError(
+            f"{workflow_name}:{job_name} needs unconditional prior setup-rust with mold {MOLD_VERSION}"
+        )
+
+    for suite in job_suites:
+        if suite.route == "make":
+            evaluation = evaluate_make_goal(suite.make_goal)
+            _require_make_preflight(evaluation, f"Make goal {suite.make_goal!r}")
 
 
 def assert_suite_provisioning(workflows: Mapping[str, Mapping[object, object]]) -> None:
     """Require each reachable Linux suite to have an unconditional prior setup."""
-    suites = discover_linux_suites(workflows)
     grouped: dict[tuple[str, str], list[SuiteConsumer]] = {}
-    for suite in suites:
+    for suite in discover_linux_suites(workflows):
         grouped.setdefault((suite.workflow, suite.job), []).append(suite)
 
     for (workflow_name, job_name), job_suites in grouped.items():
         if all(suite.route == "mutation-cargo" for suite in job_suites):
             continue
-        job = _mapping(workflows[workflow_name]["jobs"], f"{workflow_name}.jobs")[job_name]
-        steps = _mapping(job, f"{workflow_name}:{job_name}").get("steps", [])
-        if not isinstance(steps, list):
-            raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps must be a list")
-        first_suite_index = min(
-            suite.step_index for suite in job_suites if suite.step_index is not None
-        )
-        for index, step_value in enumerate(steps):
-            if index >= first_suite_index:
-                continue
-            setup = _mapping(step_value, f"{workflow_name}:{job_name}.steps[{index}]")
-            if setup.get("uses") != SETUP_RUST or "if" in setup:
-                continue
-            if setup.get("continue-on-error") not in (None, False, "false", "False"):
-                continue
-            inputs = _mapping(setup.get("with", {}), f"{workflow_name}:{job_name}.setup-rust.with")
-            if not _is_true(inputs.get("install-mold")) or inputs.get("mold-version", "2.41.0") != "2.41.0":
-                continue
-            break
-        else:
-            raise BuildProvisioningError(
-                f"{workflow_name}:{job_name} needs unconditional prior setup-rust with mold 2.41.0"
-            )
-
-        for suite in job_suites:
-            if suite.route == "make":
-                evaluation = evaluate_make_goal(suite.make_goal)
-                _require_make_preflight(evaluation, f"Make goal {suite.make_goal!r}")
+        _assert_job_provisioning(workflow_name, job_name, job_suites, workflows)
 
 
 def assert_make_goal_provisioning(goal: str) -> MakeEvaluation:
