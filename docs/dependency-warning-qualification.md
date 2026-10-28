@@ -33,8 +33,8 @@ The route below is a reconstruction of the ticket's ordered route. The original
 route has ten commands, but its list was not supplied for this candidate; this
 reconstruction lists nine and does not identify the missing one. The
 unidentified command is therefore outside this qualification and contributes no
-evidence to it. Every run in this ledger uses the nine steps below in this
-order, from the repository root:
+evidence to it. The qualification route is the nine steps below, in this order,
+from the repository root:
 
 1. `make fmt`
 2. `make check-fmt`
@@ -45,6 +45,11 @@ order, from the repository root:
 7. `make nixie`
 8. resolved-graph capture (`cargo tree`)
 9. non-development package verification
+
+The run records do not each repeat all nine steps. Steps 1-7 are evidenced by
+the sequential-gates table, step 8 by the resolved-graph record, and step 9 by
+the baseline and final-candidate package records. A run record covers the steps
+it names and claims nothing about the others.
 
 The gates keep the shared caches the `Makefile` sets (`UV_CACHE_DIR=.uv-cache`,
 `UV_TOOL_DIR=.uv-tools`) and the existing `CARGO_HOME` and `target/` directory.
