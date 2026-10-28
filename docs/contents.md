@@ -20,6 +20,9 @@
   parser, semantic analysis, and linter architecture.
 - [Roadmap](./roadmap.md): Phase-based delivery plan and task sequencing for
   parser foundations, linting, and editor integration.
+- [Dependency warning qualification](./dependency-warning-qualification.md):
+  Owners, dispositions, and run records for the compiler diagnostics that
+  package verification reports from Cargo registry sources.
 
 ## Parser and linter references
 

@@ -448,6 +448,11 @@ the `setup-rust` steps of the CI workflows (each must pass `install-mold`), so
 a flag lost through a recipe or workflow edit fails there. The decision is
 recorded in [ADR 003](adr-003-rust-build-standard.md).
 
+Because a successful package build hides dependency diagnostics, the owners and
+dispositions of the warnings that package verification reports are qualified
+separately in the
+[dependency warning qualification](dependency-warning-qualification.md) ledger.
+
 ### Cranelift
 
 Exception: Cranelift is not the development-profile backend. The repository pins
