@@ -29,8 +29,9 @@ No file outside `docs/` changes for the qualification itself. See
 
 ## Validation route
 
-The route below is a reconstruction of the ticket's ordered route because the
-original ten-command list was not supplied for this candidate. Every run in
+The route below is a reconstruction of the ticket's ordered route. The original
+route has ten commands, but its list was not supplied for this candidate; this
+reconstruction lists nine and does not identify the missing one. Every run in
 this ledger uses it in this order, from the repository root:
 
 1. `make fmt`
@@ -237,11 +238,10 @@ cargo tree --edges normal,build
 | Output lines   | `80`                                                               |
 | SHA-256 digest | `e9c7a9a90a4c981a63eaa9b8a5db953216c6103157096e62536895842b2bff74` |
 
-The capture resolves `allocator-api2 0.2.21`, `ahash 0.8.12`,
-`hashbrown 0.14.5`, `memoffset 0.9.1`, `regex-syntax 0.6.29`,
-`chumsky 0.9.3`, `logos 0.13.0`, and `thiserror 1.0.69`, which are the eight
-crates in this ledger. It is the reproducible source for the resolved versions
-and dependency paths above.
+The capture resolves the eight crates in this ledger: `allocator-api2 0.2.21`,
+`ahash 0.8.12`, `hashbrown 0.14.5`, `memoffset 0.9.1`, `regex-syntax 0.6.29`,
+`chumsky 0.9.3`, `logos-codegen 0.13.0`, and `thiserror-impl 1.0.69`. It is the
+reproducible source for the resolved versions and dependency paths above.
 
 ### Sequential gates
 
