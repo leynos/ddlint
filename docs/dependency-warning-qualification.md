@@ -21,15 +21,15 @@ Out of scope, and not part of this qualification:
 - lint suppression in `ddlint` sources;
 - `--cap-lints` changes;
 - compiler-date changes; and
-- the separate missing package-metadata defect tracked in PR 311, which is not
-  one of the dependency diagnostics.
+- the separate missing package-metadata defect tracked in pull request 311,
+  which is not one of the dependency diagnostics.
 
 No file outside `docs/` changes for the qualification itself. See
 [Consumer changes](#consumer-changes) for why no manifest edit was warranted.
 
 ## Validation route
 
-The route below is a reconstruction of the ticket's ordered route, because the
+The route below is a reconstruction of the ticket's ordered route because the
 original ten-command list was not supplied for this candidate. Every run in
 this ledger uses it in this order, from the repository root:
 
@@ -52,10 +52,11 @@ Package verification is explicit and non-development:
 RUSTFLAGS="-D warnings" cargo package -vv
 ```
 
-An assigned `RUSTFLAGS` replaces the `.cargo/config.toml` rustflags table, so
-the warning denial is stated in full instead of being inherited. `-vv` is
-required, because dependency `rustc` invocations and their `--cap-lints warn`
-diagnostics are only visible in very verbose output.
+Assigning the `RUSTFLAGS` environment variable replaces the
+`.cargo/config.toml` rustflags table, so the warning denial is stated in full
+instead of being inherited. `-vv` is required because dependency `rustc`
+invocations and their `--cap-lints warn` diagnostics are only visible in very
+verbose output.
 
 | Component         | Identity                                   |
 | ----------------- | ------------------------------------------ |
@@ -133,7 +134,7 @@ clean sweep:
 | `rowan 0.17 -> 0.18`             | No effect; `0.18.0-alpha` still depends on `memoffset 0.9`                                                                                   |
 | `chumsky 0.9.3 -> 0.13.0`        | Removes the `chumsky` lifetime diagnostic but adds an unrelated `unused_import` warning                                                      |
 | `hashbrown 0.14.5 -> 0.16.1`     | Removes the two `hashbrown` diagnostics and both `ahash` diagnostics, but adds `aho-corasick`, `getrandom`, and `regex-automata` diagnostics |
-| `allocator-api2 0.2.21 -> 0.4.0` | Does not remove the diagnostic; the `0.4.0` tree still reports the same implicit autoref                                                     |
+| `allocator-api2 0.2.21 -> 0.4.0` | Removes the diagnostic: `0.4.0` uses an explicit borrow at `src/vec/mod.rs:1983`, but stays outside `hashbrown`'s `^0.2.9`                   |
 | `memoffset 0.9.1`                | Unchanged; `0.9.1` is the newest release and `0.18.0-alpha` rowan still requires `0.9`                                                       |
 | `ahash 0.8.12`                   | Unchanged; `0.8.12` is the newest `0.8` release                                                                                              |
 
@@ -219,6 +220,28 @@ identifier, so this row is a record of the run, not a pointer to the branch tip.
 The per-crate counts are unchanged from the baseline. The order in which crates
 report varies between runs because `cargo` builds them in parallel; the counts
 do not.
+
+### Resolved graph, tree `eadd498`
+
+`Cargo.lock` is ignored, so the graph is captured rather than committed. The
+capture uses the pinned toolchain and the normal and build edges:
+
+```shell
+cargo tree --edges normal,build
+```
+
+| Field          | Value                                                              |
+| -------------- | ------------------------------------------------------------------ |
+| Content tree   | `eadd498dcba30ebc08bf42abcda2ce2b974b2b60`                         |
+| Command exit   | `0`                                                                |
+| Output lines   | `80`                                                               |
+| SHA-256 digest | `e9c7a9a90a4c981a63eaa9b8a5db953216c6103157096e62536895842b2bff74` |
+
+The capture resolves `allocator-api2 0.2.21`, `ahash 0.8.12`,
+`hashbrown 0.14.5`, `memoffset 0.9.1`, `regex-syntax 0.6.29`,
+`chumsky 0.9.3`, `logos 0.13.0`, and `thiserror 1.0.69`, which are the eight
+crates in this ledger. It is the reproducible source for the resolved versions
+and dependency paths above.
 
 ### Sequential gates
 
