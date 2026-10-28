@@ -108,19 +108,32 @@ def _require_ci_full_suite_binding(
     if not isinstance(steps, list):
         raise BuildProvisioningError("CI build-test steps must be a list")
 
+    test_index = _ordered_stage_indices(steps)
+    _require_sole_make_test_step(steps, test_index)
+    _require_unconditional_job(job)
+
+
+def _ordered_stage_indices(steps: list[object]) -> int:
+    """Require one Lint, Test and contracts step in that order, returning Test."""
+    wanted = ("Lint", "Test", "Workflow contract tests")
     positions = {
-        name: [index for index, step in enumerate(steps)
-               if isinstance(step, Mapping) and step.get("name") == name]
-        for name in ("Lint", "Test", "Workflow contract tests")
+        name: [
+            index
+            for index, step in enumerate(steps)
+            if isinstance(step, Mapping) and step.get("name") == name
+        ]
+        for name in wanted
     }
     if any(len(indices) != 1 for indices in positions.values()):
         raise BuildProvisioningError("CI needs one each of Lint, Test and workflow contracts")
-    lint_index, test_index, contracts_index = (positions[name][0] for name in (
-        "Lint", "Test", "Workflow contract tests"
-    ))
+    lint_index, test_index, contracts_index = (positions[name][0] for name in wanted)
     if not lint_index < test_index < contracts_index:
         raise BuildProvisioningError("CI Test must follow Lint and precede workflow contracts")
+    return test_index
 
+
+def _require_sole_make_test_step(steps: list[object], test_index: int) -> None:
+    """Require the single `make test` step to be the unconditional named Test step."""
     test_step = steps[test_index]
     if (
         not isinstance(test_step, Mapping)
@@ -131,11 +144,16 @@ def _require_ci_full_suite_binding(
     ):
         raise BuildProvisioningError("CI Test must run make test without soft failure")
     run_indices = [
-        index for index, step in enumerate(steps)
+        index
+        for index, step in enumerate(steps)
         if isinstance(step, Mapping) and step.get("run") == "make test"
     ]
     if run_indices != [test_index]:
         raise BuildProvisioningError("CI must have exactly one make test step named Test")
+
+
+def _require_unconditional_job(job: Mapping[object, object]) -> None:
+    """Require the CI job itself to be neither conditional nor soft-failing."""
     if "if" in job or job.get("continue-on-error") not in (None, False, "false", "False"):
         raise BuildProvisioningError("CI build-test must not be conditional or soft-fail")
 

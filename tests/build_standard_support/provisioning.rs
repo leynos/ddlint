@@ -23,6 +23,18 @@ fn output_text(output: &Output) -> String {
     )
 }
 
+/// Runs one Make goal in a staged sandbox, returning it, its success, and its transcript.
+fn run_goal(
+    scenario: ToolScenario,
+    goal: &str,
+    variables: &[&str],
+) -> std::io::Result<(Sandbox, bool, String)> {
+    let sandbox = Sandbox::new(scenario)?;
+    let output = sandbox.run_make(Some(goal), variables, PathPolicy::IncludeSystemTools)?;
+    let transcript = output_text(&output);
+    Ok((sandbox, output.status.success(), transcript))
+}
+
 /// Confirms both approved Linux mold archives remain pinned in repository data.
 #[test]
 fn pinned_mold_data_names_both_approved_linux_archives() {
@@ -132,20 +144,10 @@ fn build_routes_fail_preflight_before_the_injected_cargo(#[case] target: &str) {
 /// Requires actionable guidance when the available mold has the wrong version.
 #[test]
 fn check_build_tools_rejects_a_wrong_mold_version_with_an_actionable_error() {
-    let sandbox = Sandbox::new(ToolScenario::WrongMold)
-        .expect("isolated fake tools should be staged successfully");
-    let output = sandbox
-        .run_make(
-            Some("check-build-tools"),
-            &[],
-            PathPolicy::IncludeSystemTools,
-        )
-        .expect("GNU make should run in the repository");
-    let transcript = output_text(&output);
-    assert!(
-        !output.status.success(),
-        "wrong mold version passed:\n{transcript}"
-    );
+    let (_sandbox, success, transcript) =
+        run_goal(ToolScenario::WrongMold, "check-build-tools", &[])
+            .expect("check-build-tools should run in the repository");
+    assert!(!success, "wrong mold version passed:\n{transcript}");
     assert!(
         transcript.contains("mold") && transcript.contains("2.41.0"),
         "wrong-version guidance should name mold and its pinned version:\n{transcript}"
@@ -155,20 +157,10 @@ fn check_build_tools_rejects_a_wrong_mold_version_with_an_actionable_error() {
 /// Requires actionable guidance when the pinned nightly is unavailable.
 #[test]
 fn check_build_tools_rejects_a_missing_pinned_toolchain_actionably() {
-    let sandbox = Sandbox::new(ToolScenario::MissingNightly)
-        .expect("isolated fake tools should be staged successfully");
-    let output = sandbox
-        .run_make(
-            Some("check-build-tools"),
-            &[],
-            PathPolicy::IncludeSystemTools,
-        )
-        .expect("GNU make should run in the repository");
-    let transcript = output_text(&output);
-    assert!(
-        !output.status.success(),
-        "missing nightly passed:\n{transcript}"
-    );
+    let (_sandbox, success, transcript) =
+        run_goal(ToolScenario::MissingNightly, "check-build-tools", &[])
+            .expect("check-build-tools should run in the repository");
+    assert!(!success, "missing nightly passed:\n{transcript}");
     assert!(
         transcript.contains("nightly-2025-09-16"),
         "missing-toolchain guidance should name the pinned nightly:\n{transcript}"
@@ -178,18 +170,14 @@ fn check_build_tools_rejects_a_missing_pinned_toolchain_actionably() {
 /// Confirms simulated non-Linux preflight succeeds without a mold check.
 #[test]
 fn check_build_tools_has_no_mold_requirement_for_a_non_linux_make_host() {
-    let sandbox = Sandbox::new(ToolScenario::MissingMold)
-        .expect("isolated fake tools should be staged successfully");
-    let output = sandbox
-        .run_make(
-            Some("check-build-tools"),
-            &["BUILD_HOST_OS=Darwin"],
-            PathPolicy::IncludeSystemTools,
-        )
-        .expect("GNU make should run in the repository");
-    let transcript = output_text(&output);
+    let (_sandbox, success, transcript) = run_goal(
+        ToolScenario::MissingMold,
+        "check-build-tools",
+        &["BUILD_HOST_OS=Darwin"],
+    )
+    .expect("check-build-tools should run in the repository");
     assert!(
-        output.status.success(),
+        success,
         "non-Linux preflight was unavailable or failed:\n{transcript}"
     );
     assert!(
