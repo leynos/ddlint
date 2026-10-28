@@ -31,8 +31,10 @@ No file outside `docs/` changes for the qualification itself. See
 
 The route below is a reconstruction of the ticket's ordered route. The original
 route has ten commands, but its list was not supplied for this candidate; this
-reconstruction lists nine and does not identify the missing one. Every run in
-this ledger uses it in this order, from the repository root:
+reconstruction lists nine and does not identify the missing one. The
+unidentified command is therefore outside this qualification and contributes no
+evidence to it. Every run in this ledger uses the nine steps below in this
+order, from the repository root:
 
 1. `make fmt`
 2. `make check-fmt`
@@ -240,8 +242,13 @@ cargo tree --edges normal,build
 
 The capture resolves the eight crates in this ledger: `allocator-api2 0.2.21`,
 `ahash 0.8.12`, `hashbrown 0.14.5`, `memoffset 0.9.1`, `regex-syntax 0.6.29`,
-`chumsky 0.9.3`, `logos-codegen 0.13.0`, and `thiserror-impl 1.0.69`. It is the
-reproducible source for the resolved versions and dependency paths above.
+`chumsky 0.9.3`, `logos-codegen 0.13.0`, and `thiserror-impl 1.0.69`.
+
+This is point-in-time evidence, not a reproducible guarantee. The capture omits
+`--locked`, and `Cargo.lock` is ignored, so a later registry index could select
+a different caret-compatible version while `eadd498` stays unchanged. The
+digest therefore identifies what was captured on that tree and day; it does not
+assert what a future resolution will choose.
 
 ### Sequential gates
 
@@ -256,6 +263,12 @@ All gates passed on the final candidate, each with command exit `0`:
 | `make test`         | `0`  |
 | `make markdownlint` | `0`  |
 | `make nixie`        | `0`  |
+
+Edits to this page after `736fc8e` are documentation-only and do not change
+`ddlint` sources, so the Rust gates above still apply unchanged to their tree.
+The four gates that read this page were re-run on the tree containing those
+edits, each with command exit `0`: `make fmt`, `make check-fmt`,
+`make markdownlint`, and `make nixie`.
 
 ## Differences from the baseline
 
