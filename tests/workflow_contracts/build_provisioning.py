@@ -104,6 +104,14 @@ def _matrix_rows(job: Mapping[object, object], context: str) -> tuple[dict[str, 
     if "matrix" not in strategy:
         return ({},)
     matrix = _mapping(strategy["matrix"], f"{context}.strategy.matrix")
+    name, values = _single_finite_axis(matrix, context)
+    return tuple({name: value} for value in values)
+
+
+def _single_finite_axis(
+    matrix: Mapping[object, object], context: str
+) -> tuple[str, list[object]]:
+    """Require one finite non-empty matrix axis without include or exclude."""
     if any(key in matrix for key in ("include", "exclude")):
         raise BuildProvisioningError(f"{context} suite matrix include/exclude is unsupported")
     if len(matrix) != 1:
@@ -111,21 +119,25 @@ def _matrix_rows(job: Mapping[object, object], context: str) -> tuple[dict[str, 
     name, values = next(iter(matrix.items()))
     if not isinstance(name, str) or not isinstance(values, list) or not values:
         raise BuildProvisioningError(f"{context} has an unresolved matrix axis {name!r}")
-    return tuple({name: value} for value in values)
+    return name, values
 
 
 def _runner_label(value: str, row: Mapping[str, object], context: str) -> str:
     """Resolve one runner label, following a matrix reference when present."""
     expression = MATRIX_VALUE.fullmatch(value)
     if expression:
-        name = expression.group(1)
-        resolved = row.get(name)
-        if not isinstance(resolved, str):
-            raise BuildProvisioningError(f"{context} cannot resolve matrix runner {name!r}")
-        return resolved
+        return _matrix_runner_label(expression.group(1), row, context)
     if "${{" in value or "}}" in value:
         raise BuildProvisioningError(f"{context} has an unresolved runner expression {value!r}")
     return value
+
+
+def _matrix_runner_label(name: str, row: Mapping[str, object], context: str) -> str:
+    """Resolve a matrix-referenced runner label to the value in its row."""
+    resolved = row.get(name)
+    if not isinstance(resolved, str):
+        raise BuildProvisioningError(f"{context} cannot resolve matrix runner {name!r}")
+    return resolved
 
 
 def _runner_labels(value: object, row: Mapping[str, object], context: str) -> tuple[str, ...]:
@@ -137,11 +149,8 @@ def _runner_labels(value: object, row: Mapping[str, object], context: str) -> tu
         for item in value:
             labels.extend(_runner_labels(item, row, context))
         return tuple(labels)
-    if isinstance(value, Mapping):
-        nested = value.get("labels")
-        if nested is None:
-            raise BuildProvisioningError(f"{context} runner mapping has no labels")
-        return _runner_labels(nested, row, context)
+    if isinstance(value, Mapping) and "labels" in value:
+        return _runner_labels(value["labels"], row, context)
     raise BuildProvisioningError(f"{context}.runs-on has unsupported shape {value!r}")
 
 
@@ -150,18 +159,20 @@ def linux_runner_rows(job: Mapping[object, object], context: str) -> tuple[dict[
     if "runs-on" not in job:
         raise BuildProvisioningError(f"{context} has a suite but no runs-on value")
     runner = job["runs-on"]
-    rows = _matrix_rows(job, context)
-    linux_rows = []
-    for row in rows:
-        labels = _runner_labels(runner, row, context)
-        systems = {match.group(1) for label in labels if (match := RUNNER_OS.search(label.lower()))}
-        if not systems:
-            raise BuildProvisioningError(f"{context} has an unclassified runner {labels!r}")
-        if systems & {"ubuntu", "linux"} and systems & {"windows", "macos", "osx"}:
-            raise BuildProvisioningError(f"{context} has conflicting runner systems {labels!r}")
-        if systems & {"ubuntu", "linux"}:
-            linux_rows.append(row)
-    return tuple(linux_rows)
+    return tuple(
+        row for row in _matrix_rows(job, context) if _is_linux_runner(runner, row, context)
+    )
+
+
+def _is_linux_runner(runner: object, row: Mapping[str, object], context: str) -> bool:
+    """Report whether one resolved matrix row selects Linux, refusing conflicts."""
+    labels = _runner_labels(runner, row, context)
+    systems = {match.group(1) for label in labels if (match := RUNNER_OS.search(label.lower()))}
+    if not systems:
+        raise BuildProvisioningError(f"{context} has an unclassified runner {labels!r}")
+    if systems & {"ubuntu", "linux"} and systems & {"windows", "macos", "osx"}:
+        raise BuildProvisioningError(f"{context} has conflicting runner systems {labels!r}")
+    return bool(systems & {"ubuntu", "linux"})
 
 
 def _make_goals(script: str) -> tuple[str | None, ...]:

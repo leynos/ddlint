@@ -12,6 +12,62 @@ fn line_position(trace: &str, fragments: &[&str]) -> Option<usize> {
         .position(|line| fragments.iter().all(|fragment| line.contains(fragment)))
 }
 
+/// Returns the host-pinned mold archive name and digest.
+fn host_mold_archive() -> (&'static str, &'static str) {
+    match std::env::consts::ARCH {
+        "x86_64" => (
+            "mold-2.41.0-x86_64-linux.tar.gz",
+            "a3696680d99e692970590a178bc3a33d78d60d1c6dc9db7a11b557b02b751f5d",
+        ),
+        "aarch64" => (
+            "mold-2.41.0-aarch64-linux.tar.gz",
+            "946de2774b06a71346bd59b55fddba610b65b8d93c3a4a1559cc84e103472710",
+        ),
+        architecture => panic!("unsupported installer test architecture: {architecture}"),
+    }
+}
+
+/// Asserts the installer verified the archive before extracting it.
+fn assert_verified_check_mode(trace: &str) {
+    let flag = trace
+        .lines()
+        .find_map(|line| line.strip_prefix("sha256sum:"))
+        .and_then(|arguments| {
+            arguments
+                .split_ascii_whitespace()
+                .find(|argument| *argument == "-c" || *argument == "--check")
+        });
+    assert!(
+        flag.is_some(),
+        "sha256sum was not invoked in check mode:\n{trace}"
+    );
+}
+
+/// Asserts the pinned mold archive and checksum entry reached the download stage.
+fn assert_pinned_archive(trace: &str, archive: &str, digest: &str) {
+    let checksum_entry = format!("checksum-entry:{digest}  {archive}");
+    assert!(
+        trace.contains(archive),
+        "installer did not request the host archive {archive}:\n{trace}"
+    );
+    assert!(
+        trace.lines().any(|line| line == checksum_entry.as_str()),
+        "sha256sum did not receive the pinned entry {checksum_entry}:\n{trace}"
+    );
+}
+
+/// Asserts the existing pinned toolchain was reused and mold landed locally.
+fn assert_reused_toolchain_and_local_mold(trace: &str, installed_mold: &str) {
+    assert!(
+        !trace.contains("toolchain install"),
+        "installer reinstalled an existing pinned toolchain:\n{trace}"
+    );
+    assert!(
+        installed_mold.contains("mold 2.41.0"),
+        "installer did not place the pinned mold in its local prefix:\n{installed_mold}"
+    );
+}
+
 /// Verifies checksum-before-extraction and component addition for old mold.
 #[test]
 fn installer_verifies_before_extracting_and_adds_the_component_to_an_existing_nightly() {
@@ -51,51 +107,17 @@ fn installer_verifies_before_extracting_and_adds_the_component_to_an_existing_ni
         ],
     )
     .expect("installer did not add rust-analyzer to the pinned nightly");
-    let verifier_arguments = trace
-        .lines()
-        .find_map(|line| line.strip_prefix("sha256sum:"))
-        .expect("installer did not pass the archive to sha256sum");
-    assert!(
-        verifier_arguments
-            .split_ascii_whitespace()
-            .any(|argument| argument == "-c" || argument == "--check"),
-        "sha256sum was not invoked in check mode: {verifier_arguments}"
-    );
+    assert_verified_check_mode(&trace);
     let installed_mold = sandbox
         .installed_mold()
         .expect("installer should place mold under its private HOME prefix");
-    let (archive, digest) = match std::env::consts::ARCH {
-        "x86_64" => (
-            "mold-2.41.0-x86_64-linux.tar.gz",
-            "a3696680d99e692970590a178bc3a33d78d60d1c6dc9db7a11b557b02b751f5d",
-        ),
-        "aarch64" => (
-            "mold-2.41.0-aarch64-linux.tar.gz",
-            "946de2774b06a71346bd59b55fddba610b65b8d93c3a4a1559cc84e103472710",
-        ),
-        architecture => panic!("unsupported installer test architecture: {architecture}"),
-    };
-    let checksum_entry = format!("checksum-entry:{digest}  {archive}");
+    let (archive, digest) = host_mold_archive();
     assert!(
         download < verification && verification < extraction && extraction < component,
         "installer stages were out of order:\n{trace}"
     );
-    assert!(
-        trace.contains(archive),
-        "installer did not request the host archive {archive}:\n{trace}"
-    );
-    assert!(
-        trace.lines().any(|line| line == checksum_entry.as_str()),
-        "sha256sum did not receive the pinned entry {checksum_entry}:\n{trace}"
-    );
-    assert!(
-        !trace.contains("toolchain install"),
-        "installer reinstalled an existing pinned toolchain:\n{trace}"
-    );
-    assert!(
-        installed_mold.contains("mold 2.41.0"),
-        "installer did not place the pinned mold in its local prefix:\n{installed_mold}"
-    );
+    assert_pinned_archive(&trace, archive, digest);
+    assert_reused_toolchain_and_local_mold(&trace, &installed_mold);
 }
 
 /// Reuses a correctly versioned CI mold and adds only its missing component.
