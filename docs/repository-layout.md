@@ -14,6 +14,12 @@ the project.
 .
 ├── .github/
 │   └── workflows/
+├── cli/
+│   ├── src/
+│   │   ├── config/
+│   │   └── main.rs
+│   └── tests/
+│       └── support/
 ├── docs/
 │   ├── archive/
 │   └── execplans/
@@ -51,7 +57,10 @@ _Figure 1: Compact repository tree for contributor orientation._
   execution plans. Use [documentation contents](contents.md) as the index.
 - `examples/`: Differential Datalog examples used for manual inspection and
   parser behaviour checks. Keep examples small and representative.
-- `src/`: Rust library and command-line implementation. Modules must start with
+- `cli/`: The `ddlint-cli` workspace package. It owns the `ddlint` binary,
+  application configuration, and the application's integration tests, and it
+  depends on the reusable `ddlint` library rather than the reverse.
+- `src/`: Reusable `ddlint` library implementation. Modules must start with
   module-level documentation comments.
 - `scripts/`: Runnable Python validation contracts, including the Clippy policy
   contract launched separately from Cargo's test process.
@@ -61,9 +70,18 @@ _Figure 1: Compact repository tree for contributor orientation._
 ## Source layout
 
 The `src/` tree is organized by domain responsibility rather than by generic
-layer names.
+layer names. The `cli/` package holds the application boundary described in
+[ADR-004](adr-004-ortho-config-cli-boundary.md); OrthoConfig and Clap stay
+confined to that package.
 
-- `src/main.rs`: Command-line entrypoint for the `ddlint` binary.
+- `cli/src/main.rs`: Command-line entrypoint for the `ddlint` binary.
+- `cli/src/lib.rs`: Application library surface exposing the configuration
+  spine to integration tests.
+- `cli/src/config/mod.rs`: Application configuration types, OrthoConfig
+  loading, source precedence, and domain validation.
+- `cli/tests/`: Application integration tests for configuration precedence,
+  discovery, inheritance, error paths, and the binary's observable behaviour.
+- `cli/tests/support/`: Shared fixtures for explicit configuration sources.
 - `src/lib.rs`: Library crate root and public module surface.
 - `src/language.rs`: Language-facing definitions shared across parser,
   semantic analysis, and linting.
@@ -97,10 +115,16 @@ survive beyond one implementation branch.
 
 ## Test layout
 
-Integration tests live under `tests/`, with feature-oriented files for parser,
-semantic, and linter behaviours. Shared fixtures and helper code belong under
-`tests/support/`, while command-line runner scenarios belong under
+Library integration tests live under `tests/`, with feature-oriented files for
+parser, semantic, and linter behaviours. Shared fixtures and helper code belong
+under `tests/support/`, while command-line runner scenarios belong under
 `tests/linter_runner/`.
+
+Application integration tests live under `cli/tests/`, one file per behaviour:
+configuration precedence (`config_layers.rs`), discovery and inheritance
+(`config_discovery.rs`), error paths (`config_errors.rs`), and the binary's
+observable placeholder behaviour (`placeholder_cli.rs`). Shared application
+fixtures belong under `cli/tests/support/`.
 
 Keep each Rust file within 400 lines. When an integration suite grows beyond
 that limit, use a module directory with `main.rs` as the Cargo test entrypoint

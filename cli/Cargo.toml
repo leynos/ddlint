@@ -1,0 +1,51 @@
+[package]
+name = "ddlint-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+publish = false
+
+[[bin]]
+name = "ddlint"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.41", features = ["derive"] }
+ddlint = { path = ".." }
+ortho_config = "0.10.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.17"
+
+[dev-dependencies]
+cap-std = "4.0.2"
+proptest = "1.6.0"
+rstest = "0.27"
+tempfile = "3.23.0"
+
+[lints.rust]
+missing_docs = "deny"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(clippy_policy_negative)'] }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+blanket_clippy_restriction_lints = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+string_slice = "deny"
+integer_division = "deny"
+integer_division_remainder_used = "deny"
+host_endian_bytes = "deny"
+little_endian_bytes = "deny"
+big_endian_bytes = "deny"
+or_fun_call = "deny"
+option_if_let_else = "deny"
+use_self = "deny"
+string_lit_as_bytes = "deny"
+float_arithmetic = "deny"

@@ -195,6 +195,38 @@ gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
 command implementations; this guide does not duplicate them.
 
+## CLI configuration boundary
+
+The planned CLI application package is `cli/` (`ddlint-cli`). Its
+application-owned `AppConfig` derives `OrthoConfig` and contains the
+`cmds.lint` configuration namespace. A separate Clap data transfer object (DTO)
+carries CLI-only and explicit command-line values. The application loads
+defaults, files, and environment through source-aware OrthoConfig entry points,
+then applies only explicit CLI values. The root `ddlint` library remains free
+of OrthoConfig and CLI dependencies, and does not print or terminate on
+configuration errors.
+
+The app package targets Rust 1.89 for OrthoConfig v0.10.0. Keep the Clap
+`--format` value optional with no parser default; the configuration model
+supplies `rich`, so a file or environment value is not masked. Tests use
+injected `_with_sources` loaders, `MapEnv`, and explicit file sources without
+mutating the process environment. Validate settings before passing domain
+values such as `ddlint::linter::RuleLevel` into library operations. Keep the
+placeholder binary's current output and exit status until the command-line
+roadmap items replace it.
+
+Environment values for `ignore_patterns` use a JSON string array because
+process environment variables carry scalar strings. The generated `config_path`
+selector is internal to the OrthoConfig merge and is excluded from user-facing
+configuration keys.
+
+The derive declares `explicit_mode = "required_exclusive"`. Without that key,
+OrthoConfig v0.10.0's legacy candidate walk treats `DDLINT_CONFIG_PATH` as an
+optional candidate and silently falls back to defaults when the named file is
+missing, contradicting the documented required-and-exclusive contract.
+Declaring the key switches discovery onto the selector policy while automatic
+discovery keeps the first-wins order.
+
 ## Parser test helpers
 
 A test asserts; a helper arranges. Arrangement can fail, so the arrangement
