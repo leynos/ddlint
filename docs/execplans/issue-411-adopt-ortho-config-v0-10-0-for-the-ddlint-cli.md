@@ -717,3 +717,41 @@ each gate started once:
 - `make markdownlint` — pass; 0 issues, and `make spelling` reports
   `current: typos.toml`, so the regenerated file matches this base.
 - `make nixie` — pass; every Mermaid diagram validated.
+
+### Pre-merge warning response (2026-10-31)
+
+CodeRabbit's pre-merge table for the reviewed head `01a8878` reported three
+warnings; the summary and inline discussions were already resolved, so these
+rows were the remaining undispositioned surface.
+
+- **Title check.** The title did not name roadmap item 5.1.5 even though the
+  change implements it. The pull request title now reads "Adopt ortho_config
+  v0.10.0 for the ddlint CLI (5.1.5) (#411)". This is a metadata-only edit and
+  creates no new commit.
+- **User-Facing Documentation.** `docs/users-guide.md` now states the accepted
+  formats (`rich`, `json`, `compact`), the default ignore patterns (`.git/`,
+  `build/`, `target/`), and the accepted rule severities (`allow`, `hint`,
+  `warn`, `error`, for `unused-relation` and `unused-variable`). It also
+  documents `extends`: relative parents resolve from the declaring file, parent
+  layers merge beneath the child, a `[cmds.lint.rules]` entry declared only by
+  the parent survives, and a child `ignore_patterns` array replaces the parent
+  array. A missing parent is an error naming both paths.
+- **Testing (Property / Proof).** `cli/tests/config_precedence_property.rs`
+  adds a `proptest` property with 64 generated cases. Each case assigns
+  arbitrary values to a file layer, an environment layer, and the explicit
+  command-line layer, then asserts that the highest present source wins for
+  every field, that absent layers fall through, and that lists replace rather
+  than merge. `proptest = "1.6.0"` joins the CLI's dev-dependencies.
+
+Gate results for the follow-up head on the pinned `nightly-2026-10-30`
+toolchain, run sequentially with each gate started once:
+
+- `make fmt` — rewrapped the new Markdown and left the Rust sources unchanged.
+- `make check-fmt` — pass; 68 Markdown files unchanged.
+- `make lint` — pass; interrogate, Clippy with all targets and features, the
+  Clippy-policy tests, Whitaker, and spelling are clean.
+- `make typecheck` — pass.
+- `make test` — pass; 43 suites, 1,308 tests, none failed or ignored. The new
+  property test is the additional suite.
+- `make markdownlint` — pass; 0 issues.
+- `make nixie` — pass; every Mermaid diagram validated.
