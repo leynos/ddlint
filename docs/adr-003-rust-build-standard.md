@@ -8,7 +8,7 @@ while coverage and release builds stay off the fast flags.
 
 ## Date
 
-2026-10-08.
+2026-10-31.
 
 ## Context and problem statement
 

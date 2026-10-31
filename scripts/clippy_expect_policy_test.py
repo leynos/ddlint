@@ -89,7 +89,7 @@ def test_clippy_expect_boundary(mode: str, tmp_path: Path) -> None:
         "clippy", "--locked", "--test", "clippy_expect_policy",
         "--message-format=json", "--", "-D", "warnings",
     ]
-    if mode == "helpers_accepted":
+    if mode in {"helpers_accepted", "permission_removed"}:
         args.extend(["--cfg", "clippy_policy_negative"])
     cargo = local[os.environ["CLIPPY_POLICY_CARGO"]]
     with local.cwd(ROOT), local.env(CLIPPY_CONF_DIR=str(tmp_path)):
@@ -98,7 +98,12 @@ def test_clippy_expect_boundary(mode: str, tmp_path: Path) -> None:
     assert not unexpected, (unexpected, errors)
     expected = set()
     if mode == "permission_removed":
-        expected = _expect_lines("the test input is a valid byte", "the case supplies a valid byte")
+        expected = _expect_lines(
+            "the test input is a valid byte",
+            "the case supplies a valid byte",
+            "negative ordinary helper specimen",
+            "negative fixture specimen",
+        )
     # A formatter can split the method chain before the reason string. Match
     # the primary source span to that exact marker rather than its first line.
     matched = [{line for line in expected if start <= line <= end} for start, end in locations]
