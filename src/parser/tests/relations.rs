@@ -47,35 +47,56 @@ fn element_type(ty: &str) -> RelationBody {
     RelationBody::ElementType(ty.into())
 }
 
+/// Expected outputs used only by the basic relation declaration table.
+struct ExpectedRelation<'a> {
+    /// Relation identifier returned by the AST wrapper.
+    name: &'a str,
+    /// Whether the declaration has the input role.
+    is_input: bool,
+    /// Whether the declaration has the output role.
+    is_output: bool,
+    /// Field names and types in declaration order.
+    columns: Vec<(&'a str, &'a str)>,
+    /// Primary-key field names, absent when no primary key is declared.
+    primary_key: Option<Vec<&'a str>>,
+}
+
 #[rstest]
-#[case::input(input_relation_pk(), true, false, "User", vec![("user_id", "u32"), ("username", "string")], Some(vec!["user_id"]))]
-#[case::output(output_relation_no_pk(), false, true, "Alert", vec![("message", "string"), ("timestamp", "u64")], None)]
-#[case::internal(
-    internal_relation_no_pk(),
-    false,
-    false,
-    "UserSession",
-    vec![("user_id", "u32"), ("session_id", "string"), ("start_time", "u64")],
-    None,
-)]
-fn parses_relations(
-    #[case] src: &str,
-    #[case] is_input: bool,
-    #[case] is_output: bool,
-    #[case] name: &str,
-    #[case] columns: Vec<(&str, &str)>,
-    #[case] primary_key: Option<Vec<&str>>,
-) {
+#[case::input(input_relation_pk(), ExpectedRelation {
+    name: "User",
+    is_input: true,
+    is_output: false,
+    columns: vec![("user_id", "u32"), ("username", "string")],
+    primary_key: Some(vec!["user_id"]),
+})]
+#[case::output(output_relation_no_pk(), ExpectedRelation {
+    name: "Alert",
+    is_input: false,
+    is_output: true,
+    columns: vec![("message", "string"), ("timestamp", "u64")],
+    primary_key: None,
+})]
+#[case::internal(internal_relation_no_pk(), ExpectedRelation {
+    name: "UserSession",
+    is_input: false,
+    is_output: false,
+    columns: vec![("user_id", "u32"), ("session_id", "string"), ("start_time", "u64")],
+    primary_key: None,
+})]
+fn parses_relations(#[case] src: &str, #[case] expected: ExpectedRelation<'_>) {
     let rel = parse_relation(src).expect("expected a single relation");
-    assert_eq!(rel.is_input(), is_input);
-    assert_eq!(rel.is_output(), is_output);
-    assert_eq!(rel.name().as_deref(), Some(name));
-    let cols: Vec<(String, String)> = columns
+    assert_eq!(rel.is_input(), expected.is_input);
+    assert_eq!(rel.is_output(), expected.is_output);
+    assert_eq!(rel.name().as_deref(), Some(expected.name));
+    let cols: Vec<(String, String)> = expected
+        .columns
         .into_iter()
         .map(|(n, t)| (n.into(), t.into()))
         .collect();
     assert_eq!(rel.columns(), Ok(cols));
-    let pk: Option<Vec<String>> = primary_key.map(|v| v.into_iter().map(String::from).collect());
+    let pk: Option<Vec<String>> = expected
+        .primary_key
+        .map(|v| v.into_iter().map(String::from).collect());
     assert_eq!(rel.primary_key(), Ok(pk));
 }
 
@@ -124,169 +145,188 @@ fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &st
     assert!(parsed.root().relations().is_empty());
 }
 
+/// Expected input and relation metadata for one matrix case.
+struct RelationFormCase {
+    /// Source text parsed by the matrix test.
+    src: &'static str,
+    /// Parsed role expected from the source.
+    role: RelationRole,
+    /// Whether the source includes a role keyword.
+    role_keyword_present: bool,
+    /// Parsed relation kind expected from the source.
+    kind: RelationKind,
+    /// Whether the source includes a kind keyword.
+    kind_keyword_present: bool,
+    /// Whether the source uses the relation reference marker.
+    is_ref: bool,
+    /// Parsed relation body expected from the source.
+    body: RelationBody,
+}
+
 #[rstest]
-#[case::bare_record(
-    "R()",
-    RelationRole::Internal,
-    false,
-    RelationKind::Relation,
-    false,
-    false,
-    fields(&[])
-)]
-#[case::bare_bracket(
-    "R[u32]",
-    RelationRole::Internal,
-    false,
-    RelationKind::Relation,
-    false,
-    false,
-    element_type("u32")
-)]
-#[case::input_record_pk(
-    "input R(id: u32) primary key (id)",
-    RelationRole::Input,
-    true,
-    RelationKind::Relation,
-    false,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::output_record(
-    "output R(id: u32)",
-    RelationRole::Output,
-    true,
-    RelationKind::Relation,
-    false,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::input_kind_record_pk(
-    "input relation R(id: u32) primary key (id)",
-    RelationRole::Input,
-    true,
-    RelationKind::Relation,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::output_kind_record(
-    "output relation R(id: u32)",
-    RelationRole::Output,
-    true,
-    RelationKind::Relation,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::kind_bracket(
-    "relation R[u32]",
-    RelationRole::Internal,
-    false,
-    RelationKind::Relation,
-    true,
-    false,
-    element_type("u32")
-)]
-#[case::input_stream_record(
-    "input stream R(id: u32)",
-    RelationRole::Input,
-    true,
-    RelationKind::Stream,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::output_stream_bracket(
-    "output stream R[u32]",
-    RelationRole::Output,
-    true,
-    RelationKind::Stream,
-    true,
-    false,
-    element_type("u32")
-)]
-#[case::bare_stream_record(
-    "stream R(id: u32)",
-    RelationRole::Internal,
-    false,
-    RelationKind::Stream,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::input_multiset_record_pk(
-    "input multiset R(id: u32) primary key (id)",
-    RelationRole::Input,
-    true,
-    RelationKind::Multiset,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::bare_multiset_record(
-    "multiset R(id: u32)",
-    RelationRole::Internal,
-    false,
-    RelationKind::Multiset,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-#[case::output_multiset_bracket(
-    "output multiset R[u32]",
-    RelationRole::Output,
-    true,
-    RelationKind::Multiset,
-    true,
-    false,
-    element_type("u32")
-)]
-#[case::input_ref_record(
-    "input & R(id: u32)",
-    RelationRole::Input,
-    true,
-    RelationKind::Relation,
-    false,
-    true,
-    fields(&[("id", "u32")])
-)]
-#[case::bare_ref_record(
-    "& R(id: u32)",
-    RelationRole::Internal,
-    false,
-    RelationKind::Relation,
-    false,
-    true,
-    fields(&[("id", "u32")])
-)]
-#[case::output_relation_ref_bracket(
-    "output relation & R[u32]",
-    RelationRole::Output,
-    true,
-    RelationKind::Relation,
-    true,
-    true,
-    element_type("u32")
-)]
-#[case::commented_preamble(
-    "input /* role */\nstream /* kind */\nR(id: u32)",
-    RelationRole::Input,
-    true,
-    RelationKind::Stream,
-    true,
-    false,
-    fields(&[("id", "u32")])
-)]
-fn parses_relation_form_matrix(
-    #[case] src: &str,
-    #[case] role: RelationRole,
-    #[case] role_keyword_present: bool,
-    #[case] kind: RelationKind,
-    #[case] kind_keyword_present: bool,
-    #[case] is_ref: bool,
-    #[case] body: RelationBody,
-) {
+#[case::bare_record(RelationFormCase {
+    src: "R()",
+    role: RelationRole::Internal,
+    role_keyword_present: false,
+    kind: RelationKind::Relation,
+    kind_keyword_present: false,
+    is_ref: false,
+    body: fields(&[]),
+})]
+#[case::bare_bracket(RelationFormCase {
+    src: "R[u32]",
+    role: RelationRole::Internal,
+    role_keyword_present: false,
+    kind: RelationKind::Relation,
+    kind_keyword_present: false,
+    is_ref: false,
+    body: element_type("u32"),
+})]
+#[case::input_record_pk(RelationFormCase {
+    src: "input R(id: u32) primary key (id)",
+    role: RelationRole::Input,
+    role_keyword_present: true,
+    kind: RelationKind::Relation,
+    kind_keyword_present: false,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::output_record(RelationFormCase {
+    src: "output R(id: u32)",
+    role: RelationRole::Output,
+    role_keyword_present: true,
+    kind: RelationKind::Relation,
+    kind_keyword_present: false,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::input_kind_record_pk(RelationFormCase {
+    src: "input relation R(id: u32) primary key (id)",
+    role: RelationRole::Input,
+    role_keyword_present: true,
+    kind: RelationKind::Relation,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::output_kind_record(RelationFormCase {
+    src: "output relation R(id: u32)",
+    role: RelationRole::Output,
+    role_keyword_present: true,
+    kind: RelationKind::Relation,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::kind_bracket(RelationFormCase {
+    src: "relation R[u32]",
+    role: RelationRole::Internal,
+    role_keyword_present: false,
+    kind: RelationKind::Relation,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: element_type("u32"),
+})]
+#[case::input_stream_record(RelationFormCase {
+    src: "input stream R(id: u32)",
+    role: RelationRole::Input,
+    role_keyword_present: true,
+    kind: RelationKind::Stream,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::output_stream_bracket(RelationFormCase {
+    src: "output stream R[u32]",
+    role: RelationRole::Output,
+    role_keyword_present: true,
+    kind: RelationKind::Stream,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: element_type("u32"),
+})]
+#[case::bare_stream_record(RelationFormCase {
+    src: "stream R(id: u32)",
+    role: RelationRole::Internal,
+    role_keyword_present: false,
+    kind: RelationKind::Stream,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::input_multiset_record_pk(RelationFormCase {
+    src: "input multiset R(id: u32) primary key (id)",
+    role: RelationRole::Input,
+    role_keyword_present: true,
+    kind: RelationKind::Multiset,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::bare_multiset_record(RelationFormCase {
+    src: "multiset R(id: u32)",
+    role: RelationRole::Internal,
+    role_keyword_present: false,
+    kind: RelationKind::Multiset,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::output_multiset_bracket(RelationFormCase {
+    src: "output multiset R[u32]",
+    role: RelationRole::Output,
+    role_keyword_present: true,
+    kind: RelationKind::Multiset,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: element_type("u32"),
+})]
+#[case::input_ref_record(RelationFormCase {
+    src: "input & R(id: u32)",
+    role: RelationRole::Input,
+    role_keyword_present: true,
+    kind: RelationKind::Relation,
+    kind_keyword_present: false,
+    is_ref: true,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::bare_ref_record(RelationFormCase {
+    src: "& R(id: u32)",
+    role: RelationRole::Internal,
+    role_keyword_present: false,
+    kind: RelationKind::Relation,
+    kind_keyword_present: false,
+    is_ref: true,
+    body: fields(&[("id", "u32")]),
+})]
+#[case::output_relation_ref_bracket(RelationFormCase {
+    src: "output relation & R[u32]",
+    role: RelationRole::Output,
+    role_keyword_present: true,
+    kind: RelationKind::Relation,
+    kind_keyword_present: true,
+    is_ref: true,
+    body: element_type("u32"),
+})]
+#[case::commented_preamble(RelationFormCase {
+    src: "input /* role */\nstream /* kind */\nR(id: u32)",
+    role: RelationRole::Input,
+    role_keyword_present: true,
+    kind: RelationKind::Stream,
+    kind_keyword_present: true,
+    is_ref: false,
+    body: fields(&[("id", "u32")]),
+})]
+fn parses_relation_form_matrix(#[case] case: RelationFormCase) {
+    let RelationFormCase {
+        src,
+        role,
+        role_keyword_present,
+        kind,
+        kind_keyword_present,
+        is_ref,
+        body,
+    } = case;
     let parsed = crate::parse(src);
     assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().relations().len(), 1, "source: {src}");
