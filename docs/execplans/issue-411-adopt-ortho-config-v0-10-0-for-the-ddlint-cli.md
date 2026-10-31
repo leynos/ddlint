@@ -665,7 +665,8 @@ Repository layout: `docs/repository-layout.md` documents the `cli/` package,
 `cli/src/main.rs`, `cli/src/config/`, and `cli/tests/`, and no longer assigns
 the binary to the removed `src/main.rs`.
 
-Gate results for the current working tree, run sequentially, each started once:
+Gate results for the pre-rebase head `01a8878`, run sequentially, each started
+once:
 
 - `make check-fmt` — pass; `cargo fmt --check` clean and mdtablefix left all 68
   Markdown files unchanged.
@@ -688,3 +689,31 @@ dictionary now ignores multi-line `tokio` attribute arguments, which subsumes
 the single bare key-assignment exemption it carried before. The refresh is
 generated output unrelated to this change, so it is committed as its own commit
 to keep the configuration diff readable.
+
+### Rebase onto `origin/main` (2026-10-31, toolchain bump)
+
+Hosted CI on `01a8878` failed `make lint`. Its `build-test` job builds the pull
+request merged into the current `main`, and `main` had advanced past this
+branch's base `4a6c908`: #419 pins `nightly-2026-10-30`, which carries Clippy's
+`assert_is_empty`, while the branch still pinned `nightly-2025-09-16`. Two
+PR-added assertions checked emptiness with `assert!`, so the hosted lint
+rejected them even though the older local toolchain accepted them.
+
+Replacement: both assertions now use `assert!` with a failure message that
+prints the offending value. That keeps the diagnostics and satisfies the lint
+without an `allow`.
+
+The branch was then rebased onto `origin/main` at `bfde6ed` (27 commits, no
+conflicts), which brings the CI toolchain and the #419/#420 dev-build changes.
+The rerun of `cargo clippy --all-targets --all-features -- -D warnings` on the
+rebased tree passed. The gate results above describe the pre-rebase head and
+are superseded by this rerun on `nightly-2026-10-30`, run sequentially with
+each gate started once:
+
+- `make check-fmt` — pass; 68 Markdown files unchanged.
+- `make lint` — pass in 33m31s.
+- `make typecheck` — pass in 5m58s.
+- `make test` — pass; 42 suites, 1,307 tests, none failed or ignored.
+- `make markdownlint` — pass; 0 issues, and `make spelling` reports
+  `current: typos.toml`, so the regenerated file matches this base.
+- `make nixie` — pass; every Mermaid diagram validated.
