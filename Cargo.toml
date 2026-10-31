@@ -2,6 +2,9 @@
 name = "ddlint"
 version = "0.1.0"
 edition = "2024"
+description = "Differential Datalog linter"
+license = "ISC"
+repository = "https://github.com/leynos/ddlint"
 
 [dependencies]
 rowan = { version = "0.17", default-features = false }
@@ -29,6 +32,8 @@ insta = "1.47.2"
 ddlint = { path = ".", features = ["test-support"] }
 proptest = "1.6.0"
 trybuild = "1.0.114"
+cap-std = { version = "3.4.6", features = ["fs_utf8"] }
+camino = "1.2.6"
 
 [dev-dependencies.metrics-util]
 version = "0.20.4"

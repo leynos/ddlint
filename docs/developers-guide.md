@@ -420,41 +420,86 @@ silently resolved.
 
 ## The build standard
 
-Development, test, lint, and typecheck builds use the parallel `rustc` frontend
+The local tool-provisioning checks belong in
+`tests/build_standard_support/provisioning.rs` and are called only by
+`tests/build_standard_contract.rs`. That Rust test helper uses fallible,
+capability-rooted `cap_std::fs_utf8::Dir` staging for fake executables and an
+offline archive, so tests can observe installer ordering without network access
+or installation. It uses `camino` at process boundaries and adds no production
+API or dependency. Preflight, pinned-data and lint assertions live in
+`provisioning.rs`; the four installer assertions and their trace-position
+helper live in its private `provisioning_installation_tests.rs` child module.
+The shared `provisioning_fixtures.rs` module is private to these build-contract
+tests, not a reusable filesystem abstraction. The Python workflow consumer
+contract belongs in `tests/workflow_contracts/build_provisioning.py`; its only
+caller is `build_provisioning_test.py`. That private helper follows Rust suite
+references through evaluated root-Make metadata and local workflow calls, then
+checks provisioning at those consumer edges. It accepts simple root `make` goal
+lists and finite single-axis runner matrices; Make options, variable overrides,
+multiple matrix axes and matrix `include`/`exclude` fail closed. It reuses the
+pinned public `cv005_contracts.loading` reader and leaves canonical workflow,
+secret, and coverage-publisher policy with the existing CV-005 package. It is
+not a general workflow or Make parser. Existing mutation and coverage helpers
+are policy-specific; this is the sole local suite-consumer reachability helper.
+
+Run `make` or `make build` for a debug build and `make release` for a release
+build. These are phony entrypoints: each request invokes Cargo, which decides
+whether compilation is needed. A direct `cargo build` also uses the repository
+configuration, but it bypasses Make's prerequisite checks.
+
+Development, test, lint and typecheck builds use the parallel `rustc` frontend
 (`-Zthreads=8`) and, on Linux, the `mold` linker (`-Clink-arg=-fuse-ld=mold`).
-These are defaults in `.cargo/config.toml`, which Cargo discovers on its own,
-so a bare `cargo build` gets them. `mold` ships for Linux only, so the linker
-flag lives in a Linux-only table and macOS and Windows keep their platform
-linker. Cargo selects one `rustflags` source rather than merging them, so every
-source repeats the same flags apart from the linker.
+Cargo discovers these defaults in `.cargo/config.toml`. Cargo selects one
+`rustflags` source rather than merging them, and an assigned `RUSTFLAGS`
+replaces every configuration source. Make's development recipes compose those
+defaults after inherited `RUSTFLAGS`, including values exported by CI's
+`setup-rust` action. Caller-supplied flags remain the caller's responsibility.
+Coverage and release builds assign flags explicitly and do not add the
+development defaults. A direct `cargo build --release` uses the configuration
+unless `RUSTFLAGS` is assigned.
 
-An assigned `RUSTFLAGS` replaces the configuration's flags, so the Makefile
-recipes that set it compose the standard's flags onto any inherited value (CI's
-`setup-rust` exports one). Two builds are deliberately excluded: coverage
-assigns `RUSTFLAGS` without the fast flags, because a measurement should not
-depend on them, and the release recipe and workflow keep the platform linker,
-because they assign `RUSTFLAGS` (even an empty value displaces the
-configuration). Cargo has no per-profile `rustflags`, so a direct
-`cargo build --release` takes the configuration's flags unless `RUSTFLAGS` is
-assigned too.
+The `build`, `test`, `typecheck` and `test-clippy-policy` targets verify the
+selected Rust toolchain before invoking Cargo and, on Linux, check that `mold`
+has the pinned version. `lint` runs `interrogate` first, then checks the build
+tools before Clippy. `check-fmt` does not require linker preflight.
+`make check-build-tools` runs the tool check directly.
+`make install-build-tools` installs the selected pinned nightly if it is
+missing and ensures `rustfmt`, `clippy` and `rust-analyzer` are installed. It
+also prepares the supported linker. The installer downloads the trusted `mold`
+2.41.0 binary release for Linux x86-64 and 64-bit ARM, then checks its pinned
+digest before extraction. It installs the binary under
+`$HOME/.local/share/ddlint/build-tools/mold-2.41.0` and places its `bin`
+directory ahead of `PATH`. An already available `mold` is reused when it
+reports the pinned version. The installer does not build `mold` from source.
+Unsupported Linux architectures receive an actionable error. On macOS and
+Windows, the linker check leaves the platform linker in use. The CI workflows
+already provision the same `mold` version before their suites.
 
-On Linux, install `mold` before building: the configuration names it, so a
-build without it fails at link time. CI installs it through `setup-rust`'s
-`install-mold` input. `tests/build_standard_contract.rs` holds the standard. It
-reads the configuration sources, the commands `make -n` prints for each
-development target on a Linux host and a macOS host (each keeping the caller's
-own `RUSTFLAGS`) and for each coverage and release target on a Linux host, and
-the `setup-rust` steps of the CI workflows (each must pass `install-mold`), so
-a flag lost through a recipe or workflow edit fails there. The decision is
-recorded in [ADR 003](adr-003-rust-build-standard.md).
+`make check` runs `check-fmt`, `typecheck`, `lint` and `test` in order. The
+lint target runs `interrogate` before checking build tools, then runs Clippy,
+the Clippy policy contract, Whitaker and spelling in order. CI also runs the
+full `make test` suite separately from coverage generation, which retains its
+measurement-specific feature selection and flag assignment.
 
-### Cranelift
+The Rust build contract in `tests/build_standard_contract.rs` checks target
+routing, preflight ordering and installation behaviour. The workflow consumer
+contract in `tests/workflow_contracts/build_provisioning_test.py` verifies that
+CI suites are reached only after their required provisioning step. The
+development build flags and their rationale are recorded in
+[ADR 003](adr-003-rust-build-standard.md).
 
-Exception: Cranelift is not the development-profile backend. The repository pins
-`nightly-2025-09-16`, but the release workflow
-(`cross +stable build --release`) builds on a stable toolchain against
-`.cargo/config.toml`, and stable Cargo refuses a
-`[profile.dev] codegen-backend` key ("config profile `dev` is not valid"), so
-selecting the backend would break that build (recorded 2026-09-29). That build
-assigns `RUSTFLAGS`, so the nightly-only `-Zthreads` flag never reaches it.
-Revisit if that build moves to the pinned nightly.
+### Code-generation backend evidence
+
+The repository retains LLVM and its `nightly-2025-09-16` toolchain pin while
+the backend and toolchain-date decision remains pending. The earlier
+`[profile.dev] codegen-backend` observation explains a Cargo configuration
+constraint, but it does not by itself establish the backend's panic behaviour.
+
+In a bounded Linux x86-64 GNU scratch comparison using the pinned nightly,
+Cranelift passed the unwind `should_panic` case, failed the `catch_unwind`
+case, and aborted on the spawned-thread panic case. The matched LLVM run passed
+all three while retaining the development thread and linker flags. These
+results cover neither the full repository nor instrumented coverage or other
+hosts. They do not establish a Cranelift exception or an approved
+toolchain-date change; those decisions remain open pending broader
+qualification.
