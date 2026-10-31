@@ -86,7 +86,10 @@ fn rejected_syntax_preserves_later_declarations(#[case] scenario: ReservedTokenS
     let rejected = scenario.source.as_ref();
     let source = format!("{rejected}\ntype Later = u32;\ninput relation Kept(value: u32);\n");
     let parsed = parse_err(source);
-    assert!(!reserved_token_spans(parsed.errors(), scenario.expected).is_empty());
+    assert_ne!(
+        reserved_token_spans(parsed.errors(), scenario.expected).len(),
+        0
+    );
     assert!(
         parsed
             .root()

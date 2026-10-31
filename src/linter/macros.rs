@@ -260,7 +260,7 @@ mod tests {
     fn macro_rule_fixture() -> MacroRuleFixture {
         let source = "input relation R(x: u32);";
         let parsed = parse(source);
-        assert!(parsed.errors().is_empty());
+        assert_eq!(parsed.errors().len(), 0);
         let ctx = RuleCtx::from_parsed(source, &parsed, RuleConfig::new());
 
         MacroRuleFixture {
@@ -317,7 +317,7 @@ mod tests {
             node_hits.first().map(LintDiagnostic::rule_name),
             Some("documented-rule")
         );
-        assert!(!token_hits.is_empty());
+        assert_ne!(token_hits.len(), 0);
         assert!(
             token_hits
                 .iter()
@@ -329,7 +329,7 @@ mod tests {
     fn omitted_handlers_remain_no_op(macro_rule_fixture: MacroRuleFixture) {
         assert_eq!(macro_rule_fixture.source, "input relation R(x: u32);");
         let diagnostics = run_rule_over_cst(&macro_rule_fixture, &NoOpRule);
-        assert!(diagnostics.is_empty());
+        assert_eq!(diagnostics.len(), 0);
     }
 
     #[test]

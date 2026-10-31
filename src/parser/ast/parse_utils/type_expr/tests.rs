@@ -107,7 +107,7 @@ fn stray_closing_paren_terminates_without_error() {
     }
     let (ty, errors) = parse_type_expr(&mut iter);
     assert_eq!(ty, "u32");
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(
         iter.peek().map(SyntaxElement::kind),
         Some(SyntaxKind::T_RPAREN)

@@ -68,7 +68,7 @@ ddlint::declare_lint! {
 
 fn sequential_dispatch(source: &str, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
     let parsed = parse(source);
-    assert!(parsed.errors().is_empty());
+    assert_eq!(parsed.errors(), []);
     let ctx = RuleCtx::from_parsed(source, &parsed, RuleConfig::new());
     let mut diagnostics = Vec::new();
 
@@ -105,12 +105,12 @@ fn run_single_rule_expecting_name(source: &str, rule: Box<dyn CstRule>, expected
     store.register(rule);
 
     let parsed = parse(source);
-    assert!(parsed.errors().is_empty());
+    assert_eq!(parsed.errors(), []);
 
     let runner = Runner::new(&store, source, &parsed, RuleConfig::new());
     let diagnostics = runner.run();
 
-    assert!(!diagnostics.is_empty());
+    assert_ne!(diagnostics, [] as [ddlint::linter::LintDiagnostic; 0]);
     assert!(diagnostics.iter().all(|d| d.rule_name() == expected_name));
 }
 
@@ -130,7 +130,7 @@ fn macro_generated_rule_matches_sequential_dispatch(source: &str) {
     store.register(Box::new(MacroDualRule));
 
     let parsed = parse(source);
-    assert!(parsed.errors().is_empty());
+    assert_eq!(parsed.errors(), []);
 
     let expected = sequential_dispatch(source, &MacroDualRule);
     let runner = Runner::new(&store, source, &parsed, RuleConfig::new());
@@ -142,7 +142,7 @@ fn macro_generated_rule_matches_sequential_dispatch(source: &str) {
 #[rstest]
 fn macro_generated_runner_output_is_deterministic(source: &str) {
     let parsed = parse(source);
-    assert!(parsed.errors().is_empty());
+    assert_eq!(parsed.errors(), []);
 
     let mut store = CstRuleStore::new();
     store.register(Box::new(MacroDualRule));

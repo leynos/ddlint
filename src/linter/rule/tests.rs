@@ -165,7 +165,7 @@ fn rule_ctx_exposes_source_text_and_ast_roots(rule_ctx_fixture: RuleCtxFixture) 
         panic!("program scope id should resolve");
     };
     assert_eq!(program_scope_ref.kind(), ScopeKind::Program);
-    assert!(!semantic_model.symbols().is_empty());
+    assert_ne!(semantic_model.symbols().len(), 0);
 }
 
 #[rstest]

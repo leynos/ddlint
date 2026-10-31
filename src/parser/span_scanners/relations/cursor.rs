@@ -187,10 +187,10 @@ pub(super) fn adjust_stack(kind: SyntaxKind, stack: &mut Vec<SyntaxKind>) {
         SyntaxKind::T_LPAREN => stack.push(SyntaxKind::T_RPAREN),
         SyntaxKind::T_LBRACKET => stack.push(SyntaxKind::T_RBRACKET),
         SyntaxKind::T_LBRACE => stack.push(SyntaxKind::T_RBRACE),
-        SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET | SyntaxKind::T_RBRACE => {
-            if stack.last().copied() == Some(kind) {
-                stack.pop();
-            }
+        SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET | SyntaxKind::T_RBRACE
+            if stack.last().copied() == Some(kind) =>
+        {
+            stack.pop();
         }
         _ => {}
     }

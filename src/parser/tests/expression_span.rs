@@ -42,7 +42,7 @@ fn fact_rules_have_no_body_spans() {
     let src = "SystemAlert(\"ok\").";
     let tokens = tokenize(src);
     let spans = rule_body_literal_spans(&tokens, 0, src.len());
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
 }
 
 /// Tests that `T_IMPLIES` and `T_DOT` inside nested delimiters are not treated as

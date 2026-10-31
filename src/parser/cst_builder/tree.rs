@@ -188,7 +188,7 @@ mod tests {
             src,
             &crate::parser::observability::NoopParseObserver,
         );
-        assert!(errors.is_empty());
+        assert_eq!(errors.len(), 0);
         let green = build_green_tree(&tokens, src, &spans);
         let root = crate::parser::ast::Root::from_green(green);
         assert_eq!(root.text(), src);
@@ -257,7 +257,7 @@ mod tests {
             src,
             &crate::parser::observability::NoopParseObserver,
         );
-        assert!(errors.is_empty());
+        assert_eq!(errors.len(), 0);
         let green = build_green_tree(&tokens, src, &spans);
         let root = Root::from_green(green);
         let syntax = root.syntax();

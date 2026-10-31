@@ -301,7 +301,7 @@ mod tests {
         };
         assert_eq!(assignment.pattern.to_source(), "var item");
         assert_eq!(assignment.value.to_sexpr(), "(call FlatMap items)");
-        assert!(errors.is_empty());
+        assert_eq!(errors.len(), 0);
     }
 
     #[test]
