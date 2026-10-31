@@ -25,6 +25,7 @@ the project.
 │   └── test_util/
 └── tests/
     ├── linter_runner/
+    ├── rule_behaviour/
     └── support/
 ```
 
@@ -77,6 +78,14 @@ layer names.
 - `src/test_util/`: Shared test utilities that are part of the crate source
   tree.
 
+Modules with child files use a directory entrypoint named `mod.rs`, keeping
+module implementations beside their children without changing Rust module paths.
+
+Relation primary-key suffix parsing and recovery live in the private
+`src/parser/span_scanners/relations/suffix.rs` child module. Its two parent
+entrypoints reuse the existing cursor helpers; the module belongs only to the
+relation scanner and adds no public API.
+
 ## Documentation layout
 
 The `docs/` directory is the source of truth for project context that should
@@ -100,7 +109,9 @@ survive beyond one implementation branch.
 Integration tests live under `tests/`, with feature-oriented files for parser,
 semantic, and linter behaviours. Shared fixtures and helper code belong under
 `tests/support/`, while command-line runner scenarios belong under
-`tests/linter_runner/`.
+`tests/linter_runner/`. Rule-body cases belong under `tests/rule_behaviour/`,
+whose `main.rs` is the single integration entrypoint; its child files split
+for-loop and delimiter cases without adding test crates.
 
 Keep each Rust file within 400 lines. When an integration suite grows beyond
 that limit, use a module directory with `main.rs` as the Cargo test entrypoint

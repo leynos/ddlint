@@ -20,9 +20,9 @@ parsing pipeline.
 - Handles assignment parsing, aggregation detection, and `for`-loop lowering
   within the rule-body helper path.
 - Keeps rule-body classification separate from the public `Rule` wrapper so
-  `rule.rs` stays focused on the surface API.
+  `rule/mod.rs` stays focused on the surface API.
 
-### `src/parser/ast/relation.rs`
+### `src/parser/ast/relation/mod.rs`
 
 - Owns the typed relation declaration surface for role, kind, ref marker, and
   body form.
@@ -45,7 +45,7 @@ parsing pipeline.
   until roadmap follow-up `2.6.6.1` introduces typed access. `Parsed::errors()`
   remains the parser-level diagnostic channel.
 
-### `src/parser/span_scanners/relations.rs`
+### `src/parser/span_scanners/relations/mod.rs`
 
 - Owns top-level relation-candidate discovery, declaration orchestration,
   record and bracket body parsing, primary-key validation,
@@ -53,8 +53,8 @@ parsing pipeline.
 - Applies delimiter-depth-aware line-start filtering so only genuine top-level
   declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
 - Produces relation declaration spans for CST construction;
-  `src/parser/ast/relation.rs` then exposes the typed AST accessors over the
-  resulting nodes.
+  `src/parser/ast/relation/mod.rs` then exposes the typed AST accessors over
+  the resulting nodes.
 
 ### `src/parser/span_scanners/relations/cursor.rs`
 
@@ -194,6 +194,19 @@ gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
 command implementations; this guide does not duplicate them.
+
+## Module layout
+
+A module with child files uses a directory entrypoint, such as
+`src/parser/ast/rule/mod.rs`. Explicit test paths are relative to that
+entrypoint, so a move must preserve the file each path selects.
+
+Rule-body behavioural tests use `tests/rule_behaviour/main.rs`, with private
+for-loop and delimiter case modules in the same directory. These modules belong
+only to that integration target; the four existing assertion and parsing
+helpers remain at its root. The extracted tests retain their leaf names and
+bodies, while their harness names gain the child module prefix. Cargo discovers
+no additional integration targets from these child files.
 
 ## Parser test helpers
 
