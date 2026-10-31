@@ -83,7 +83,14 @@ pub enum ConfigError {
         project_file_name = "ddlint.toml",
         config_cli_long = "config",
         config_cli_short = 'c',
-        config_cli_visible = true
+        config_cli_visible = true,
+        // The legacy discovery walk treats an environment-selected path as
+        // just another optional candidate, so a missing `DDLINT_CONFIG_PATH`
+        // value silently falls back to defaults. Declaring the explicit mode
+        // opts into the selector policy instead, which keeps the documented
+        // contract: a selected file is exclusive and required, while
+        // automatic discovery stays first-wins.
+        explicit_mode = "required_exclusive"
     )
 )]
 struct AppConfig {

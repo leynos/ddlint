@@ -940,6 +940,12 @@ current project. Discovery does not walk parent directories. An absent
 automatically discovered file is optional and leaves defaults in place. A
 selected path is exclusive and required, so a missing or unreadable explicit
 file is an actionable configuration error rather than a fallback to defaults.
+The application therefore declares OrthoConfig's
+`explicit_mode = "required_exclusive"` discovery policy: the legacy candidate
+walk would treat an environment-selected path as just another optional
+candidate, while the policy path applies the same required-and-exclusive rule to
+`DDLINT_CONFIG_PATH` that the command-line selector already has. Automatic
+discovery keeps the first-wins mode under either path.
 
 Unknown configuration fields are rejected, except for the internal
 `config_path` key emitted by OrthoConfig's generated configuration selector.

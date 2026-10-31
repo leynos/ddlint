@@ -633,3 +633,58 @@ workflow-contract tests and coverage, but did not invoke the `make test` or
 result visible; the hosted result does not replace those observations. The
 CodeRabbit review remains deferred until the deterministic gate gaps are
 resolved.
+
+### Review response (2026-10-31)
+
+Review feedback on the rebased head identified four gaps: missing file-only
+precedence witnesses, no tests for the documented discovery and inheritance
+contract, validation claims reconciled against a coverage command rather than
+`make test`, and a stale repository-layout reference.
+
+Precedence: `file_only_values_override_defaults` supplies an explicit TOML
+file, an empty `MapEnv`, and no CLI overrides. It asserts that
+`format = "json"` replaces the default `rich` and that a non-default
+`ignore_patterns` list replaces the default list.
+
+Discovery and inheritance: the new `cli/tests/config_discovery.rs` covers the
+environment selector, a missing environment-selected file, command-line
+selection above the environment, project-directory discovery in an isolated
+child process, environment selection suppressing project discovery, and relative
+`extends` inheritance with child-over-parent values.
+
+The missing-file test exposed a behavioural gap rather than a missing test.
+OrthoConfig v0.10.0's legacy candidate walk treats an environment-selected path
+as one more optional candidate, so a missing `DDLINT_CONFIG_PATH` value fell
+back to defaults. That contradicts ADR-004 and the users' guide, which promise
+a selected path is exclusive and required. `AppConfig` now declares
+`explicit_mode = "required_exclusive"`, opting into OrthoConfig's selector
+policy; automatic discovery keeps first-wins. The ADR, design §4.2, and the
+derive comment now record the choice.
+
+Repository layout: `docs/repository-layout.md` documents the `cli/` package,
+`cli/src/main.rs`, `cli/src/config/`, and `cli/tests/`, and no longer assigns
+the binary to the removed `src/main.rs`.
+
+Gate results for the current working tree, run sequentially, each started once:
+
+- `make check-fmt` — pass; `cargo fmt --check` clean and mdtablefix left all 68
+  Markdown files unchanged.
+- `make lint` — pass in 45m17s; interrogate, Clippy with all targets and
+  features, the Clippy-policy tests (3 passed), Whitaker, and the spelling gate
+  are clean.
+- `make typecheck` — pass in 47s.
+- `make test` — pass in 39m19s; 40 suites, 1,295 tests, none failed or ignored.
+- `make markdownlint` — pass; 68 files, 0 issues.
+- `make nixie` — pass; every Mermaid diagram validated.
+
+The `SIGBUS` interruption recorded in the rebase section did not recur, so the
+`make test` and `make typecheck` gaps noted there are closed by these results.
+The first lint attempt also caught two defects that this tree no longer
+contains: mdtablefix wanted to rewrap this plan, and Clippy's `doc_markdown`
+required backticks around `OrthoConfig` in the new test module's doc comment.
+
+`make spelling` regenerated `typos.toml` from the pinned builder: the shared
+dictionary now ignores multi-line `tokio` attribute arguments, which subsumes
+the single bare key-assignment exemption it carried before. The refresh is
+generated output unrelated to this change, so it is committed as its own commit
+to keep the configuration diff readable.

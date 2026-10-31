@@ -83,6 +83,23 @@ fn file_and_environment_layers_resolve_under_cmds_lint() -> Result<(), Box<dyn s
     Ok(())
 }
 
+/// A file that restates every field replaces both defaults, including collections.
+#[rstest]
+fn file_only_values_override_defaults() -> Result<(), Box<dyn std::error::Error>> {
+    let file = ConfigFile::new(
+        "[cmds.lint]\nformat = 'json'\nignore_patterns = ['generated/', 'vendor/']\n",
+    )?;
+
+    let settings = load(Some(file.path()), empty_environment(), &no_cli_overrides())?;
+
+    assert_eq!(settings.format, OutputFormat::Json);
+    assert_eq!(
+        settings.ignore_patterns,
+        vec!["generated/".to_owned(), "vendor/".to_owned()]
+    );
+    Ok(())
+}
+
 /// Explicit CLI values override file and environment values without parser defaults.
 #[rstest]
 fn explicit_cli_values_override_lower_layers() -> Result<(), Box<dyn std::error::Error>> {

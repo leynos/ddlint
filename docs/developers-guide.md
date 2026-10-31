@@ -220,6 +220,13 @@ process environment variables carry scalar strings. The generated `config_path`
 selector is internal to the OrthoConfig merge and is excluded from user-facing
 configuration keys.
 
+The derive declares `explicit_mode = "required_exclusive"`. Without that key,
+OrthoConfig v0.10.0's legacy candidate walk treats `DDLINT_CONFIG_PATH` as an
+optional candidate and silently falls back to defaults when the named file is
+missing, contradicting the documented required-and-exclusive contract.
+Declaring the key switches discovery onto the selector policy while automatic
+discovery keeps the first-wins order.
+
 ## Parser test helpers
 
 A test asserts; a helper arranges. Arrangement can fail, so the arrangement

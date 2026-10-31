@@ -83,7 +83,10 @@ The planned lint configuration uses:
   checks `ddlint.toml` only;
 - explicit `--config <PATH>` or `-c <PATH>` selection, with
   `DDLINT_CONFIG_PATH` as the environment selector; a selected path is
-  exclusive and required;
+  exclusive and required, which the derive expresses by declaring
+  `explicit_mode = "required_exclusive"` and switching OrthoConfig onto its
+  selector-policy path (the legacy candidate walk treats an
+  environment-selected path as optional);
 - the `DDLINT_` environment prefix, with nested keys separated by `__`, and the
   `[cmds.lint]` namespace;
 - defaults < files < environment < explicit command-line values;
