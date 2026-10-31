@@ -33,9 +33,13 @@ ignore_patterns = [".git/", "target/", "generated/"]
 "unused-variable" = "error"
 ```
 
-The default format is `rich`. `format`, ignore patterns, and rule severities
-can be supplied by the file and matching `DDLINT_*` environment variables;
-`--format` is the explicit command-line override. The precedence order is:
+The default format is `rich`; the accepted formats are `rich`, `json`, and
+`compact`. The default ignore patterns are `.git/`, `build/`, and `target/`.
+Rule severities are `allow`, `hint`, `warn`, and `error`, and only the
+`unused-relation` and `unused-variable` rules accept overrides. `format`,
+ignore patterns, and rule severities can be supplied by the file and matching
+`DDLINT_*` environment variables; `--format` is the explicit command-line
+override. The precedence order is:
 
 ```text
 defaults < files < environment < command line
@@ -59,6 +63,25 @@ in the current working directory. Project discovery does not check
 `DDLINT_CONFIG_PATH` variable, `--config <PATH>`, or `-c <PATH>` selects one
 required file and suppresses automatic discovery. An absent automatic file
 leaves defaults in place; a missing selected file is an error.
+
+### Extend a configuration file
+
+A configuration file may name one parent file with a top-level `extends` key:
+
+```toml
+# ddlint.toml
+extends = "shared/base.toml"
+
+[cmds.lint]
+ignore_patterns = ["generated/"]
+```
+
+Relative paths resolve from the file that declares them. The parent is merged
+beneath the child, so the child overrides only the keys it restates. A
+`[cmds.lint.rules]` entry that only the parent declares survives, while a child
+`ignore_patterns` array replaces the parent array instead of extending it. A
+missing parent is an error that names the parent's absolute path and the file
+that referenced it.
 
 `--no-ignore` and file operands remain command-line-only. Unknown configuration
 fields and unknown rule names are rejected. The `rules` and `explain` commands
