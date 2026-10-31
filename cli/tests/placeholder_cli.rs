@@ -18,6 +18,10 @@ fn placeholder_output_and_exit_status_are_unchanged() -> Result<(), Box<dyn std:
         output.stdout,
         b"ddlint: CLI not yet implemented. Run with --help for planned options.\n"
     );
-    assert!(output.stderr.is_empty());
+    assert!(
+        output.stderr.is_empty(),
+        "the placeholder wrote to stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }

@@ -115,7 +115,11 @@ fn explicit_cli_values_override_lower_layers() -> Result<(), Box<dyn std::error:
     let settings = load(Some(file.path()), environment, &cli)?;
 
     assert_eq!(settings.format, OutputFormat::Rich);
-    assert!(settings.ignore_patterns.is_empty());
+    assert!(
+        settings.ignore_patterns.is_empty(),
+        "`--no-ignore` must clear every inherited pattern, found {:?}",
+        settings.ignore_patterns
+    );
     Ok(())
 }
 
