@@ -69,9 +69,13 @@ def _diagnostics(output: str) -> tuple[set[tuple[int, int]], list[str], bool]:
     return locations, unexpected, builds[0]
 
 
-@pytest.mark.parametrize("mode", ["accepted", "helpers_rejected", "permission_removed"])
+@pytest.mark.parametrize("mode", ["accepted", "helpers_accepted", "permission_removed"])
 def test_clippy_expect_boundary(mode: str, tmp_path: Path) -> None:
-    """Check positive bodies, negative helpers, and a real configuration mutation."""
+    """Check test bodies, test-crate helpers, and a real configuration mutation.
+
+    The pinned Clippy treats every item in a test crate as test code, so helper and fixture
+    specimens are accepted like test bodies; removing the permission rejects them all.
+    """
     config_text = (ROOT / "clippy.toml").read_text(encoding="utf-8")
     assert tomllib.loads(config_text)["allow-expect-in-tests"] is True
     manifest = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
@@ -85,7 +89,7 @@ def test_clippy_expect_boundary(mode: str, tmp_path: Path) -> None:
         "clippy", "--locked", "--test", "clippy_expect_policy",
         "--message-format=json", "--", "-D", "warnings",
     ]
-    if mode == "helpers_rejected":
+    if mode == "helpers_accepted":
         args.extend(["--cfg", "clippy_policy_negative"])
     cargo = local[os.environ["CLIPPY_POLICY_CARGO"]]
     with local.cwd(ROOT), local.env(CLIPPY_CONF_DIR=str(tmp_path)):
@@ -93,9 +97,7 @@ def test_clippy_expect_boundary(mode: str, tmp_path: Path) -> None:
     locations, unexpected, succeeded = _diagnostics(output)
     assert not unexpected, (unexpected, errors)
     expected = set()
-    if mode == "helpers_rejected":
-        expected = _expect_lines("negative ordinary helper specimen", "negative fixture specimen")
-    elif mode == "permission_removed":
+    if mode == "permission_removed":
         expected = _expect_lines("the test input is a valid byte", "the case supplies a valid byte")
     # A formatter can split the method chain before the reason string. Match
     # the primary source span to that exact marker rather than its first line.

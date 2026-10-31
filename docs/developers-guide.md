@@ -213,14 +213,15 @@ helper and says `item missing`, with nothing about which test wanted what.
 
 Two consequences follow.
 
-- `clippy::expect_used` remains denied outside recognized `#[test]` and
-  `#[rstest]` bodies. `clippy.toml` sets `allow-expect-in-tests = true`, which
-  permits reasoned `.expect("reason")` calls in those bodies. Fixtures, setup
-  code, ordinary helpers and behaviour-driven development (BDD) steps gain no
-  permission from `#[cfg(test)]`; keep them fallible. Whitaker's
-  `no_expect_outside_tests` lint provides the complementary check. Module-wide
-  lint allowances or expectations remain forbidden because they mask code
-  beyond the test body.
+- `clippy::expect_used` remains denied in production code. `clippy.toml` sets
+  `allow-expect-in-tests = true`, which permits reasoned `.expect("reason")`
+  calls in test code. Since `nightly-2026-10-30` Clippy treats every item in a
+  test crate as test code, so it no longer rejects an `expect` in a fixture,
+  setup helper or behaviour-driven development (BDD) step there (it used to);
+  `make test-clippy-policy` pins that. The restriction on those items now rests
+  on Whitaker's `no_expect_outside_tests` lint alone: keep them fallible.
+  Module-wide lint allowances or expectations remain forbidden because they
+  mask code beyond the test body.
 - Shared rule assertions are macros, not functions. `assert_body_assignment`,
   `assert_body_terms_error` and `assert_multiple_aggregation_error` expand at
   the call site, so a failure names the calling test rather than the helper,
@@ -232,13 +233,14 @@ Two consequences follow.
 Clippy and existing `rstest` dependency. It runs separately from `cargo test`
 to avoid a nested Cargo lock. `make lint`, and therefore CI's lint step, runs
 it sequentially. The integration target `tests/clippy_expect_policy.rs` owns
-the positive test bodies and deliberately rejected helper and fixture
-specimens. Only this contract activates `clippy_policy_negative`; ordinary test
-runs leave that module disabled. The Python runner under `scripts/` checks lint
-codes and primary source locations, refuses unrelated compiler errors, and
-removes the permission in a temporary configuration as a negative control.
-These specimens test the local invocation contract, rather than providing
-reusable setup helpers.
+the positive test bodies and the helper and fixture specimens, which the pinned
+Clippy accepts as test code. Only this contract activates
+`clippy_policy_negative`; ordinary test runs leave that module disabled. The
+Python runner under `scripts/` checks lint codes and primary source locations,
+refuses unrelated compiler errors, and removes the permission in a temporary
+configuration as a negative control, which rejects all of them. These specimens
+test the local invocation contract, rather than providing reusable setup
+helpers.
 
 The runner's private `_expect_locations` helper validates primary diagnostic
 spans only for its Cargo JSON reader. Keep that boundary local to this policy
