@@ -24,7 +24,6 @@ observability = ["dep:metrics", "dep:tracing", "tracing/std"]
 test-support = []
 
 [dev-dependencies]
-cap-std = { version = "4.0.3", features = ["fs_utf8"] }
 rstest = "0.28"
 insta = "1.47.2"
 ddlint = { path = ".", features = ["test-support"] }
