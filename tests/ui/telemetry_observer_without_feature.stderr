@@ -2,7 +2,9 @@ error[E0432]: unresolved import `ddlint::TelemetryObserver`
  --> tests/ui/telemetry_observer_without_feature.rs:3:5
   |
 3 | use ddlint::TelemetryObserver;
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `TelemetryObserver` in the root
+  |     ^^^^^^^^-----------------
+  |             |
+  |             no `TelemetryObserver` in the root
   |
 note: found an item that was configured out
  --> src/lib.rs
