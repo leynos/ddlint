@@ -39,7 +39,7 @@ fn import_statement_invalid_missing_path() {
 fn import_invalid_then_valid() {
     let src = "import as\nimport foo";
     let parsed = parse(src);
-    assert!(!parsed.errors().is_empty());
+    assert_ne!(parsed.errors().len(), 0);
     let imports = parsed.root().imports();
     assert_eq!(imports.len(), 1);
     assert_eq!(imports.first().map(Import::path), Some("foo".to_string()));

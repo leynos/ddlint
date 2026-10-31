@@ -27,6 +27,10 @@ enum Token {
         priority = 2
     )]
     #[regex(r"[0-9][0-9_]*'[sS]?[bBoOdDhH][+-]?[0-9a-fA-F_]+", priority = 2)]
+    #[expect(
+        clippy::duplicated_attributes,
+        reason = "each `regex` attribute carries its own priority for its own pattern"
+    )]
     #[regex(r"0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|[0-9][0-9_]*(?:\.[0-9_]+)?(?:[eE][+-]?[0-9_]+)?")]
     Number,
     #[regex(r#"(?s)i?\$?\[\|(?:\]|[^|]|\|[^]])*\|\]"#, priority = 3)]

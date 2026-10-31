@@ -170,10 +170,7 @@ where
         match self.ts.peek_kind() {
             Some(SyntaxKind::T_COMMA) => {
                 self.ts.next_tok();
-                if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-                    return Some(false);
-                }
-                Some(true)
+                Some(!matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)))
             }
             Some(SyntaxKind::T_RBRACE) => Some(false),
             None => {

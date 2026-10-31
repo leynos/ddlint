@@ -165,6 +165,10 @@ pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> 
 /// matching closing delimiter while tracking nested pairs. Whitespace, and
 /// comments, are permitted between tokens. An error is produced if a closing
 /// token appears without a corresponding opener.
+#[expect(
+    clippy::result_large_err,
+    reason = "chumsky's `Simple` error is large and `filter_map` fixes the closure's error type"
+)]
 fn balanced_block_with_min(
     open: SyntaxKind,
     close: SyntaxKind,

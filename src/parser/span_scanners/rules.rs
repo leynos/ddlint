@@ -250,6 +250,10 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
 
 /// Skip a top-level `for` statement span so multiline bodies do not leak into
 /// standalone rule spans.
+#[expect(
+    clippy::result_large_err,
+    reason = "chumsky's `Simple` error is large and `filter_map` fixes the closure's error type"
+)]
 fn skip_top_level_for_statement(
     st: &mut State<'_>,
     for_span: Span,

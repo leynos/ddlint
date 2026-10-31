@@ -243,7 +243,7 @@ mod tests {
         let parsed = parse(source);
         let runner = Runner::new(&store, source, &parsed, RuleConfig::new());
         let diagnostics = runner.run();
-        assert!(diagnostics.is_empty());
+        assert_eq!(diagnostics.len(), 0);
     }
 
     #[rstest]

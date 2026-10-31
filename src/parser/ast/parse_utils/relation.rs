@@ -8,6 +8,10 @@ use chumsky::prelude::*;
 use crate::parser::lexer_helpers::{ident, inline_ws};
 use crate::{Span, SyntaxKind};
 
+#[expect(
+    clippy::result_large_err,
+    reason = "chumsky's `Simple` error is large and `filter_map` fixes the closure's error type"
+)]
 fn keyword<'a>(
     src: &'a str,
     expected: &'static str,

@@ -101,7 +101,7 @@ mod tests {
         assert_eq!(collector.stream.cursor(), 0);
         assert_eq!(collector.stream.tokens(), tokens.as_slice());
         assert_eq!(collector.stream.src(), src);
-        assert!(collector.spans.is_empty());
+        assert_eq!(collector.spans.len(), 0);
     }
 
     #[test]

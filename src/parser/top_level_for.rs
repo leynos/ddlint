@@ -321,11 +321,7 @@ pub(crate) fn is_top_level_for_statement_terminator_dot(
     }
 
     let has_trivia_gap = next_span.start > dot_span.end;
-    if !has_trivia_gap && matches!(next_kind, SyntaxKind::T_IDENT | SyntaxKind::T_NUMBER) {
-        return false;
-    }
-
-    true
+    has_trivia_gap || !matches!(next_kind, SyntaxKind::T_IDENT | SyntaxKind::T_NUMBER)
 }
 
 fn skip_until(tokens: &[(SyntaxKind, Span)], mut cursor: usize, end: usize) -> usize {

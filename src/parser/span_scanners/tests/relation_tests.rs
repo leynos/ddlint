@@ -13,8 +13,8 @@ fn collect_relation_spans_ignores_nested_relation_candidates() {
 
     let (spans, errors) = collect_relation_spans(&tokens, src);
 
-    assert!(spans.is_empty());
-    assert!(errors.is_empty());
+    assert_eq!(spans.len(), 0);
+    assert_eq!(errors.len(), 0);
 }
 
 #[test]
@@ -24,8 +24,8 @@ fn collect_relation_spans_ignores_bare_bracket_rule_candidates() {
 
     let (spans, errors) = collect_relation_spans(&tokens, src);
 
-    assert!(spans.is_empty());
-    assert!(errors.is_empty());
+    assert_eq!(spans.len(), 0);
+    assert_eq!(errors.len(), 0);
 }
 
 #[test]
@@ -38,7 +38,7 @@ fn collect_relation_spans_recovers_consecutive_bare_relations() {
 
     let (spans, errors) = collect_relation_spans(&tokens, src);
 
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(spans.len(), 2, "both bare relations should be collected");
     let Some(first) = spans.first().and_then(|span| src.get(span.clone())) else {
         panic!("first relation span out of bounds");

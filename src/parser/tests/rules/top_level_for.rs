@@ -138,7 +138,7 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
         index == 0,
         "expected unsupported-body diagnostic to be first, got index {index}"
     );
-    assert!(parsed.semantic_rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 0);
     assert!(parsed.root().rules().is_empty());
 }
 
@@ -157,6 +157,6 @@ fn unsupported_top_level_for_head_reports_head_specific_diagnostic() {
         panic!("expected top-level for head diagnostic, got: {errors:?}");
     };
     assert_eq!(index, 0);
-    assert!(parsed.semantic_rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 0);
     assert!(parsed.root().rules().is_empty());
 }

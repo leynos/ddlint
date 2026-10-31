@@ -49,7 +49,7 @@ impl<'a> RuleSpanAssertConfig<'a> {
 fn assert_rule_span_collection(src: &str, config: &RuleSpanAssertConfig<'_>) {
     let tokens = tokenize(src);
     let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(
         rule_spans.len(),
         config.expected_count,
@@ -139,7 +139,7 @@ fn collects_expression_spans_for_each_literal() {
     let src = "\n  R(x) :- Atom(x), if ready(x) { Accept(x) } else { Skip() }.";
     let tokens = tokenize(src);
     let (_rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src, &[]);
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(expr_spans.len(), 2);
     let first = expr_spans
         .first()
@@ -192,7 +192,7 @@ fn collect_rule_spans_handles_adjacent_exclusions() {
     let exclusions = vec![start..end - 1, end - 1..end];
 
     let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &exclusions);
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(rule_spans.len(), 1, "second rule should remain");
     let Some(remaining) = rule_spans.first().and_then(|sp| src.get(sp.clone())) else {
         panic!("remaining rule span out of bounds");
@@ -215,17 +215,17 @@ R2(x) :- B(x).
     let tokens = tokenize(src);
 
     let (import_spans, import_errors) = collect_import_spans(&tokens, src);
-    assert!(import_errors.is_empty());
+    assert_eq!(import_errors.len(), 0);
     let (typedef_spans, typedef_errors) = collect_typedef_spans(&tokens, src);
-    assert!(typedef_errors.is_empty());
+    assert_eq!(typedef_errors.len(), 0);
     let (relation_spans, relation_errors) = collect_relation_spans(&tokens, src);
-    assert!(relation_errors.is_empty());
+    assert_eq!(relation_errors.len(), 0);
     let (index_spans, index_errors) = collect_index_spans(&tokens, src);
-    assert!(index_errors.is_empty());
+    assert_eq!(index_errors.len(), 0);
     let (function_spans, function_errors) = collect_function_spans(&tokens, src);
-    assert!(function_errors.is_empty());
+    assert_eq!(function_errors.len(), 0);
     let (transformer_spans, transformer_errors) = collect_transformer_spans(&tokens, src);
-    assert!(transformer_errors.is_empty());
+    assert_eq!(transformer_errors.len(), 0);
 
     let mut non_rule_spans = Vec::new();
     non_rule_spans.extend(import_spans);
@@ -237,7 +237,7 @@ R2(x) :- B(x).
     let non_rule_spans = merge_spans(non_rule_spans);
 
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &non_rule_spans);
-    assert!(rule_errors.is_empty());
+    assert_eq!(rule_errors.len(), 0);
     assert_eq!(rule_spans.len(), 2, "expected two rules only");
     assert_eq!(expr_spans.len(), 2, "expected one expression per rule");
 
@@ -270,14 +270,14 @@ fn collect_rule_spans_respects_exclusions() {
     let src = "import foo\nextern function f(): void {}\nR(x) :- Foo(x).\n";
     let tokens = tokenize(src);
     let (imports, errors) = collect_import_spans(&tokens, src);
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     let (functions, fn_errors) = collect_function_spans(&tokens, src);
-    assert!(fn_errors.is_empty());
+    assert_eq!(fn_errors.len(), 0);
 
     let imports = merge_spans([imports, functions].concat());
 
     let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &imports);
-    assert!(rule_errors.is_empty());
+    assert_eq!(rule_errors.len(), 0);
     assert_eq!(rule_spans.len(), 1);
     assert_eq!(expr_spans.len(), 1);
 
@@ -309,7 +309,7 @@ fn rule_treated_as_line_start_at_bof_after_inline_spaces() {
     let src = "   R(x) :- A(x).";
     let tokens = tokenize(src);
     let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(
         rule_spans.len(),
         1,
@@ -354,7 +354,7 @@ fn parse_tokens_skips_non_rule_constructs_when_scanning_rules() {
         &crate::parser::observability::NoopParseObserver,
     );
 
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
 
     assert_eq!(spans.rules().len(), 1);
     let rule_span = spans

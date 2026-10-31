@@ -79,6 +79,6 @@ fn collect_attribute_spans_unclosed_bracket() {
 fn collect_attribute_spans_rejects_bare_hashes(#[case] src: &str) {
     let tokens = tokenize(src);
     let (spans, errors) = collect_attribute_spans(&tokens, src);
-    assert!(spans.is_empty());
-    assert!(errors.is_empty());
+    assert_eq!(spans.len(), 0);
+    assert_eq!(errors.len(), 0);
 }

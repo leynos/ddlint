@@ -121,7 +121,7 @@ mod tests {
         // Malformed output lists do not yield a transformer node, so we parse
         // against the root token stream to ensure empty outputs are handled.
         let names = parse_output_list(parsed.root().syntax().children_with_tokens());
-        assert!(names.is_empty());
+        assert_eq!(names.len(), 0);
     }
 
     #[test]
@@ -131,6 +131,6 @@ mod tests {
         // Trailing commas invalidate the declaration, so parse the root tokens
         // to confirm we return no outputs from malformed input.
         let names = parse_output_list(parsed.root().syntax().children_with_tokens());
-        assert!(names.is_empty());
+        assert_eq!(names.len(), 0);
     }
 }

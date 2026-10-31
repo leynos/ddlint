@@ -314,7 +314,7 @@ fn missing_colon_does_not_consume_closing_paren() {
     let src = "function f(x y) {}";
     let elements = tokens_for(src);
     let (pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
-    assert!(pairs.is_empty());
+    assert_eq!(pairs.len(), 0);
     assert_eq!(errors.len(), 1);
     let err = errors.first().expect("missing error");
     assert!(matches!(err, ParseError::MissingColon { .. }));

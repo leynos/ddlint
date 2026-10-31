@@ -24,6 +24,7 @@ observability = ["dep:metrics", "dep:tracing", "tracing/std"]
 test-support = []
 
 [dev-dependencies]
+cap-std = { version = "4.0.3", features = ["fs_utf8"] }
 rstest = "0.28"
 insta = "1.47.2"
 ddlint = { path = ".", features = ["test-support"] }
@@ -34,6 +35,13 @@ trybuild = "1.0.114"
 version = "0.20.4"
 default-features = false
 features = ["debugging"]
+
+# Development builds keep neither incremental state nor debug information (rule
+# `rust-dev-build-footprint`, DF-001 and DF-002). Set CARGO_PROFILE_DEV_DEBUG=true
+# to debug, or CARGO_INCREMENTAL=1 to rebuild incrementally.
+[profile.dev]
+incremental = false
+debug = 0
 
 [lints.rust]
 missing_docs = "deny"

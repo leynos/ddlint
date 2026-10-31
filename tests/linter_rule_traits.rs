@@ -281,7 +281,7 @@ fn default_hook_implementations_emit_no_diagnostics(parsed_fixture: Parsed) {
     let source: String = parsed_fixture.root().text();
     let ctx = build_ctx(source.as_str(), &parsed_fixture, RuleConfig::new());
     let diagnostics = run_rule_over_cst(&parsed_fixture, &ctx, &MetadataOnlyRule);
-    assert!(diagnostics.is_empty());
+    assert_eq!(diagnostics, [] as [ddlint::linter::LintDiagnostic; 0]);
 }
 
 #[rstest]

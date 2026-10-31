@@ -90,10 +90,13 @@ interrogate: ## Enforce complete Python docstring coverage
 	    exit 1; \
 	  fi
 
+# Whitaker runs under the toolchain its installer manages, so it takes none of
+# the development standard: its literal `RUSTFLAGS` displaces the `rustflags`
+# tables (no frontend flag, no `mold`) and inherits nothing from the caller.
 lint: interrogate ## Run Clippy and the Whitaker Dylint suite with warnings denied
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
 	+$(MAKE) test-clippy-policy
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(WHITAKER) --all -- --all-targets --all-features
+	RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
 	+$(MAKE) spelling
 
 typecheck: ## Typecheck all workspace targets and features

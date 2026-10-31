@@ -176,86 +176,86 @@ pub enum Expr {
     /// these later.
     Apply {
         /// Callee expression being applied.
-        callee: Box<Expr>,
+        callee: Box<Self>,
         /// Argument expressions supplied to the callee.
-        args: Vec<Expr>,
+        args: Vec<Self>,
     },
     /// Function call expression.
     Call {
         /// Callee expression being invoked.
-        callee: Box<Expr>,
+        callee: Box<Self>,
         /// Argument expressions supplied to the function.
-        args: Vec<Expr>,
+        args: Vec<Self>,
     },
     /// Method call expression.
     MethodCall {
         /// Receiver expression providing the method context.
-        recv: Box<Expr>,
+        recv: Box<Self>,
         /// Name of the method being invoked.
         name: String,
         /// Argument expressions supplied to the method.
-        args: Vec<Expr>,
+        args: Vec<Self>,
     },
     /// Field access expression.
     FieldAccess {
         /// Expression whose field is being accessed.
-        expr: Box<Expr>,
+        expr: Box<Self>,
         /// Name of the field.
         field: String,
     },
     /// Tuple index expression.
     TupleIndex {
         /// Expression to index.
-        expr: Box<Expr>,
+        expr: Box<Self>,
         /// String form of the tuple index.
         index: String,
     },
     /// Bit slice expression.
     BitSlice {
         /// Expression being sliced.
-        expr: Box<Expr>,
+        expr: Box<Self>,
         /// High index of the slice.
-        hi: Box<Expr>,
+        hi: Box<Self>,
         /// Low index of the slice.
-        lo: Box<Expr>,
+        lo: Box<Self>,
     },
     /// Struct literal expression.
     Struct {
         /// Name of the struct being constructed.
         name: String,
         /// Field initializers in declaration order.
-        fields: Vec<(String, Expr)>,
+        fields: Vec<(String, Self)>,
     },
     /// Tuple literal expression.
-    Tuple(Vec<Expr>),
+    Tuple(Vec<Self>),
     /// Closure literal expression.
     Closure {
         /// Parameters introduced by the closure.
         params: Vec<String>,
         /// Body expression executed when invoked.
-        body: Box<Expr>,
+        body: Box<Self>,
     },
     /// If expression with an optional `else` branch.
     IfElse {
         /// Condition controlling the selected branch.
-        condition: Box<Expr>,
+        condition: Box<Self>,
         /// Expression evaluated when the condition is truthy.
-        then_branch: Box<Expr>,
+        then_branch: Box<Self>,
         /// Expression evaluated when the condition is falsy.
-        else_branch: Box<Expr>,
+        else_branch: Box<Self>,
     },
     /// Unary operation expression.
     Unary {
         /// Unary operator applied.
         op: UnaryOp,
         /// Operand expression.
-        expr: Box<Expr>,
+        expr: Box<Self>,
     },
     /// Atom diff marker (`Rel'(...)`), represented as a wrapper around the
     /// underlying atom expression.
     AtomDiff {
         /// Atom expression being marked as a diff atom.
-        expr: Box<Expr>,
+        expr: Box<Self>,
     },
     /// Atom delay marker (`Atom -<N>`), represented as a wrapper around the
     /// underlying atom expression.
@@ -263,34 +263,34 @@ pub enum Expr {
         /// Delay in ticks applied to the atom.
         delay: u32,
         /// Atom expression receiving the delay.
-        expr: Box<Expr>,
+        expr: Box<Self>,
     },
     /// Binary operation expression.
     Binary {
         /// Binary operator applied.
         op: BinaryOp,
         /// Left-hand operand.
-        lhs: Box<Expr>,
+        lhs: Box<Self>,
         /// Right-hand operand.
-        rhs: Box<Expr>,
+        rhs: Box<Self>,
     },
     /// Grouped expression (parenthesised).
-    Group(Box<Expr>),
+    Group(Box<Self>),
     /// For-loop expression with optional guard.
     ForLoop {
         /// Pattern introduced by the loop header.
         pattern: Pattern,
         /// Iterable expression supplying loop items.
-        iterable: Box<Expr>,
+        iterable: Box<Self>,
         /// Optional guard expression restricting iterations.
-        guard: Option<Box<Expr>>,
+        guard: Option<Box<Self>>,
         /// Statement executed for each matching element.
-        body: Box<Expr>,
+        body: Box<Self>,
     },
     /// Match expression with one or more pattern arms.
     Match {
         /// Expression being scrutinised.
-        scrutinee: Box<Expr>,
+        scrutinee: Box<Self>,
         /// Pattern arms evaluated in order.
         arms: Vec<MatchArm>,
     },
@@ -301,7 +301,7 @@ pub enum Expr {
     /// Return expression exiting the current function.
     Return {
         /// Value returned to the caller (defaults to `()` when omitted).
-        value: Box<Expr>,
+        value: Box<Self>,
     },
     /// Vector literal expression.
     ///
@@ -309,12 +309,12 @@ pub enum Expr {
     /// parsing. Builder-sequence desugaring (for example to
     /// `vec_with_capacity(n); push(e1); push(e2); ...`) is scheduled work for
     /// later lowering stages, not current parser behaviour.
-    VecLit(Vec<Expr>),
+    VecLit(Vec<Self>),
     /// Map literal expression.
     ///
     /// Syntactically `{k1: v1, k2: v2, ...}`, preserved as a raw AST node
     /// during parsing. Builder-sequence desugaring (for example to
     /// `map_empty(); insert(k1, v1); insert(k2, v2); ...`) is scheduled work
     /// for later lowering stages, not current parser behaviour.
-    MapLit(Vec<(Expr, Expr)>),
+    MapLit(Vec<(Self, Self)>),
 }

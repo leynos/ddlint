@@ -303,7 +303,10 @@ fn negative_number_tokens() {
 #[test]
 fn empty_input_produces_no_tokens() {
     let tokens = tokenize("");
-    assert!(tokens.is_empty());
+    assert_eq!(
+        tokens,
+        [] as [(ddlint::SyntaxKind, std::ops::Range<usize>); 0]
+    );
 }
 
 #[test]

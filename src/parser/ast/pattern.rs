@@ -30,18 +30,18 @@ pub enum Pattern {
         name: String,
     },
     /// Tuple pattern `(p1, p2, …)`.
-    Tuple(Vec<Pattern>),
+    Tuple(Vec<Self>),
     /// Struct pattern `Type { field: pat, … }`.
     Struct {
         /// Name of the struct or constructor being matched.
         name: String,
         /// Field names with the pattern matched against each.
-        fields: Vec<(String, Pattern)>,
+        fields: Vec<(String, Self)>,
     },
     /// Typed pattern `pat: Type`.
     Typed {
         /// Pattern being annotated.
-        pattern: Box<Pattern>,
+        pattern: Box<Self>,
         /// Type annotation, as written.
         ty: String,
     },
