@@ -412,8 +412,11 @@ This phase delivers the end-user command-line interface and diagnostic output.
   See docs/ddlint-design.md §4.1.
 - [ ] 5.1.4. Implement `ddlint explain <RULE_NAME>`.
   See docs/ddlint-design.md §4.1.
-- [ ] 5.1.5. Implement `ddlint.toml` loading via `config-rs`.
-  See docs/ddlint-design.md §4.2 and docs/ddlint-design.md §4.3.
+- [x] 5.1.5. Implement the OrthoConfig v0.10.0 settings model and
+  source-aware `ddlint.toml` loader in the application-owned `ddlint-cli`
+  package. Keep command parsing and execution in 5.1.1–5.1.4. See
+  docs/ddlint-design.md §4.1–4.3 and
+  [ADR 004](adr-004-ortho-config-cli-boundary.md).
 
 ### 5.2. Rich diagnostics
 

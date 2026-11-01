@@ -836,6 +836,13 @@ The primary user interaction with the linter will be through its command-line
 binary, `ddlint`. The CLI will be built using the `clap` crate[^9], the
 standard for robust argument parsing in the Rust ecosystem.
 
+The current binary is still a placeholder. Roadmap items 5.1.1–5.1.4 own the
+CLI parser and command execution; the configuration model and loader are
+roadmap item 5.1.5. The application boundary belongs in the non-published
+`ddlint-cli` package. It depends on the reusable `ddlint` library, while the
+library remains free of CLI and configuration frameworks. ADR-004 records this
+boundary and the v0.10.0 configuration contract.
+
 The core commands will be:
 
 - `ddlint <FILES…>`: This is the default invocation. It will lint a list of
@@ -859,13 +866,25 @@ Key command-line arguments, and their flags, will include:
 - `--format <compact|json|rich>`: Controls the output format. The `rich` format
   (default) will use `miette` for beautiful, annotated output. `json` will
   provide machine-readable output for integration with other tools, and
-  `compact` will be a simpler, single-line format.
+  `compact` will be a simpler, single-line format. The selected format is also
+  configurable through the lint configuration namespace. The Clap argument is
+  optional and declares no parser default; the configuration model supplies
+  `rich` after lower-precedence sources have been loaded.
 
-- `--config <PATH>`: Allows the user to specify an explicit path to a
-  configuration file, overriding the default discovery mechanism.
+- `--config <PATH>` or `-c <PATH>`: Selects one configuration file,
+  suppressing automatic discovery. A missing explicitly selected file is an
+  error.
 
 - `--no-ignore`: Disables the default ignore patterns (e.g., for `.git` or
-  `target` directories), allowing all files to be processed.
+  `target` directories), allowing all files to be processed. This and the file
+  operands remain command-line-only.
+
+`--fix` remains part of the planned CLI surface, but its implementation belongs
+with the autofixing work in section 5.2. The CLI is not localized; help and
+parse failures use clap's English messages. Named profiles are not offered. The
+`rules` and `explain` commands have no configurable settings and will not load
+configuration. The configuration namespace for the default lint command is
+`[cmds.lint]` even though users invoke it as `ddlint <FILES...>`.
 
 The behaviour of this CLI—including its arguments, exit codes, `stdout`, and
 `stderr`—will be subject to rigorous integration testing. The `assert_cmd`
@@ -879,21 +898,59 @@ scenarios.[^10]
 ### 4.2. The configuration file (`ddlint.toml`)
 
 To provide persistent and project-specific configuration, `ddlint` will support
-a configuration file named `ddlint.toml`. The `config-rs` crate will be used to
-manage all aspects of configuration.[^11] This library is an excellent choice
-due to its powerful layered configuration system. It can merge settings from
-multiple sources with a defined precedence: built-in defaults, values from a
-configuration file, and overrides from environment variables. This provides
-users with maximum flexibility. While
+a TOML file named `ddlint.toml`. The application package uses the published
+`ortho_config` v0.10.0 facade with its default features enabled.[^11] TOML is
+the only file format enabled. JavaScript Object Notation 5 (JSON5) and YAML
+remain optional features and are not enabled by the application. The root
+library does not depend on OrthoConfig and does not inherit the application
+package's Rust 1.89 minimum supported Rust version (MSRV).
 
- `config-rs` supports Tom's Obvious, Minimal Language (TOML), YAML, and JSON
- out of the box, and TOML will be the documented standard due to its prevalence
- and readability in the Rust ecosystem.[^11]
+The precedence order is defaults < files < environment < command line. The
+application-owned `AppConfig` derives `OrthoConfig` and loads the nested
+`[cmds.lint]` settings. A separate Clap DTO stores `--format` as an optional
+value with no parser default, so it cannot mask file or environment values. The
+configuration model supplies the effective `rich` default, and an explicit
+`--format` value is applied last. No field uses `cli_default_as_absent`; a
+future combined parser that declares a Clap default must use that attribute.
+The application converts loaded values into validated settings before passing
+domain values, such as `ddlint::linter::RuleLevel`, to library operations.
 
-The linter will automatically search for a `ddlint.toml` file in the current
-working directory and then traverse up through parent directories, allowing for
-a single configuration file at the root of a project to apply to all its
-subdirectories.
+The environment prefix is `DDLINT_`. Nested keys use OrthoConfig's `__`
+separator, so `DDLINT_CMDS__LINT__FORMAT=json` overrides the `format` setting
+from a file. The `ignore_patterns` environment value uses a JSON array of
+strings, for example `DDLINT_CMDS__LINT__IGNORE_PATTERNS='["target/"]'`. There
+are no legacy environment names or configuration files to preserve. `extends`
+files use OrthoConfig's v0.10.0 single-parent TOML inheritance.
+
+Automatic discovery uses OrthoConfig's first-wins policy in this order:
+
+1. `--config` or `-c`, when explicitly supplied;
+2. `DDLINT_CONFIG_PATH`, when non-empty;
+3. the XDG Base Directory Specification (XDG) locations, including the user
+   configuration home and configured system directories;
+4. the platform's native application configuration directory, when available;
+5. the home configuration locations; and
+6. `ddlint.toml` in the current working directory.
+
+The application-owned configuration type names `ddlint.toml` for application
+configuration directories and the current project. OrthoConfig also checks
+`.ddlint.toml` as a base-level dotfile in XDG, native, and home configuration
+locations, including the home dotfile; it does not check `.ddlint.toml` in the
+current project. Discovery does not walk parent directories. An absent
+automatically discovered file is optional and leaves defaults in place. A
+selected path is exclusive and required, so a missing or unreadable explicit
+file is an actionable configuration error rather than a fallback to defaults.
+The application therefore declares OrthoConfig's
+`explicit_mode = "required_exclusive"` discovery policy: the legacy candidate
+walk would treat an environment-selected path as just another optional
+candidate, while the policy path applies the same required-and-exclusive rule to
+`DDLINT_CONFIG_PATH` that the command-line selector already has. Automatic
+discovery keeps the first-wins mode under either path.
+
+Unknown configuration fields are rejected, except for the internal
+`config_path` key emitted by OrthoConfig's generated configuration selector.
+Configuration, file, environment, and merge errors are returned to the
+application boundary; library code does not print or terminate the process.
 
 ### 4.3. Configuration file schema (`ddlint.toml`)
 
@@ -904,19 +961,31 @@ be simple and extensible. The following table specifies the initial schema.
 <!-- markdownlint-disable MD013 --><!-- Table rows stay intact for
 reviewability. -->
 
-| Key                       | Type             | Default                                            | Description                                                                                                                                                                 |
-| ------------------------- | ---------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| extends                   | String           | (none)                                             | A path to a base configuration file. Settings from the current file will override settings from the extended file.                                                          |
-| ignore_patterns           | Array of Strings | [".git/", "build/", "target/"]                     | A list of glob patterns that exclude specific files and directories from linting.                                                                                           |
-| [rules]                   | Table            | (empty)                                            | This section is the primary location for configuring individual rule severities and options.                                                                                |
-| [rules].`<rule-name>`     | String           | (rule default)                                     | Sets the severity for a rule. Valid values are "allow" (disables the rule), "hint", "warn", or "error". An error will cause the linter to exit with a non-zero status code. |
-| [rules.consistent-casing] | Table            | { level = "allow", relation_style = "PascalCase" } | An example of a rule with options. The `level` key accepts the same `RuleLevel` strings as the top-level rule entry, alongside rule-specific configuration keys.            |
+| Key                             | Type             | Default                        | Description                                                                        |
+| ------------------------------- | ---------------- | ------------------------------ | ---------------------------------------------------------------------------------- |
+| `extends`                       | String           | (none)                         | Parent file; child values override it.                                             |
+| `[cmds.lint]`                   | Table            | (empty)                        | Settings for the default lint command.                                             |
+| `[cmds.lint].format`            | String           | `"rich"`                       | Output mode: `"compact"`, `"json"`, or `"rich"`.                                   |
+| `[cmds.lint].ignore_patterns`   | Array of Strings | `".git/", "build/", "target/"` | Glob patterns ignored unless `--no-ignore` is supplied.                            |
+| `[cmds.lint.rules]`             | Table            | (empty)                        | Severity overrides indexed by kebab-case rule name.                                |
+| `[cmds.lint.rules].<rule-name>` | String           | (rule default)                 | Severity: `"allow"`, `"hint"`, `"warn"`, or `"error"`; unknown names are rejected. |
 
 <!-- markdownlint-enable MD013 -->
 
-This schema provides a clear and powerful way for teams to tailor the linter's
-behaviour to project-specific needs, from disabling entire classes of rules to
-fine-tuning the parameters of stylistic checks.
+For example:
+
+```toml
+[cmds.lint]
+format = "json"
+ignore_patterns = [".git/", "target/", "generated/"]
+
+[cmds.lint.rules]
+"unused-relation" = "warn"
+"unused-variable" = "error"
+```
+
+Rule-specific option tables may be added when a rule exposes configurable
+options. Until then, unknown fields and rule names are rejected.
 
 ### 4.4. Logging
 
@@ -1213,8 +1282,8 @@ scalable linter engine, the rule management system, and the user-facing CLI.
 
   2. Implement the `declare_lint!` macro to streamline rule creation.[^2]
 
-  3. Integrate the `config-rs` crate to load and parse `ddlint.toml`
-     configuration files, respecting the defined schema.[^11]
+  3. Integrate the OrthoConfig v0.10.0 application configuration spine to load
+     and parse `ddlint.toml`, respecting the defined schema.[^11]
 
   4. Build the full CLI using `clap`[^9], implementing the `explain` and `rules`
      subcommands and all specified flags.
@@ -1336,8 +1405,8 @@ completing the vision of a truly interactive developer assistant.
 [^10]: `assert_cmd` crate documentation. High-level assertions for testing
        command-line applications. <https://crates.io/crates/assert_cmd>
 
-[^11]: `config` (`config-rs`) crate documentation. Layered configuration
-       loading for Rust applications. <https://crates.io/crates/config>
+[^11]: OrthoConfig v0.10.0 user's guide, imported from the immutable release
+       commit. See [the import provenance](ortho-config-provenance.md).
 
 [^12]: Rust compiler diagnostics guide. Overview of how `rustc` presents
        annotated error output.
