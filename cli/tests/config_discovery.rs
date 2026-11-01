@@ -65,6 +65,13 @@ fn run_isolated_child(
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    // A renamed test would make `--exact` match nothing while the child still
+    // exits successfully, so require the child to report its single pass.
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("test result: ok. 1 passed;"),
+        "isolated child `{test_name}` did not run exactly one test: stdout={stdout}"
+    );
     Ok(())
 }
 
