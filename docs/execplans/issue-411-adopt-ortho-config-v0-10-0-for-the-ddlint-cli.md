@@ -755,3 +755,30 @@ toolchain, run sequentially with each gate started once:
   property test is the additional suite.
 - `make markdownlint` — pass; 0 issues.
 - `make nixie` — pass; every Mermaid diagram validated.
+
+### Second review round (2026-11-01)
+
+The queued `@coderabbitai review` posted at 00:16 local time and reviewed
+`9a2880b`. All 15 pre-merge checks passed, including the title, user-facing
+documentation, and property-test rows that the previous round flagged. The
+review nevertheless requested changes for two findings:
+
+- `cli/Cargo.toml`: the CLI required `rstest` 0.27 while the root package
+  required 0.28, so workspace test builds compiled two versions of the crate.
+  The requirement is now 0.28.
+- `cli/tests/config_discovery.rs`: an isolated child selects its test with
+  `--exact`, so a renamed test could match nothing while libtest still exited
+  zero. Both isolated child paths now require the child to report exactly one
+  passing test.
+
+Gate results for the follow-up head, run sequentially with each gate started
+once:
+
+- `make fmt` — pass.
+- `make check-fmt` — pass; 68 Markdown files unchanged.
+- `make lint` — pass; interrogate, Clippy, the Clippy-policy tests, Whitaker,
+  and spelling are clean.
+- `make typecheck` — pass.
+- `make test` — pass; 43 suites, 1,308 tests, none failed or ignored.
+- `make markdownlint` — pass; 0 issues.
+- `make nixie` — pass; every Mermaid diagram validated.
