@@ -20,7 +20,7 @@ thiserror = "2.0.17"
 [dev-dependencies]
 cap-std = "4.0.2"
 proptest = "1.6.0"
-rstest = "0.27"
+rstest = "0.28"
 tempfile = "3.23.0"
 
 [lints.rust]
