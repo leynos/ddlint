@@ -25,6 +25,7 @@ from build_provisioning import (
     MakeEvaluation,
     MUTATION_CARGO,
     SETUP_RUST,
+    _soft_fails,
     assert_make_goal_provisioning,
     assert_suite_provisioning,
     discover_linux_suites,
@@ -150,15 +151,16 @@ def _require_sole_make_test_step(steps: list[object], test_index: int) -> None:
     _require_single_make_test_step(steps, test_index)
 
 
+def _is_gated(step: Mapping[object, object]) -> bool:
+    """Report whether a step is conditional, an action call or soft-failing."""
+    return "uses" in step or "if" in step or _soft_fails(step)
+
+
 def _require_unconditional_test_step(test_step: object) -> None:
     """Require the named Test step to run `make test` without soft failure."""
-    if (
-        not isinstance(test_step, Mapping)
-        or test_step.get("run") != "make test"
-        or "uses" in test_step
-        or "if" in test_step
-        or test_step.get("continue-on-error") not in (None, False, "false", "False")
-    ):
+    if not isinstance(test_step, Mapping) or test_step.get("run") != "make test":
+        raise BuildProvisioningError("CI Test must run make test without soft failure")
+    if _is_gated(test_step):
         raise BuildProvisioningError("CI Test must run make test without soft failure")
 
 
@@ -175,7 +177,7 @@ def _require_single_make_test_step(steps: list[object], test_index: int) -> None
 
 def _require_unconditional_job(job: Mapping[object, object]) -> None:
     """Require the CI job itself to be neither conditional nor soft-failing."""
-    if "if" in job or job.get("continue-on-error") not in (None, False, "false", "False"):
+    if "if" in job or _soft_fails(job):
         raise BuildProvisioningError("CI build-test must not be conditional or soft-fail")
 
 

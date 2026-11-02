@@ -142,8 +142,7 @@ def _single_finite_axis(
     if len(matrix) != 1:
         raise BuildProvisioningError(f"{context} suite matrix must have one finite axis")
     name, values = next(iter(matrix.items()))
-    _require_resolved_axis(name, values, context)
-    return name, values
+    return _resolved_axis(name, values, context)
 
 
 def _reject_matrix_modifiers(matrix: Mapping[object, object], context: str) -> None:
@@ -152,10 +151,13 @@ def _reject_matrix_modifiers(matrix: Mapping[object, object], context: str) -> N
         raise BuildProvisioningError(f"{context} suite matrix include/exclude is unsupported")
 
 
-def _require_resolved_axis(name: object, values: object, context: str) -> None:
-    """Require a text axis name and a non-empty list of values."""
-    if not isinstance(name, str) or not isinstance(values, list) or not values:
-        raise BuildProvisioningError(f"{context} has an unresolved matrix axis {name!r}")
+def _resolved_axis(name: object, values: object, context: str) -> tuple[str, list[object]]:
+    """Return a text axis name with its non-empty list of values."""
+    match name, values:
+        case str() as axis, list() as items if items:
+            return axis, items
+        case _:
+            raise BuildProvisioningError(f"{context} has an unresolved matrix axis {name!r}")
 
 
 def _runner_label(value: str, row: Mapping[str, object], context: str) -> str:
@@ -553,12 +555,17 @@ def discover_linux_suites(
     return tuple(dict.fromkeys(collector.suites))
 
 
+def _soft_fails(node: Mapping[object, object]) -> bool:
+    """Report whether a node can fail without failing its workflow."""
+    return node.get("continue-on-error") not in (None, False, "false", "False")
+
+
 def _is_bound_setup(step: object, context: str) -> bool:
     """Report whether a step is the unconditional pinned setup-rust this gate accepts."""
     setup = _mapping(step, context)
     if setup.get("uses") != SETUP_RUST or "if" in setup:
         return False
-    if setup.get("continue-on-error") not in (None, False, "false", "False"):
+    if _soft_fails(setup):
         return False
     inputs = _mapping(setup.get("with", {}), f"{context}.setup-rust.with")
     return (
