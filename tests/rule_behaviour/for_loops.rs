@@ -4,7 +4,7 @@ use ddlint::parser::ast::{AggregationSource, Rule, RuleBodyTerm};
 
 use super::{
     assert_body_terms_error_contains, assert_body_terms_ok, assert_expression_term_sexpr,
-    mixed_rule, parse_and_extract_rule,
+    assert_flattened_expression_terms, mixed_rule, parse_and_extract_rule,
 };
 
 #[test]
@@ -175,10 +175,10 @@ fn for_loop_with_sequence_body_flattens_correctly() {
     let flattened = rule
         .flattened_body_terms()
         .expect("should flatten successfully");
-    assert_eq!(flattened.len(), 3);
-    assert_expression_term_sexpr(&flattened, 0, "(call Source x)");
-    assert_expression_term_sexpr(&flattened, 1, "(call Pre x)");
-    assert_expression_term_sexpr(&flattened, 2, "(call Inner x)");
+    assert_flattened_expression_terms(
+        &flattened,
+        &["(call Source x)", "(call Pre x)", "(call Inner x)"],
+    );
 }
 
 #[test]
@@ -234,9 +234,13 @@ fn mixed_for_loop_and_regular_terms_flattened(#[from(mixed_rule)] rule_res: Resu
         .expect("should flatten successfully");
 
     // Should be: Pre(x), Items(y), Process(y), Post(x, y)
-    assert_eq!(flattened.len(), 4);
-    assert_expression_term_sexpr(&flattened, 0, "(call Pre x)");
-    assert_expression_term_sexpr(&flattened, 1, "(call Items y)");
-    assert_expression_term_sexpr(&flattened, 2, "(call Process y)");
-    assert_expression_term_sexpr(&flattened, 3, "(call Post x y)");
+    assert_flattened_expression_terms(
+        &flattened,
+        &[
+            "(call Pre x)",
+            "(call Items y)",
+            "(call Process y)",
+            "(call Post x y)",
+        ],
+    );
 }

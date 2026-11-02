@@ -37,9 +37,23 @@ fn assert_body_terms_error_contains(rule: &Rule, expected_msg: &str) {
 
 /// Assert that a flattened body term at a given index is an Expression
 /// with the expected S-expression representation.
+#[track_caller]
 fn assert_expression_term_sexpr(terms: &[RuleBodyTerm], index: usize, expected_sexpr: &str) {
     let Some(RuleBodyTerm::Expression(expr)) = terms.get(index) else {
         panic!("expected expression term at index {index}");
     };
     assert_eq!(expr.to_sexpr(), expected_sexpr);
+}
+
+/// Assert that flattened rule terms match an ordered S-expression sequence.
+#[track_caller]
+fn assert_flattened_expression_terms(terms: &[RuleBodyTerm], expected: &[&str]) {
+    assert_eq!(
+        terms.len(),
+        expected.len(),
+        "flattened terms must match the expected expression count"
+    );
+    for (index, expected_sexpr) in expected.iter().enumerate() {
+        assert_expression_term_sexpr(terms, index, expected_sexpr);
+    }
 }
