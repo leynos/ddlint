@@ -50,7 +50,7 @@ parsing pipeline.
 - Owns top-level relation-candidate discovery, declaration orchestration,
   record and bracket body parsing, primary-key validation,
   relation-versus-rule/fact disambiguation, span collection, and recovery.
-- Applies delimiter-depth-aware line-start filtering so only genuine top-level
+- Applies delimiter-depth-aware line-start filtering, so only genuine top-level
   declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
 - Produces relation declaration spans for CST construction;
   `src/parser/ast/relation/mod.rs` then exposes the typed AST accessors over
@@ -61,14 +61,14 @@ parsing pipeline.
 - Owns shared cursor movement, trivia handling, token inspection, and
   balanced-delimiter traversal (including delimiter-stack maintenance) for the
   relation scanner.
-- Holds no grammar decisions; those remain in `relations.rs`.
+- Holds no grammar decisions; those remain in `relations/mod.rs`.
 
 ### `src/parser/span_scanners/relations/preamble.rs`
 
 - Parses only the optional role/kind preamble keywords and enforces
   `D-REL-001`, `D-REL-002`, and `D-REL-003`.
 - Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
-  and recovery in `relations.rs`.
+  and recovery in `relations/mod.rs`.
 
 ### `src/parser/span_scanners/typedefs.rs`
 
@@ -118,8 +118,9 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
-- Keep scanner grammar and recovery decisions — candidate discovery, body and
-  suffix parsing, and span collection — in `relations.rs`.
+- Keep scanner grammar and recovery decisions — candidate discovery, body
+  parsing, and span collection — in `relations/mod.rs`; keep primary-key suffix
+  parsing in `relations/suffix.rs`.
 - Keep cursor movement and balanced-block mechanics in `relations/cursor.rs`.
 - Keep role/kind preamble parsing and its ordering/duplication diagnostics
   (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
