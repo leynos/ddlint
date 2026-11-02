@@ -567,10 +567,31 @@ def _assert_job_provisioning(
     workflows: Mapping[str, Mapping[object, object]],
 ) -> None:
     """Require one job's suites to follow the bound setup and their Make preflight."""
+    steps = _job_steps(workflow_name, job_name, workflows)
+    _require_prior_setup(workflow_name, job_name, steps, job_suites)
+    _require_make_preflights(job_suites)
+
+
+def _job_steps(
+    workflow_name: str,
+    job_name: str,
+    workflows: Mapping[str, Mapping[object, object]],
+) -> list[object]:
+    """Return one job's step list, refusing a non-list value."""
     job = _mapping(workflows[workflow_name]["jobs"], f"{workflow_name}.jobs")[job_name]
     steps = _mapping(job, f"{workflow_name}:{job_name}").get("steps", [])
     if not isinstance(steps, list):
         raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps must be a list")
+    return steps
+
+
+def _require_prior_setup(
+    workflow_name: str,
+    job_name: str,
+    steps: list[object],
+    job_suites: list[SuiteConsumer],
+) -> None:
+    """Require an unconditional setup-rust step before the first suite step."""
     first_suite_index = min(
         suite.step_index for suite in job_suites if suite.step_index is not None
     )
@@ -582,6 +603,9 @@ def _assert_job_provisioning(
             f"{workflow_name}:{job_name} needs unconditional prior setup-rust with mold {MOLD_VERSION}"
         )
 
+
+def _require_make_preflights(job_suites: list[SuiteConsumer]) -> None:
+    """Require every Make suite route to reach the provisioning target first."""
     for suite in job_suites:
         if suite.route == "make":
             evaluation = evaluate_make_goal(suite.make_goal)
