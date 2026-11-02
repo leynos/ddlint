@@ -126,7 +126,7 @@ The following invariants must hold throughout the crate split:
 
 Primary implementation points:
 
-- `src/parser/expression/pratt.rs`
+- `src/parser/expression/pratt/mod.rs`
 - `src/parser/expression/pratt/postfix.rs`
 - `src/parser/expression/pratt/diff.rs`
 - `src/parser/expression/pratt/delay.rs`
@@ -199,7 +199,7 @@ The `Rule` AST wrapper exposes helpers that classify terms into:
 Implementation points:
 
 - `src/parser/span_scanners/rules.rs`
-- `src/parser/ast/rule.rs`
+- `src/parser/ast/rule/mod.rs`
 - `src/parser/ast/rule/classification.rs`
 
 Aggregation and lowering stage boundaries are tracked in the conformance
@@ -254,10 +254,10 @@ Implementation points:
 - `src/parser/ast/mod.rs` exposes `find_identifier_span(...)` and
   `find_identifier_span_in_range(...)`, which locate the first matching
   `T_IDENT` token within a syntax subtree or span-bounded search window.
-- `src/parser/ast/function.rs`, `src/parser/ast/relation.rs`, and
+- `src/parser/ast/function.rs`, `src/parser/ast/relation/mod.rs`, and
   `src/parser/ast/type_def.rs` use that helper to expose `name_span()` for
   top-level declaration identifiers.
-- `src/parser/ast/rule_head.rs` computes `RuleHead::binding_spans` while
+- `src/parser/ast/rule_head/mod.rs` computes `RuleHead::binding_spans` while
   parsing head text. `collect_head_binding_spans(...)` tokenizes the head atom
   slice, filters out structural identifiers such as relation callees and field
   labels, and records only declaration-like binding identifiers with absolute
@@ -415,7 +415,7 @@ token names or their human-readable equivalents.
 - Stable diagnostic taxonomy: `src/parser/diagnostics/*`
 - Backend-neutral observer and optional adapter:
   `src/parser/observability/*`
-- Pratt parser: `src/parser/expression/pratt.rs`
+- Pratt parser: `src/parser/expression/pratt/mod.rs`
 - Pratt postfix helpers:
   `src/parser/expression/pratt/{postfix,diff,delay}.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`

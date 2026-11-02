@@ -20,7 +20,7 @@ This register tracks parser behaviour against the syntax specification.
 - Topic: parse-time call classification.
 - Current behaviour (code): bare or non-qualified callees parse as
   `Expr::Apply`; only qualified lower-case terminal forms parse as `Expr::Call`
-  (`src/parser/expression/pratt.rs`, `src/parser/expression/qualified.rs`).
+  (`src/parser/expression/pratt/mod.rs`, `src/parser/expression/qualified.rs`).
 - Spec/target behaviour: this matches the current spec in section 2.2.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.4.5`.
@@ -70,7 +70,7 @@ This register tracks parser behaviour against the syntax specification.
 
 - Topic: `&Rel{...}` in rule heads.
 - Current behaviour (code): lowered to `ref_new(...)` in head context
-  (`src/parser/ast/rule_head.rs`).
+  (`src/parser/ast/rule_head/mod.rs`).
 - Spec/target behaviour: matches section 6.3.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.5.2`.
@@ -102,7 +102,7 @@ This register tracks parser behaviour against the syntax specification.
 - Current behaviour (code): aggregation classification and validation are
   available via `Rule::body_terms()` and `Rule::flattened_body_terms()`, while
   `parse()` and `Parsed::errors()` do not enforce aggregation misuse as a
-  global parse pipeline contract (`src/parser/ast/rule.rs`,
+  global parse pipeline contract (`src/parser/ast/rule/mod.rs`,
   `src/parser/mod.rs`).
 - Spec/target behaviour: sections 1, 6.1, 6.2, and 13 now describe
   aggregation handling as rule-body semantic extraction layered on top of the
@@ -115,7 +115,7 @@ This register tracks parser behaviour against the syntax specification.
 - Topic: when vec/map literal lowering occurs.
 - Current behaviour (code): `parse()` and `parse_expression()` preserve vector
   and map literals as raw `Expr::VecLit` and `Expr::MapLit` nodes in the CST
-  (`src/parser/expression/data_structures.rs`, `src/parser/ast/expr.rs`).
+  (`src/parser/expression/data_structures.rs`, `src/parser/ast/expr/mod.rs`).
   `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
   does not lower collection literals.
 - Spec/target behaviour: section 6.4 describes collection literal lowering as
@@ -159,10 +159,10 @@ This register tracks parser behaviour against the syntax specification.
 - Topic: relation declaration variants.
 - Current behaviour (code): scanner accepts optional role, optional kind,
   optional `&`, record bodies, bracket element-type bodies, and opaque
-  primary-key suffixes (`src/parser/span_scanners/relations.rs`). The typed AST
-  exposes `RelationRole`, `RelationKind`, `RelationBody`, keyword-presence
+  primary-key suffixes (`src/parser/span_scanners/relations/mod.rs`). The typed
+  AST exposes `RelationRole`, `RelationKind`, `RelationBody`, keyword-presence
   flags, `is_ref()`, and compatibility `primary_key()` binder/list access
-  (`src/parser/ast/relation.rs`). Regression coverage includes the relation
+  (`src/parser/ast/relation/mod.rs`). Regression coverage includes the relation
   form matrix and property tests (`src/parser/tests/relations.rs`,
   `src/parser/tests/relation_proptest.rs`).
 - Spec/target behaviour: matches section 5.5. Absence of a role means internal;

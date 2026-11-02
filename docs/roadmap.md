@@ -65,7 +65,7 @@ navigable CST and typed AST.
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
   - [x] 1.5.2.2. Implement `TypeDef` (`src/parser/ast/type_def.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
-  - [x] 1.5.2.3. Implement `Relation` (`src/parser/ast/relation.rs`).
+  - [x] 1.5.2.3. Implement `Relation` (`src/parser/ast/relation/mod.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.5.
   - [x] 1.5.2.4. Implement `Index` (`src/parser/ast/index.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.6.
@@ -73,7 +73,7 @@ navigable CST and typed AST.
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.3.
   - [x] 1.5.2.6. Implement `Transformer` (`src/parser/ast/transformer.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.4.
-  - [x] 1.5.2.7. Implement `Rule` (`src/parser/ast/rule.rs`).
+  - [x] 1.5.2.7. Implement `Rule` (`src/parser/ast/rule/mod.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.8.
 - [x] 1.5.3. Add and test parsing utilities for nested structures such as
   parameter and type lists (`src/parser/ast/parse_utils/`). See

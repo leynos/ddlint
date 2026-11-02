@@ -20,9 +20,9 @@ parsing pipeline.
 - Handles assignment parsing, aggregation detection, and `for`-loop lowering
   within the rule-body helper path.
 - Keeps rule-body classification separate from the public `Rule` wrapper so
-  `rule.rs` stays focused on the surface API.
+  `rule/mod.rs` stays focused on the surface API.
 
-### `src/parser/ast/relation.rs`
+### `src/parser/ast/relation/mod.rs`
 
 - Owns the typed relation declaration surface for role, kind, ref marker, and
   body form.
@@ -45,30 +45,30 @@ parsing pipeline.
   until roadmap follow-up `2.6.6.1` introduces typed access. `Parsed::errors()`
   remains the parser-level diagnostic channel.
 
-### `src/parser/span_scanners/relations.rs`
+### `src/parser/span_scanners/relations/mod.rs`
 
 - Owns top-level relation-candidate discovery, declaration orchestration,
   record and bracket body parsing, primary-key validation,
   relation-versus-rule/fact disambiguation, span collection, and recovery.
-- Applies delimiter-depth-aware line-start filtering so only genuine top-level
+- Applies delimiter-depth-aware line-start filtering, so only genuine top-level
   declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
 - Produces relation declaration spans for CST construction;
-  `src/parser/ast/relation.rs` then exposes the typed AST accessors over the
-  resulting nodes.
+  `src/parser/ast/relation/mod.rs` then exposes the typed AST accessors over
+  the resulting nodes.
 
 ### `src/parser/span_scanners/relations/cursor.rs`
 
 - Owns shared cursor movement, trivia handling, token inspection, and
   balanced-delimiter traversal (including delimiter-stack maintenance) for the
   relation scanner.
-- Holds no grammar decisions; those remain in `relations.rs`.
+- Holds no grammar decisions; those remain in `relations/mod.rs`.
 
 ### `src/parser/span_scanners/relations/preamble.rs`
 
 - Parses only the optional role/kind preamble keywords and enforces
   `D-REL-001`, `D-REL-002`, and `D-REL-003`.
 - Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
-  and recovery in `relations.rs`.
+  and recovery in `relations/mod.rs`.
 
 ### `src/parser/span_scanners/typedefs.rs`
 
@@ -118,8 +118,9 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
-- Keep scanner grammar and recovery decisions — candidate discovery, body and
-  suffix parsing, and span collection — in `relations.rs`.
+- Keep scanner grammar and recovery decisions — candidate discovery, body
+  parsing, and span collection — in `relations/mod.rs`; keep primary-key suffix
+  parsing in `relations/suffix.rs`.
 - Keep cursor movement and balanced-block mechanics in `relations/cursor.rs`.
 - Keep role/kind preamble parsing and its ordering/duplication diagnostics
   (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
@@ -226,6 +227,19 @@ optional candidate and silently falls back to defaults when the named file is
 missing, contradicting the documented required-and-exclusive contract.
 Declaring the key switches discovery onto the selector policy while automatic
 discovery keeps the first-wins order.
+
+## Module layout
+
+A module with child files uses a directory entrypoint, such as
+`src/parser/ast/rule/mod.rs`. Explicit test paths are relative to that
+entrypoint, so a move must preserve the file each path selects.
+
+Rule-body behavioural tests use `tests/rule_behaviour/main.rs`, with private
+for-loop and delimiter case modules in the same directory. These modules belong
+only to that integration target; the four existing assertion and parsing
+helpers remain at its root. The extracted tests retain their leaf names and
+bodies, while their harness names gain the child module prefix. Cargo discovers
+no additional integration targets from these child files.
 
 ## Parser test helpers
 
