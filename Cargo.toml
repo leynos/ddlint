@@ -37,7 +37,7 @@ insta = "1.47.2"
 ddlint = { path = ".", features = ["test-support"] }
 proptest = "1.6.0"
 trybuild = "1.0.114"
-cap-std = { version = "3.4.6", features = ["fs_utf8"] }
+cap-std = { version = "4.0.3", features = ["fs_utf8"] }
 camino = "1.2.6"
 
 [dev-dependencies.metrics-util]
