@@ -51,23 +51,15 @@ guide records the measurement and the reason.
 the commands `make -n` prints for each target, and the `setup-rust` steps of
 the workflows, so a flag lost through a recipe or workflow edit fails there.
 
-## Qualification follow-up
+## Backend qualification evidence
 
 The accepted routing decision above remains in force. LLVM remains the
-repository's development backend, and `nightly-2025-09-16` remains its compiler
-pin while compiler-date and backend qualification decisions await approval. The
-original guide recorded stable Cargo rejecting `codegen-backend` under
-`[profile.dev]`. That report concerns that configuration mechanism; it does not
-establish the outcome of flag-based backend selection.
-
-A scratch unwind fixture on native `x86_64-unknown-linux-gnu`, using that
-nightly and flag-based Cranelift activation, passed its `#[should_panic]` case,
-failed its `catch_unwind` case, and aborted in its spawned-thread panic case. A
-matched LLVM control passed all three cases with the parallel frontend and
-`mold` flags retained. These observations cover the fixture and selected host
-and compiler. Full repository, instrumented coverage and cross-host
-qualification remain open, alongside approval of any scoped backend exception
-or compiler-date migration.
+repository's development backend, and `nightly-2026-10-30` is its compiler pin.
+The developers' guide records the Cranelift exception — it holds while the
+release workflow builds on stable — and the bounded unwind measurement behind
+it, taken on the former `nightly-2025-09-16` pin. That measurement covers
+neither the full repository nor instrumented coverage or other hosts, and it is
+not the basis of the exception.
 
 ## Consequences
 
