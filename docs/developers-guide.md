@@ -582,6 +582,7 @@ the exception. `tests/whitaker_isolation_contract.rs` reads the real
 assigns the literal `RUSTFLAGS="-D warnings"`.
 
 ### Cranelift
+
 Exception: Cranelift is not the development-profile backend. The repository pins
 `nightly-2026-10-30` (no Cranelift measurement was taken on it, and the
 exception has no deferral date: it holds while the release workflow builds on
@@ -601,16 +602,15 @@ development build flags and their rationale are recorded in
 
 ### Code-generation backend evidence
 
-The repository retains LLVM and the `nightly-2026-10-30` toolchain pin, and
-the Cranelift exception recorded above states why the development profile does
-not select that backend. The measurement below was taken on the former
+The repository retains LLVM and the `nightly-2026-10-30` toolchain pin, and the
+Cranelift exception recorded above states why the development profile does not
+select that backend. The measurement below was taken on the former
 `nightly-2025-09-16` pin, before the toolchain moved, and has not been repeated
-on the current pin. The earlier
-`[profile.dev] codegen-backend` observation explains a Cargo configuration
-constraint, but it does not by itself establish the backend's panic behaviour.
+on the current pin. The earlier `[profile.dev] codegen-backend` observation
+explains a Cargo configuration constraint, but it does not by itself establish
+the backend's panic behaviour.
 
-In a bounded Linux x86-64 GNU scratch comparison using
-`nightly-2025-09-16`,
+In a bounded Linux x86-64 GNU scratch comparison using `nightly-2025-09-16`,
 Cranelift passed the unwind `should_panic` case, failed the `catch_unwind`
 case, and aborted on the spawned-thread panic case. The matched LLVM run passed
 all three while retaining the development thread and linker flags. These
