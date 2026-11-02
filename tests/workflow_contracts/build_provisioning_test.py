@@ -116,20 +116,32 @@ def _require_ci_full_suite_binding(
 def _ordered_stage_indices(steps: list[object]) -> int:
     """Require one Lint, Test and contracts step in that order, returning Test."""
     wanted = ("Lint", "Test", "Workflow contract tests")
-    positions = {
-        name: [
-            index
-            for index, step in enumerate(steps)
-            if isinstance(step, Mapping) and step.get("name") == name
-        ]
-        for name in wanted
-    }
+    positions = {name: _stage_positions(steps, name) for name in wanted}
+    _require_one_of_each(positions)
+    lint_index, test_index, contracts_index = (positions[name][0] for name in wanted)
+    _require_stage_order(lint_index, test_index, contracts_index)
+    return test_index
+
+
+def _stage_positions(steps: list[object], name: str) -> list[int]:
+    """Return the indices of steps carrying one stage name."""
+    return [
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, Mapping) and step.get("name") == name
+    ]
+
+
+def _require_one_of_each(positions: Mapping[str, list[int]]) -> None:
+    """Require exactly one step for every named stage."""
     if any(len(indices) != 1 for indices in positions.values()):
         raise BuildProvisioningError("CI needs one each of Lint, Test and workflow contracts")
-    lint_index, test_index, contracts_index = (positions[name][0] for name in wanted)
+
+
+def _require_stage_order(lint_index: int, test_index: int, contracts_index: int) -> None:
+    """Require Test to follow Lint and precede the workflow contracts."""
     if not lint_index < test_index < contracts_index:
         raise BuildProvisioningError("CI Test must follow Lint and precede workflow contracts")
-    return test_index
 
 
 def _require_sole_make_test_step(steps: list[object], test_index: int) -> None:

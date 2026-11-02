@@ -138,14 +138,24 @@ def _single_finite_axis(
     matrix: Mapping[object, object], context: str
 ) -> tuple[str, list[object]]:
     """Require one finite non-empty matrix axis without include or exclude."""
-    if any(key in matrix for key in ("include", "exclude")):
-        raise BuildProvisioningError(f"{context} suite matrix include/exclude is unsupported")
+    _reject_matrix_modifiers(matrix, context)
     if len(matrix) != 1:
         raise BuildProvisioningError(f"{context} suite matrix must have one finite axis")
     name, values = next(iter(matrix.items()))
+    _require_resolved_axis(name, values, context)
+    return name, values
+
+
+def _reject_matrix_modifiers(matrix: Mapping[object, object], context: str) -> None:
+    """Refuse matrix include and exclude entries this contract cannot resolve."""
+    if any(key in matrix for key in ("include", "exclude")):
+        raise BuildProvisioningError(f"{context} suite matrix include/exclude is unsupported")
+
+
+def _require_resolved_axis(name: object, values: object, context: str) -> None:
+    """Require a text axis name and a non-empty list of values."""
     if not isinstance(name, str) or not isinstance(values, list) or not values:
         raise BuildProvisioningError(f"{context} has an unresolved matrix axis {name!r}")
-    return name, values
 
 
 def _runner_label(value: str, row: Mapping[str, object], context: str) -> str:
