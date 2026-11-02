@@ -316,17 +316,24 @@ def _is_suite_invocation(command: str, arguments: str) -> bool:
 
 def _cargo_routes(script: str, context: str) -> tuple[str, ...]:
     """Identify direct suite commands and reject unknown Cargo routes."""
-    routes = []
-    for match in CARGO_CALL.finditer(script):
-        command = match.group("command")
-        arguments = match.group("arguments")
-        if command not in RUST_SUITE_COMMANDS and command not in NON_SUITE_CARGO_COMMANDS:
-            raise BuildProvisioningError(f"{context} has an unclassified Cargo command {command!r}")
-        if _is_suite_invocation(command, arguments):
-            routes.append(f"{match.group('tool')}:{command}")
+    routes = [
+        route
+        for match in CARGO_CALL.finditer(script)
+        if (route := _classify_cargo_match(match, context)) is not None
+    ]
     if "cargo" in script and not CARGO_CALL.search(script):
         raise BuildProvisioningError(f"{context} has an unresolved Cargo command")
     return tuple(routes)
+
+
+def _classify_cargo_match(match: re.Match[str], context: str) -> str | None:
+    """Return the suite route for one Cargo match, or None for other commands."""
+    command = match.group("command")
+    if command not in RUST_SUITE_COMMANDS and command not in NON_SUITE_CARGO_COMMANDS:
+        raise BuildProvisioningError(f"{context} has an unclassified Cargo command {command!r}")
+    if not _is_suite_invocation(command, match.group("arguments")):
+        return None
+    return f"{match.group('tool')}:{command}"
 
 
 def _step_suites(
