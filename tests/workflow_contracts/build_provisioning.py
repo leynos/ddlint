@@ -81,6 +81,20 @@ class MakeEvaluation:
     provisioning_lines: tuple[int, ...]
 
 
+@dataclass(frozen=True)
+class StepLocation:
+    """Identify one workflow step for suite records and failure messages."""
+
+    workflow: str
+    job: str
+    index: int
+
+    @property
+    def label(self) -> str:
+        """Return the step's location as it appears in failure messages."""
+        return f"{self.workflow}:{self.job}.steps[{self.index}]"
+
+
 def read_repository_workflows() -> dict[str, dict[object, object]]:
     """Read every checked-in workflow through the pinned CV-005 reader.
 
@@ -317,18 +331,15 @@ def _step_suites(
         raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps must be a list")
     suites: list[SuiteConsumer] = []
     for index, step_value in enumerate(steps_value):
-        step = _mapping(step_value, f"{workflow_name}:{job_name}.steps[{index}]")
-        suites.extend(_coverage_suite(workflow_name, job_name, step, index))
-        suites.extend(
-            _run_step_suites(
-                workflow_name, job_name, step, index, has_default_working_directory
-            )
-        )
+        location = StepLocation(workflow_name, job_name, index)
+        step = _mapping(step_value, location.label)
+        suites.extend(_coverage_suite(location, step))
+        suites.extend(_run_step_suites(location, step, has_default_working_directory))
     return tuple(suites)
 
 
 def _coverage_suite(
-    workflow_name: str, job_name: str, step: Mapping[object, object], index: int
+    location: StepLocation, step: Mapping[object, object]
 ) -> tuple[SuiteConsumer, ...]:
     """Return the coverage route for a step, refusing any unpinned variant."""
     uses = step.get("uses")
@@ -336,16 +347,14 @@ def _coverage_suite(
         return ()
     if uses != COVERAGE_ACTION:
         raise BuildProvisioningError(
-            f"{workflow_name}:{job_name} uses an unapproved coverage action pin"
+            f"{location.workflow}:{location.job} uses an unapproved coverage action pin"
         )
-    return (SuiteConsumer(workflow_name, job_name, "coverage-action", index),)
+    return (SuiteConsumer(location.workflow, location.job, "coverage-action", location.index),)
 
 
 def _run_step_suites(
-    workflow_name: str,
-    job_name: str,
+    location: StepLocation,
     step: Mapping[object, object],
-    index: int,
     has_default_working_directory: bool,
 ) -> tuple[SuiteConsumer, ...]:
     """Return the direct and Make suite routes declared by one `run` step."""
@@ -353,22 +362,31 @@ def _run_step_suites(
     if run is None:
         return ()
     if not isinstance(run, str):
-        raise BuildProvisioningError(f"{workflow_name}:{job_name}.steps[{index}].run must be text")
-    suites = [
-        SuiteConsumer(workflow_name, job_name, route, index)
-        for route in _cargo_routes(run, f"{workflow_name}:{job_name}.steps[{index}]")
-    ]
+        raise BuildProvisioningError(f"{location.label}.run must be text")
+    direct = tuple(
+        SuiteConsumer(location.workflow, location.job, route, location.index)
+        for route in _cargo_routes(run, location.label)
+    )
+    return direct + _make_step_suites(location, step, run, has_default_working_directory)
+
+
+def _make_step_suites(
+    location: StepLocation,
+    step: Mapping[object, object],
+    run: str,
+    has_default_working_directory: bool,
+) -> tuple[SuiteConsumer, ...]:
+    """Return the Make suite routes declared by one `run` step."""
     goals = _make_goals(run)
     if goals and (has_default_working_directory or "working-directory" in step):
         raise BuildProvisioningError(
-            f"{workflow_name}:{job_name} Make call has a custom working directory"
+            f"{location.workflow}:{location.job} Make call has a custom working directory"
         )
-    suites.extend(
-        SuiteConsumer(workflow_name, job_name, "make", index, goal)
+    return tuple(
+        SuiteConsumer(location.workflow, location.job, "make", location.index, goal)
         for goal in goals
         if evaluate_make_goal(goal).suite_lines
     )
-    return tuple(suites)
 
 
 def _has_working_directory(defaults: object, context: str) -> bool:

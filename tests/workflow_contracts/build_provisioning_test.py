@@ -134,7 +134,12 @@ def _ordered_stage_indices(steps: list[object]) -> int:
 
 def _require_sole_make_test_step(steps: list[object], test_index: int) -> None:
     """Require the single `make test` step to be the unconditional named Test step."""
-    test_step = steps[test_index]
+    _require_unconditional_test_step(steps[test_index])
+    _require_single_make_test_step(steps, test_index)
+
+
+def _require_unconditional_test_step(test_step: object) -> None:
+    """Require the named Test step to run `make test` without soft failure."""
     if (
         not isinstance(test_step, Mapping)
         or test_step.get("run") != "make test"
@@ -143,6 +148,10 @@ def _require_sole_make_test_step(steps: list[object], test_index: int) -> None:
         or test_step.get("continue-on-error") not in (None, False, "false", "False")
     ):
         raise BuildProvisioningError("CI Test must run make test without soft failure")
+
+
+def _require_single_make_test_step(steps: list[object], test_index: int) -> None:
+    """Require exactly one `make test` step, at the named Test position."""
     run_indices = [
         index
         for index, step in enumerate(steps)
