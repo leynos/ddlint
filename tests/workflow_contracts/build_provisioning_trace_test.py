@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 import build_provisioning as contract
+import build_provisioning_make
 from build_provisioning import BuildProvisioningError
 
 SUITE_TRACE = "Makefile:161: cargo test --all-targets --all-features"
@@ -21,10 +22,10 @@ def _stub_make_output(
     returncode: int = 0,
 ) -> Mock:
     """Mock Make's process boundary while preserving evaluator behaviour."""
-    monkeypatch.setattr(contract.shutil, "which", lambda _: "/usr/bin/make")
+    monkeypatch.setattr(build_provisioning_make.shutil, "which", lambda _: "/usr/bin/make")
     result = SimpleNamespace(returncode=returncode, stdout=stdout, stderr="")
     runner = Mock(return_value=result)
-    monkeypatch.setattr(contract.subprocess, "run", runner)
+    monkeypatch.setattr(build_provisioning_make.subprocess, "run", runner)
     return runner
 
 

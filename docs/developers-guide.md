@@ -506,16 +506,23 @@ API or dependency. Preflight, pinned-data and lint assertions live in
 helper live in its private `provisioning_installation_tests.rs` child module.
 The shared `provisioning_fixtures.rs` module is private to these build-contract
 tests, not a reusable filesystem abstraction. The Python workflow consumer
-contract belongs in `tests/workflow_contracts/build_provisioning.py`; its only
-caller is `build_provisioning_test.py`. That private helper follows Rust suite
-references through evaluated root-Make metadata and local workflow calls, then
-checks provisioning at those consumer edges. It accepts simple root `make` goal
-lists and finite single-axis runner matrices; Make options, variable overrides,
-multiple matrix axes and matrix `include`/`exclude` fail closed. It reuses the
-pinned public `cv005_contracts.loading` reader and leaves canonical workflow,
-secret, and coverage-publisher policy with the existing CV-005 package. It is
-not a general workflow or Make parser. Existing mutation and coverage helpers
-are policy-specific; this is the sole local suite-consumer reachability helper.
+contract belongs to the `tests/workflow_contracts/build_provisioning*.py`
+family, with `build_provisioning.py` as its import surface. Its callers are the
+sibling `build_provisioning*_test.py` modules, and each implementation module
+stays below the 400-line file limit: `build_provisioning_common.py` holds the
+shared model and pinned values, `build_provisioning_matrix.py` resolves runner
+matrices, `build_provisioning_make.py` evaluates Make,
+`build_provisioning_workflows.py` walks the topology and
+`build_provisioning_checks.py` asserts provisioning. That private helper
+follows Rust suite references through evaluated root-Make metadata and local
+workflow calls, then checks provisioning at those consumer edges. It accepts
+simple root `make` goal lists and finite single-axis runner matrices; Make
+options, variable overrides, multiple matrix axes and matrix
+`include`/`exclude` fail closed. It reuses the pinned public
+`cv005_contracts.loading` reader and leaves canonical workflow, secret, and
+coverage-publisher policy with the existing CV-005 package. It is not a general
+workflow or Make parser. Existing mutation and coverage helpers are
+policy-specific; this is the sole local suite-consumer reachability helper.
 
 Run `make` or `make build` for a debug build and `make release` for a release
 build. These are phony entrypoints: each request invokes Cargo, which decides
@@ -595,9 +602,9 @@ Revisit if that build moves to the pinned nightly.
 
 The Rust build contract in `tests/build_standard_contract.rs` checks target
 routing, preflight ordering and installation behaviour. The workflow consumer
-contract in `tests/workflow_contracts/build_provisioning_test.py` verifies that
-CI suites are reached only after their required provisioning step. The
-development build flags and their rationale are recorded in
+contract in the `tests/workflow_contracts/build_provisioning*_test.py` modules
+verifies that CI suites are reached only after their required provisioning
+step. The development build flags and their rationale are recorded in
 [ADR 003](adr-003-rust-build-standard.md).
 
 ### Code-generation backend evidence
