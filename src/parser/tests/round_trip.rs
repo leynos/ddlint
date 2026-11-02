@@ -5,18 +5,22 @@
 
 use super::helpers::{parse_err, parse_ok, pretty_print, round_trip};
 use crate::SyntaxKind;
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn simple_prog() -> &'static str {
     "input relation R(x: u32);"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn complex_prog() -> &'static str {
     "input relation R(x: u32);\noutput relation S(y: string);"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn empty_prog() -> &'static str {
     ""

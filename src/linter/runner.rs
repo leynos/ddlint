@@ -156,6 +156,7 @@ fn sort_diagnostics(diagnostics: &mut [LintDiagnostic]) {
 #[cfg(test)]
 mod tests {
     //! Tests for the lint runner.
+    use fixture_lints::allow_fixture_expansion_lints;
     use rowan::TextRange;
     use rstest::{fixture, rstest};
 
@@ -223,6 +224,7 @@ mod tests {
 
     // -- fixtures -------------------------------------------------------------
 
+    #[allow_fixture_expansion_lints]
     #[fixture]
     fn store() -> CstRuleStore {
         CstRuleStore::new()

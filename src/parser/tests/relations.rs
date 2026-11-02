@@ -2,37 +2,18 @@
 //!
 //! Validates parsing for input, output, and internal relations.
 
+mod fixtures;
+
 use super::helpers::{parse_relation, pretty_print};
 use crate::parser::ast::{AstNode, RelationBody, RelationKind, RelationRole};
 use crate::test_util::{
     assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
 };
-use rstest::{fixture, rstest};
-
-#[fixture]
-fn input_relation_pk() -> &'static str {
-    "input relation User(user_id: u32, username: string) primary key (user_id)"
-}
-
-#[fixture]
-fn output_relation_no_pk() -> &'static str {
-    "output relation Alert(message: string, timestamp: u64)"
-}
-
-#[fixture]
-fn internal_relation_no_pk() -> &'static str {
-    "relation UserSession(user_id: u32, session_id: string, start_time: u64)"
-}
-
-#[fixture]
-fn multiline_relation() -> &'static str {
-    "input relation Log(\n    id: u32,\n    message: string\n) primary key (id)\n"
-}
-
-#[fixture]
-fn relation_unbalanced_parentheses() -> &'static str {
-    "relation Foo(x: u32"
-}
+use fixtures::{
+    input_relation_pk, internal_relation_no_pk, multiline_relation, output_relation_no_pk,
+    relation_unbalanced_parentheses,
+};
+use rstest::rstest;
 
 fn fields(items: &[(&str, &str)]) -> RelationBody {
     RelationBody::Fields(

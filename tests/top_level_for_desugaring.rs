@@ -6,6 +6,7 @@
 
 use ddlint::parse;
 use ddlint::test_util::{ErrorPattern, find_matching_error};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
 /// Diagnostic substring shared across tests to avoid duplication.
@@ -16,6 +17,7 @@ const UNSUPPORTED_FOR_BODY_PATTERN: &str =
 const UNTERMINATED_FOR_PATTERN: &str =
     "unterminated top-level `for` statement; expected trailing `.`";
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parse_case(#[default("")] src: &str) -> ddlint::Parsed {
     parse(src)

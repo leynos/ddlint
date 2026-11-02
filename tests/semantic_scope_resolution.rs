@@ -3,6 +3,7 @@
 use ddlint::linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, Runner};
 use ddlint::sema::{self, DeclarationKind, Resolution, UseKind, UseOrigin};
 use ddlint::{SyntaxKind, parse};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
 fn parse_ok(source: &str) -> ddlint::Parsed {
@@ -27,6 +28,7 @@ fn uses_named<'a>(
         .collect()
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn semantic_model(#[default("")] source: &str) -> ddlint::sema::SemanticModel {
     let parsed = parse_ok(source);

@@ -6,8 +6,10 @@
 use ddlint::ast::{Relation, RelationBody, RelationKind, RelationRole};
 use ddlint::parse;
 use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parsed_relation(#[default("")] source: &str) -> Relation {
     let parsed = parse(source);

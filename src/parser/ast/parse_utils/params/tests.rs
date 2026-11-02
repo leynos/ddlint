@@ -5,9 +5,11 @@ use super::*;
 use crate::SyntaxKind;
 use crate::parser::ast::AstNode;
 use crate::parser::parse;
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::{SyntaxElement, TextRange};
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
     let parsed = parse(src);

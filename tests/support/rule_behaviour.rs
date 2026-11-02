@@ -2,6 +2,7 @@
 
 use ddlint::parse;
 use ddlint::parser::ast::Rule;
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::fixture;
 
 /// Parse source and return its first rule, reporting syntax and lookup failures.
@@ -70,6 +71,7 @@ const MIXED_RULE_SOURCE: &str = "R(x, y) :- Pre(x), for (y in Items(y)) Process(
 /// For example, `#[from(mixed_rule)]` supplies a body with a pre-loop
 /// expression, a for-loop term, and a post-loop expression; flattening yields
 /// `Pre`, `Items`, `Process`, then `Post`.
+#[allow_fixture_expansion_lints]
 #[fixture]
 pub(super) fn mixed_rule() -> Result<Rule, String> {
     parse_and_extract_rule(MIXED_RULE_SOURCE)

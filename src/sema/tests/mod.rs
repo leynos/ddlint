@@ -1,6 +1,7 @@
 //! Unit tests for semantic-model construction.
 
 use crate::parse;
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
 use super::{
@@ -65,11 +66,13 @@ fn relation_symbol_id(model: &super::SemanticModel, name: &str) -> Option<crate:
         .find_map(|(symbol_id, symbol)| (symbol.name() == name).then_some(symbol_id))
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parsed_case(#[default("")] source: &str) -> crate::Parsed {
     parse_ok(source)
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn semantic_model(#[default("")] source: &str) -> super::SemanticModel {
     let parsed = parse_ok(source);

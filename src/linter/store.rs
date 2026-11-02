@@ -124,6 +124,7 @@ impl Default for CstRuleStore {
 #[cfg(test)]
 mod tests {
     //! Tests for the lint store.
+    use fixture_lints::allow_fixture_expansion_lints;
     use rstest::{fixture, rstest};
 
     use super::*;
@@ -164,6 +165,7 @@ mod tests {
         Box::new(StubRule { name, kinds })
     }
 
+    #[allow_fixture_expansion_lints]
     #[fixture]
     fn store() -> CstRuleStore {
         CstRuleStore::new()

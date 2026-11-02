@@ -79,6 +79,9 @@
 - [Architectural decision record 004: OrthoConfig CLI
   boundary][ortho-config-cli-adr]: Decision record for the application-owned
   configuration layer and library boundary.
+- [Architectural decision record 005: fixture expansion lint
+  helper](./adr-005-fixture-expansion-lint-helper.md): Decision record for the
+  `fixture-lints` proc-macro boundary and its `unused_braces` suppression.
 
 ## Execution plans
 

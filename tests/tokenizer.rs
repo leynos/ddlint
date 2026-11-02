@@ -5,8 +5,10 @@
 //! and error cases.
 
 use ddlint::{SyntaxKind, test_util::tokenize};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn simple_input() -> &'static str {
     "input relation R(x: u32)"

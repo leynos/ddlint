@@ -1233,6 +1233,17 @@ This comprehensive, three-tiered testing strategy ensures that every aspect of
 the linter is validated, from the micro-level logic of a single rule to the
 macro-level behaviour of the final executable.
 
+### 6.4. Fixture expansion lint scope
+
+The canonical Rustfmt profile enables `fn_single_line`, which collapses a
+single-expression `rstest` fixture onto one line. `rstest` re-emits that body as
+`{ { body } }`, and rustc's `unused_braces` lint reports the fixture's own
+braces as redundant. The repository suppresses only that formatting artefact,
+through the `fixture-lints` proc macro, and leaves every other `unused_braces`
+finding visible. [ADR 005](adr-005-fixture-expansion-lint-helper.md) records
+the boundary, the qualification rule, and the compile-test contract that pins
+it.
+
 ## 7. Phased implementation roadmap and future work
 
 This design is translated into an actionable, multiphase project plan. Each
