@@ -12,7 +12,7 @@ use std::process::Output;
 mod fixtures;
 #[path = "provisioning_installation_tests.rs"]
 mod installation_tests;
-use fixtures::{PathPolicy, Sandbox, ToolScenario};
+use fixtures::{PathPolicy, Sandbox, ToolScenario, pinned_toolchain};
 
 /// Combines child stdout and stderr for useful contract failure messages.
 fn output_text(output: &Output) -> String {
@@ -162,7 +162,7 @@ fn check_build_tools_rejects_a_missing_pinned_toolchain_actionably() {
             .expect("check-build-tools should run in the repository");
     assert!(!success, "missing nightly passed:\n{transcript}");
     assert!(
-        transcript.contains("nightly-2025-09-16"),
+        transcript.contains(&pinned_toolchain()),
         "missing-toolchain guidance should name the pinned nightly:\n{transcript}"
     );
 }

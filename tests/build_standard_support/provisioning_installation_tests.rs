@@ -3,7 +3,7 @@
 //! This private child module keeps installer cases separate from preflight
 //! contracts while reusing their inert, capability-rooted tool fixture.
 
-use super::{PathPolicy, Sandbox, ToolScenario, output_text};
+use super::{PathPolicy, Sandbox, ToolScenario, output_text, pinned_toolchain};
 
 /// Finds the first trace line containing every requested fragment.
 fn line_position(trace: &str, fragments: &[&str]) -> Option<usize> {
@@ -93,18 +93,14 @@ fn installer_verifies_before_extracting_and_adds_the_component_to_an_existing_ni
         Ok(trace) => trace,
         Err(error) => panic!("could not read installer trace:\n{transcript}\n{error}"),
     };
+    let pinned = pinned_toolchain();
     let download = line_position(&trace, &["curl:"]).expect("installer did not download mold");
     let verification = line_position(&trace, &["sha256sum:"])
         .expect("installer did not verify the downloaded archive");
     let extraction = line_position(&trace, &["tar:"]).expect("installer did not extract mold");
     let component = line_position(
         &trace,
-        &[
-            "rustup:",
-            "component add",
-            "rust-analyzer",
-            "nightly-2025-09-16",
-        ],
+        &["rustup:", "component add", "rust-analyzer", &pinned],
     )
     .expect("installer did not add rust-analyzer to the pinned nightly");
     assert_verified_check_mode(&trace);
@@ -170,23 +166,16 @@ fn installer_sets_up_a_missing_nightly_with_rust_analyzer() {
         "offline nightly setup failed:\n{transcript}"
     );
     let trace = sandbox.trace().expect("fake tool calls should be recorded");
-    let toolchain = line_position(
-        &trace,
-        &["rustup:", "toolchain install", "nightly-2025-09-16"],
-    )
-    .expect("installer did not create the missing pinned nightly");
+    let pinned = pinned_toolchain();
+    let toolchain = line_position(&trace, &["rustup:", "toolchain install", &pinned])
+        .expect("installer did not create the missing pinned nightly");
     let toolchain_line = trace
         .lines()
         .nth(toolchain)
         .expect("toolchain install trace position should identify a line");
     let component_add = line_position(
         &trace,
-        &[
-            "rustup:",
-            "component add",
-            "rust-analyzer",
-            "nightly-2025-09-16",
-        ],
+        &["rustup:", "component add", "rust-analyzer", &pinned],
     );
     assert!(
         toolchain_line.contains("rust-analyzer")
