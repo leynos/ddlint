@@ -68,6 +68,9 @@ _Figure 1: Compact repository tree for contributor orientation._
   contract launched separately from Cargo's test process.
 - `tests/`: Integration and behavioural tests. Shared integration helpers
   belong under `tests/support/`.
+- `tools/`: Pinned data for local build-tool provisioning. `tools/mold/VERSION`
+  names the `mold` release and `tools/mold/SHA256SUMS` holds the archive
+  digests that `make install-build-tools` verifies before extraction.
 
 ## Source layout
 

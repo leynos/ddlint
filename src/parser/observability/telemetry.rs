@@ -92,6 +92,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use metrics_util::debugging::{DebugValue, DebuggingRecorder};
+    use rstest::{fixture, rstest};
     use tracing::{
         Event, Metadata, Subscriber,
         field::{Field, Visit},
@@ -106,24 +107,26 @@ mod tests {
         },
     };
 
-    /// Runs `f` with a dispatcher that reports interest in every callsite.
+    /// Provides a dispatcher that reports interest in every callsite.
     ///
     /// `tracing` caches a callsite's interest the first time it is hit, and a
     /// first hit with no dispatcher installed caches `Interest::never` for the
     /// rest of the process. Several tests drive the same observer callsites, so
     /// every one of them installs an interested dispatcher first; otherwise a
     /// concurrent test can silence the tracing tests at random.
-    fn with_interested_dispatcher<T>(f: impl FnOnce() -> T) -> T {
-        let dispatch = tracing::Dispatch::new(RecordingSubscriber::default());
-        tracing::dispatcher::with_default(&dispatch, f)
+    #[fixture]
+    fn interested_dispatcher() -> tracing::Dispatch {
+        tracing::Dispatch::new(RecordingSubscriber::default())
     }
 
-    #[test]
-    fn emits_attempt_and_diagnostic_counters_with_bounded_labels() {
+    #[rstest]
+    fn emits_attempt_and_diagnostic_counters_with_bounded_labels(
+        interested_dispatcher: tracing::Dispatch,
+    ) {
         let recorder = DebuggingRecorder::new();
         let snapshotter = recorder.snapshotter();
 
-        with_interested_dispatcher(|| {
+        tracing::dispatcher::with_default(&interested_dispatcher, || {
             metrics::with_local_recorder(&recorder, || {
                 let observer = TelemetryObserver::new();
                 observer.parse_attempt_started(DiagnosticCategory::Relation);
@@ -170,12 +173,12 @@ mod tests {
         );
     }
 
-    #[test]
-    fn labels_diagnostics_without_a_code_as_uncoded() {
+    #[rstest]
+    fn labels_diagnostics_without_a_code_as_uncoded(interested_dispatcher: tracing::Dispatch) {
         let recorder = DebuggingRecorder::new();
         let snapshotter = recorder.snapshotter();
 
-        with_interested_dispatcher(|| {
+        tracing::dispatcher::with_default(&interested_dispatcher, || {
             metrics::with_local_recorder(&recorder, || {
                 let observer = TelemetryObserver::new();
                 observer.diagnostic_emitted(&DiagnosticContext {

@@ -82,8 +82,20 @@ class MakeEvaluation:
 
 
 def read_repository_workflows() -> dict[str, dict[object, object]]:
-    """Read every checked-in workflow through the pinned CV-005 reader."""
-    return cast(dict[str, dict[object, object]], read_workflows(WORKFLOWS_DIRECTORY))
+    """Read every checked-in workflow through the pinned CV-005 reader.
+
+    Returns
+    -------
+    dict[str, dict[object, object]]
+        Workflow documents keyed by file name.
+
+    Raises
+    ------
+    WorkflowReadingError
+        If the workflow directory cannot be listed, holds no workflow, or a
+        workflow cannot be read or parsed.
+    """
+    return cast("dict[str, dict[object, object]]", read_workflows(WORKFLOWS_DIRECTORY))
 
 
 def _mapping(value: object, context: str) -> Mapping[object, object]:
@@ -155,7 +167,26 @@ def _runner_labels(value: object, row: Mapping[str, object], context: str) -> tu
 
 
 def linux_runner_rows(job: Mapping[object, object], context: str) -> tuple[dict[str, object], ...]:
-    """Return Linux legs and reject runner labels whose operating system is unknown."""
+    """Return Linux legs and reject runner labels whose operating system is unknown.
+
+    Parameters
+    ----------
+    job : Mapping[object, object]
+        Workflow job whose matrix selects the runner legs.
+    context : str
+        Location used in failure messages.
+
+    Returns
+    -------
+    tuple[dict[str, object], ...]
+        Resolved matrix rows that select a Linux runner.
+
+    Raises
+    ------
+    BuildProvisioningError
+        If the job has no ``runs-on`` value, its matrix is unsupported, or a
+        resolved runner label names no operating system or conflicting ones.
+    """
     if "runs-on" not in job:
         raise BuildProvisioningError(f"{context} has a suite but no runs-on value")
     runner = job["runs-on"]
@@ -214,7 +245,23 @@ def _rust_suite_line(line: str) -> bool:
 
 @lru_cache(maxsize=None)
 def evaluate_make_goal(goal: str | None) -> MakeEvaluation:
-    """Read actual Make target closure and recipe order without executing it."""
+    """Read the Make target closure and recipe order without executing it.
+
+    Parameters
+    ----------
+    goal : str | None
+        Make goal to evaluate, or ``None`` for the default goal.
+
+    Returns
+    -------
+    MakeEvaluation
+        Trace line indices of Rust suite commands and preflight events.
+
+    Raises
+    ------
+    BuildProvisioningError
+        If GNU Make is missing or cannot evaluate the goal.
+    """
     make = shutil.which("make")
     if make is None:
         raise BuildProvisioningError("GNU Make is required to inspect suite prerequisites")
@@ -443,7 +490,24 @@ def _job_suites(
 def discover_linux_suites(
     workflows: Mapping[str, Mapping[object, object]],
 ) -> tuple[SuiteConsumer, ...]:
-    """Find Linux suite routes, resolving every local reusable workflow call."""
+    """Find Linux suite routes, resolving every local reusable workflow call.
+
+    Parameters
+    ----------
+    workflows : Mapping[str, Mapping[object, object]]
+        Workflow documents keyed by file name.
+
+    Returns
+    -------
+    tuple[SuiteConsumer, ...]
+        Distinct Linux Rust suite routes reachable from the topology.
+
+    Raises
+    ------
+    BuildProvisioningError
+        If no topology is supplied, a reusable workflow call cannot be
+        resolved, or the topology exposes no Linux Rust suite.
+    """
     if not workflows:
         raise BuildProvisioningError("no workflow topology was supplied")
     collector = _SuiteCollector(workflows)
@@ -497,7 +561,24 @@ def _assert_job_provisioning(
 
 
 def assert_suite_provisioning(workflows: Mapping[str, Mapping[object, object]]) -> None:
-    """Require each reachable Linux suite to have an unconditional prior setup."""
+    """Require each reachable Linux suite to have an unconditional prior setup.
+
+    Parameters
+    ----------
+    workflows : Mapping[str, Mapping[object, object]]
+        Workflow documents keyed by file name.
+
+    Returns
+    -------
+    None
+        Returns when every reachable Linux suite proves its tool setup.
+
+    Raises
+    ------
+    BuildProvisioningError
+        If discovery fails, or a job's suites lack an unconditional prior
+        ``setup-rust`` step or the Make preflight they depend on.
+    """
     grouped: dict[tuple[str, str], list[SuiteConsumer]] = {}
     for suite in discover_linux_suites(workflows):
         grouped.setdefault((suite.workflow, suite.job), []).append(suite)
@@ -509,7 +590,24 @@ def assert_suite_provisioning(workflows: Mapping[str, Mapping[object, object]]) 
 
 
 def assert_make_goal_provisioning(goal: str) -> MakeEvaluation:
-    """Require one Make goal's evaluated Rust suite to reach tool preflight."""
+    """Require one Make goal's evaluated Rust suite to reach tool preflight.
+
+    Parameters
+    ----------
+    goal : str
+        Make goal whose Rust suite must follow the provisioning check.
+
+    Returns
+    -------
+    MakeEvaluation
+        The evaluated trace used to prove the suite and preflight order.
+
+    Raises
+    ------
+    BuildProvisioningError
+        If GNU Make cannot evaluate the goal, or the goal reaches a Rust
+        suite without first reaching the provisioning check.
+    """
     evaluation = evaluate_make_goal(goal)
     _require_make_preflight(evaluation, f"Make goal {goal!r}")
     return evaluation

@@ -170,15 +170,15 @@ def test_ci_full_suite_is_bound_to_one_unconditional_make_test_step() -> None:
 def test_ci_full_suite_cannot_be_removed_or_soft_skipped(mutation: str) -> None:
     """Removing or gating the full Test step breaks the CI binding contract."""
     workflows = copy.deepcopy(read_repository_workflows())
-    workflow = cast(dict[object, object], workflows["ci.yml"])
-    jobs = cast(dict[object, object], workflow["jobs"])
-    job = cast(dict[object, object], jobs["build-test"])
-    steps = cast(list[object], job["steps"])
+    workflow = cast("dict[object, object]", workflows["ci.yml"])
+    jobs = cast("dict[object, object]", workflow["jobs"])
+    job = cast("dict[object, object]", jobs["build-test"])
+    steps = cast("list[object]", job["steps"])
     test_index = next(
         index for index, value in enumerate(steps)
         if isinstance(value, Mapping) and value.get("name") == "Test"
     )
-    test_step = cast(dict[object, object], steps[test_index])
+    test_step = cast("dict[object, object]", steps[test_index])
     if mutation == "removed":
         steps.pop(test_index)
     elif mutation == "step-if-false":

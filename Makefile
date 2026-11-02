@@ -7,6 +7,7 @@
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
+RUSTUP ?= $(or $(shell command -v rustup 2>/dev/null),$(HOME)/.cargo/bin/rustup)
 BUILD_JOBS ?=
 CLIPPY_FLAGS ?= --all-targets --all-features -- -D warnings
 MDLINT ?= $(shell command -v markdownlint-cli2 2>/dev/null || printf '%s' "$$HOME/.bun/bin/markdownlint-cli2")
@@ -54,11 +55,11 @@ export PATH := $(MOLD_INSTALL_BIN):$(PATH)
 check-build-tools: ## Check the pinned local development build tools
 	@set -eu; \
 	  toolchain="$(RUST_TOOLCHAIN)"; \
-	  if ! command -v rustup >/dev/null 2>&1; then \
+	  if ! command -v "$(RUSTUP)" >/dev/null 2>&1; then \
 	    printf '%s\n' 'rustup is required; install Rustup, then run make install-build-tools' >&2; \
 	    exit 1; \
 	  fi; \
-	  if ! rustup run "$$toolchain" rustc --version >/dev/null 2>&1; then \
+	  if ! "$(RUSTUP)" run "$$toolchain" rustc --version >/dev/null 2>&1; then \
 	    printf 'Rust toolchain %s is unavailable; run make install-build-tools\n' "$$toolchain" >&2; \
 	    exit 1; \
 	  fi; \
@@ -83,7 +84,7 @@ check-build-tools: ## Check the pinned local development build tools
 install-build-tools: ## Install the pinned local Rust and Linux linker tools
 	@set -eu; \
 	  toolchain="$(RUST_TOOLCHAIN)"; \
-	  if ! command -v rustup >/dev/null 2>&1; then \
+	  if ! command -v "$(RUSTUP)" >/dev/null 2>&1; then \
 	    printf '%s\n' 'rustup is required; install Rustup before provisioning repository tools' >&2; \
 	    exit 1; \
 	  fi; \
@@ -139,13 +140,13 @@ install-build-tools: ## Install the pinned local Rust and Linux linker tools
 	      fi; \
 	    fi; \
 	  fi; \
-	  installed_toolchains=$$(rustup toolchain list); \
+	  installed_toolchains=$$("$(RUSTUP)" toolchain list); \
 	  if printf '%s\n' "$$installed_toolchains" | \
 	    awk -v channel="$$toolchain" \
 	      '$$1 == channel || index($$1, channel "-") == 1 { found = 1 } END { exit !found }'; then \
-	    rustup component add rustfmt clippy rust-analyzer --toolchain "$$toolchain"; \
+	    "$(RUSTUP)" component add rustfmt clippy rust-analyzer --toolchain "$$toolchain"; \
 	  else \
-	    rustup toolchain install "$$toolchain" --profile minimal \
+	    "$(RUSTUP)" toolchain install "$$toolchain" --profile minimal \
 	      --component rustfmt --component clippy --component rust-analyzer; \
 	  fi
 	+$(MAKE) check-build-tools

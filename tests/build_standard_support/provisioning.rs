@@ -61,43 +61,29 @@ fn pinned_mold_data_names_both_approved_linux_archives() {
     }
 }
 
-/// Keeps bare Make on the development Cargo route despite a fresh target file.
-#[test]
-fn bare_make_stays_a_development_build_when_its_output_is_assumed_old() {
+/// Keeps both build entrypoints on the development Cargo route when the
+/// binary is assumed old.
+#[rstest]
+#[case::bare_make(None, "bare make")]
+#[case::build_target(Some("build"), "make build")]
+fn build_entrypoints_invoke_development_cargo_for_an_assumed_old_binary(
+    #[case] target: Option<&str>,
+    #[case] label: &str,
+) {
     let sandbox = Sandbox::new(ToolScenario::Development)
         .expect("isolated fake tools should be staged successfully");
     let output = sandbox
         .run_make(
-            None,
+            target,
             &["-o", "target/debug/ddlint"],
             PathPolicy::SandboxOnly,
         )
         .expect("GNU make should run in the repository");
     let transcript = output_text(&output);
-    assert!(output.status.success(), "bare make failed:\n{transcript}");
+    assert!(output.status.success(), "{label} failed:\n{transcript}");
     assert!(
         transcript.contains("cargo-marker build") && transcript.contains("--bin ddlint"),
-        "bare make did not invoke the development Cargo build:\n{transcript}"
-    );
-}
-
-/// Ensures the explicit build target invokes Cargo even when its output is old.
-#[test]
-fn build_runs_cargo_even_when_make_is_told_its_binary_is_old() {
-    let sandbox = Sandbox::new(ToolScenario::Development)
-        .expect("isolated fake tools should be staged successfully");
-    let output = sandbox
-        .run_make(
-            Some("build"),
-            &["-o", "target/debug/ddlint"],
-            PathPolicy::SandboxOnly,
-        )
-        .expect("GNU make should run in the repository");
-    let transcript = output_text(&output);
-    assert!(output.status.success(), "make build failed:\n{transcript}");
-    assert!(
-        transcript.contains("cargo-marker build") && transcript.contains("--bin ddlint"),
-        "make build skipped the Cargo invocation for an assumed-old binary:\n{transcript}"
+        "{label} did not invoke the development Cargo build:\n{transcript}"
     );
 }
 
