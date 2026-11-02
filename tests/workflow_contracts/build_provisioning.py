@@ -32,7 +32,7 @@ from build_provisioning_common import (
 )
 from build_provisioning_make import _make_goals, evaluate_make_goal
 from build_provisioning_matrix import linux_runner_rows
-from build_provisioning_workflows import discover_linux_suites
+from build_provisioning_topology import discover_linux_suites
 
 __all__ = [
     "APPROVED_SHARED_ACTIONS_REF",

@@ -19,7 +19,7 @@ from build_provisioning_common import (
     _mapping,
 )
 from build_provisioning_make import evaluate_make_goal
-from build_provisioning_workflows import discover_linux_suites
+from build_provisioning_topology import discover_linux_suites
 
 
 def _soft_fails(node: Mapping[object, object]) -> bool:

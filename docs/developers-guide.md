@@ -512,7 +512,8 @@ sibling `build_provisioning*_test.py` modules, and each implementation module
 stays below the 400-line file limit: `build_provisioning_common.py` holds the
 shared model and pinned values, `build_provisioning_matrix.py` resolves runner
 matrices, `build_provisioning_make.py` evaluates Make,
-`build_provisioning_workflows.py` walks the topology and
+`build_provisioning_workflows.py` scans a job's steps,
+`build_provisioning_topology.py` walks the workflow topology and
 `build_provisioning_checks.py` asserts provisioning. That private helper
 follows Rust suite references through evaluated root-Make metadata and local
 workflow calls, then checks provisioning at those consumer edges. It accepts
