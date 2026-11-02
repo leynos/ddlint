@@ -92,6 +92,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use metrics_util::debugging::{DebugValue, DebuggingRecorder};
+    use rstest::{fixture, rstest};
     use tracing::{
         Event, Metadata, Subscriber,
         field::{Field, Visit},
@@ -106,22 +107,40 @@ mod tests {
         },
     };
 
-    #[test]
-    fn emits_attempt_and_diagnostic_counters_with_bounded_labels() {
+    /// Provides a dispatcher that reports interest in every callsite.
+    ///
+    /// `tracing` caches a callsite's interest the first time it is hit, and a
+    /// first hit with no dispatcher installed caches `Interest::never` for the
+    /// rest of the process. Several tests drive the same observer callsites, so
+    /// every one of them installs an interested dispatcher first; otherwise a
+    /// concurrent test can silence the tracing tests at random.
+    #[fixture]
+    fn interested_dispatcher() -> tracing::Dispatch {
+        tracing::Dispatch::new(RecordingSubscriber::default())
+    }
+
+    #[rstest]
+    fn emits_attempt_and_diagnostic_counters_with_bounded_labels(
+        interested_dispatcher: tracing::Dispatch,
+    ) {
         let recorder = DebuggingRecorder::new();
         let snapshotter = recorder.snapshotter();
 
-        metrics::with_local_recorder(&recorder, || {
-            let observer = TelemetryObserver::new();
-            observer.parse_attempt_started(DiagnosticCategory::Relation);
-            observer
-                .parse_attempt_completed(ParseAttemptContext::new(DiagnosticCategory::Relation, 1));
-            observer.diagnostic_emitted(&DiagnosticContext {
-                code: Some(DiagnosticCode::RelationDuplicateRole),
-                category: DiagnosticCategory::Relation,
-                span: 6..12,
-                severity: DiagnosticSeverity::Error,
-                message: "D-REL-002: duplicate role",
+        tracing::dispatcher::with_default(&interested_dispatcher, || {
+            metrics::with_local_recorder(&recorder, || {
+                let observer = TelemetryObserver::new();
+                observer.parse_attempt_started(DiagnosticCategory::Relation);
+                observer.parse_attempt_completed(ParseAttemptContext::new(
+                    DiagnosticCategory::Relation,
+                    1,
+                ));
+                observer.diagnostic_emitted(&DiagnosticContext {
+                    code: Some(DiagnosticCode::RelationDuplicateRole),
+                    category: DiagnosticCategory::Relation,
+                    span: 6..12,
+                    severity: DiagnosticSeverity::Error,
+                    message: "D-REL-002: duplicate role",
+                });
             });
         });
 
@@ -154,19 +173,21 @@ mod tests {
         );
     }
 
-    #[test]
-    fn labels_diagnostics_without_a_code_as_uncoded() {
+    #[rstest]
+    fn labels_diagnostics_without_a_code_as_uncoded(interested_dispatcher: tracing::Dispatch) {
         let recorder = DebuggingRecorder::new();
         let snapshotter = recorder.snapshotter();
 
-        metrics::with_local_recorder(&recorder, || {
-            let observer = TelemetryObserver::new();
-            observer.diagnostic_emitted(&DiagnosticContext {
-                code: None,
-                category: DiagnosticCategory::Rule,
-                span: 4..9,
-                severity: DiagnosticSeverity::Error,
-                message: "rule diagnostic without a stable code",
+        tracing::dispatcher::with_default(&interested_dispatcher, || {
+            metrics::with_local_recorder(&recorder, || {
+                let observer = TelemetryObserver::new();
+                observer.diagnostic_emitted(&DiagnosticContext {
+                    code: None,
+                    category: DiagnosticCategory::Rule,
+                    span: 4..9,
+                    severity: DiagnosticSeverity::Error,
+                    message: "rule diagnostic without a stable code",
+                });
             });
         });
 

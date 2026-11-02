@@ -58,6 +58,7 @@ jobs:
         with:
           expect-cache: any
           install-mold: 'true'
+          mold-version: '2.41.0'
       # The selection is the baseline every pull request's ratchet is measured
       # against, so ci.yml's must match it field for field.
       - name: Generate coverage

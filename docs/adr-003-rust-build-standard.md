@@ -51,6 +51,16 @@ guide records the measurement and the reason.
 the commands `make -n` prints for each target, and the `setup-rust` steps of
 the workflows, so a flag lost through a recipe or workflow edit fails there.
 
+## Backend qualification evidence
+
+The accepted routing decision above remains in force. LLVM remains the
+repository's development backend, and `nightly-2026-10-30` is its compiler pin.
+The developers' guide records the Cranelift exception — it holds while the
+release workflow builds on stable — and the bounded unwind measurement behind
+it, taken on the former `nightly-2025-09-16` pin. That measurement covers
+neither the full repository nor instrumented coverage or other hosts, and it is
+not the basis of the exception.
+
 ## Consequences
 
 - Linux builds require `mold`. The flag reaches the linker through `cc`, which
