@@ -93,7 +93,7 @@ fn installer_verifies_before_extracting_and_adds_the_component_to_an_existing_ni
         Ok(trace) => trace,
         Err(error) => panic!("could not read installer trace:\n{transcript}\n{error}"),
     };
-    let pinned = pinned_toolchain();
+    let pinned = pinned_toolchain().expect("rust-toolchain.toml must name a channel");
     let download = line_position(&trace, &["curl:"]).expect("installer did not download mold");
     let verification = line_position(&trace, &["sha256sum:"])
         .expect("installer did not verify the downloaded archive");
@@ -166,7 +166,7 @@ fn installer_sets_up_a_missing_nightly_with_rust_analyzer() {
         "offline nightly setup failed:\n{transcript}"
     );
     let trace = sandbox.trace().expect("fake tool calls should be recorded");
-    let pinned = pinned_toolchain();
+    let pinned = pinned_toolchain().expect("rust-toolchain.toml must name a channel");
     let toolchain = line_position(&trace, &["rustup:", "toolchain install", &pinned])
         .expect("installer did not create the missing pinned nightly");
     let toolchain_line = trace

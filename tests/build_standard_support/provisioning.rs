@@ -161,8 +161,9 @@ fn check_build_tools_rejects_a_missing_pinned_toolchain_actionably() {
         run_goal(ToolScenario::MissingNightly, "check-build-tools", &[])
             .expect("check-build-tools should run in the repository");
     assert!(!success, "missing nightly passed:\n{transcript}");
+    let pinned = pinned_toolchain().expect("rust-toolchain.toml must name a channel");
     assert!(
-        transcript.contains(&pinned_toolchain()),
+        transcript.contains(&pinned),
         "missing-toolchain guidance should name the pinned nightly:\n{transcript}"
     );
 }
