@@ -2,12 +2,15 @@
 //!
 //! These tests cover single and multi-column indexes and error cases.
 
-use super::helpers::{normalize_whitespace, parse_index, pretty_print};
-use crate::test_util::{
-    assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
-};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
+
+use super::helpers::{normalize_whitespace, parse_index, pretty_print};
+use crate::test_util::{
+    assert_custom_parse_error_contains,
+    assert_no_parse_errors,
+    assert_parse_error,
+};
 
 #[allow_fixture_expansion_lints]
 #[fixture]
@@ -35,9 +38,7 @@ fn index_bracket_target() -> &'static str {
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn index_legacy_shorthand() -> &'static str {
-    "index Idx_Legacy on User(username)"
-}
+fn index_legacy_shorthand() -> &'static str { "index Idx_Legacy on User(username)" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]

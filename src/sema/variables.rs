@@ -1,10 +1,11 @@
 //! Variable-use traversal for semantic-model collection.
 
-use crate::Span;
-use crate::parser::ast::Expr;
-use crate::sema::model::{ScopeId, UseKind, UseOrigin, UseSite};
-
 use super::builder::SemanticModelBuilder;
+use crate::{
+    Span,
+    parser::ast::Expr,
+    sema::model::{ScopeId, UseKind, UseOrigin, UseSite},
+};
 
 #[derive(Clone, Copy)]
 pub(super) struct ForLoopExprs<'a> {
@@ -36,21 +37,13 @@ impl<'a> VariableUseContext<'a> {
         }
     }
 
-    pub(super) fn current_scope(self) -> ScopeId {
-        self.current_scope
-    }
+    pub(super) fn current_scope(self) -> ScopeId { self.current_scope }
 
-    pub(super) fn literal_index(self) -> usize {
-        self.literal_index
-    }
+    pub(super) fn literal_index(self) -> usize { self.literal_index }
 
-    pub(super) fn span(self) -> &'a Span {
-        self.span
-    }
+    pub(super) fn span(self) -> &'a Span { self.span }
 
-    pub(super) fn rule_order_limit(self) -> usize {
-        self.rule_order_limit
-    }
+    pub(super) fn rule_order_limit(self) -> usize { self.rule_order_limit }
 }
 
 impl SemanticModelBuilder {

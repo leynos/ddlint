@@ -66,32 +66,24 @@ pub(super) struct PostfixErrorCase {
 ///
 /// The returned cases are sourced from `valid::expression_cases()` and include
 /// all syntax categories currently covered by valid-expression fixtures.
-pub(super) fn expression_cases() -> Vec<ExpressionCase> {
-    valid::expression_cases()
-}
+pub(super) fn expression_cases() -> Vec<ExpressionCase> { valid::expression_cases() }
 
 /// Returns invalid `for`-loop source fixtures used by parser error tests.
 ///
 /// The returned array is forwarded from `valid::invalid_for_loop_sources()` and
 /// contains source strings intentionally designed to trigger parse failures.
-pub(super) fn invalid_for_loop_sources() -> [&'static str; 4] {
-    valid::invalid_for_loop_sources()
-}
+pub(super) fn invalid_for_loop_sources() -> [&'static str; 4] { valid::invalid_for_loop_sources() }
 
 /// Returns literal expression fixtures for parser happy-path validation.
 ///
 /// The returned cases are delegated from `valid::literal_cases()`.
-pub(super) fn literal_cases() -> Vec<ExpressionCase> {
-    valid::literal_cases()
-}
+pub(super) fn literal_cases() -> Vec<ExpressionCase> { valid::literal_cases() }
 
 /// Returns counted parse error fixtures for general expression error coverage.
 ///
 /// The returned cases are delegated from `errors::error_cases()` and encode the
 /// minimum number of diagnostics expected per input.
-pub(super) fn error_cases() -> Vec<CountedErrorCase> {
-    errors::error_cases()
-}
+pub(super) fn error_cases() -> Vec<CountedErrorCase> { errors::error_cases() }
 
 /// Returns span-specific pattern-matching error fixtures.
 ///
@@ -105,6 +97,4 @@ pub(super) fn match_pattern_error_cases() -> Vec<SpannedErrorCase> {
 ///
 /// The returned cases come from `errors::postfix_error_cases()` and include an
 /// `unclosed` marker used for unterminated postfix delimiters.
-pub(super) fn postfix_error_cases() -> Vec<PostfixErrorCase> {
-    errors::postfix_error_cases()
-}
+pub(super) fn postfix_error_cases() -> Vec<PostfixErrorCase> { errors::postfix_error_cases() }

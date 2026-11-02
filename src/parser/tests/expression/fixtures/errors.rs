@@ -5,7 +5,9 @@
 //! duplicating fixture wiring.
 
 use crate::parser::tests::expression::fixtures::{
-    CountedErrorCase, PostfixErrorCase, SpannedErrorCase,
+    CountedErrorCase,
+    PostfixErrorCase,
+    SpannedErrorCase,
 };
 
 pub(super) fn error_cases() -> Vec<CountedErrorCase> {

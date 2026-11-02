@@ -6,14 +6,24 @@
 use chumsky::error::Simple;
 
 use super::{
-    AggregationSource, AssignmentParts, RuleAggregation, RuleAssignment, RuleBodyTerm, RuleForLoop,
+    AggregationSource,
+    AssignmentParts,
+    RuleAggregation,
+    RuleAssignment,
+    RuleBodyTerm,
+    RuleForLoop,
     split_assignment,
 };
-use crate::parser::ast::{BinaryOp, Expr, Pattern};
-use crate::parser::expression::parse_expression;
-use crate::parser::pattern::parse_pattern;
-use crate::parser::span_utils::shift_errors;
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{BinaryOp, Expr, Pattern},
+        expression::parse_expression,
+        pattern::parse_pattern,
+        span_utils::shift_errors,
+    },
+};
 
 /// Classify a raw rule-body literal into the structured rule-body term used by
 /// semantic consumers.
@@ -279,12 +289,11 @@ fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple
 #[cfg(test)]
 mod tests {
     //! Tests for rule body classification.
-    use super::*;
     use chumsky::error::SimpleReason;
 
-    fn span_for(src: &str) -> Span {
-        0..src.len()
-    }
+    use super::*;
+
+    fn span_for(src: &str) -> Span { 0..src.len() }
 
     #[test]
     fn assignment_literal_becomes_assignment_term() {

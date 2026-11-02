@@ -22,10 +22,11 @@ mod rules;
 mod transformers;
 mod types;
 
-use super::token_stream::TokenStream;
-use crate::{Span, SyntaxKind, test_util::tokenize};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
+
+use super::token_stream::TokenStream;
+use crate::{Span, SyntaxKind, test_util::tokenize};
 
 #[allow_fixture_expansion_lints]
 #[fixture]

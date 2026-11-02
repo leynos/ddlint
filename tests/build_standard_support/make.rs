@@ -39,9 +39,7 @@ impl Host {
     }
 
     /// Returns whether the host takes mold, which ships for Linux alone.
-    pub const fn takes_linker_flag(self) -> bool {
-        matches!(self, Self::Linux)
-    }
+    pub const fn takes_linker_flag(self) -> bool { matches!(self, Self::Linux) }
 }
 
 /// What one `make -n` command assigns to `RUSTFLAGS`.
@@ -125,7 +123,9 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
         .filter(|command| command.contains("cargo") || command.contains("whitaker"))
         .map(|command| match assigned_rustflags(&command)? {
             Assignment::Unassigned if compiles(&command) => Ok(Assignment::Bare(command)),
-            // Whitaker runs under the toolchain its installer manages, so it takes none of the development standard. Its literal `RUSTFLAGS="-D warnings"` is the isolation boundary the build-defaults rule (BD-008) asks for, not a missing assignment.
+            // Whitaker runs under the toolchain its installer manages, so it takes none of the
+            // development standard. Its literal `RUSTFLAGS="-D warnings"` is the isolation boundary
+            // the build-defaults rule (BD-008) asks for, not a missing assignment.
             Assignment::Flags(..) if is_isolated_whitaker(&command) => Ok(Assignment::Unassigned),
             other => Ok(other),
         })
@@ -154,9 +154,7 @@ impl<'a> Target<'a> {
     /// # Returns
     ///
     /// The Makefile target's name, as the text `make` takes.
-    pub const fn name(self) -> &'a str {
-        self.0
-    }
+    pub const fn name(self) -> &'a str { self.0 }
 }
 
 /// Runs `make -n` for a target on a host and returns what it printed. The tests
@@ -202,8 +200,8 @@ pub fn development_problem(
 }
 
 /// Returns the complaint when the `test` target assigns `RUSTFLAGS` in no command, or
-/// keeps `-D warnings` in none of its assigned commands: a recipe may run other commands (a version probe, a
-/// prerequisite build) that never carried the policy, but dropping `$(RUST_FLAGS)`
+/// keeps `-D warnings` in none of its assigned commands: a recipe may run other commands (a version
+/// probe, a prerequisite build) that never carried the policy, but dropping `$(RUST_FLAGS)`
 /// from the command that runs the tests drops it from all of them.
 pub fn test_policy_problem(target: &str, host: Host, commands: &[Assignment]) -> Option<String> {
     let assigned = commands.iter().filter_map(|command| match command {
@@ -269,8 +267,8 @@ fn held_out_command_problems(target: &str, assignment: &Assignment) -> Problems 
         .filter(|(is_named, _)| *is_named)
         .map(|(_, flag)| format!("`make {target}` takes {flag}"))
         .collect();
-    // A release build keeps the caller's own flags (a sanitizer, a target feature) while it drops the
-    // standard's; only the coverage build, a measurement, ignores them.
+    // A release build keeps the caller's own flags (a sanitizer, a target feature) while it drops
+    // the standard's; only the coverage build, a measurement, ignores them.
     if target == "release" && !inherits {
         problems.push(format!("`make {target}` drops the caller's RUSTFLAGS"));
     }
@@ -323,6 +321,4 @@ pub fn held_out_problems_for(
 }
 
 /// Returns the number of held-out targets the repository defines.
-pub const fn held_out_target_count() -> usize {
-    HELD_OUT_TARGETS.len()
-}
+pub const fn held_out_target_count() -> usize { HELD_OUT_TARGETS.len() }

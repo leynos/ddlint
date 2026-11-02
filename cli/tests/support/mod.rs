@@ -1,16 +1,16 @@
 //! Shared test fixtures for explicit configuration sources.
 
-use std::error::Error;
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    error::Error,
+    ffi::OsString,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
-use cap_std::ambient_authority;
-use cap_std::fs::Dir;
+use cap_std::{ambient_authority, fs::Dir};
+use ddlint_cli::config::{LintCliArgs, ValidatedLintSettings, load_lint_settings_with_sources};
 use ortho_config::{MapEnv, SharedEnvSource, SharedScanEnvSource};
 use tempfile::TempDir;
-
-use ddlint_cli::config::{LintCliArgs, ValidatedLintSettings, load_lint_settings_with_sources};
 
 /// A temporary directory and the selected TOML path within it.
 pub(super) struct ConfigFile {
@@ -32,9 +32,7 @@ impl ConfigFile {
     }
 
     /// Return the selected file path.
-    pub(super) fn path(&self) -> &Path {
-        &self.path
-    }
+    pub(super) fn path(&self) -> &Path { &self.path }
 }
 
 /// Load settings from injected environment and optional explicit TOML input.
@@ -56,11 +54,7 @@ pub(super) fn load(
 }
 
 /// Return the default test CLI options.
-pub(super) fn no_cli_overrides() -> LintCliArgs {
-    LintCliArgs::default()
-}
+pub(super) fn no_cli_overrides() -> LintCliArgs { LintCliArgs::default() }
 
 /// Create a closed injected source with no environment variables.
-pub(super) fn empty_environment() -> MapEnv {
-    MapEnv::new()
-}
+pub(super) fn empty_environment() -> MapEnv { MapEnv::new() }

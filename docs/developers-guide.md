@@ -582,24 +582,69 @@ the CodeScene host, uploader, client, or token there. They also refuse
 and they read workflows strictly, so a duplicate key is refused rather than
 silently resolved.
 
+## Formatting standard
+
+`.rustfmt.toml` is the single source of truth for Rust formatting. Do not
+restate its settings elsewhere; describe intent here and let the file define
+the exact values.
+
+The profile sets `unstable_features = true`, so it requires the pinned nightly
+toolchain in `rust-toolchain.toml`; stable `rustfmt` cannot apply these options.
+
+`make fmt` applies Rust and Markdown formatting. `make check-fmt` validates
+without modifying files: it runs `cargo fmt --all -- --check` and also runs
+`mdtablefix` in check mode over Markdown. `make fmt` additionally runs
+`markdownlint-cli2 --fix`.
+
+The unstable settings that change code shape group as follows:
+
+- Imports use a vertical layout with crate granularity, grouped as standard
+  library, external crates, then crate-local imports.
+- Comments wrap at 100 columns.
+- Code inside doc comments is formatted.
+- String literals and macro matchers are formatted.
+- `fn_single_line` collapses single-expression functions onto one line.
+- `hex_literal_case = "Lower"` keeps hexadecimal literal digits lower case.
+- Shorthand and wildcard condensation apply: `?` replaces `try!`, field init
+  shorthand is used, and wildcard suffixes are condensed.
+
+`tests/ui` is excluded. Those files are trybuild compile-fail fixtures, and
+their `.stderr` goldens are byte-exact; reformatting a fixture would shift the
+spans the goldens assert.
+
+`format_strings = true` can wrap a long literal with a backslash continuation.
+`AGENTS.md` requires `concat!()` instead, so when a statement or expression
+needs a long literal, split it into `concat!` pieces that each fit the width.
+Three positions cannot use `concat!()`. The format string of a `thiserror`
+`#[error(...)]` attribute and the `reason` value of `#[expect(...)]` both
+require a literal, so keep those short enough to fit one line rather than
+adding a continuation. A `format!` or `format_args!` format string that uses
+inline captures (`{name}`) is rejected by the compiler when macro-expanded, so
+pass those values as explicit named arguments after the `concat!()` pieces.
+
+For the interaction between `fn_single_line` and `rstest` fixtures, see
+[Fixture expansion lint policy](#fixture-expansion-lint-policy).
+
 ## The build standard
 
 The local tool-provisioning checks belong in
 `tests/build_standard_support/provisioning.rs` and are called only by
-`tests/build_standard_contract.rs`. That Rust test helper uses fallible,
-capability-rooted `cap_std::fs_utf8::Dir` staging for fake executables and an
-offline archive, so tests can observe installer ordering without network access
-or installation. It uses `camino` at process boundaries and adds no production
-API or dependency. Preflight, pinned-data and lint assertions live in
-`provisioning.rs`; the four installer assertions and their trace-position
-helper live in its private `provisioning_installation_tests.rs` child module.
-The shared `provisioning_fixtures.rs` module is private to these build-contract
-tests, not a reusable filesystem abstraction. The Python workflow consumer
-contract belongs to the `tests/workflow_contracts/build_provisioning*.py`
-family, with `build_provisioning.py` as its import surface. Its callers are the
-sibling `build_provisioning*_test.py` modules, and each implementation module
-stays below the 400-line file limit: `build_provisioning_common.py` holds the
-shared model and pinned values, `build_provisioning_matrix.py` resolves runner
+`tests/build_standard_contract.rs`; the Makefile-target cases belong in
+`tests/build_standard_support/make_contract_tests.rs`. That Rust test helper
+uses fallible, capability-rooted `cap_std::fs_utf8::Dir` staging for fake
+executables and an offline archive, so tests can observe installer ordering
+without network access or installation. It uses `camino` at process boundaries
+and adds no production API or dependency. Preflight, pinned-data and lint
+assertions live in `provisioning.rs`; the four installer assertions and their
+trace-position helper live in its private `provisioning_installation_tests.rs`
+child module. The shared `provisioning_fixtures.rs` module is private to these
+build-contract tests, not a reusable filesystem abstraction. The Python
+workflow consumer contract belongs to the
+`tests/workflow_contracts/build_provisioning*.py` family, with
+`build_provisioning.py` as its import surface. Its callers are the sibling
+`build_provisioning*_test.py` modules, and each implementation module stays
+below the 400-line file limit: `build_provisioning_common.py` holds the shared
+model and pinned values, `build_provisioning_matrix.py` resolves runner
 matrices, `build_provisioning_runners.py` classifies runner labels,
 `build_provisioning_cargo.py` classifies Cargo commands,
 `build_provisioning_make.py` evaluates Make, `build_provisioning_workflows.py`
@@ -692,10 +737,14 @@ assigns `RUSTFLAGS`, so the nightly-only `-Zthreads` flag never reaches it.
 Revisit if that build moves to the pinned nightly.
 
 The Rust build contract in `tests/build_standard_contract.rs` checks target
-routing, preflight ordering and installation behaviour. The workflow consumer
-contract in the `tests/workflow_contracts/build_provisioning*_test.py` modules
-verifies that CI suites are reached only after their required provisioning
-step. The development build flags and their rationale are recorded in
+routing, preflight ordering and installation behaviour. Its Makefile-target
+cases live in `tests/build_standard_support/make_contract_tests.rs`, which the
+contract root registers as a child module. The split moves those cases without
+changing them, so the existing Makefile-target assertions still run, and it
+keeps each module within the size budget. The workflow consumer contract in the
+`tests/workflow_contracts/build_provisioning*_test.py` modules verifies that CI
+suites are reached only after their required provisioning step. The development
+build flags and their rationale are recorded in
 [ADR 003](adr-003-rust-build-standard.md).
 
 ### Code-generation backend evidence

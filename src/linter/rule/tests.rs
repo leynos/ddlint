@@ -10,49 +10,31 @@ use crate::{SyntaxKind, parse, sema::ScopeKind};
 struct ExampleRule;
 
 impl Rule for ExampleRule {
-    fn name(&self) -> &'static str {
-        "example-rule"
-    }
+    fn name(&self) -> &'static str { "example-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
-    fn docs(&self) -> &'static str {
-        "Example rule documentation."
-    }
+    fn docs(&self) -> &'static str { "Example rule documentation." }
 }
 
 impl CstRule for ExampleRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::N_RULE]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RULE] }
 }
 
 struct ErrorLevelRule;
 
 impl Rule for ErrorLevelRule {
-    fn name(&self) -> &'static str {
-        "error-level-rule"
-    }
+    fn name(&self) -> &'static str { "error-level-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
-    fn docs(&self) -> &'static str {
-        "Rule with explicit error level."
-    }
+    fn docs(&self) -> &'static str { "Rule with explicit error level." }
 
-    fn default_level(&self) -> RuleLevel {
-        RuleLevel::Error
-    }
+    fn default_level(&self) -> RuleLevel { RuleLevel::Error }
 }
 
 impl CstRule for ErrorLevelRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::N_RULE]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RULE] }
 }
 
 fn assert_send_sync<T: Send + Sync>() {}
@@ -122,9 +104,7 @@ fn rule_level_strings_match_display(#[case] level: RuleLevel, #[case] spelling: 
 }
 
 #[test]
-fn cst_rule_is_send_and_sync() {
-    assert_send_sync::<ExampleRule>();
-}
+fn cst_rule_is_send_and_sync() { assert_send_sync::<ExampleRule>(); }
 
 #[test]
 fn lint_diagnostic_accessors_round_trip() {

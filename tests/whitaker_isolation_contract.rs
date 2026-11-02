@@ -60,8 +60,8 @@ fn isolation_problems(line: &str) -> Vec<String> {
 
 /// Scenario: the real `make -n lint` output.
 ///
-/// Invariant: Whitaker clears the encoded flags and assigns the literal `RUSTFLAGS`, so it takes none of
-/// the development standard and inherits nothing from the caller.
+/// Invariant: Whitaker clears the encoded flags and assigns the literal `RUSTFLAGS`, so it takes
+/// none of the development standard and inherits nothing from the caller.
 #[test]
 fn make_lint_isolates_whitaker_with_the_literal_rustflags() -> Result<(), String> {
     let problems = isolation_problems(&whitaker_line()?);

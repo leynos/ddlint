@@ -1,6 +1,7 @@
 //! Tests for the tokenizer.
-use super::*;
 use rstest::rstest;
+
+use super::*;
 
 #[rstest]
 #[case::internal_identifier("internal", SyntaxKind::T_IDENT)]

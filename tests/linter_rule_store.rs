@@ -1,13 +1,14 @@
 //! Behavioural tests for `CstRuleStore` dispatch over parsed CST input.
 
+use ddlint::{
+    Parsed,
+    SyntaxKind,
+    linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx},
+    parse,
+};
 use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
-
-use ddlint::linter::{
-    CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx,
-};
-use ddlint::{Parsed, SyntaxKind, parse};
 
 // -- test rules ---------------------------------------------------------------
 
@@ -28,17 +29,11 @@ impl CountingRule {
 }
 
 impl Rule for CountingRule {
-    fn name(&self) -> &'static str {
-        "counting-rule"
-    }
+    fn name(&self) -> &'static str { "counting-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
-    fn docs(&self) -> &'static str {
-        "Counts matching node and token visits."
-    }
+    fn docs(&self) -> &'static str { "Counts matching node and token visits." }
 }
 
 impl CstRule for CountingRule {
@@ -69,23 +64,15 @@ impl CstRule for CountingRule {
 struct EmptyTargetsRule;
 
 impl Rule for EmptyTargetsRule {
-    fn name(&self) -> &'static str {
-        "empty-targets-rule"
-    }
+    fn name(&self) -> &'static str { "empty-targets-rule" }
 
-    fn group(&self) -> &'static str {
-        "test"
-    }
+    fn group(&self) -> &'static str { "test" }
 
-    fn docs(&self) -> &'static str {
-        "Rule with empty target_kinds; must never be dispatched."
-    }
+    fn docs(&self) -> &'static str { "Rule with empty target_kinds; must never be dispatched." }
 }
 
 impl CstRule for EmptyTargetsRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[] }
 
     fn check_node(
         &self,
@@ -110,23 +97,15 @@ impl CstRule for EmptyTargetsRule {
 struct ConfigAwareRule;
 
 impl Rule for ConfigAwareRule {
-    fn name(&self) -> &'static str {
-        "config-aware-rule"
-    }
+    fn name(&self) -> &'static str { "config-aware-rule" }
 
-    fn group(&self) -> &'static str {
-        "test"
-    }
+    fn group(&self) -> &'static str { "test" }
 
-    fn docs(&self) -> &'static str {
-        "Only emits diagnostics when config key 'enabled' is true."
-    }
+    fn docs(&self) -> &'static str { "Only emits diagnostics when config key 'enabled' is true." }
 }
 
 impl CstRule for ConfigAwareRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::N_RELATION_DECL]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RELATION_DECL] }
 
     fn check_node(
         &self,
@@ -147,23 +126,15 @@ impl CstRule for ConfigAwareRule {
 struct IdentTokenRule;
 
 impl Rule for IdentTokenRule {
-    fn name(&self) -> &'static str {
-        "ident-token-rule"
-    }
+    fn name(&self) -> &'static str { "ident-token-rule" }
 
-    fn group(&self) -> &'static str {
-        "style"
-    }
+    fn group(&self) -> &'static str { "style" }
 
-    fn docs(&self) -> &'static str {
-        "Flags every identifier token."
-    }
+    fn docs(&self) -> &'static str { "Flags every identifier token." }
 }
 
 impl CstRule for IdentTokenRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::T_IDENT]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::T_IDENT] }
 
     fn check_token(
         &self,
@@ -260,13 +231,12 @@ fn store_dispatch_matches_manual_traversal(
     assert_eq!(
         manual.len(),
         via_store.len(),
-        "store dispatch should produce the same number of diagnostics as manual \
-         dispatch for `{fixture_name}`",
+        "store dispatch should produce the same number of diagnostics as manual dispatch for \
+         `{fixture_name}`",
     );
     assert_eq!(
         manual, via_store,
-        "store dispatch diagnostics should match manual dispatch exactly for \
-         `{fixture_name}`",
+        "store dispatch diagnostics should match manual dispatch exactly for `{fixture_name}`",
     );
 }
 

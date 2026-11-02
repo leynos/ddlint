@@ -1,10 +1,14 @@
 //! Parsing of control-flow expressions (`if`, `match`, `for`).
 
-use crate::parser::ast::{Expr, MatchArm};
-use crate::{Span, SyntaxKind};
-
-use super::pattern_collection::{DelimiterState, PatternContext, TerminationHandler};
-use super::pratt::Pratt;
+use super::{
+    pattern_collection::{DelimiterState, PatternContext, TerminationHandler},
+    pratt::Pratt,
+};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::ast::{Expr, MatchArm},
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -85,13 +89,9 @@ where
         })
     }
 
-    pub(super) fn parse_break_expression() -> Expr {
-        Expr::Break
-    }
+    pub(super) fn parse_break_expression() -> Expr { Expr::Break }
 
-    pub(super) fn parse_continue_expression() -> Expr {
-        Expr::Continue
-    }
+    pub(super) fn parse_continue_expression() -> Expr { Expr::Continue }
 
     pub(super) fn parse_return_expression(&mut self) -> Option<Expr> {
         if Self::is_return_value_terminator(self.ts.peek_kind()) {

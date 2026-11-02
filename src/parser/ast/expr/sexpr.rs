@@ -161,9 +161,7 @@ mod tests {
     use super::*;
     use crate::parser::ast::{BinaryOp, Literal};
 
-    fn var(name: &str) -> Expr {
-        Expr::Variable(name.into())
-    }
+    fn var(name: &str) -> Expr { Expr::Variable(name.into()) }
 
     #[test]
     fn snapshots_nested_expression_format() {

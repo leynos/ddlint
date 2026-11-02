@@ -4,9 +4,13 @@
 //! trailing commas, and key-value pairs that feed the shared valid-expression
 //! suite.
 
-use crate::parser::ast::{BinaryOp, Expr};
-use crate::parser::tests::expression::fixtures::ExpressionCase;
-use crate::test_util::{lit_num, map_entry, map_lit, var, vec_lit};
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        tests::expression::fixtures::ExpressionCase,
+    },
+    test_util::{lit_num, map_entry, map_lit, var, vec_lit},
+};
 
 /// Returns collection literal cases as [`Vec<ExpressionCase>`].
 ///

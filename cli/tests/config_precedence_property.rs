@@ -8,8 +8,7 @@
 
 mod support;
 
-use std::collections::BTreeMap;
-use std::fmt::Write as _;
+use std::{collections::BTreeMap, fmt::Write as _};
 
 use ddlint::linter::RuleLevel;
 use ddlint_cli::config::{LintCliArgs, OutputFormat};
@@ -56,9 +55,7 @@ fn format_strategy() -> impl Strategy<Value = OutputFormat> {
 }
 
 /// Generate one accepted rule severity.
-fn level_strategy() -> impl Strategy<Value = RuleLevel> {
-    prop::sample::select(RULE_LEVELS)
-}
+fn level_strategy() -> impl Strategy<Value = RuleLevel> { prop::sample::select(RULE_LEVELS) }
 
 /// Generate severity overrides for a random subset of the supported rules.
 fn rule_strategy() -> impl Strategy<Value = Vec<(&'static str, RuleLevel)>> {

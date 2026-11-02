@@ -7,12 +7,13 @@
 
 mod support;
 
-use std::error::Error;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    error::Error,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
-use cap_std::ambient_authority;
-use cap_std::fs::Dir;
+use cap_std::{ambient_authority, fs::Dir};
 use ddlint::linter::RuleLevel;
 use ddlint_cli::config::OutputFormat;
 use ortho_config::MapEnv;
@@ -181,14 +182,14 @@ fn relative_extends_layers_the_parent_under_the_child() -> Result<(), Box<dyn Er
     write_config(
         directory.path(),
         "parent.toml",
-        "[cmds.lint]\nformat = 'json'\nignore_patterns = ['parent-only']\n\
-         [cmds.lint.rules]\nunused-variable = 'error'\n",
+        "[cmds.lint]\nformat = 'json'\nignore_patterns = \
+         ['parent-only']\n[cmds.lint.rules]\nunused-variable = 'error'\n",
     )?;
     let child = write_config(
         directory.path(),
         "child.toml",
-        "extends = 'parent.toml'\n[cmds.lint]\nignore_patterns = ['child-only']\n\
-         [cmds.lint.rules]\nunused-relation = 'hint'\n",
+        "extends = 'parent.toml'\n[cmds.lint]\nignore_patterns = \
+         ['child-only']\n[cmds.lint.rules]\nunused-relation = 'hint'\n",
     )?;
 
     let settings = load(Some(&child), empty_environment(), &no_cli_overrides())?;

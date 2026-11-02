@@ -3,20 +3,18 @@
 //! The heavy lifting lives in `builder.rs`; this module keeps the outward
 //! build API small and easy to navigate.
 
-use crate::Parsed;
-use crate::parser::ast;
-use crate::parser::ast::SemanticRule;
-
-use super::builder::SemanticModelBuilder;
-use super::model::SemanticModel;
+use super::{builder::SemanticModelBuilder, model::SemanticModel};
+use crate::{
+    Parsed,
+    parser::{ast, ast::SemanticRule},
+};
 
 /// Build a semantic model from a parsed `DDlog` program.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use ddlint::parse;
-/// use ddlint::sema;
+/// use ddlint::{parse, sema};
 ///
 /// let parsed = parse("input relation R(x: u32)\nOutput(x) :- R(x).");
 /// let model = sema::build(&parsed);
@@ -36,17 +34,14 @@ pub fn build(parsed: &Parsed) -> SemanticModel {
 /// # Examples
 ///
 /// ```rust
-/// use ddlint::parse;
-/// use ddlint::sema;
+/// use ddlint::{parse, sema};
 ///
 /// let parsed = parse("input relation R(x: u32)");
 /// let model = sema::build_from_root(parsed.root());
 /// assert_eq!(model.scopes().len(), 1);
 /// ```
 #[must_use]
-pub fn build_from_root(root: &ast::Root) -> SemanticModel {
-    build_from_parts(root, &[])
-}
+pub fn build_from_root(root: &ast::Root) -> SemanticModel { build_from_parts(root, &[]) }
 
 /// Build a semantic model from an AST root and parse-time semantic rules.
 #[must_use]

@@ -200,9 +200,7 @@ static KEYWORDS: phf::Map<&'static str, SyntaxKind> = phf_map! {
     "yield" => SyntaxKind::K_YIELD,
 };
 
-fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
-    KEYWORDS.get(ident).copied()
-}
+fn keyword_kind(ident: &str) -> Option<SyntaxKind> { KEYWORDS.get(ident).copied() }
 
 #[must_use]
 fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
@@ -284,7 +282,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::{tokenize_without_trivia, SyntaxKind};
+/// use ddlint::{SyntaxKind, tokenize_without_trivia};
 ///
 /// let tokens = tokenize_without_trivia("input R(x: u32);");
 /// assert!(!tokens.iter().any(|(k, _)| *k == SyntaxKind::T_WHITESPACE));
@@ -302,7 +300,7 @@ pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::{tokenize_with_trivia, SyntaxKind};
+/// use ddlint::{SyntaxKind, tokenize_with_trivia};
 ///
 /// let tokens = tokenize_with_trivia("input relation R(x: u32);");
 /// assert_eq!(tokens.len(), 12);
@@ -311,9 +309,7 @@ pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 ///
 /// This variant retains whitespace and comment tokens.
 #[must_use]
-pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
-    tokenize_impl(src)
-}
+pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> { tokenize_impl(src) }
 
 #[cfg(test)]
 #[path = "tokenizer_tests.rs"]

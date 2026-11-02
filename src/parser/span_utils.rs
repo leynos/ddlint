@@ -3,8 +3,10 @@
 //! These utilities support shifting parser diagnostics produced against
 //! substring slices back into the coordinate space of the full source text.
 
-use chumsky::Error as ChumskyError;
-use chumsky::error::{Simple, SimpleReason};
+use chumsky::{
+    Error as ChumskyError,
+    error::{Simple, SimpleReason},
+};
 
 use crate::{Span, SyntaxKind};
 

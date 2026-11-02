@@ -8,11 +8,16 @@
 use chumsky::error::Simple;
 use thiserror::Error;
 
-use crate::parser::delimiter::find_top_level_eq_span;
-use crate::parser::expression::parse_expression;
-use crate::parser::pattern::parse_pattern;
-use crate::parser::span_utils::{shift_errors, trim_byte_range};
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        delimiter::find_top_level_eq_span,
+        expression::parse_expression,
+        pattern::parse_pattern,
+        span_utils::{shift_errors, trim_byte_range},
+    },
+};
 
 /// Split a rule body into the spans of its comma-separated literals.
 ///
@@ -63,9 +68,7 @@ impl DelimiterDepths {
         }
     }
 
-    fn at_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0
-    }
+    fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
 fn locate_body_bounds(

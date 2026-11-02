@@ -4,15 +4,18 @@
 //! conditions in the private helper functions: balanced-paren skipping,
 //! identifier validation, error-span computation, and recovery.
 
-use super::super::collect_transformer_spans;
-use crate::parser::error_messages::{
-    CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR,
-};
-use crate::test_util::{
-    assert_custom_parse_error_contains, assert_no_custom_parse_error_contains,
-    assert_no_parse_errors, tokenize,
-};
 use rstest::rstest;
+
+use super::super::collect_transformer_spans;
+use crate::{
+    parser::error_messages::{CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR},
+    test_util::{
+        assert_custom_parse_error_contains,
+        assert_no_custom_parse_error_contains,
+        assert_no_parse_errors,
+        tokenize,
+    },
+};
 
 // ── Valid declarations ──────────────────────────────────────────────
 

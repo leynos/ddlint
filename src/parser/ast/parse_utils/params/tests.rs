@@ -1,13 +1,17 @@
 //! Tests for parameter parsing helpers.
 
-use super::super::errors::{Delim, ParseError};
-use super::*;
-use crate::SyntaxKind;
-use crate::parser::ast::AstNode;
-use crate::parser::parse;
 use fixture_lints::allow_fixture_expansion_lints;
 use rowan::{SyntaxElement, TextRange};
 use rstest::{fixture, rstest};
+
+use super::{
+    super::errors::{Delim, ParseError},
+    *,
+};
+use crate::{
+    SyntaxKind,
+    parser::{ast::AstNode, parse},
+};
 
 /// Collect the syntax elements beneath the item selected from `src`.
 ///

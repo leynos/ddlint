@@ -5,15 +5,17 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::{
-    ast::rule_head::parse_rule_heads,
-    expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
-    lexer_helpers::{atom, balanced_block, inline_ws},
-    top_level_for::is_top_level_for_statement_terminator_dot,
-};
-use crate::{Span, SyntaxKind};
-
 use super::utils::State;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::rule_head::parse_rule_heads,
+        expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
+        lexer_helpers::{atom, balanced_block, inline_ws},
+        top_level_for::is_top_level_for_statement_terminator_dot,
+    },
+};
 
 #[path = "rules_support.rs"]
 mod support;

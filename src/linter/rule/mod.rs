@@ -4,14 +4,15 @@
 //! linter-engine milestone. Rule execution, storage, and richer contextual
 //! data are introduced by follow-up roadmap items.
 
-use std::collections::BTreeMap;
-use std::fmt;
-use std::sync::Arc;
+use std::{collections::BTreeMap, fmt, sync::Arc};
 
 use rowan::TextRange;
 
-use crate::sema::{self, SemanticModel};
-use crate::{DdlogLanguage, SyntaxKind};
+use crate::{
+    DdlogLanguage,
+    SyntaxKind,
+    sema::{self, SemanticModel},
+};
 
 /// A lightweight lint diagnostic emitted by a rule.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,21 +35,15 @@ impl LintDiagnostic {
 
     /// Return the emitting rule's canonical name.
     #[must_use]
-    pub fn rule_name(&self) -> &'static str {
-        self.rule_name
-    }
+    pub fn rule_name(&self) -> &'static str { self.rule_name }
 
     /// Return the user-facing diagnostic message.
     #[must_use]
-    pub fn message(&self) -> &str {
-        &self.message
-    }
+    pub fn message(&self) -> &str { &self.message }
 
     /// Return the source span associated with this diagnostic.
     #[must_use]
-    pub fn span(&self) -> TextRange {
-        self.span
-    }
+    pub fn span(&self) -> TextRange { self.span }
 }
 
 /// A typed configuration value passed into a lint rule.
@@ -121,9 +116,7 @@ impl RuleLevel {
 }
 
 impl fmt::Display for RuleLevel {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str(self.as_str()) }
 }
 
 /// Transient rule execution context.
@@ -189,39 +182,27 @@ impl RuleCtx {
 
     /// Return the full source text associated with the lint run.
     #[must_use]
-    pub fn source_text(&self) -> &str {
-        &self.source_text
-    }
+    pub fn source_text(&self) -> &str { &self.source_text }
 
     /// Return the typed AST root for semantic navigation.
     #[must_use]
-    pub fn ast_root(&self) -> &crate::parser::ast::Root {
-        &self.ast_root
-    }
+    pub fn ast_root(&self) -> &crate::parser::ast::Root { &self.ast_root }
 
     /// Return the CST root syntax node.
     #[must_use]
-    pub fn cst_root(&self) -> &rowan::SyntaxNode<DdlogLanguage> {
-        self.ast_root.syntax()
-    }
+    pub fn cst_root(&self) -> &rowan::SyntaxNode<DdlogLanguage> { self.ast_root.syntax() }
 
     /// Return the semantic model for this lint run.
     #[must_use]
-    pub fn semantic_model(&self) -> &SemanticModel {
-        &self.semantic_model
-    }
+    pub fn semantic_model(&self) -> &SemanticModel { &self.semantic_model }
 
     /// Return the full per-rule configuration map.
     #[must_use]
-    pub fn config(&self) -> &RuleConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &RuleConfig { &self.config }
 
     /// Return a single configuration entry by key.
     #[must_use]
-    pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue> {
-        self.config.get(key)
-    }
+    pub fn config_value(&self, key: &str) -> Option<&RuleConfigValue> { self.config.get(key) }
 
     /// Return a boolean configuration value by key when present and typed.
     #[must_use]
@@ -254,9 +235,7 @@ pub trait Rule {
     fn docs(&self) -> &'static str;
 
     /// Return the rule's built-in severity level.
-    fn default_level(&self) -> RuleLevel {
-        RuleLevel::Warn
-    }
+    fn default_level(&self) -> RuleLevel { RuleLevel::Warn }
 }
 
 /// CST-driven lint behaviour contract.

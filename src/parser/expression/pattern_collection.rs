@@ -4,11 +4,8 @@
 //! by `match` arm and `for` header parsing. The routines here coordinate with
 //! the delimiter-handling helpers to keep module responsibilities focused.
 
-use crate::{Span, SyntaxKind};
-
-use crate::parser::ast::Pattern;
-
 use super::pratt::Pratt;
+use crate::{Span, SyntaxKind, parser::ast::Pattern};
 
 /// Tracks delimiter depth and pattern span during pattern collection.
 pub(super) struct DelimiterState {
@@ -142,9 +139,7 @@ pub(super) struct DelimiterToken {
 }
 
 impl DelimiterToken {
-    pub(super) fn new(kind: SyntaxKind, span: Span) -> Self {
-        Self { kind, span }
-    }
+    pub(super) fn new(kind: SyntaxKind, span: Span) -> Self { Self { kind, span } }
 }
 
 /// Encapsulates termination handling for pattern collection.

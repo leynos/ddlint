@@ -3,9 +3,8 @@
 //! Provides depth tracking for parentheses, braces, and brackets alongside
 //! delimiter-balance validation for composite prefix forms.
 
-use crate::{Span, SyntaxKind};
-
 use super::pratt::Pratt;
+use crate::{Span, SyntaxKind};
 
 impl<I> Pratt<'_, I>
 where
@@ -88,8 +87,8 @@ where
     ///
     /// - `span`: span covering the closing parenthesis.
     /// - `paren_depth`: the current parenthesis nesting depth.
-    /// - `other_delimiters_open`: flag indicating whether braces remain open
-    ///   alongside any brackets.
+    /// - `other_delimiters_open`: flag indicating whether braces remain open alongside any
+    ///   brackets.
     pub(super) fn handle_close_paren(
         &mut self,
         span: &Span,
@@ -138,10 +137,9 @@ where
     ///
     /// # Parameters
     ///
-    /// - `depths`: tuple of tracked depths for parentheses, braces, and
-    ///   brackets.
-    /// - `last_span`: the most recent delimiter span, used to anchor
-    ///   diagnostics when an opener remains unmatched.
+    /// - `depths`: tuple of tracked depths for parentheses, braces, and brackets.
+    /// - `last_span`: the most recent delimiter span, used to anchor diagnostics when an opener
+    ///   remains unmatched.
     ///
     /// # Returns
     ///

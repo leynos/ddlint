@@ -28,9 +28,7 @@ impl TelemetryObserver {
 }
 
 impl Default for TelemetryObserver {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl ParseObserver for TelemetryObserver {
@@ -87,15 +85,19 @@ impl ParseObserver for TelemetryObserver {
 mod tests {
     //! Tests for the optional metrics and tracing adapter.
 
-    use std::collections::BTreeMap;
-    use std::fmt;
-    use std::sync::{Arc, Mutex};
+    use std::{
+        collections::BTreeMap,
+        fmt,
+        sync::{Arc, Mutex},
+    };
 
     use fixture_lints::allow_fixture_expansion_lints;
     use metrics_util::debugging::{DebugValue, DebuggingRecorder};
     use rstest::{fixture, rstest};
     use tracing::{
-        Event, Metadata, Subscriber,
+        Event,
+        Metadata,
+        Subscriber,
         field::{Field, Visit},
         span::{Attributes, Id, Record},
     };
@@ -104,7 +106,10 @@ mod tests {
     use crate::parser::{
         diagnostics::{DiagnosticCategory, DiagnosticCode},
         observability::{
-            DiagnosticContext, DiagnosticSeverity, ParseAttemptContext, ParseObserver,
+            DiagnosticContext,
+            DiagnosticSeverity,
+            ParseAttemptContext,
+            ParseObserver,
         },
     };
 
@@ -151,7 +156,7 @@ mod tests {
 
         let attempt = snapshot
             .iter()
-            .find(|(key, _, _, _)| key.key().name() == ATTEMPT_METRIC);
+            .find(|(key, ..)| key.key().name() == ATTEMPT_METRIC);
         let (attempt_key, _, _, attempt_value) = attempt.expect("expected attempt counter");
         assert_eq!(*attempt_value, DebugValue::Counter(1));
         assert_eq!(
@@ -161,7 +166,7 @@ mod tests {
 
         let diagnostic = snapshot
             .iter()
-            .find(|(key, _, _, _)| key.key().name() == DIAGNOSTIC_METRIC);
+            .find(|(key, ..)| key.key().name() == DIAGNOSTIC_METRIC);
         let (diagnostic_key, _, _, diagnostic_value) =
             diagnostic.expect("expected diagnostic counter");
         assert_eq!(*diagnostic_value, DebugValue::Counter(1));
@@ -311,13 +316,9 @@ mod tests {
     }
 
     impl Subscriber for RecordingSubscriber {
-        fn enabled(&self, _: &Metadata<'_>) -> bool {
-            true
-        }
+        fn enabled(&self, _: &Metadata<'_>) -> bool { true }
 
-        fn new_span(&self, _: &Attributes<'_>) -> Id {
-            Id::from_u64(1)
-        }
+        fn new_span(&self, _: &Attributes<'_>) -> Id { Id::from_u64(1) }
 
         fn record(&self, _: &Id, _: &Record<'_>) {}
 

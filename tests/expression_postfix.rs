@@ -3,11 +3,19 @@
 //! These tests cover method calls, field accesses, tuple indexing, and bit
 //! slice expressions through the public `parse_expression` API.
 
-use ddlint::parser::ast::Expr;
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, bit_slice, call, field_access, lit_num,
-    method_call, tuple_index, var,
+use ddlint::{
+    parser::{ast::Expr, expression::parse_expression},
+    test_util::{
+        assert_parse_error,
+        assert_unclosed_delimiter_error,
+        bit_slice,
+        call,
+        field_access,
+        lit_num,
+        method_call,
+        tuple_index,
+        var,
+    },
 };
 use rstest::rstest;
 

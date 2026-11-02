@@ -1,13 +1,13 @@
 //! Behavioural tests for `declare_lint!` rules running through the linter core.
 
+use ddlint::{
+    SyntaxKind,
+    linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel, Runner},
+    parse,
+};
 use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
-
-use ddlint::linter::{
-    CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel, Runner,
-};
-use ddlint::{SyntaxKind, parse};
 
 ddlint::declare_lint! {
     /// Emits diagnostics for every relation declaration node.
@@ -98,9 +98,7 @@ fn sequential_dispatch(source: &str, rule: &dyn CstRule) -> Vec<LintDiagnostic> 
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn source() -> &'static str {
-    include_str!("../examples/hello_join.dl")
-}
+fn source() -> &'static str { include_str!("../examples/hello_join.dl") }
 
 fn run_single_rule_expecting_name(source: &str, rule: Box<dyn CstRule>, expected_name: &str) {
     let mut store = CstRuleStore::new();

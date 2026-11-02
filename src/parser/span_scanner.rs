@@ -5,16 +5,23 @@
 //! results into a single `ParsedSpans` structure used by later CST building
 //! stages.
 
-use crate::{Span, SyntaxKind};
-
-use super::ParsedSpans;
-use super::diagnostics::DiagnosticCategory;
-use super::observability::{ParseObserver, complete_attempt};
-use super::span_scanners::{
-    collect_apply_spans, collect_attribute_spans, collect_function_spans, collect_import_spans,
-    collect_index_spans, collect_relation_spans, collect_rule_spans, collect_transformer_spans,
-    collect_typedef_spans,
+use super::{
+    ParsedSpans,
+    diagnostics::DiagnosticCategory,
+    observability::{ParseObserver, complete_attempt},
+    span_scanners::{
+        collect_apply_spans,
+        collect_attribute_spans,
+        collect_function_spans,
+        collect_import_spans,
+        collect_index_spans,
+        collect_relation_spans,
+        collect_rule_spans,
+        collect_transformer_spans,
+        collect_typedef_spans,
+    },
 };
+use crate::{Span, SyntaxKind};
 
 /// Scan the token stream and collect spans for each statement category.
 pub(super) fn parse_tokens(

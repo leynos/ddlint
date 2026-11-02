@@ -5,11 +5,16 @@ use std::cell::RefCell;
 use chumsky::error::SimpleReason;
 
 use super::{NonRuleScanResults, SpanBuildInput, build_parsed_spans, parse_tokens};
-use crate::parser::ParsedSpans;
-use crate::parser::diagnostics::DiagnosticCategory;
-use crate::parser::observability::{DiagnosticContext, ParseAttemptContext, ParseObserver};
-use crate::test_util::assert_parse_error;
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ParsedSpans,
+        diagnostics::DiagnosticCategory,
+        observability::{DiagnosticContext, ParseAttemptContext, ParseObserver},
+    },
+    test_util::assert_parse_error,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 enum RecordedEvent {

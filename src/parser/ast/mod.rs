@@ -12,8 +12,7 @@
 use rowan::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use self::parse_utils::is_trivia;
-use crate::parser::ast::rule::text_range_to_span;
-use crate::{DdlogLanguage, Span, SyntaxKind, SyntaxToken};
+use crate::{DdlogLanguage, Span, SyntaxKind, SyntaxToken, parser::ast::rule::text_range_to_span};
 
 /// Common interface for AST wrappers.
 pub(crate) trait AstNode {
@@ -96,9 +95,7 @@ fn span_contains(container: &Span, candidate: &Span) -> bool {
 macro_rules! impl_ast_node {
     ($ty:ty) => {
         impl AstNode for $ty {
-            fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> {
-                &self.syntax
-            }
+            fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> { &self.syntax }
         }
     };
 }
@@ -242,7 +239,12 @@ pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
 pub use relation::{Relation, RelationBody, RelationKind, RelationParseErrors, RelationRole};
 pub use root::Root;
 pub use rule::{
-    AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
+    AggregationSource,
+    Rule,
+    RuleAggregation,
+    RuleAssignment,
+    RuleBodyExpression,
+    RuleBodyTerm,
     RuleForLoop,
 };
 pub use rule_head::RuleHead;

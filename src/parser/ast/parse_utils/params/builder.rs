@@ -8,12 +8,11 @@
 
 use rowan::{SyntaxElement, TextRange, TextSize};
 
+use super::{
+    super::{super::skip_whitespace_and_comments, errors::ParseError, type_expr::parse_type_expr},
+    ParameterParsingState,
+};
 use crate::{DdlogLanguage, SyntaxKind};
-
-use super::super::super::skip_whitespace_and_comments;
-use super::super::errors::ParseError;
-use super::super::type_expr::parse_type_expr;
-use super::ParameterParsingState;
 
 /// Shared parsing context for parameter processing.
 pub(super) struct ProcessingContext<'a, I>

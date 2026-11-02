@@ -5,11 +5,12 @@
 
 use chumsky::{Error, error::Simple};
 
-use crate::parser::diagnostics::DiagnosticCode;
-use crate::parser::lexer_helpers::token_display;
-use crate::{Span, SyntaxKind};
-
 use super::{ScanResult, custom_error};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{diagnostics::DiagnosticCode, lexer_helpers::token_display},
+};
 
 /// Parse a balanced block opened by the delimiter matching `close`.
 ///
@@ -166,9 +167,7 @@ pub(super) fn token_text_at<'a>(
 /// Return the source text covered by `span`.
 ///
 /// Returns `None` when the span is outside the source text bounds.
-pub(super) fn token_text<'a>(src: &'a str, span: &Span) -> Option<&'a str> {
-    src.get(span.clone())
-}
+pub(super) fn token_text<'a>(src: &'a str, span: &Span) -> Option<&'a str> { src.get(span.clone()) }
 
 /// Return the current token span or an EOF span when the cursor is exhausted.
 pub(super) fn current_span(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> Span {

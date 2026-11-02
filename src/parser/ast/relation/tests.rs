@@ -1,8 +1,9 @@
 //! Tests for relation AST accessors.
 
+use rstest::rstest;
+
 use super::*;
 use crate::{parse, test_util::span_text};
-use rstest::rstest;
 
 #[test]
 fn relation_name() {

@@ -3,8 +3,7 @@
 //! These tests verify that the parser correctly parses function declarations
 //! and that the `Function` AST node provides the expected API methods.
 
-use ddlint::parser::parse;
-use ddlint::test_util::assert_no_parse_errors;
+use ddlint::{parser::parse, test_util::assert_no_parse_errors};
 use rstest::rstest;
 
 #[rstest]

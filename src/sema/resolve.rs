@@ -1,9 +1,10 @@
 //! Resolution helpers for semantic symbol and scope analysis.
 
-use crate::parser::ast::{Expr, Pattern};
-use crate::sema::model::{DeclarationKind, Resolution, ScopeId, ScopeKind, Symbol, UseKind};
-
 use super::builder::SemanticModelBuilder;
+use crate::{
+    parser::ast::{Expr, Pattern},
+    sema::model::{DeclarationKind, Resolution, ScopeId, ScopeKind, Symbol, UseKind},
+};
 
 impl SemanticModelBuilder {
     pub(crate) fn resolve_name(

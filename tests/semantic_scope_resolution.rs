@@ -1,8 +1,11 @@
 //! Behavioural tests for semantic symbol tables and scope resolution.
 
-use ddlint::linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, Runner};
-use ddlint::sema::{self, DeclarationKind, Resolution, UseKind, UseOrigin};
-use ddlint::{SyntaxKind, parse};
+use ddlint::{
+    SyntaxKind,
+    linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, Runner},
+    parse,
+    sema::{self, DeclarationKind, Resolution, UseKind, UseOrigin},
+};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
@@ -114,23 +117,15 @@ fn semantic_model_keeps_unresolved_names_without_crashing(
 struct SemanticAwareRule;
 
 impl Rule for SemanticAwareRule {
-    fn name(&self) -> &'static str {
-        "semantic-aware-rule"
-    }
+    fn name(&self) -> &'static str { "semantic-aware-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
-    fn docs(&self) -> &'static str {
-        "Proves that semantic context is available through RuleCtx."
-    }
+    fn docs(&self) -> &'static str { "Proves that semantic context is available through RuleCtx." }
 }
 
 impl CstRule for SemanticAwareRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::N_RULE]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RULE] }
 
     fn check_node(
         &self,

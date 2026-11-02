@@ -3,12 +3,18 @@
 mod fixtures;
 
 use fixtures::{
-    error_cases, expression_cases, invalid_for_loop_sources, literal_cases,
-    match_pattern_error_cases, postfix_error_cases,
+    error_cases,
+    expression_cases,
+    invalid_for_loop_sources,
+    literal_cases,
+    match_pattern_error_cases,
+    postfix_error_cases,
 };
 
-use crate::parser::expression::parse_expression;
-use crate::test_util::{assert_parse_error, assert_unclosed_delimiter_error};
+use crate::{
+    parser::expression::parse_expression,
+    test_util::{assert_parse_error, assert_unclosed_delimiter_error},
+};
 
 #[test]
 fn parses_expressions() {

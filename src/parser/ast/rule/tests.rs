@@ -76,7 +76,10 @@ fn rule_head_and_body() {
 fn body_expressions_parse_control_flow() {
     // Note: For-loops are now classified as RuleBodyTerm::ForLoop, not Expression,
     // so body_expressions() returns only the if-else expression.
-    let src = "R(x) :- for (item in Items(item)) Process(item), if (ready(x)) { Accept(x) } else { Skip() }.";
+    let src = concat!(
+        "R(x) :- for (item in Items(item)) Process(item), if (ready(x)) { Accept(x) } else ",
+        "{ Skip() }."
+    );
     let parsed = parse(src);
     crate::test_util::assert_no_parse_errors(parsed.errors());
     let rule = parsed

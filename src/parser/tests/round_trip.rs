@@ -3,33 +3,26 @@
 //! These tests ensure parsing followed by pretty-printing reproduces the
 //! original source, and that basic program structure is detected correctly.
 
-use super::helpers::{parse_err, parse_ok, pretty_print, round_trip};
-use crate::SyntaxKind;
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
-#[allow_fixture_expansion_lints]
-#[fixture]
-fn simple_prog() -> &'static str {
-    "input relation R(x: u32);"
-}
+use super::helpers::{parse_err, parse_ok, pretty_print, round_trip};
+use crate::SyntaxKind;
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn complex_prog() -> &'static str {
-    "input relation R(x: u32);\noutput relation S(y: string);"
-}
+fn simple_prog() -> &'static str { "input relation R(x: u32);" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn empty_prog() -> &'static str {
-    ""
-}
+fn complex_prog() -> &'static str { "input relation R(x: u32);\noutput relation S(y: string);" }
+
+#[allow_fixture_expansion_lints]
+#[fixture]
+fn empty_prog() -> &'static str { "" }
 
 #[rstest]
-fn parse_round_trip(simple_prog: &str) {
-    round_trip(simple_prog);
-}
+fn parse_round_trip(simple_prog: &str) { round_trip(simple_prog); }
 
 #[rstest]
 fn complex_program_round_trip(complex_prog: &str) {

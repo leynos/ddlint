@@ -3,9 +3,10 @@
 //! These cases cover atoms, calls, tuples, and literals that the parser must
 //! accept before the specialised fixture modules add broader syntax coverage.
 
-use crate::parser::ast::Expr;
-use crate::parser::tests::expression::fixtures::ExpressionCase;
-use crate::test_util::{call, lit_bool, lit_num, lit_str, qualified_call, tuple, var};
+use crate::{
+    parser::{ast::Expr, tests::expression::fixtures::ExpressionCase},
+    test_util::{call, lit_bool, lit_num, lit_str, qualified_call, tuple, var},
+};
 
 /// Returns test cases for basic expressions as [`Vec<ExpressionCase>`].
 ///

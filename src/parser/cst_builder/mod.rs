@@ -39,15 +39,11 @@ impl Parsed {
 
     /// Access the `rowan` green tree.
     #[must_use]
-    pub fn green(&self) -> &GreenNode {
-        &self.green
-    }
+    pub fn green(&self) -> &GreenNode { &self.green }
 
     /// Access the typed AST root.
     #[must_use]
-    pub fn root(&self) -> &super::ast::Root {
-        &self.root
-    }
+    pub fn root(&self) -> &super::ast::Root { &self.root }
 
     /// Access parse-time semantic rules synthesized during parsing.
     ///
@@ -57,13 +53,9 @@ impl Parsed {
     /// lowering is not implemented as a parse-time or current-generation
     /// semantic helper; it is scheduled work for later lowering layers.
     #[must_use]
-    pub fn semantic_rules(&self) -> &[super::ast::SemanticRule] {
-        &self.semantic_rules
-    }
+    pub fn semantic_rules(&self) -> &[super::ast::SemanticRule] { &self.semantic_rules }
 
     /// Access parser errors collected during recovery.
     #[must_use]
-    pub fn errors(&self) -> &[Simple<SyntaxKind>] {
-        &self.errors
-    }
+    pub fn errors(&self) -> &[Simple<SyntaxKind>] { &self.errors }
 }

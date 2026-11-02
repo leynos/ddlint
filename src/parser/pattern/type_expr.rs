@@ -3,9 +3,8 @@
 //! Kept in a dedicated module to keep the primary pattern parser readable and
 //! to ensure the parent module remains below the file-size threshold.
 
-use crate::SyntaxKind;
-
 use super::PatternTokenStream;
+use crate::SyntaxKind;
 
 pub(super) fn parse_type_expr(ts: &mut PatternTokenStream<'_>) -> Option<String> {
     let mut buf = String::new();

@@ -25,6 +25,8 @@ mod fixtures;
 mod injected;
 #[path = "build_standard_support/make.rs"]
 mod make;
+#[path = "build_standard_support/make_contract_tests.rs"]
+mod make_contract_tests;
 #[path = "build_standard_support/process.rs"]
 mod process;
 #[cfg(all(
@@ -37,30 +39,57 @@ mod provisioning;
 mod shell;
 #[path = "build_standard_support/workflow_exhaustive.rs"]
 mod workflow_exhaustive;
-use rstest::rstest;
-
-use fixtures::{
-    BUILD_LOSES_THREADS, COMMENT_AFTER_CHANNEL, COMMENT_NAMING_THE_ACTION, COMMENTED_OK,
-    COVERAGE_BORROWING_A_SIBLING, COVERAGE_COMMENTED_POLICY, COVERAGE_DENYING_WITH_COMMENT,
-    COVERAGE_EMPTY_POLICY, COVERAGE_LOOKALIKE_POLICY, COVERAGE_OK, COVERAGE_OTHER_POLICY,
-    COVERAGE_UNASSIGNED, COVERAGE_WITH_LINKER, COVERAGE_WITH_THREADS, LINKER_IN_BUILD,
-    LINUX_LOSES_LINKER, NIGHTLY, NIGHTLY_OK, NIGHTLY_SPELLED_APART, NO_BUILD_SOURCE, NO_CHANNEL,
-    SHORT_DATED_NIGHTLY, SIBLING_KEY_OK, SPREAD_ARRAY, STABLE, STABLE_OK, STABLE_WITH_THREADS,
-    STEP_BEFORE_A_SIBLING_THAT_INSTALLS, STEP_INPUT_OFF, STEP_INSTALLS, STEP_INSTALLS_BARE,
-    STEP_MISSING_INPUT, TRAILING_CONTENT, TRIPLE_ONLY, TWO_CHANNELS, UNCLOSED_CHANNEL,
-    UNDATED_NIGHTLY, UNKNOWN_CHANNEL, UNQUOTED_BESIDE_VALID,
-};
-
 use ci_steps::{
-    COVERAGE_DENIES_WARNINGS, Workflow, coverage_problems, linker_install_problems,
+    COVERAGE_DENIES_WARNINGS,
+    Workflow,
+    coverage_problems,
+    linker_install_problems,
     workflow_problems,
 };
 use config::{CONFIG, Flags, Pin, Problems, THREADS_FLAG, TOOLCHAIN, config_problems};
-use make::{
-    Assignment, Host, assigned_rustflags, commands_from, development_problems, held_out_problems,
-    held_out_target_count, test_policy_problem,
+use fixtures::{
+    BUILD_LOSES_THREADS,
+    COMMENT_AFTER_CHANNEL,
+    COMMENT_NAMING_THE_ACTION,
+    COMMENTED_OK,
+    COVERAGE_BORROWING_A_SIBLING,
+    COVERAGE_COMMENTED_POLICY,
+    COVERAGE_DENYING_WITH_COMMENT,
+    COVERAGE_EMPTY_POLICY,
+    COVERAGE_LOOKALIKE_POLICY,
+    COVERAGE_OK,
+    COVERAGE_OTHER_POLICY,
+    COVERAGE_UNASSIGNED,
+    COVERAGE_WITH_LINKER,
+    COVERAGE_WITH_THREADS,
+    LINKER_IN_BUILD,
+    LINUX_LOSES_LINKER,
+    NIGHTLY,
+    NIGHTLY_OK,
+    NIGHTLY_SPELLED_APART,
+    NO_BUILD_SOURCE,
+    NO_CHANNEL,
+    SHORT_DATED_NIGHTLY,
+    SIBLING_KEY_OK,
+    SPREAD_ARRAY,
+    STABLE,
+    STABLE_OK,
+    STABLE_WITH_THREADS,
+    STEP_BEFORE_A_SIBLING_THAT_INSTALLS,
+    STEP_INPUT_OFF,
+    STEP_INSTALLS,
+    STEP_INSTALLS_BARE,
+    STEP_MISSING_INPUT,
+    TRAILING_CONTENT,
+    TRIPLE_ONLY,
+    TWO_CHANNELS,
+    UNCLOSED_CHANNEL,
+    UNDATED_NIGHTLY,
+    UNKNOWN_CHANNEL,
+    UNQUOTED_BESIDE_VALID,
 };
-use process::real_make;
+use make::{Assignment, assigned_rustflags};
+use rstest::rstest;
 
 /// Text handed to a case, wrapped so that a case reads as data and the test
 /// signatures name what they take rather than passing bare strings around.
@@ -268,93 +297,11 @@ fn the_workflow_readers_judge_each_step(
 /// whose workflows do not set up Rust through `setup-rust` lists none, and the
 /// check then reads nothing; a listed workflow must have a step to read.
 #[test]
-fn every_setup_rust_step_installs_linker() -> Result<(), String> {
-    none_of(&workflow_problems())
-}
-
-/// Scenario: a recipe continued over lines, beside an `echo` and another
-/// command.
-///
-/// Invariant: the continued command is one command, and lines that are not a
-/// Cargo or Whitaker command are ignored.
-#[test]
-fn a_continued_command_is_one_command() -> Result<(), String> {
-    let joined = commands_from(concat!(
-        "RUSTFLAGS=\"-A\" \\\n",
-        "cargo test\necho cargo test\nmake other\n"
-    ))?;
-    if joined == vec![flags(&["-A"], false)] {
-        Ok(())
-    } else {
-        Err(format!("read wrongly: {joined:?}"))
-    }
-}
+fn every_setup_rust_step_installs_linker() -> Result<(), String> { none_of(&workflow_problems()) }
 
 #[test]
 fn every_rustflags_source_is_consistent_with_the_pin() -> Result<(), String> {
     none_of(&config_problems(CONFIG, Pin::read(TOOLCHAIN)?)?)
-}
-
-#[test]
-fn development_targets_restate_the_flags_on_linux() -> Result<(), String> {
-    let (problems, read) = development_problems(real_make, Host::Linux, Pin::read(TOOLCHAIN)?)?;
-    none_of(&problems)?;
-    if read == 0 {
-        return Err(
-            "no development target assigns RUSTFLAGS, so the check proves nothing".to_owned(),
-        );
-    }
-    Ok(())
-}
-
-#[test]
-fn development_targets_keep_the_frontend_but_not_the_linker_elsewhere() -> Result<(), String> {
-    none_of(&development_problems(real_make, Host::Darwin, Pin::read(TOOLCHAIN)?)?.0)
-}
-
-/// Coverage measures and release ships, so both stay on the default flags. A
-/// repository that lists no such target has nothing local to hold out, and the
-/// check then reads no commands; otherwise it must read at least one.
-#[test]
-fn coverage_and_release_take_neither_flag() -> Result<(), String> {
-    let (problems, read) = held_out_problems(real_make)?;
-    none_of(&problems)?;
-    if held_out_target_count() > 0 && read == 0 {
-        return Err(
-            "the held-out targets run no cargo command, so the check proves nothing".to_owned(),
-        );
-    }
-    Ok(())
-}
-
-/// Scenario: the `test` target's assigned commands, with and without the warning
-/// policy, beside a command that never carried it.
-///
-/// Invariant: `make test` must keep `-D warnings` in at least one of its assigned
-/// commands (dropping `$(RUST_FLAGS)` from the command that runs the tests would
-/// lose it everywhere), while a version probe or prerequisite build that never
-/// carried the policy is not held to it, and another target is not held to it.
-#[rstest]
-#[case::test_keeps_the_policy(Fixture("test"), &[&["-D", "warnings", THREADS_FLAG][..]], 0)]
-#[case::test_spelled_joined(Fixture("test"), &[&["-Dwarnings", THREADS_FLAG][..]], 0)]
-#[case::test_drops_the_policy(Fixture("test"), &[&[THREADS_FLAG][..]], 1)]
-#[case::test_denies_nothing_useful(Fixture("test"), &[&["-A", "warnings", THREADS_FLAG][..]], 1)]
-#[case::a_probe_may_omit_it_beside_the_run(Fixture("test"), &[&[THREADS_FLAG][..], &["-D", "warnings", THREADS_FLAG][..]], 0)]
-#[case::build_may_omit_the_policy(Fixture("build"), &[&[THREADS_FLAG][..]], 0)]
-#[case::test_assigns_no_command(Fixture("test"), &[], 1)]
-fn the_test_target_keeps_the_warning_policy(
-    #[case] target: Fixture,
-    #[case] commands: &[&[&str]],
-    #[case] expected: usize,
-) {
-    let assigned: Vec<Assignment> = commands
-        .iter()
-        .map(|words| Assignment::Flags(Flags::from_words(words.iter().copied()), true))
-        .collect();
-    let found = test_policy_problem(target.0, Host::Darwin, &assigned)
-        .into_iter()
-        .count();
-    assert_eq!(found, expected, "target {}: {commands:?}", target.0);
 }
 
 /// Scenario: coverage steps that deny warnings, assign an empty policy, or assign a

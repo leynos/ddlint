@@ -1,12 +1,15 @@
 //! Tests for top-level `for` desugaring into semantic rules.
 
-use super::super::helpers::{parse_err, parse_ok};
-use crate::parser::ast::{Expr, SemanticRuleOrigin};
-use crate::parser::top_level_for::{
-    UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD,
-};
-use crate::test_util::{ErrorPattern, find_matching_error};
 use rstest::rstest;
+
+use super::super::helpers::{parse_err, parse_ok};
+use crate::{
+    parser::{
+        ast::{Expr, SemanticRuleOrigin},
+        top_level_for::{UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD},
+    },
+    test_util::{ErrorPattern, find_matching_error},
+};
 
 #[rstest]
 #[case(

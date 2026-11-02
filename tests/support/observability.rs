@@ -3,8 +3,13 @@
 use std::cell::RefCell;
 
 use ddlint::{
-    DiagnosticCategory, DiagnosticCode, DiagnosticContext, DiagnosticSeverity, ParseAttemptContext,
-    ParseObserver, Span,
+    DiagnosticCategory,
+    DiagnosticCode,
+    DiagnosticContext,
+    DiagnosticSeverity,
+    ParseAttemptContext,
+    ParseObserver,
+    Span,
 };
 
 /// Owned representation of an observer callback.
@@ -42,9 +47,7 @@ pub struct RecordingParseObserver {
 
 impl RecordingParseObserver {
     /// Return an owned snapshot of all recorded events.
-    pub fn events(&self) -> Vec<RecordedParseEvent> {
-        self.events.borrow().clone()
-    }
+    pub fn events(&self) -> Vec<RecordedParseEvent> { self.events.borrow().clone() }
 }
 
 impl ParseObserver for RecordingParseObserver {

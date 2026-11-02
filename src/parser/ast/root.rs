@@ -29,9 +29,7 @@ pub struct Root {
 impl Root {
     /// Obtain the underlying syntax node.
     #[must_use]
-    pub fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> {
-        &self.syntax
-    }
+    pub fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> { &self.syntax }
 
     /// Create a new `Root` from a green node.
     #[must_use]
@@ -43,21 +41,15 @@ impl Root {
 
     /// The kind of this root node.
     #[must_use]
-    pub fn kind(&self) -> SyntaxKind {
-        self.syntax.kind()
-    }
+    pub fn kind(&self) -> SyntaxKind { self.syntax.kind() }
 
     /// Text range covered by this root.
     #[must_use]
-    pub fn text_range(&self) -> rowan::TextRange {
-        self.syntax.text_range()
-    }
+    pub fn text_range(&self) -> rowan::TextRange { self.syntax.text_range() }
 
     /// Text content of this root.
     #[must_use]
-    pub fn text(&self) -> String {
-        self.syntax.text().to_string()
-    }
+    pub fn text(&self) -> String { self.syntax.text().to_string() }
 
     fn collect_children<T>(
         &self,

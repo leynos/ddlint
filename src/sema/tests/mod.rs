@@ -1,13 +1,19 @@
 //! Unit tests for semantic-model construction.
 
-use crate::parse;
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
 use super::{
-    DeclarationKind, Resolution, ScopeKind, SymbolOrigin, UseKind, UseOrigin, build,
+    DeclarationKind,
+    Resolution,
+    ScopeKind,
+    SymbolOrigin,
+    UseKind,
+    UseOrigin,
+    build,
     build_from_root,
 };
+use crate::parse;
 
 fn parse_ok(source: &str) -> crate::Parsed {
     let parsed = parse(source);
@@ -68,9 +74,7 @@ fn relation_symbol_id(model: &super::SemanticModel, name: &str) -> Option<crate:
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn parsed_case(#[default("")] source: &str) -> crate::Parsed {
-    parse_ok(source)
-}
+fn parsed_case(#[default("")] source: &str) -> crate::Parsed { parse_ok(source) }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
