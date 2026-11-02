@@ -19,6 +19,17 @@ def _require_ci_full_suite_binding(
     workflows: Mapping[str, Mapping[object, object]],
 ) -> None:
     """Require CI's Test step to run once, unconditionally, between lint and contracts."""
+    job = _ci_build_test_job(workflows)
+    steps = _ci_job_steps(job)
+    test_index = _ordered_stage_indices(steps)
+    _require_sole_make_test_step(steps, test_index)
+    _require_unconditional_job(job)
+
+
+def _ci_build_test_job(
+    workflows: Mapping[str, Mapping[object, object]],
+) -> Mapping[object, object]:
+    """Return CI's build-test job, refusing a missing workflow, job map or job."""
     workflow = workflows.get("ci.yml")
     if not isinstance(workflow, Mapping):
         raise BuildProvisioningError("CI workflow is missing from the strict reader result")
@@ -28,13 +39,15 @@ def _require_ci_full_suite_binding(
     job = jobs.get("build-test")
     if not isinstance(job, Mapping):
         raise BuildProvisioningError("CI build-test job is missing")
+    return job
+
+
+def _ci_job_steps(job: Mapping[object, object]) -> list[object]:
+    """Return CI's build-test step list, refusing any other shape."""
     steps = job.get("steps")
     if not isinstance(steps, list):
         raise BuildProvisioningError("CI build-test steps must be a list")
-
-    test_index = _ordered_stage_indices(steps)
-    _require_sole_make_test_step(steps, test_index)
-    _require_unconditional_job(job)
+    return steps
 
 
 def _ordered_stage_indices(steps: list[object]) -> int:

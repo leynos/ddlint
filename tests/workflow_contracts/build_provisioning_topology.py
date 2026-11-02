@@ -19,7 +19,7 @@ from build_provisioning_common import (
     _is_true,
     _mapping,
 )
-from build_provisioning_matrix import linux_runner_rows
+from build_provisioning_runners import linux_runner_rows
 from build_provisioning_workflows import _step_suites
 
 
@@ -32,13 +32,14 @@ def _has_working_directory(defaults: object, context: str) -> bool:
 def _local_workflow_name(uses: str) -> str:
     """Resolve a local reusable workflow and refuse paths outside the tree."""
     path = PurePosixPath(uses)
-    if (
-        not uses.startswith("./.github/workflows/")
-        or len(path.parts) != 3
-        or path.suffix.casefold() not in {".yml", ".yaml"}
-    ):
+    if not uses.startswith("./.github/workflows/") or not _is_workflow_file(path):
         raise BuildProvisioningError(f"invalid local reusable workflow {uses!r}")
     return path.name
+
+
+def _is_workflow_file(path: PurePosixPath) -> bool:
+    """Report whether a path names a YAML file directly under the workflows directory."""
+    return len(path.parts) == 3 and path.suffix.casefold() in {".yml", ".yaml"}
 
 
 def _reusable_job_routes(

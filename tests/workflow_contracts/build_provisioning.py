@@ -31,7 +31,7 @@ from build_provisioning_common import (
     read_repository_workflows,
 )
 from build_provisioning_make import _make_goals, evaluate_make_goal
-from build_provisioning_matrix import linux_runner_rows
+from build_provisioning_runners import linux_runner_rows
 from build_provisioning_topology import discover_linux_suites
 
 __all__ = [

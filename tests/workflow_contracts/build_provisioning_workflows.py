@@ -16,7 +16,8 @@ from build_provisioning_common import (
     SuiteConsumer,
     _mapping,
 )
-from build_provisioning_make import _cargo_routes, _make_goals, evaluate_make_goal
+from build_provisioning_cargo import _cargo_routes
+from build_provisioning_make import _make_goals, evaluate_make_goal
 
 
 def _step_suites(
@@ -93,8 +94,14 @@ def _reject_custom_working_directory(
     has_default_working_directory: bool,
 ) -> None:
     """Refuse a Make call that could run outside the repository root."""
-    has_step_directory = "working-directory" in step
-    if goals and (has_default_working_directory or has_step_directory):
+    if goals and _has_custom_working_directory(step, has_default_working_directory):
         raise BuildProvisioningError(
             f"{location.workflow}:{location.job} Make call has a custom working directory"
         )
+
+
+def _has_custom_working_directory(
+    step: Mapping[object, object], has_default_working_directory: bool
+) -> bool:
+    """Report whether a step or its defaults redirect a Make call."""
+    return has_default_working_directory or "working-directory" in step

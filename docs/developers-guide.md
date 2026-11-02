@@ -511,14 +511,15 @@ family, with `build_provisioning.py` as its import surface. Its callers are the
 sibling `build_provisioning*_test.py` modules, and each implementation module
 stays below the 400-line file limit: `build_provisioning_common.py` holds the
 shared model and pinned values, `build_provisioning_matrix.py` resolves runner
-matrices, `build_provisioning_make.py` evaluates Make,
-`build_provisioning_workflows.py` scans a job's steps,
-`build_provisioning_topology.py` walks the workflow topology and
-`build_provisioning_checks.py` asserts provisioning. That private helper
-follows Rust suite references through evaluated root-Make metadata and local
-workflow calls, then checks provisioning at those consumer edges. It accepts
-simple root `make` goal lists and finite single-axis runner matrices; Make
-options, variable overrides, multiple matrix axes and matrix
+matrices, `build_provisioning_runners.py` classifies runner labels,
+`build_provisioning_cargo.py` classifies Cargo commands,
+`build_provisioning_make.py` evaluates Make, `build_provisioning_workflows.py`
+scans a job's steps, `build_provisioning_topology.py` walks the workflow
+topology and `build_provisioning_checks.py` asserts provisioning. That private
+helper follows Rust suite references through evaluated root-Make metadata and
+local workflow calls, then checks provisioning at those consumer edges. It
+accepts simple root `make` goal lists and finite single-axis runner matrices;
+Make options, variable overrides, multiple matrix axes and matrix
 `include`/`exclude` fail closed. It reuses the pinned public
 `cv005_contracts.loading` reader and leaves canonical workflow, secret, and
 coverage-publisher policy with the existing CV-005 package. It is not a general
