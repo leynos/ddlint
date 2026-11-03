@@ -727,11 +727,11 @@ Coverage and release builds assign flags explicitly and do not add the
 development defaults. A direct `cargo build --release` uses the configuration
 unless `RUSTFLAGS` is assigned.
 
-The `build`, `test`, `typecheck` and `test-clippy-policy` targets verify the
-selected Rust toolchain before invoking Cargo and, on Linux, check that `mold`
-has the pinned version. `lint` runs `interrogate` first, then checks the build
-tools before Clippy. `check-fmt` does not require linker preflight.
-`make check-build-tools` runs the tool check directly.
+The `build`, `test`, `typecheck`, `test-clippy-policy`, `lint-clippy` and
+`lint-whitaker` targets verify the selected Rust toolchain before invoking
+Cargo and, on Linux, check that `mold` has the pinned version. `lint` runs
+`interrogate` first, then the two Rust gates. `check-fmt` does not require
+linker preflight. `make check-build-tools` runs the tool check directly.
 `make install-build-tools` installs the selected pinned nightly if it is
 missing and ensures `rustfmt`, `clippy` and `rust-analyzer` are installed. It
 also prepares the supported linker. The installer downloads the trusted `mold`
@@ -744,11 +744,16 @@ Unsupported Linux architectures receive an actionable error. On macOS and
 Windows, the linker check leaves the platform linker in use. The CI workflows
 already provision the same `mold` version before their suites.
 
-`make check` runs `check-fmt`, `typecheck`, `lint` and `test` in order. The
-lint target runs `interrogate` before checking build tools, then runs Clippy,
-the Clippy policy contract, Whitaker and spelling in order. CI also runs the
-full `make test` suite separately from coverage generation, which retains its
-measurement-specific feature selection and flag assignment.
+`make check` runs `check-fmt`, `typecheck`, `lint` and `test` in order.
+`lint: interrogate lint-clippy lint-whitaker spelling` is a serial composite:
+`.NOTPARALLEL` keeps the prerequisites in that order even under `-j`, so a
+failing Clippy run stops Whitaker from starting and the first real failure is
+the one reported. `lint-clippy` runs Clippy, Rustdoc and the Clippy policy
+contract; `lint-whitaker` runs the Dylint suite over `$(WHITAKER_PACKAGES)`
+(`--workspace` by default). Both gates can be run, and proven to fail, on their
+own. CI also runs the full `make test` suite separately from coverage
+generation, which retains its measurement-specific feature selection and flag
+assignment.
 
 ### Development build footprint
 
@@ -765,15 +770,19 @@ parsing the repository's own configuration. It starts no Cargo process.
 
 ### Whitaker isolation
 
-`make lint` runs Whitaker with the literal `RUSTFLAGS="-D warnings"`, after
-clearing an inherited `CARGO_ENCODED_RUSTFLAGS`, which Cargo ranks above
-`RUSTFLAGS`. Whitaker runs under the toolchain its installer manages, so it
-takes none of the development standard (no parallel frontend, no `mold` linker
-flag and no inherited `RUSTFLAGS`). The build-standard contract reads that
-isolated command as exempt from the restatement clauses, and ADR 003 records
-the exception. `tests/whitaker_isolation_contract.rs` reads the real
-`make -n lint` output and fails unless Whitaker clears the encoded flags and
-assigns the literal `RUSTFLAGS="-D warnings"`.
+`make lint-whitaker`, and therefore `make lint`, runs Whitaker with the literal
+`RUSTFLAGS="-D warnings"`, after clearing an inherited
+`CARGO_ENCODED_RUSTFLAGS`, which Cargo ranks above `RUSTFLAGS`. Whitaker runs
+under the toolchain its installer manages, so it takes none of the development
+standard (no parallel frontend, no `mold` linker flag and no inherited
+`RUSTFLAGS`). The build-standard contract reads that isolated command as exempt
+from the restatement clauses, and ADR 003 records the exception.
+`tests/whitaker_isolation_contract.rs` reads the real `make -n lint` output and
+fails unless Whitaker clears the encoded flags and assigns the literal
+`RUSTFLAGS="-D warnings"`. `tests/whitaker_gate_contract.rs` runs the gate and
+the aggregate with a controlled failing Whitaker, so neither can succeed while
+the suite fails. `tests/workflow_contracts/whitaker_gate_test.py` holds the
+splitting, ordering, packages variable and CI installer pin.
 
 ### Cranelift
 

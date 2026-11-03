@@ -3,7 +3,7 @@
 .PHONY: help all clean test build release check lint typecheck fmt check-fmt \
         markdownlint spelling nixie tools \
         test-workflow-contracts test-clippy-policy interrogate \
-        check-build-tools install-build-tools
+        lint-clippy lint-whitaker check-build-tools install-build-tools
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
@@ -34,6 +34,10 @@ TYPOS_CONFIG_BUILDER = uv tool run --python 3.14 --from \
 	"git+https://github.com/leynos/typos-config-builder.git@$(TYPOS_CONFIG_BUILDER_VERSION)" \
 	typos-config-builder
 WHITAKER ?= whitaker
+# Whitaker delegates to `cargo check`, so it takes Cargo's package selection.
+# `--workspace` keeps the suite over every workspace member, matching
+# `$(CARGO) clippy --all-targets --all-features`.
+WHITAKER_PACKAGES ?= --workspace
 
 UV ?= uv
 UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
@@ -215,17 +219,25 @@ interrogate: ## Enforce complete Python docstring coverage
 	    exit 1; \
 	  fi
 
+# `lint` is a serial composite: `.NOTPARALLEL` keeps these prerequisites in the
+# listed order even under `-j`, so a failing Clippy run stops Whitaker from
+# starting and the gate reports the first real failure. The Rust gates are
+# separate targets so each can be run, and proven to fail, on its own.
+.NOTPARALLEL: lint lint-clippy lint-whitaker
+
+lint: interrogate lint-clippy lint-whitaker spelling ## Run every lint gate with warnings denied
+
+lint-clippy: | check-build-tools ## Run Clippy, Rustdoc and the Clippy policy contract with warnings denied
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
+	+$(MAKE) test-clippy-policy
+
 # Whitaker runs under the toolchain its installer manages, so it takes none of
 # the development standard: its literal `RUSTFLAGS` displaces the `rustflags`
 # tables (no frontend flag, no `mold`) and inherits nothing from the caller. An
 # inherited `CARGO_ENCODED_RUSTFLAGS` outranks `RUSTFLAGS`, so it is cleared first.
-lint: interrogate ## Run Clippy, Rustdoc and the Whitaker Dylint suite with warnings denied
-	+$(MAKE) check-build-tools
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
-	+$(MAKE) test-clippy-policy
-	unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
-	+$(MAKE) spelling
+lint-whitaker: | check-build-tools ## Run the Whitaker Dylint suite with warnings denied
+	unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" $(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features
 
 typecheck: | check-build-tools ## Typecheck all workspace targets and features
 	CARGO_CACHE_RUSTC_INFO=0 RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) check --workspace --all-targets \
