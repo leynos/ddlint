@@ -35,11 +35,9 @@ impl Expr {
             }
             Self::Struct { name, fields } => format_nary(
                 "struct",
-                std::iter::once(name.clone()).chain(
-                    fields
-                        .iter()
-                        .map(|(name, expr)| format_field(name, &expr.to_sexpr())),
-                ),
+                std::iter::once(name.clone()).chain(fields.iter().map(
+                    |(field_name, field_expr)| format_field(field_name, &field_expr.to_sexpr()),
+                )),
             ),
             Self::Tuple(items) => format_nary("tuple", items.iter().map(Self::to_sexpr)),
             Self::Closure { params, body } => format_nary(
@@ -67,8 +65,8 @@ impl Expr {
                 body,
             } => format_for_loop(pattern, iterable, guard.as_deref(), body),
             Self::Match { scrutinee, arms } => format_match(scrutinee, arms),
-            Self::Break => "(break)".to_string(),
-            Self::Continue => "(continue)".to_string(),
+            Self::Break => "(break)".to_owned(),
+            Self::Continue => "(continue)".to_owned(),
             Self::Return { value } => format_nary("return", [value.to_sexpr()]),
             Self::VecLit(items) => format_nary("vec", items.iter().map(Self::to_sexpr)),
             Self::MapLit(entries) => format_nary(
@@ -92,22 +90,22 @@ fn format_field(name: &str, value: &str) -> String {
 
 #[inline]
 fn format_kv(key: &Expr, value: &Expr) -> String {
-    let key = key.to_sexpr();
-    let value = value.to_sexpr();
-    let mut rendered = String::with_capacity(key.len() + value.len() + 10);
+    let key_text = key.to_sexpr();
+    let value_text = value.to_sexpr();
+    let mut rendered = String::with_capacity(key_text.len() + value_text.len() + 10);
     rendered.push_str("(entry ");
-    rendered.push_str(&key);
+    rendered.push_str(&key_text);
     rendered.push(' ');
-    rendered.push_str(&value);
+    rendered.push_str(&value_text);
     rendered.push(')');
     rendered
 }
 
-fn format_nary<I>(label: &str, parts: I) -> String
+fn format_nary<I>(label: &str, items: I) -> String
 where
     I: IntoIterator<Item = String>,
 {
-    let parts: Vec<String> = parts.into_iter().collect();
+    let parts: Vec<String> = items.into_iter().collect();
     let capacity = 2 + label.len() + parts.iter().map(|part| 1 + part.len()).sum::<usize>();
     let mut rendered = String::with_capacity(capacity);
     rendered.push('(');

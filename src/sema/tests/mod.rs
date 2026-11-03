@@ -25,16 +25,21 @@ fn parse_ok(source: &str) -> crate::Parsed {
     parsed
 }
 
+/// A name-and-kind predicate for filtering model items.
+struct NamedKind<'a, K> {
+    name: &'a str,
+    kind: K,
+}
+
 fn filter_named_by_kind<'a, T, K: PartialEq>(
     items: &'a [T],
-    name: &str,
-    kind: &K,
+    query: &NamedKind<'_, K>,
     name_fn: impl Fn(&T) -> &str,
     kind_fn: impl Fn(&T) -> K,
 ) -> Vec<&'a T> {
     items
         .iter()
-        .filter(|item| name_fn(item) == name && &kind_fn(item) == kind)
+        .filter(|item| name_fn(item) == query.name && kind_fn(item) == query.kind)
         .collect()
 }
 
@@ -45,8 +50,7 @@ fn uses_named<'a>(
 ) -> Vec<&'a super::UseSite> {
     filter_named_by_kind(
         model.uses(),
-        name,
-        &kind,
+        &NamedKind { name, kind },
         |u| u.name(),
         super::model::UseSite::kind,
     )
@@ -59,8 +63,7 @@ fn symbols_named<'a>(
 ) -> Vec<&'a super::Symbol> {
     filter_named_by_kind(
         model.symbols(),
-        name,
-        &kind,
+        &NamedKind { name, kind },
         |s| s.name(),
         super::model::Symbol::kind,
     )

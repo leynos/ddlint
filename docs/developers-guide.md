@@ -172,6 +172,35 @@ reports errors, `Runner::run` skips registered rules and returns no lint
 diagnostics; recovery CST nodes are not linted. Callers must report parser
 errors separately from the returned lint diagnostics.
 
+## Lint baseline
+
+The workspace lint baseline is authoritative in two files:
+
+- `Cargo.toml` holds the `[workspace.lints.rust]`,
+  `[workspace.lints.rustdoc]`, and `[workspace.lints.clippy]` tables. Every
+  member opts in with `[lints] workspace = true`, so a rule added once applies
+  to the whole estate.
+- `clippy.toml` holds the numeric thresholds: cognitive complexity 9, too many
+  arguments 4, too many lines 70, and excessive nesting 4. They match
+  CodeScene's ceilings so the local and hosted gates agree about the same
+  function.
+
+The baseline denies the restriction lints it names. Fix a finding at its
+source: rename a shadowed binding, group related parameters in a struct, or
+extract a helper. A reasoned `#[expect(lint, reason = "...")]` is the only
+accepted exception, and it must be tightly scoped; `#[allow]` is not a backlog
+mechanism. An `#[expect]` for a lint that is still allow-by-default is itself
+an error under `-D warnings`, so a lint and its fixes land together.
+
+Environment-dependent behaviour is injected rather than read from the process
+environment: use the `mockable` crate, or a shared guard and mutex in a test
+helper crate. Direct environment mutation in tests is forbidden.
+
+The gate needs the pinned nightly toolchain with `rustfmt`, `clippy`, and
+`rust-analyzer` (see `rust-toolchain.toml`), plus `mold` on Linux. Run
+`make check-build-tools` to verify them and `make install-build-tools` to
+provision them.
+
 ## Contributor workflow
 
 Run these gates in order before committing:
@@ -187,10 +216,13 @@ This is the required pre-commit sequence, matching `AGENTS.md`.
 
 `make lint` first runs `make interrogate`, which needs `uv` and requires a
 docstring on every Python definition under `tests` (it fails on any `MISSED`
-row, because interrogate rounds its percentage to one decimal). It also
-includes the spelling gate, and `make markdownlint` also invokes the spelling
-gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
-`make nixie` validates the Mermaid diagrams within them.
+row, because interrogate rounds its percentage to one decimal). It then runs
+Clippy, a Rustdoc build with `RUSTDOC_FLAGS` (`--cfg docsrs -D warnings` by
+default), the Clippy policy script, Whitaker, and the spelling gate.
+`make test` runs the workspace tests and then the doctests, both with warnings
+denied. `make markdownlint` also invokes the spelling gate for tracked Markdown.
+`make markdownlint` lints every Markdown source, and `make nixie` validates
+the Mermaid diagrams within them.
 
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying

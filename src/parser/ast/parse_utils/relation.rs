@@ -59,7 +59,7 @@ pub(crate) fn primary_key_clause(
 ) -> impl Parser<SyntaxKind, Vec<String>, Error = Simple<SyntaxKind>> + '_ {
     let ws = inline_ws().repeated();
     let ident_text =
-        ident().map_with_span(move |(), sp: Span| src.get(sp.clone()).unwrap_or("").to_string());
+        ident().map_with_span(move |(), sp: Span| src.get(sp.clone()).unwrap_or("").to_owned());
 
     inline_ws()
         .repeated()

@@ -37,7 +37,7 @@ mod helpers {
     pub(super) fn make_for_loop(guard: Option<&str>) -> RuleForLoop {
         make_for_loop_with_body(
             guard,
-            vec![RuleBodyTerm::Expression(Expr::Variable("Body".to_string()))],
+            vec![RuleBodyTerm::Expression(Expr::Variable("Body".to_owned()))],
         )
     }
 
@@ -50,10 +50,10 @@ mod helpers {
         RuleForLoop {
             pattern: Pattern::Var {
                 declared: false,
-                name: "item".to_string(),
+                name: "item".to_owned(),
             },
-            iterable: Expr::Variable("Source".to_string()),
-            guard: guard.map(|g| Expr::Variable(g.to_string())),
+            iterable: Expr::Variable("Source".to_owned()),
+            guard: guard.map(|g| Expr::Variable(g.to_owned())),
             body_terms,
         }
     }
@@ -69,7 +69,7 @@ fn rule_head_and_body() {
         .cloned()
         .expect("rule missing");
     assert_eq!(rule.head().as_deref(), Some("A(x)"));
-    assert_eq!(rule.body_literals(), vec!["B(x)".to_string()]);
+    assert_eq!(rule.body_literals(), vec!["B(x)".to_owned()]);
 }
 
 #[test]
@@ -295,12 +295,12 @@ fn rule_for_loop_flatten_nested_for_loop_recursively_flattens() {
     let inner_for_loop = RuleForLoop {
         pattern: Pattern::Var {
             declared: false,
-            name: "inner".to_string(),
+            name: "inner".to_owned(),
         },
-        iterable: Expr::Variable("InnerSource".to_string()),
+        iterable: Expr::Variable("InnerSource".to_owned()),
         guard: None,
         body_terms: vec![RuleBodyTerm::Expression(Expr::Variable(
-            "InnerBody".to_string(),
+            "InnerBody".to_owned(),
         ))],
     };
 
@@ -308,9 +308,9 @@ fn rule_for_loop_flatten_nested_for_loop_recursively_flattens() {
     let outer_for_loop = RuleForLoop {
         pattern: Pattern::Var {
             declared: false,
-            name: "outer".to_string(),
+            name: "outer".to_owned(),
         },
-        iterable: Expr::Variable("OuterSource".to_string()),
+        iterable: Expr::Variable("OuterSource".to_owned()),
         guard: None,
         body_terms: vec![RuleBodyTerm::ForLoop(inner_for_loop)],
     };

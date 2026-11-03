@@ -79,6 +79,6 @@ mod tests {
             tr.inputs(),
             vec![("a".into(), "X".into()), ("b".into(), "Y".into())]
         );
-        assert_eq!(tr.outputs(), vec!["Out1".to_string(), "Out2".to_string()]);
+        assert_eq!(tr.outputs(), vec!["Out1".to_owned(), "Out2".to_owned()]);
     }
 }

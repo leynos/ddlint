@@ -110,7 +110,11 @@ impl ScratchDirectory {
 
 impl Drop for ScratchDirectory {
     /// Removes the temporary tree after each provisioning case.
-    fn drop(&mut self) { let _ = self.parent.remove_dir_all(&self.relative_path); }
+    fn drop(&mut self) {
+        // Cleanup is best effort: `Drop` cannot report a failure, and a stale
+        // scratch tree must not mask the assertion that already ran.
+        drop(self.parent.remove_dir_all(&self.relative_path));
+    }
 }
 
 /// Names the build-tool states exercised by provisioning contracts.
@@ -252,8 +256,8 @@ impl Sandbox {
             .arg("TYPOS_CONFIG_BUILDER=/usr/bin/echo")
             .arg("INTERROGATE=/usr/bin/echo interrogate-marker")
             .arg("APP=ddlint");
-        if let Some(target) = target {
-            command.arg(target);
+        if let Some(requested_target) = target {
+            command.arg(requested_target);
         }
         command
             .current_dir(env!("CARGO_MANIFEST_DIR"))

@@ -156,7 +156,7 @@ fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
         t.inputs(),
         vec![("foo".into(), "Bar".into()), ("baz".into(), "Qux".into())]
     );
-    assert_eq!(t.outputs(), vec!["Out1".to_string(), "Out2".to_string()]);
+    assert_eq!(t.outputs(), vec!["Out1".to_owned(), "Out2".to_owned()]);
 }
 
 #[rstest]

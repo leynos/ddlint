@@ -60,7 +60,7 @@ where
         });
     }
 
-    (buf.trim().to_string(), errors)
+    (buf.trim().to_owned(), errors)
 }
 
 fn process_type_element<I>(
@@ -96,26 +96,36 @@ enum DelimiterOperation {
     Close,
 }
 
-fn detect_delimiter_operation(kind: SyntaxKind) -> Option<(DelimiterOperation, Delim, usize)> {
-    match kind {
-        SyntaxKind::T_LPAREN => Some((DelimiterOperation::Open, Delim::Paren, 1)),
-        SyntaxKind::T_RPAREN => Some((DelimiterOperation::Close, Delim::Paren, 1)),
-        SyntaxKind::T_LT => Some((DelimiterOperation::Open, Delim::Angle, 1)),
-        SyntaxKind::T_GT => Some((DelimiterOperation::Close, Delim::Angle, 1)),
-        SyntaxKind::T_SHL => Some((DelimiterOperation::Open, Delim::Angle, 2)),
-        SyntaxKind::T_SHR => Some((DelimiterOperation::Close, Delim::Angle, 2)),
-        SyntaxKind::T_LBRACKET => Some((DelimiterOperation::Open, Delim::Bracket, 1)),
-        SyntaxKind::T_RBRACKET => Some((DelimiterOperation::Close, Delim::Bracket, 1)),
-        SyntaxKind::T_LBRACE => Some((DelimiterOperation::Open, Delim::Brace, 1)),
-        SyntaxKind::T_RBRACE => Some((DelimiterOperation::Close, Delim::Brace, 1)),
-        _ => None,
-    }
-}
-
-fn process_delimiter<I>(
+/// A delimiter operation together with the delimiter and its token width.
+///
+/// The three values are produced together by [`detect_delimiter_operation`] and
+/// always travel as a unit, so grouping them keeps the argument list small.
+#[derive(Clone, Copy)]
+struct DelimiterAction {
     op: DelimiterOperation,
     delim: Delim,
     count: usize,
+}
+
+const fn detect_delimiter_operation(kind: SyntaxKind) -> Option<DelimiterAction> {
+    let (op, delim, count) = match kind {
+        SyntaxKind::T_LPAREN => (DelimiterOperation::Open, Delim::Paren, 1),
+        SyntaxKind::T_RPAREN => (DelimiterOperation::Close, Delim::Paren, 1),
+        SyntaxKind::T_LT => (DelimiterOperation::Open, Delim::Angle, 1),
+        SyntaxKind::T_GT => (DelimiterOperation::Close, Delim::Angle, 1),
+        SyntaxKind::T_SHL => (DelimiterOperation::Open, Delim::Angle, 2),
+        SyntaxKind::T_SHR => (DelimiterOperation::Close, Delim::Angle, 2),
+        SyntaxKind::T_LBRACKET => (DelimiterOperation::Open, Delim::Bracket, 1),
+        SyntaxKind::T_RBRACKET => (DelimiterOperation::Close, Delim::Bracket, 1),
+        SyntaxKind::T_LBRACE => (DelimiterOperation::Open, Delim::Brace, 1),
+        SyntaxKind::T_RBRACE => (DelimiterOperation::Close, Delim::Brace, 1),
+        _ => return None,
+    };
+    Some(DelimiterAction { op, delim, count })
+}
+
+fn process_delimiter<I>(
+    action: DelimiterAction,
     token: &rowan::SyntaxToken<DdlogLanguage>,
     iter: &mut std::iter::Peekable<I>,
     ctx: &mut TokenParseContext<'_>,
@@ -123,6 +133,7 @@ fn process_delimiter<I>(
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
+    let DelimiterAction { op, delim, count } = action;
     match op {
         DelimiterOperation::Open => {
             open_delimiter(&mut *ctx.stack, delim, token.text_range(), count);
@@ -162,8 +173,8 @@ where
         return true;
     }
 
-    if let Some((op, delim, count)) = detect_delimiter_operation(kind) {
-        return process_delimiter(op, delim, count, token, iter, ctx);
+    if let Some(action) = detect_delimiter_operation(kind) {
+        return process_delimiter(action, token, iter, ctx);
     }
 
     push(token, ctx);
@@ -171,7 +182,7 @@ where
     false
 }
 
-fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
+const fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
     stack_empty
         && !buf_empty
         && matches!(
@@ -209,7 +220,7 @@ where
     if text.is_empty() {
         None
     } else {
-        Some(text.to_string())
+        Some(text.to_owned())
     }
 }
 

@@ -143,14 +143,15 @@ fn generated_relation_strategy() -> impl Strategy<Value = GeneratedRelation> {
         ],
     )
         .prop_map(|(role, kind, body, is_ref, primary_key)| {
-            let primary_key = (role == GeneratedRole::Input && body == GeneratedBody::Record)
+            let effective_primary_key = (role == GeneratedRole::Input
+                && body == GeneratedBody::Record)
                 .then_some(primary_key);
             GeneratedRelation {
                 role,
                 kind,
                 body,
                 is_ref,
-                primary_key,
+                primary_key: effective_primary_key,
             }
         })
 }
@@ -192,7 +193,7 @@ proptest! {
                     Ok(RelationBody::ElementType("Vec<u32>".into()))
                 );
                 prop_assert_eq!(relation.columns(), Ok(Vec::<(String, String)>::new()));
-                prop_assert_eq!(relation.element_type(), Ok(Some("Vec<u32>".to_string())));
+                prop_assert_eq!(relation.element_type(), Ok(Some("Vec<u32>".to_owned())));
             }
         }
 

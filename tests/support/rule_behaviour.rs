@@ -43,7 +43,7 @@ fn rule_setup_reports_parse_errors() {
     );
     assert_eq!(tail, "Some(T_DOT), label: None }]");
     let actual_tokens: BTreeSet<_> = expected_tokens.split(", ").collect();
-    let expected_tokens = BTreeSet::from([
+    let expected_token_set = BTreeSet::from([
         "Some(T_IDENT)",
         "Some(T_LBRACKET)",
         "Some(K_SKIP)",
@@ -53,7 +53,7 @@ fn rule_setup_reports_parse_errors() {
         "Some(K_FOR)",
         "Some(T_AMP)",
     ]);
-    assert_eq!(actual_tokens, expected_tokens);
+    assert_eq!(actual_tokens, expected_token_set);
 }
 
 #[test]

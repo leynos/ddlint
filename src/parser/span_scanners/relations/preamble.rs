@@ -106,6 +106,16 @@ pub(super) fn parse_preamble(
     Ok(state.finish())
 }
 
+/// A role keyword paired with the span it occupies.
+///
+/// The two values always travel together from the token match, so grouping
+/// them keeps [`PreambleState::consume_role`] within the argument budget.
+#[derive(Clone, Copy)]
+struct RoleToken<'a> {
+    role: RelationRole,
+    span: &'a Span,
+}
+
 #[derive(Debug, Default)]
 struct PreambleState {
     role: Option<RelationRole>,
@@ -150,7 +160,9 @@ impl PreambleState {
     ) -> ScanResult<()> {
         while let Some((kind, span)) = tokens.get(*cursor) {
             match preamble_part(*kind) {
-                PreamblePart::Role(role) => self.consume_role(role, span, tokens, cursor)?,
+                PreamblePart::Role(role) => {
+                    self.consume_role(RoleToken { role, span }, tokens, cursor)?;
+                }
                 PreamblePart::Kind => self.consume_kind(span, tokens, cursor)?,
                 PreamblePart::Name | PreamblePart::Ref | PreamblePart::Other(_) => break,
             }
@@ -160,24 +172,23 @@ impl PreambleState {
 
     fn consume_role(
         &mut self,
-        role: RelationRole,
-        span: &Span,
+        token: RoleToken<'_>,
         tokens: &[(SyntaxKind, Span)],
         cursor: &mut usize,
     ) -> ScanResult<()> {
         if self.saw_kind_first {
             return Err(Box::new(custom_error(
-                span,
+                token.span,
                 DiagnosticCode::RelationKindBeforeRole.message_text(),
             )));
         }
         if self.role.is_some() {
             return Err(Box::new(custom_error(
-                span,
+                token.span,
                 DiagnosticCode::RelationDuplicateRole.message_text(),
             )));
         }
-        self.role = Some(role);
+        self.role = Some(token.role);
         advance_preamble(tokens, cursor);
         Ok(())
     }
@@ -199,7 +210,7 @@ impl PreambleState {
         Ok(())
     }
 
-    fn finish(self) -> Preamble {
+    const fn finish(self) -> Preamble {
         Preamble {
             role: self.role,
             has_kind: self.has_kind,
@@ -215,7 +226,7 @@ enum PreamblePart {
     Other(SyntaxKind),
 }
 
-fn preamble_part(kind: SyntaxKind) -> PreamblePart {
+const fn preamble_part(kind: SyntaxKind) -> PreamblePart {
     match kind {
         SyntaxKind::K_INPUT => PreamblePart::Role(RelationRole::Input),
         SyntaxKind::K_OUTPUT => PreamblePart::Role(RelationRole::Output),

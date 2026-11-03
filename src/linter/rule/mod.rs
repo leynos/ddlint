@@ -35,7 +35,7 @@ impl LintDiagnostic {
 
     /// Return the emitting rule's canonical name.
     #[must_use]
-    pub fn rule_name(&self) -> &'static str { self.rule_name }
+    pub const fn rule_name(&self) -> &'static str { self.rule_name }
 
     /// Return the user-facing diagnostic message.
     #[must_use]
@@ -43,7 +43,7 @@ impl LintDiagnostic {
 
     /// Return the source span associated with this diagnostic.
     #[must_use]
-    pub fn span(&self) -> TextRange { self.span }
+    pub const fn span(&self) -> TextRange { self.span }
 }
 
 /// A typed configuration value passed into a lint rule.
@@ -60,7 +60,7 @@ pub enum RuleConfigValue {
 impl RuleConfigValue {
     /// Return the boolean value when this variant is [`Self::Bool`].
     #[must_use]
-    pub fn as_bool(&self) -> Option<bool> {
+    pub const fn as_bool(&self) -> Option<bool> {
         match self {
             Self::Bool(value) => Some(*value),
             Self::Integer(_) | Self::String(_) => None,
@@ -69,7 +69,7 @@ impl RuleConfigValue {
 
     /// Return the integer value when this variant is [`Self::Integer`].
     #[must_use]
-    pub fn as_integer(&self) -> Option<i64> {
+    pub const fn as_integer(&self) -> Option<i64> {
         match self {
             Self::Integer(value) => Some(*value),
             Self::Bool(_) | Self::String(_) => None,
@@ -186,11 +186,11 @@ impl RuleCtx {
 
     /// Return the typed AST root for semantic navigation.
     #[must_use]
-    pub fn ast_root(&self) -> &crate::parser::ast::Root { &self.ast_root }
+    pub const fn ast_root(&self) -> &crate::parser::ast::Root { &self.ast_root }
 
     /// Return the CST root syntax node.
     #[must_use]
-    pub fn cst_root(&self) -> &rowan::SyntaxNode<DdlogLanguage> { self.ast_root.syntax() }
+    pub const fn cst_root(&self) -> &rowan::SyntaxNode<DdlogLanguage> { self.ast_root.syntax() }
 
     /// Return the semantic model for this lint run.
     #[must_use]
@@ -198,7 +198,7 @@ impl RuleCtx {
 
     /// Return the full per-rule configuration map.
     #[must_use]
-    pub fn config(&self) -> &RuleConfig { &self.config }
+    pub const fn config(&self) -> &RuleConfig { &self.config }
 
     /// Return a single configuration entry by key.
     #[must_use]

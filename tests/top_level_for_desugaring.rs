@@ -23,20 +23,55 @@ const UNTERMINATED_FOR_PATTERN: &str =
 #[fixture]
 fn parse_case(#[default("")] src: &str) -> ddlint::Parsed { parse(src) }
 
+/// One top-level `for` desugaring case.
+///
+/// Cases that only assert rule counts start from [`TopLevelForCase::counts`]
+/// and override the optional sexpr expectations they care about.
+struct TopLevelForCase {
+    src: &'static str,
+    semantic_rules: usize,
+    cst_rules: usize,
+    relations: usize,
+    error_pattern: Option<&'static str>,
+    head: Option<&'static str>,
+    first_body: Option<&'static str>,
+}
+
+impl TopLevelForCase {
+    /// Builds a case that asserts only the rule counts.
+    const fn counts(
+        src: &'static str,
+        semantic_rules: usize,
+        cst_rules: usize,
+        relations: usize,
+    ) -> Self {
+        Self {
+            src,
+            semantic_rules,
+            cst_rules,
+            relations,
+            error_pattern: None,
+            head: None,
+            first_body: None,
+        }
+    }
+}
+
 #[rstest]
-#[case::single_line_desugar(
-    concat!(
-        "input relation Items(x: u32)\n",
-        "for (x in Items(x)) Process(x).\n",
-    ),
-    1,
-    0,
-    1,
-    None,
-    Some("(call Process x)"),
-    Some("(call Items x)")
-)]
-#[case::multiline_desugar(
+#[case::single_line_desugar(TopLevelForCase {
+    head: Some("(call Process x)"),
+    first_body: Some("(call Items x)"),
+    ..TopLevelForCase::counts(
+        concat!(
+            "input relation Items(x: u32)\n",
+            "for (x in Items(x)) Process(x).\n",
+        ),
+        1,
+        0,
+        1,
+    )
+})]
+#[case::multiline_desugar(TopLevelForCase::counts(
     concat!(
         "input relation Items(x: u32)\n",
         "for (x in Items(x))\n",
@@ -45,55 +80,48 @@ fn parse_case(#[default("")] src: &str) -> ddlint::Parsed { parse(src) }
     1,
     0,
     1,
-    None,
-    None,
-    None
-)]
-#[case::dot_separated_after_rule("A(x) :- B(x). for (y in C(y)) D(y).", 1, 1, 0, None, None, None)]
-#[case::tuple_index_with_spaced_dot("for (x in Items(x)) pair. 0(x).", 1, 0, 0, None, None, None)]
-#[case::unterminated_statement(
-    "for (x in Items(x)) Process(x)",
+))]
+#[case::dot_separated_after_rule(TopLevelForCase::counts(
+    "A(x) :- B(x). for (y in C(y)) D(y).",
+    1,
+    1,
+    0,
+))]
+#[case::tuple_index_with_spaced_dot(TopLevelForCase::counts(
+    "for (x in Items(x)) pair. 0(x).",
+    1,
     0,
     0,
-    0,
-    Some(UNTERMINATED_FOR_PATTERN),
-    None,
-    None
-)]
-#[case::unsupported_non_atom_head(
-    "for (x in Items(x)) x + 1.",
-    0,
-    0,
-    0,
-    Some(UNSUPPORTED_FOR_HEAD_PATTERN),
-    None,
-    None
-)]
-#[case::unsupported_if_body(
-    "for (x in Items(x)) if (ready(x)) Process(x).",
-    0,
-    0,
-    0,
-    Some(UNSUPPORTED_FOR_BODY_PATTERN),
-    None,
-    None
-)]
-fn top_level_for_behaviour(
-    #[case] src: &str,
-    #[case] expected_semantic_rules: usize,
-    #[case] expected_cst_rules: usize,
-    #[case] expected_relations: usize,
-    #[case] expected_error_pattern: Option<&str>,
-    #[case] expected_head: Option<&str>,
-    #[case] expected_first_body: Option<&str>,
-) {
+))]
+#[case::unterminated_statement(TopLevelForCase {
+    error_pattern: Some(UNTERMINATED_FOR_PATTERN),
+    ..TopLevelForCase::counts("for (x in Items(x)) Process(x)", 0, 0, 0)
+})]
+#[case::unsupported_non_atom_head(TopLevelForCase {
+    error_pattern: Some(UNSUPPORTED_FOR_HEAD_PATTERN),
+    ..TopLevelForCase::counts("for (x in Items(x)) x + 1.", 0, 0, 0)
+})]
+#[case::unsupported_if_body(TopLevelForCase {
+    error_pattern: Some(UNSUPPORTED_FOR_BODY_PATTERN),
+    ..TopLevelForCase::counts("for (x in Items(x)) if (ready(x)) Process(x).", 0, 0, 0)
+})]
+fn top_level_for_behaviour(#[case] case: TopLevelForCase) {
+    let TopLevelForCase {
+        src,
+        semantic_rules,
+        cst_rules,
+        relations,
+        error_pattern,
+        head,
+        first_body,
+    } = case;
     let parsed = parse(src);
 
-    if let Some(pattern) = expected_error_pattern {
-        let pattern = ErrorPattern::from(pattern);
+    if let Some(pattern_source) = error_pattern {
+        let expected_error = ErrorPattern::from(pattern_source);
         assert!(
-            find_matching_error(parsed.errors(), &pattern).is_some(),
-            "expected diagnostic `{pattern:?}`, got: {:?}",
+            find_matching_error(parsed.errors(), &expected_error).is_some(),
+            "expected diagnostic `{expected_error:?}`, got: {:?}",
             parsed.errors()
         );
     } else {
@@ -106,35 +134,35 @@ fn top_level_for_behaviour(
 
     assert_eq!(
         parsed.semantic_rules().len(),
-        expected_semantic_rules,
+        semantic_rules,
         "unexpected semantic rule count"
     );
     assert_eq!(
         parsed.root().rules().len(),
-        expected_cst_rules,
+        cst_rules,
         "unexpected CST rule count"
     );
     assert_eq!(
         parsed.root().relations().len(),
-        expected_relations,
+        relations,
         "unexpected relation declaration count"
     );
 
-    if let Some(expected_head) = expected_head {
+    if let Some(head_sexpr) = head {
         let rule = parsed
             .semantic_rules()
             .first()
             .expect("missing semantic rule");
-        assert_eq!(rule.head().to_sexpr(), expected_head);
+        assert_eq!(rule.head().to_sexpr(), head_sexpr);
     }
 
-    if let Some(expected_first_body) = expected_first_body {
+    if let Some(body_sexpr) = first_body {
         let rule = parsed
             .semantic_rules()
             .first()
             .expect("missing semantic rule");
-        let first_body = rule.body().first().expect("missing body term");
-        assert_eq!(first_body.to_sexpr(), expected_first_body);
+        let body_term = rule.body().first().expect("missing body term");
+        assert_eq!(body_term.to_sexpr(), body_sexpr);
     }
 }
 

@@ -25,7 +25,7 @@ struct PatternTokenStream<'a> {
 }
 
 impl<'a> PatternTokenStream<'a> {
-    fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
+    const fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
         Self {
             stream: TokenStream::new(tokens, src),
             errors: Vec::new(),
@@ -58,18 +58,14 @@ impl<'a> PatternTokenStream<'a> {
         self.errors.push(Simple::custom(span, msg.into()));
     }
 
-    fn eof_span(&self) -> Span { self.stream.src().len()..self.stream.src().len() }
+    const fn eof_span(&self) -> Span { self.stream.src().len()..self.stream.src().len() }
 
     fn slice(&self, span: &Span) -> String {
         debug_assert!(
             span.end <= self.stream.src().len(),
             "invalid span for pattern source slice"
         );
-        self.stream
-            .src()
-            .get(span.clone())
-            .unwrap_or("")
-            .to_string()
+        self.stream.src().get(span.clone()).unwrap_or("").to_owned()
     }
 
     fn take_errors(self) -> Vec<Simple<SyntaxKind>> { self.errors }

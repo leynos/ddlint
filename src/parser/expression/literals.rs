@@ -60,7 +60,7 @@ where
         match StringLiteral::parse(&self.ts.slice(span)) {
             Ok(s) => Some(Expr::Literal(Literal::String(s))),
             Err(msg) => {
-                self.ts.push_error(span.clone(), msg.to_string());
+                self.ts.push_error(span.clone(), msg.to_owned());
                 None
             }
         }

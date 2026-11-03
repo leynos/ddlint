@@ -21,7 +21,7 @@ where
     /// # Returns
     ///
     /// `true` if all delimiter depths are zero; `false` otherwise.
-    pub(super) fn is_at_top_level(
+    pub(super) const fn is_at_top_level(
         paren_depth: usize,
         brace_depth: usize,
         bracket_depth: usize,

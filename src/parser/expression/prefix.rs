@@ -33,7 +33,7 @@ where
                 let name = self.ts.slice(&span);
                 self.parse_ident_expression(name, &span)
             }
-            SyntaxKind::K_UNDERSCORE => Some(Expr::Variable("_".to_string())),
+            SyntaxKind::K_UNDERSCORE => Some(Expr::Variable("_".to_owned())),
             SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACKET => self.parse_vector_literal(),

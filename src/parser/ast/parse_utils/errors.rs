@@ -141,5 +141,5 @@ impl DelimStack {
     }
 
     /// Checks whether the delimiter stack contains no open delimiters.
-    pub(crate) fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub(crate) const fn is_empty(&self) -> bool { self.0.is_empty() }
 }

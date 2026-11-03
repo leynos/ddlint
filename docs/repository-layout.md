@@ -47,9 +47,12 @@ _Figure 1: Compact repository tree for contributor orientation._
 - `AGENTS.md`: Repository-specific agent and contributor operating
   instructions. This file supersedes inherited template guidance for this
   repository.
-- `Cargo.toml` and `Cargo.lock`: Rust workspace package metadata and dependency
-  lock state. Keep dependency requirements compatible with the policy in
-  `AGENTS.md`.
+- `Cargo.toml` and `Cargo.lock`: Rust workspace package metadata, the
+  authoritative `[workspace.lints.*]` baseline, and dependency lock state. Keep
+  dependency requirements compatible with the policy in `AGENTS.md`.
+- `clippy.toml`: Numeric Clippy thresholds shared by the whole workspace. They
+  match CodeScene's ceilings; see the
+  [lint baseline](developers-guide.md#lint-baseline).
 - `Makefile`: Canonical command entrypoints for build, tool checks and setup,
   format, lint, test, and documentation validation. Prefer these targets over
   direct tool invocations.

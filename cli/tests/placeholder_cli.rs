@@ -6,12 +6,13 @@ use rstest::rstest;
 
 /// With no configuration, the placeholder retains its exact output and status.
 #[rstest]
-fn placeholder_output_and_exit_status_are_unchanged() -> Result<(), Box<dyn std::error::Error>> {
-    let directory = tempfile::TempDir::new()?;
+fn placeholder_output_and_exit_status_are_unchanged() {
+    let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
     let output = Command::new(env!("CARGO_BIN_EXE_ddlint"))
         .current_dir(directory.path())
         .env_clear()
-        .output()?;
+        .output()
+        .expect("the placeholder binary should run");
 
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(
@@ -23,5 +24,4 @@ fn placeholder_output_and_exit_status_are_unchanged() -> Result<(), Box<dyn std:
         "the placeholder wrote to stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    Ok(())
 }

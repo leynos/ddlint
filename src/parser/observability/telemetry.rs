@@ -33,11 +33,11 @@ impl Default for TelemetryObserver {
 
 impl ParseObserver for TelemetryObserver {
     fn parse_attempt_started(&self, category: DiagnosticCategory) {
-        let category = category.as_str();
-        counter!(ATTEMPT_METRIC, "category" => category).increment(1);
+        let category_name = category.as_str();
+        counter!(ATTEMPT_METRIC, "category" => category_name).increment(1);
         tracing::debug!(
             target: "ddlint::parser",
-            category,
+            category = category_name,
             "parser attempt started"
         );
     }
@@ -228,12 +228,12 @@ mod tests {
                 .parse_attempt_completed(ParseAttemptContext::new(DiagnosticCategory::Relation, 2));
         });
 
-        let events = events
+        let recorded = events
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        assert_eq!(events.len(), 2);
+        assert_eq!(recorded.len(), 2);
         assert_eq!(
-            events
+            recorded
                 .iter()
                 .map(|event| event.fields.get("message").map(String::as_str))
                 .collect::<Vec<_>>(),
@@ -243,8 +243,8 @@ mod tests {
             ]
         );
 
-        let [started, completed] = events.as_slice() else {
-            panic!("expected start and completion tracing events, got {events:?}");
+        let [started, completed] = recorded.as_slice() else {
+            panic!("expected start and completion tracing events, got {recorded:?}");
         };
         for event in [started, completed] {
             assert_eq!(event.target, "ddlint::parser");
@@ -278,12 +278,12 @@ mod tests {
             });
         });
 
-        let events = events
+        let recorded = events
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        assert_eq!(events.len(), 1);
+        assert_eq!(recorded.len(), 1);
 
-        for event in events.iter() {
+        for event in recorded.iter() {
             assert_eq!(event.target, "ddlint::parser");
             assert_eq!(event.level, "WARN");
             assert_eq!(

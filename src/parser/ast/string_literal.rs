@@ -136,7 +136,7 @@ impl StringLiteral {
             .strip_suffix("|]")
             .ok_or("unterminated raw string literal")?;
         Ok(Self {
-            body: body.to_string(),
+            body: body.to_owned(),
             kind: StringKind::Raw { interpolated },
             interned: prefixed.interned,
         })
@@ -150,7 +150,7 @@ impl StringLiteral {
             .ok_or("unterminated string literal")?;
         let interpolated = contains_unescaped_interpolation(body);
         Ok(Self {
-            body: body.to_string(),
+            body: body.to_owned(),
             kind: StringKind::Standard { interpolated },
             interned: prefixed.interned,
         })
@@ -158,7 +158,7 @@ impl StringLiteral {
 
     /// True when the literal includes interpolation markers.
     #[must_use]
-    pub fn is_interpolated(&self) -> bool {
+    pub const fn is_interpolated(&self) -> bool {
         matches!(
             self.kind,
             StringKind::Standard { interpolated: true } | StringKind::Raw { interpolated: true }

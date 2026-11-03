@@ -23,7 +23,7 @@ pub struct Parsed {
 }
 
 impl Parsed {
-    pub(super) fn new(
+    pub(super) const fn new(
         green: GreenNode,
         root: super::ast::Root,
         semantic_rules: Vec<super::ast::SemanticRule>,
@@ -39,11 +39,11 @@ impl Parsed {
 
     /// Access the `rowan` green tree.
     #[must_use]
-    pub fn green(&self) -> &GreenNode { &self.green }
+    pub const fn green(&self) -> &GreenNode { &self.green }
 
     /// Access the typed AST root.
     #[must_use]
-    pub fn root(&self) -> &super::ast::Root { &self.root }
+    pub const fn root(&self) -> &super::ast::Root { &self.root }
 
     /// Access parse-time semantic rules synthesized during parsing.
     ///

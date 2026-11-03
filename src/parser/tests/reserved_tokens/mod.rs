@@ -238,8 +238,8 @@ proptest::proptest! {
             errors.extend((0..copies).map(|_| Simple::custom(span.clone(), kind.message())));
             expected.push((kind.message(), span));
         }
-        let rotation = rotation.checked_rem(errors.len()).unwrap_or_default();
-        errors.rotate_left(rotation);
+        let rotation_offset = rotation.checked_rem(errors.len()).unwrap_or_default();
+        errors.rotate_left(rotation_offset);
         let is_ordinary = |error: &Simple<SyntaxKind>| !matches!(error.reason(), SimpleReason::Custom(message) if ExpectedReservedToken::ALL.iter().any(|kind| kind.message() == message));
         let before: Vec<_> = errors.iter().filter(|error| is_ordinary(error)).cloned().collect();
         complete_reserved_token_errors(&tokenize_with_trivia(&source), &mut errors);
@@ -254,14 +254,14 @@ proptest::proptest! {
         }
         let after: Vec<_> = errors.iter().filter(|error| is_ordinary(error)).cloned().collect();
         proptest::prop_assert_eq!(&after, &before);
-        for (actual, expected) in after.iter().zip(&before) {
-            proptest::prop_assert!(actual.expected().eq(expected.expected()));
+        for (actual, original) in after.iter().zip(&before) {
+            proptest::prop_assert!(actual.expected().eq(original.expected()));
         }
         let once = errors.clone();
         complete_reserved_token_errors(&tokenize_with_trivia(&source), &mut errors);
         proptest::prop_assert_eq!(&errors, &once);
-        for (actual, expected) in errors.iter().zip(&once) {
-            proptest::prop_assert!(actual.expected().eq(expected.expected()));
+        for (actual, original) in errors.iter().zip(&once) {
+            proptest::prop_assert!(actual.expected().eq(original.expected()));
         }
     }
 }

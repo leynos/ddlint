@@ -132,15 +132,12 @@ impl<'a> Runner<'a> {
         let mut diagnostics = Vec::new();
 
         for element in root.syntax().descendants_with_tokens() {
-            if target_kinds.contains(&element.kind()) {
-                match &element {
-                    NodeOrToken::Node(node) => {
-                        rule.check_node(node, &ctx, &mut diagnostics);
-                    }
-                    NodeOrToken::Token(token) => {
-                        rule.check_token(token, &ctx, &mut diagnostics);
-                    }
-                }
+            if !target_kinds.contains(&element.kind()) {
+                continue;
+            }
+            match &element {
+                NodeOrToken::Node(node) => rule.check_node(node, &ctx, &mut diagnostics),
+                NodeOrToken::Token(token) => rule.check_token(token, &ctx, &mut diagnostics),
             }
         }
 

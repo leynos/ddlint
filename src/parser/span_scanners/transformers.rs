@@ -52,11 +52,11 @@ pub(crate) fn collect_transformer_spans(
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
     while let Some(&(token_kind, ref span)) = st.stream.peek() {
-        let span = span.clone();
+        let token_span = span.clone();
         if token_kind == SyntaxKind::K_EXTERN {
-            handle_extern_transformer(&mut st, span);
+            handle_extern_transformer(&mut st, token_span);
         } else if token_kind == SyntaxKind::K_TRANSFORMER {
-            handle_non_extern_transformer(&mut st, span);
+            handle_non_extern_transformer(&mut st, token_span);
         } else {
             st.stream.advance();
         }
@@ -269,7 +269,7 @@ fn skip_trivia(tokens: &[(SyntaxKind, Span)], mut idx: usize) -> usize {
     idx
 }
 
-fn should_stop_skipping_trivia(kind: SyntaxKind) -> bool {
+const fn should_stop_skipping_trivia(kind: SyntaxKind) -> bool {
     !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 

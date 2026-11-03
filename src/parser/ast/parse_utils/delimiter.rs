@@ -109,7 +109,7 @@ struct DelimiterParseContext<'a> {
 }
 
 impl<'a> DelimiterParseContext<'a> {
-    fn new(
+    const fn new(
         depth: &'a mut usize,
         buf: &'a mut String,
         open_kind: SyntaxKind,

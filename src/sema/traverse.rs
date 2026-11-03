@@ -45,28 +45,31 @@ struct PatternBindingSpec<'a> {
 
 impl SemanticModelBuilder {
     pub(crate) fn collect_rule_heads(&mut self, ctx: RuleHeadContext<'_>, rule: &ast::Rule) {
-        if let Ok(heads) = rule.heads() {
-            for head in heads {
-                self.collect_head_expr(&head.atom, ctx);
-                for (binding_name, name_span) in &head.binding_spans {
-                    self.declare_symbol(SymbolSpec {
-                        name: binding_name.clone(),
-                        kind: DeclarationKind::RuleBinding,
-                        origin: ctx.origin,
-                        scope: ctx.scope,
-                        span: ctx.span.clone(),
-                        name_span: Some(name_span.clone()),
-                        source_order: self.symbols.len(),
-                        visible_from_rule_order: 0,
-                    });
-                }
-                if let Some(location) = head.location.as_ref() {
-                    self.walk_variable_uses(
-                        location,
-                        VariableUseContext::new(ctx.scope, 0, ctx.span, 0),
-                    );
-                }
-            }
+        let Ok(heads) = rule.heads() else {
+            return;
+        };
+        for head in heads {
+            self.collect_single_rule_head(ctx, &head);
+        }
+    }
+
+    /// Declare the bindings of one rule head and walk its location expression.
+    fn collect_single_rule_head(&mut self, ctx: RuleHeadContext<'_>, head: &ast::RuleHead) {
+        self.collect_head_expr(&head.atom, ctx);
+        for (binding_name, name_span) in &head.binding_spans {
+            self.declare_symbol(SymbolSpec {
+                name: binding_name.clone(),
+                kind: DeclarationKind::RuleBinding,
+                origin: ctx.origin,
+                scope: ctx.scope,
+                span: ctx.span.clone(),
+                name_span: Some(name_span.clone()),
+                source_order: self.symbols.len(),
+                visible_from_rule_order: 0,
+            });
+        }
+        if let Some(location) = head.location.as_ref() {
+            self.walk_variable_uses(location, VariableUseContext::new(ctx.scope, 0, ctx.span, 0));
         }
     }
 
@@ -194,7 +197,7 @@ impl SemanticModelBuilder {
         };
         let resolution = self.resolve_name(context, use_kind, name);
         self.uses.push(UseSite {
-            name: name.to_string(),
+            name: name.to_owned(),
             kind: use_kind,
             origin,
             scope: context.current_scope(),
@@ -207,7 +210,7 @@ impl SemanticModelBuilder {
     /// Declare a rule-body pattern binding with optional precise CST-backed span data.
     fn declare_pattern_binding(&mut self, spec: PatternBindingSpec<'_>) {
         self.declare_symbol(SymbolSpec {
-            name: spec.binding_name.to_string(),
+            name: spec.binding_name.to_owned(),
             kind: DeclarationKind::RuleBinding,
             origin: spec.origin,
             scope: spec.scope,

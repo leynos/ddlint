@@ -38,24 +38,52 @@ enum Kind {
     Other,
 }
 
+/// One call-parsing error case.
+struct CallErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    kind: Kind,
+}
+
 #[rstest]
-#[case("foo(", "right paren", 4, 4, Kind::Unclosed)]
-#[case("foo(]", "unexpected token", 4, 5, Kind::Mismatch)]
-#[case(
-    "foo(x,)",
-    "unexpected trailing comma in argument list",
-    5,
-    6,
-    Kind::Other
-)]
-#[case("foo(1 2)", "expected right paren", 6, 7, Kind::Other)]
-fn call_parsing_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] kind: Kind,
-) {
+#[case(CallErrorCase {
+    src: "foo(",
+    msg: "right paren",
+    start: 4,
+    end: 4,
+    kind: Kind::Unclosed,
+})]
+#[case(CallErrorCase {
+    src: "foo(]",
+    msg: "unexpected token",
+    start: 4,
+    end: 5,
+    kind: Kind::Mismatch,
+})]
+#[case(CallErrorCase {
+    src: "foo(x,)",
+    msg: "unexpected trailing comma in argument list",
+    start: 5,
+    end: 6,
+    kind: Kind::Other,
+})]
+#[case(CallErrorCase {
+    src: "foo(1 2)",
+    msg: "expected right paren",
+    start: 6,
+    end: 7,
+    kind: Kind::Other,
+})]
+fn call_parsing_errors(#[case] case: CallErrorCase) {
+    let CallErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        kind,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };

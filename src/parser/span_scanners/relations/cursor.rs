@@ -9,7 +9,11 @@ use super::{ScanResult, custom_error};
 use crate::{
     Span,
     SyntaxKind,
-    parser::{diagnostics::DiagnosticCode, lexer_helpers::token_display},
+    parser::{
+        diagnostics::DiagnosticCode,
+        lexer_helpers::token_display,
+        token_stream::TokenStream,
+    },
 };
 
 /// Parse a balanced block opened by the delimiter matching `close`.
@@ -18,12 +22,13 @@ use crate::{
 /// close at the outermost block depth. Reaching EOF before the stack empties
 /// returns an unclosed-delimiter diagnostic anchored at EOF.
 pub(super) fn parse_balanced_block(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
+    stream: &TokenStream<'_>,
     cursor: &mut usize,
     close: SyntaxKind,
     has_content: &mut bool,
 ) -> ScanResult<usize> {
+    let tokens = stream.tokens();
+    let src = stream.src();
     consume_open_for_close(tokens, src, cursor, close)?;
     let mut stack = vec![close];
     while let Some((kind, span)) = tokens.get(*cursor) {
@@ -146,7 +151,7 @@ pub(super) fn skip_inline_trivia(tokens: &[(SyntaxKind, Span)], src: &str, curso
 }
 
 /// Return whether a token kind is trivia for relation-scanner cursor movement.
-pub(super) fn is_trivia(kind: SyntaxKind) -> bool {
+pub(super) const fn is_trivia(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 
