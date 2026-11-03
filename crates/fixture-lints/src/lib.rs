@@ -85,14 +85,14 @@ fn has_single_expression_body(item: &TokenStream2) -> bool {
 /// ```
 #[proc_macro_attribute]
 pub fn allow_fixture_expansion_lints(_attribute: TokenStream, item: TokenStream) -> TokenStream {
-    let item = TokenStream2::from(item);
-    if has_single_expression_body(&item) {
+    let tokens = TokenStream2::from(item);
+    if has_single_expression_body(&tokens) {
         quote! {
             #[allow(unused_braces, reason = "rstest fixture expansion")]
-            #item
+            #tokens
         }
         .into()
     } else {
-        item.into()
+        tokens.into()
     }
 }

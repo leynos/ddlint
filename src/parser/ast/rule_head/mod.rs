@@ -29,10 +29,10 @@ struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
-    fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
+    const fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
-fn adjust_delimiter_depth(kind: SyntaxKind, depths: &mut DelimiterDepths) {
+const fn adjust_delimiter_depth(kind: SyntaxKind, depths: &mut DelimiterDepths) {
     match kind {
         SyntaxKind::T_LPAREN => depths.paren += 1,
         SyntaxKind::T_RPAREN => depths.paren = depths.paren.saturating_sub(1),
@@ -84,7 +84,7 @@ pub(crate) fn first_head_text(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Opti
     if text.is_empty() {
         None
     } else {
-        Some(text.to_string())
+        Some(text.to_owned())
     }
 }
 
@@ -146,9 +146,9 @@ fn parse_rule_head_span(
     let tokens = tokenize_without_trivia(trimmed);
     let at_idx = find_top_level_at(&tokens);
 
-    if let Some(at_idx) = at_idx {
+    if let Some(at_index) = at_idx {
         let at_span = tokens
-            .get(at_idx)
+            .get(at_index)
             .map_or_else(|| trimmed.len()..trimmed.len(), |(_, sp)| sp.clone());
         let delay = parse_delay_suffix(trimmed, &tokens, segment_offset)?;
 
@@ -159,9 +159,9 @@ fn parse_rule_head_span(
         let location_src = trimmed.get(location_start..location_end).unwrap_or("");
 
         let mut atom = parse_expr_with_offset(atom_src, segment_offset)?;
-        if let Some(delay) = delay {
+        if let Some(delay_suffix) = delay {
             atom = Expr::AtomDelay {
-                delay: delay.value,
+                delay: delay_suffix.value,
                 expr: Box::new(atom),
             };
         }
@@ -216,7 +216,7 @@ fn collect_head_binding_spans(src: &str, base_offset: usize) -> Vec<(String, Spa
         }
 
         bindings.push((
-            text.to_string(),
+            text.to_owned(),
             base_offset.saturating_add(span.start)..base_offset.saturating_add(span.end),
         ));
     }
@@ -256,17 +256,17 @@ fn lower_by_ref_head(expr: Expr) -> Expr {
     match expr {
         Expr::Unary {
             op: UnaryOp::Ref,
-            expr,
+            expr: inner,
         } => Expr::Call {
-            callee: Box::new(Expr::Variable(REF_NEW_FN.to_string())),
-            args: vec![*expr],
+            callee: Box::new(Expr::Variable(REF_NEW_FN.to_owned())),
+            args: vec![*inner],
         },
-        Expr::AtomDiff { expr } => Expr::AtomDiff {
-            expr: Box::new(lower_by_ref_head(*expr)),
+        Expr::AtomDiff { expr: inner } => Expr::AtomDiff {
+            expr: Box::new(lower_by_ref_head(*inner)),
         },
-        Expr::AtomDelay { delay, expr } => Expr::AtomDelay {
+        Expr::AtomDelay { delay, expr: inner } => Expr::AtomDelay {
             delay,
-            expr: Box::new(lower_by_ref_head(*expr)),
+            expr: Box::new(lower_by_ref_head(*inner)),
         },
         other => other,
     }

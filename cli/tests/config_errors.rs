@@ -8,19 +8,19 @@ use support::{ConfigFile, empty_environment, load, no_cli_overrides};
 
 /// Malformed TOML is reported instead of falling back to defaults.
 #[rstest]
-fn malformed_explicit_file_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
-    let file = ConfigFile::new("[cmds.lint\nformat = 'json'\n")?;
+fn malformed_explicit_file_is_an_error() {
+    let file = ConfigFile::new("[cmds.lint\nformat = 'json'\n")
+        .expect("the malformed fixture file should be written");
     let error = load(Some(file.path()), empty_environment(), &no_cli_overrides())
         .expect_err("malformed explicit TOML must fail");
 
     assert!(error.to_string().contains("ddlint.toml"));
-    Ok(())
 }
 
 /// An explicitly selected missing file is required and reported.
 #[rstest]
-fn missing_explicit_file_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
-    let directory = tempfile::TempDir::new()?;
+fn missing_explicit_file_is_an_error() {
+    let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
     let missing_path = directory.path().join("missing.toml");
     let error = load(
         Some(&missing_path),
@@ -29,13 +29,12 @@ fn missing_explicit_file_is_an_error() -> Result<(), Box<dyn std::error::Error>>
     )
     .expect_err("an explicitly selected missing file must fail");
     assert!(error.to_string().contains("missing.toml"));
-    Ok(())
 }
 
 /// A selected directory cannot be read as a configuration file.
 #[rstest]
-fn unreadable_explicit_source_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
-    let directory = tempfile::TempDir::new()?;
+fn unreadable_explicit_source_is_an_error() {
+    let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
     let error = load(
         Some(directory.path()),
         empty_environment(),
@@ -44,7 +43,6 @@ fn unreadable_explicit_source_is_an_error() -> Result<(), Box<dyn std::error::Er
     .expect_err("a directory selected as a file must fail");
 
     assert!(error.to_string().contains("Configuration file"));
-    Ok(())
 }
 
 /// Deserialization rejects invalid formats, severities, and unknown fields.
@@ -53,14 +51,11 @@ fn unreadable_explicit_source_is_an_error() -> Result<(), Box<dyn std::error::Er
 #[case("[cmds.lint]\nunknown = true\n")]
 #[case("unexpected = true\n")]
 #[case("[cmds.lint.rules]\nunused-variable = 'fatal'\n")]
-fn invalid_values_and_unknown_keys_fail(
-    #[case] contents: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let file = ConfigFile::new(contents)?;
+fn invalid_values_and_unknown_keys_fail(#[case] contents: &str) {
+    let file = ConfigFile::new(contents).expect("the invalid fixture file should be written");
     let result = load(Some(file.path()), empty_environment(), &no_cli_overrides());
 
     assert!(result.is_err());
-    Ok(())
 }
 
 /// Rule names this build accepts in `[cmds.lint.rules]`.
@@ -97,9 +92,9 @@ fn unknown_rule_name_is_an_error() {
         .expect_err("unknown rule names must fail validation");
     let message = error.to_string();
     let supported_clause = expected_supported_rules_clause();
+    assert!(message.contains(&supported_clause), "{message}");
 
     assert!(message.contains("new-rule"), "{message}");
-    assert!(message.contains(&supported_clause), "{message}");
 }
 
 /// The validator accepts every advertised rule and rejects an unlisted one.
@@ -132,12 +127,12 @@ fn supported_rules_are_enforced_both_ways() -> Result<(), Box<dyn std::error::Er
 
 /// An environment value with an invalid enum spelling is not ignored.
 #[rstest]
-fn invalid_environment_value_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
-    let file = ConfigFile::new("")?;
+fn invalid_environment_value_is_an_error() {
+    let file = ConfigFile::new("").expect("an empty fixture file should be written");
     let environment = MapEnv::new().with_var("DDLINT_CMDS__LINT__FORMAT", "xml");
     let error = load(Some(file.path()), environment, &no_cli_overrides())
         .expect_err("invalid environment values must fail validation");
 
     assert!(error.to_string().contains("xml"), "{error:#?}");
-    Ok(())
 }
+// weave: run 'weave explain cli/tests/config_errors.rs' for per-hunk detail, 'weave check' to verify your resolution

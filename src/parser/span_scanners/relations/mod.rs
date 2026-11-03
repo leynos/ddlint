@@ -10,7 +10,11 @@ mod suffix;
 
 use chumsky::error::Simple;
 
-use crate::{Span, SyntaxKind, parser::diagnostics::DiagnosticCode};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{diagnostics::DiagnosticCode, token_stream::TokenStream},
+};
 
 const D_REL_004: &str = DiagnosticCode::RelationBracketPrimaryKey.message_text();
 const D_REL_005: &str = DiagnosticCode::RelationInvalidBracketElementType.message_text();
@@ -63,7 +67,12 @@ pub(crate) fn collect_relation_spans(
         } else {
             st.stream.advance();
         }
-        observe_scanned_tokens(&mut context, tokens, src, &mut observed, st.stream.cursor());
+        observe_scanned_tokens(
+            &mut context,
+            &TokenStream::new(tokens, src),
+            &mut observed,
+            st.stream.cursor(),
+        );
     }
 
     st.into_parts()
@@ -142,7 +151,12 @@ fn parse_body(
         BodyForm::Bracket => SyntaxKind::T_RBRACKET,
     };
     let mut has_element = body == BodyForm::Record;
-    let end = parse_balanced_block(tokens, src, cursor, close, &mut has_element)?;
+    let end = parse_balanced_block(
+        &TokenStream::new(tokens, src),
+        cursor,
+        close,
+        &mut has_element,
+    )?;
     if body == BodyForm::Bracket && !has_element {
         return Err(Box::new(custom_error(
             &current_span(tokens, src, *cursor),
@@ -229,7 +243,7 @@ impl RelationScanContext {
     }
 }
 
-fn is_relation_candidate(kind: SyntaxKind) -> bool {
+const fn is_relation_candidate(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::K_INPUT
@@ -244,16 +258,15 @@ fn is_relation_candidate(kind: SyntaxKind) -> bool {
 
 fn observe_scanned_tokens(
     context: &mut RelationScanContext,
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
+    stream: &TokenStream<'_>,
     observed: &mut usize,
     end: usize,
 ) {
     while *observed < end {
-        let Some((kind, span)) = tokens.get(*observed) else {
+        let Some((kind, span)) = stream.tokens().get(*observed) else {
             break;
         };
-        context.observe(*kind, span, src);
+        context.observe(*kind, span, stream.src());
         *observed += 1;
     }
 }

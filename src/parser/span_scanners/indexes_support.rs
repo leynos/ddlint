@@ -19,12 +19,12 @@ pub(super) struct TypeDepths {
 }
 
 impl TypeDepths {
-    pub(super) fn at_top_level(&self) -> bool {
+    pub(super) const fn at_top_level(&self) -> bool {
         self.paren == 0 && self.bracket == 0 && self.brace == 0 && self.angle == 0
     }
 }
 
-pub(super) fn adjust_type_depths(kind: SyntaxKind, depths: &mut TypeDepths) {
+pub(super) const fn adjust_type_depths(kind: SyntaxKind, depths: &mut TypeDepths) {
     match kind {
         SyntaxKind::T_LPAREN => depths.paren += 1,
         SyntaxKind::T_RPAREN => depths.paren = depths.paren.saturating_sub(1),
@@ -41,7 +41,7 @@ pub(super) fn adjust_type_depths(kind: SyntaxKind, depths: &mut TypeDepths) {
 }
 
 /// Map an opening delimiter to the closing token it requires.
-pub(super) fn expected_closing_for(open_kind: SyntaxKind) -> Option<SyntaxKind> {
+pub(super) const fn expected_closing_for(open_kind: SyntaxKind) -> Option<SyntaxKind> {
     match open_kind {
         SyntaxKind::T_LPAREN => Some(SyntaxKind::T_RPAREN),
         SyntaxKind::T_LBRACKET => Some(SyntaxKind::T_RBRACKET),
@@ -163,7 +163,7 @@ pub(super) fn skip_trivia(tokens: &[(SyntaxKind, Span)], cursor: &mut usize) {
     }
 }
 
-pub(super) fn is_trivia(kind: SyntaxKind) -> bool {
+pub(super) const fn is_trivia(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 

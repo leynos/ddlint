@@ -30,42 +30,52 @@ fn find_symbol<'a>(
     symbol
 }
 
+/// One top-level declaration name-span case.
+struct TopLevelDeclarationCase {
+    source: &'static str,
+    symbol_name: &'static str,
+    kind: DeclarationKind,
+    origin: SymbolOrigin,
+    expected_text: &'static str,
+}
+
 #[rstest]
-#[case(
-    "input relation Source(x: u32)",
-    "Source",
-    DeclarationKind::Relation,
-    SymbolOrigin::RelationDeclaration,
-    "Source"
-)]
-#[case(
-    "function project(id: u32): u32 {}",
-    "project",
-    DeclarationKind::Function,
-    SymbolOrigin::FunctionDeclaration,
-    "project"
-)]
-#[case(
-    "function project(project: u32): u32 { project }",
-    "project",
-    DeclarationKind::Function,
-    SymbolOrigin::FunctionDeclaration,
-    "project"
-)]
-#[case(
-    "type UserId = u64",
-    "UserId",
-    DeclarationKind::Type,
-    SymbolOrigin::TypeDeclaration,
-    "UserId"
-)]
-fn top_level_declarations_capture_identifier_name_spans(
-    #[case] source: &str,
-    #[case] symbol_name: &str,
-    #[case] kind: DeclarationKind,
-    #[case] origin: SymbolOrigin,
-    #[case] expected_text: &str,
-) {
+#[case(TopLevelDeclarationCase {
+    source: "input relation Source(x: u32)",
+    symbol_name: "Source",
+    kind: DeclarationKind::Relation,
+    origin: SymbolOrigin::RelationDeclaration,
+    expected_text: "Source",
+})]
+#[case(TopLevelDeclarationCase {
+    source: "function project(id: u32): u32 {}",
+    symbol_name: "project",
+    kind: DeclarationKind::Function,
+    origin: SymbolOrigin::FunctionDeclaration,
+    expected_text: "project",
+})]
+#[case(TopLevelDeclarationCase {
+    source: "function project(project: u32): u32 { project }",
+    symbol_name: "project",
+    kind: DeclarationKind::Function,
+    origin: SymbolOrigin::FunctionDeclaration,
+    expected_text: "project",
+})]
+#[case(TopLevelDeclarationCase {
+    source: "type UserId = u64",
+    symbol_name: "UserId",
+    kind: DeclarationKind::Type,
+    origin: SymbolOrigin::TypeDeclaration,
+    expected_text: "UserId",
+})]
+fn top_level_declarations_capture_identifier_name_spans(#[case] case: TopLevelDeclarationCase) {
+    let TopLevelDeclarationCase {
+        source,
+        symbol_name,
+        kind,
+        origin,
+        expected_text,
+    } = case;
     let parsed = parse_ok(source);
     let semantic_model = super::super::build(&parsed);
     let symbol = find_symbol(&semantic_model, symbol_name, kind, origin);
@@ -94,39 +104,50 @@ fn semantic_rule_head_bindings_leave_name_span_unavailable() {
     assert_eq!(span_text(source, symbol.span()), source);
 }
 
+/// One binding declaration name-span case.
+struct BindingDeclarationCase {
+    source: &'static str,
+    symbol_name: &'static str,
+    origin: SymbolOrigin,
+    expected_name_text: &'static str,
+    expected_name_span_start: Option<usize>,
+    expected_span_text: &'static str,
+}
+
 #[rstest]
-#[case(
-    "Output(Output) :- Output(_).",
-    "Output",
-    SymbolOrigin::RuleHead,
-    "Output",
-    Some(7_usize),
-    "Output(Output) :- Output(_)."
-)]
-#[case(
-    "Output(result) :- Source(result), var assigned_x = Seed(result).",
-    "assigned_x",
-    SymbolOrigin::AssignmentPattern,
-    "assigned_x",
-    None,
-    "var assigned_x = Seed(result)"
-)]
-#[case(
-    "Output(result) :- Source(result), for (item_y in Items(result)) Inner(result).",
-    "item_y",
-    SymbolOrigin::ForPattern,
-    "item_y",
-    None,
-    "for (item_y in Items(result)) Inner(result)"
-)]
-fn binding_declarations_capture_identifier_name_spans(
-    #[case] source: &str,
-    #[case] symbol_name: &str,
-    #[case] origin: SymbolOrigin,
-    #[case] expected_name_text: &str,
-    #[case] expected_name_span_start: Option<usize>,
-    #[case] expected_span_text: &str,
-) {
+#[case(BindingDeclarationCase {
+    source: "Output(Output) :- Output(_).",
+    symbol_name: "Output",
+    origin: SymbolOrigin::RuleHead,
+    expected_name_text: "Output",
+    expected_name_span_start: Some(7_usize),
+    expected_span_text: "Output(Output) :- Output(_).",
+})]
+#[case(BindingDeclarationCase {
+    source: "Output(result) :- Source(result), var assigned_x = Seed(result).",
+    symbol_name: "assigned_x",
+    origin: SymbolOrigin::AssignmentPattern,
+    expected_name_text: "assigned_x",
+    expected_name_span_start: None,
+    expected_span_text: "var assigned_x = Seed(result)",
+})]
+#[case(BindingDeclarationCase {
+    source: "Output(result) :- Source(result), for (item_y in Items(result)) Inner(result).",
+    symbol_name: "item_y",
+    origin: SymbolOrigin::ForPattern,
+    expected_name_text: "item_y",
+    expected_name_span_start: None,
+    expected_span_text: "for (item_y in Items(result)) Inner(result)",
+})]
+fn binding_declarations_capture_identifier_name_spans(#[case] case: BindingDeclarationCase) {
+    let BindingDeclarationCase {
+        source,
+        symbol_name,
+        origin,
+        expected_name_text,
+        expected_name_span_start,
+        expected_span_text,
+    } = case;
     let parsed = parse_ok(source);
     let semantic_model = super::super::build(&parsed);
     let symbol = find_symbol(

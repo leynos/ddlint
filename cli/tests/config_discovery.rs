@@ -9,6 +9,7 @@ mod support;
 
 use std::{
     error::Error,
+    io,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -60,40 +61,45 @@ fn run_isolated_child(
         .env(marker, "1")
         .output()?;
 
-    assert!(
-        output.status.success(),
-        "isolated child `{test_name}` failed: stdout={}, stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    if !output.status.success() {
+        return Err(io::Error::other(format!(
+            "isolated child `{test_name}` failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ))
+        .into());
+    }
     // A renamed test would make `--exact` match nothing while the child still
     // exits successfully, so require the child to report its single pass.
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains("test result: ok. 1 passed;"),
-        "isolated child `{test_name}` did not run exactly one test: stdout={stdout}"
-    );
+    if !stdout.contains("test result: ok. 1 passed;") {
+        return Err(io::Error::other(format!(
+            "isolated child `{test_name}` did not run exactly one test: stdout={stdout}"
+        ))
+        .into());
+    }
     Ok(())
 }
 
 /// `DDLINT_CONFIG_PATH` selects a file that supplies settings.
 #[rstest]
-fn environment_selected_file_is_loaded() -> Result<(), Box<dyn Error>> {
+fn environment_selected_file_is_loaded() {
     let file =
-        ConfigFile::new("[cmds.lint]\nformat = 'json'\nignore_patterns = ['from-env-file']\n")?;
+        ConfigFile::new("[cmds.lint]\nformat = 'json'\nignore_patterns = ['from-env-file']\n")
+            .expect("the environment-selected fixture file should be written");
     let environment = MapEnv::new().with_var("DDLINT_CONFIG_PATH", file.path().as_os_str());
 
-    let settings = load(None, environment, &no_cli_overrides())?;
+    let settings = load(None, environment, &no_cli_overrides())
+        .expect("an environment-selected file should load");
 
     assert_eq!(settings.format, OutputFormat::Json);
     assert_eq!(settings.ignore_patterns, vec!["from-env-file".to_owned()]);
-    Ok(())
 }
 
 /// An environment-selected file is required rather than silently skipped.
 #[rstest]
-fn missing_environment_selected_file_is_an_error() -> Result<(), Box<dyn Error>> {
-    let directory = tempfile::TempDir::new()?;
+fn missing_environment_selected_file_is_an_error() {
+    let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
     let missing = directory.path().join("missing.toml");
     let environment = MapEnv::new().with_var("DDLINT_CONFIG_PATH", missing.as_os_str());
 
@@ -101,98 +107,109 @@ fn missing_environment_selected_file_is_an_error() -> Result<(), Box<dyn Error>>
         .expect_err("an environment-selected missing file must fail");
 
     assert!(error.to_string().contains("missing.toml"), "{error:#?}");
-    Ok(())
 }
 
 /// `--config` outranks `DDLINT_CONFIG_PATH` when both name a file.
 #[rstest]
-fn command_line_selection_overrides_the_environment() -> Result<(), Box<dyn Error>> {
-    let cli_file = ConfigFile::new("[cmds.lint]\nformat = 'compact'\n")?;
-    let environment_file = ConfigFile::new("[cmds.lint]\nformat = 'json'\n")?;
+fn command_line_selection_overrides_the_environment() {
+    let cli_file = ConfigFile::new("[cmds.lint]\nformat = 'compact'\n")
+        .expect("the command-line fixture file should be written");
+    let environment_file = ConfigFile::new("[cmds.lint]\nformat = 'json'\n")
+        .expect("the environment fixture file should be written");
     let environment =
         MapEnv::new().with_var("DDLINT_CONFIG_PATH", environment_file.path().as_os_str());
 
-    let settings = load(Some(cli_file.path()), environment, &no_cli_overrides())?;
+    let settings = load(Some(cli_file.path()), environment, &no_cli_overrides())
+        .expect("the command-line selection should load");
 
     assert_eq!(settings.format, OutputFormat::Compact);
-    Ok(())
 }
 
 /// `ddlint.toml` in the working directory is discovered without a selector.
 #[rstest]
-fn project_file_in_the_working_directory_is_discovered() -> Result<(), Box<dyn Error>> {
+fn project_file_in_the_working_directory_is_discovered() {
     const TEST_NAME: &str = "project_file_in_the_working_directory_is_discovered";
 
     if std::env::var_os(PROJECT_DISCOVERY_CHILD).is_some() {
-        let isolated_root = std::env::current_dir()?;
+        let isolated_root =
+            std::env::current_dir().expect("the child working directory is readable");
         let settings = load(
             None,
             pinned_environment(isolated_root.as_path()),
             &no_cli_overrides(),
-        )?;
+        )
+        .expect("the discovered project file should load");
 
         assert_eq!(settings.format, OutputFormat::Json);
         assert_eq!(settings.ignore_patterns, vec!["generated/".to_owned()]);
     } else {
-        let directory = tempfile::TempDir::new()?;
+        let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
         write_config(
             directory.path(),
             "ddlint.toml",
             "[cmds.lint]\nformat = 'json'\nignore_patterns = ['generated/']\n",
-        )?;
-        run_isolated_child(directory.path(), PROJECT_DISCOVERY_CHILD, TEST_NAME)?;
+        )
+        .expect("the project fixture file should be written");
+        run_isolated_child(directory.path(), PROJECT_DISCOVERY_CHILD, TEST_NAME)
+            .expect("the isolated discovery child should pass");
     }
-    Ok(())
 }
 
 /// An environment-selected file suppresses discovery of the project file.
 #[rstest]
-fn environment_selection_suppresses_project_discovery() -> Result<(), Box<dyn Error>> {
+fn environment_selection_suppresses_project_discovery() {
     const TEST_NAME: &str = "environment_selection_suppresses_project_discovery";
 
     if std::env::var_os(ENVIRONMENT_SELECTION_CHILD).is_some() {
-        let isolated_root = std::env::current_dir()?;
+        let isolated_root =
+            std::env::current_dir().expect("the child working directory is readable");
         let selected = isolated_root.join("selected.toml");
         let environment = pinned_environment(isolated_root.as_path())
             .with_var("DDLINT_CONFIG_PATH", selected.as_os_str());
-        let settings = load(None, environment, &no_cli_overrides())?;
+        let settings = load(None, environment, &no_cli_overrides())
+            .expect("the environment-selected file should load");
 
         assert_eq!(settings.format, OutputFormat::Json);
     } else {
-        let directory = tempfile::TempDir::new()?;
+        let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
         write_config(
             directory.path(),
             "ddlint.toml",
             "[cmds.lint]\nformat = 'compact'\n",
-        )?;
+        )
+        .expect("the project fixture file should be written");
         write_config(
             directory.path(),
             "selected.toml",
             "[cmds.lint]\nformat = 'json'\n",
-        )?;
-        run_isolated_child(directory.path(), ENVIRONMENT_SELECTION_CHILD, TEST_NAME)?;
+        )
+        .expect("the selected fixture file should be written");
+        run_isolated_child(directory.path(), ENVIRONMENT_SELECTION_CHILD, TEST_NAME)
+            .expect("the isolated environment child should pass");
     }
-    Ok(())
 }
 
 /// A relative `extends` parent contributes values beneath the child.
 #[rstest]
-fn relative_extends_layers_the_parent_under_the_child() -> Result<(), Box<dyn Error>> {
-    let directory = tempfile::TempDir::new()?;
+fn relative_extends_layers_the_parent_under_the_child() {
+    let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
     write_config(
         directory.path(),
         "parent.toml",
         "[cmds.lint]\nformat = 'json'\nignore_patterns = \
          ['parent-only']\n[cmds.lint.rules]\nunused-variable = 'error'\n",
-    )?;
+    )
+    .expect("the parent fixture file should be written");
     let child = write_config(
         directory.path(),
         "child.toml",
         "extends = 'parent.toml'\n[cmds.lint]\nignore_patterns = \
          ['child-only']\n[cmds.lint.rules]\nunused-relation = 'hint'\n",
-    )?;
+    )
+    .expect("the child fixture file should be written");
 
-    let settings = load(Some(&child), empty_environment(), &no_cli_overrides())?;
+    let settings = load(Some(&child), empty_environment(), &no_cli_overrides())
+        .expect("the extended configuration should load");
 
     // The child does not restate `format`, so the parent value survives.
     assert_eq!(settings.format, OutputFormat::Json);
@@ -205,5 +222,4 @@ fn relative_extends_layers_the_parent_under_the_child() -> Result<(), Box<dyn Er
         Some(&RuleLevel::Hint)
     );
     assert_eq!(settings.ignore_patterns, vec!["child-only".to_owned()]);
-    Ok(())
 }

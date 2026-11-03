@@ -42,7 +42,7 @@ use crate::{DdlogLanguage, SyntaxKind};
 /// Public error surface for malformed relation bodies, column lists, and
 /// primary-key clauses.
 ///
-/// Mirrors [`IndexFieldParseErrors`](super::index::IndexFieldParseErrors): a
+/// Mirrors `IndexFieldParseErrors`: a
 /// vector of formatted diagnostic strings rather than raw
 /// `chumsky::error::Simple<SyntaxKind>` values. `Parsed::errors()` remains the
 /// primary parser-level diagnostic channel; these `Result` values make direct
@@ -204,7 +204,7 @@ impl Relation {
         Self::skip_to_end_of_columns(&mut iter)?;
         let rest = iter
             .map(|e| match e {
-                rowan::NodeOrToken::Token(t) => t.text().to_string(),
+                rowan::NodeOrToken::Token(t) => t.text().to_owned(),
                 rowan::NodeOrToken::Node(n) => n.text().to_string(),
             })
             .collect::<String>();
@@ -262,8 +262,8 @@ fn first_non_trivia_text<'a>(
 /// short-circuit before handling their own `Record`/`Bracket` success cases.
 fn body_inspection_error(inspection: &inspect::BodyInspection) -> Result<(), RelationParseErrors> {
     match inspection {
-        inspect::BodyInspection::MalformedBracket => Err(vec![MALFORMED_BRACKET_BODY.to_string()]),
-        inspect::BodyInspection::MissingDelimiter => Err(vec![MISSING_BODY_DELIMITER.to_string()]),
+        inspect::BodyInspection::MalformedBracket => Err(vec![MALFORMED_BRACKET_BODY.to_owned()]),
+        inspect::BodyInspection::MissingDelimiter => Err(vec![MISSING_BODY_DELIMITER.to_owned()]),
         inspect::BodyInspection::Record | inspect::BodyInspection::Bracket(_) => Ok(()),
     }
 }
@@ -284,10 +284,13 @@ fn render_parse_error(err: &chumsky::error::Simple<SyntaxKind>) -> String {
         SimpleReason::Unexpected => {
             let found = err
                 .found()
-                .map_or_else(|| "end of input".to_string(), |kind| display_kind(*kind));
+                .map_or_else(|| "end of input".to_owned(), |kind| display_kind(*kind));
             let mut expected: Vec<String> = err
                 .expected()
-                .filter_map(|kind| kind.as_ref().map(|kind| display_kind(*kind)))
+                .filter_map(|kind| {
+                    kind.as_ref()
+                        .map(|expected_kind| display_kind(*expected_kind))
+                })
                 .collect();
             expected.sort();
             if expected.is_empty() {

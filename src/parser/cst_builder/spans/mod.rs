@@ -31,11 +31,11 @@ impl SpanListIssue {
 
     /// The earlier span in the invalid ordering.
     #[must_use]
-    pub fn prev(&self) -> &Span { &self.prev }
+    pub const fn prev(&self) -> &Span { &self.prev }
 
     /// The later span in the invalid ordering.
     #[must_use]
-    pub fn next(&self) -> &Span { &self.next }
+    pub const fn next(&self) -> &Span { &self.next }
 }
 
 impl std::fmt::Display for SpanListIssue {

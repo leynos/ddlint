@@ -35,11 +35,11 @@ fn canonical_record_relation_preserves_role_kind_and_primary_key(
     assert_eq!(
         relation.body(),
         Ok(RelationBody::Fields(vec![(
-            "id".to_string(),
-            "OrderId".to_string()
+            "id".to_owned(),
+            "OrderId".to_owned()
         )]))
     );
-    assert_eq!(relation.primary_key(), Ok(Some(vec!["id".to_string()])));
+    assert_eq!(relation.primary_key(), Ok(Some(vec!["id".to_owned()])));
 }
 
 #[rstest]
@@ -54,7 +54,7 @@ fn canonical_bracket_relation_preserves_role_kind_and_ref(
     assert!(relation.is_ref());
     assert_eq!(
         relation.body(),
-        Ok(RelationBody::ElementType("Event".to_string()))
+        Ok(RelationBody::ElementType("Event".to_owned()))
     );
 }
 

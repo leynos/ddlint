@@ -83,12 +83,12 @@ fn is_matching_ident(token: &SyntaxToken<DdlogLanguage>, name: &str) -> bool {
 }
 
 /// Whether two byte ranges intersect.
-fn ranges_overlap(left: &Span, right: &Span) -> bool {
+const fn ranges_overlap(left: &Span, right: &Span) -> bool {
     left.start < right.end && right.start < left.end
 }
 
 /// Whether the candidate span sits entirely within the container span.
-fn span_contains(container: &Span, candidate: &Span) -> bool {
+const fn span_contains(container: &Span, candidate: &Span) -> bool {
     container.start <= candidate.start && candidate.end <= container.end
 }
 
@@ -187,7 +187,7 @@ fn take_first_ident(
     iter.into_iter()
         .find(|e| !is_trivia(e))
         .and_then(|e| match e {
-            NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_string()),
+            NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_owned()),
             _ => None,
         })
 }

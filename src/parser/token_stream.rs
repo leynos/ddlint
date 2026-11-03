@@ -38,7 +38,7 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(stream.cursor(), 0);
     /// ```
     #[must_use]
-    pub(crate) fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
+    pub(crate) const fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
         Self {
             tokens,
             src,
@@ -56,7 +56,7 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(pos, 0);
     /// ```
     #[must_use]
-    pub(crate) fn cursor(&self) -> usize { self.cursor }
+    pub(crate) const fn cursor(&self) -> usize { self.cursor }
 
     /// Returns the token at the current cursor position, if any.
     ///
@@ -82,7 +82,7 @@ impl<'a> TokenStream<'a> {
     /// stream.advance();
     /// assert_eq!(stream.cursor(), 1);
     /// ```
-    pub(crate) fn advance(&mut self) {
+    pub(crate) const fn advance(&mut self) {
         if self.cursor < self.tokens.len() {
             self.cursor += 1;
         }
@@ -98,7 +98,7 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(all_tokens.len(), tokens.len());
     /// ```
     #[must_use]
-    pub(crate) fn tokens(&self) -> &[(SyntaxKind, Span)] { self.tokens }
+    pub(crate) const fn tokens(&self) -> &[(SyntaxKind, Span)] { self.tokens }
 
     /// Returns a reference to the source text associated with this token stream.
     ///
@@ -109,7 +109,7 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(stream.src(), "let x = 1;");
     /// ```
     #[must_use]
-    pub(crate) fn src(&self) -> &str { self.src }
+    pub(crate) const fn src(&self) -> &str { self.src }
 
     /// Advances the cursor past all tokens whose span ends at or before the specified position.
     ///

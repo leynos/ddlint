@@ -1,4 +1,12 @@
-# Align with CodeScene’s ceiling
-cognitive-complexity-threshold = 12     # default is 25
+# Thresholds aligned with CodeScene's ceilings. Each is deliberately tighter
+# than Clippy's default so a function that trips it is also one CodeScene would
+# flag; keeping the two in step stops the local gate and the hosted gate from
+# disagreeing about the same function.
+cognitive-complexity-threshold = 9
+too-many-arguments-threshold = 4
+too-many-lines-threshold = 70
+excessive-nesting-threshold = 4
 
+# Test bodies legitimately assert rather than propagate. Restricting this to
+# tests keeps production code returning `Result`.
 allow-expect-in-tests = true

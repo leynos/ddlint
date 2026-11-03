@@ -188,8 +188,8 @@ fn runner_respects_config(parsed_fixture: Parsed) {
 
     // With "enabled" = false the same rule emits nothing.
     let disabled_config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(false))]);
-    let runner = Runner::new(&store, source.as_str(), &parsed_fixture, disabled_config);
-    let disabled_diagnostics = runner.run();
+    let disabled_runner = Runner::new(&store, source.as_str(), &parsed_fixture, disabled_config);
+    let disabled_diagnostics = disabled_runner.run();
 
     assert!(
         disabled_diagnostics.is_empty(),

@@ -106,7 +106,7 @@ fn bracket_body_exposes_element_type() {
     assert_eq!(rel.columns(), Ok(Vec::<(String, String)>::new()));
     assert_eq!(
         rel.element_type(),
-        Ok(Some("Map<string, Vec<u32>>".to_string()))
+        Ok(Some("Map<string, Vec<u32>>".to_owned()))
     );
     assert_eq!(
         rel.body(),
@@ -144,10 +144,10 @@ fn record_relation_body_accessors_are_ok() {
 }
 
 #[rstest]
-#[case::single("input relation R(x: u32) primary key (x)", vec!["x".to_string()])]
+#[case::single("input relation R(x: u32) primary key (x)", vec!["x".to_owned()])]
 #[case::compound(
     "input relation R(x: u32, y: string) primary key (x, y)",
-    vec!["x".to_string(), "y".to_string()]
+    vec!["x".to_owned(), "y".to_owned()]
 )]
 fn input_record_primary_key_is_ok(#[case] src: &str, #[case] expected: Vec<String>) {
     let parsed = parse(src);

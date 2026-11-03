@@ -115,7 +115,7 @@ fn classify_expression(expr: Expr, ctx: &mut ClassificationContext<'_>) -> Optio
             ForLoopComponents {
                 pattern,
                 iterable: *iterable,
-                guard: guard.map(|guard| *guard),
+                guard: guard.map(|inner_guard| *inner_guard),
                 body: *body,
             },
             ctx,
@@ -262,14 +262,14 @@ fn classify_for_body_with_aggregation_tracking(
             pattern,
             iterable,
             guard,
-            body,
+            body: loop_body,
         } => {
             vec![classify_for_loop(
                 ForLoopComponents {
                     pattern,
                     iterable: *iterable,
-                    guard: guard.map(|guard| *guard),
-                    body: *body,
+                    guard: guard.map(|inner_guard| *inner_guard),
+                    body: *loop_body,
                 },
                 ctx,
             )]
@@ -282,7 +282,7 @@ fn classify_for_body_with_aggregation_tracking(
 fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {
     Simple::custom(
         second_span.clone(),
-        "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_string(),
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_owned(),
     )
 }
 

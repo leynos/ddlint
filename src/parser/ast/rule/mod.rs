@@ -79,7 +79,7 @@ impl Rule {
     pub fn body_literals(&self) -> Vec<String> {
         self.body_expression_nodes()
             .into_iter()
-            .map(|expr| expr.text().trim().to_string())
+            .map(|expr| expr.text().trim().to_owned())
             .collect()
     }
 
@@ -336,7 +336,7 @@ pub enum AggregationSource {
 }
 
 impl AggregationSource {
-    fn label(self) -> &'static str {
+    const fn label(self) -> &'static str {
         match self {
             Self::GroupBy => "group_by",
             Self::LegacyAggregate => "Aggregate",
@@ -371,11 +371,11 @@ pub(crate) fn split_assignment(raw: &str) -> Option<AssignmentParts> {
     let eq_span = find_top_level_eq_span(raw)?;
     let lhs_full = raw.get(..eq_span.start).unwrap_or("");
     let (lhs_start, lhs_end) = trim_byte_range(lhs_full);
-    let pattern = lhs_full.get(lhs_start..lhs_end).unwrap_or("").to_string();
+    let pattern = lhs_full.get(lhs_start..lhs_end).unwrap_or("").to_owned();
 
     let rhs_full = raw.get(eq_span.end..).unwrap_or("");
     let (rhs_start, rhs_end) = trim_byte_range(rhs_full);
-    let value = rhs_full.get(rhs_start..rhs_end).unwrap_or("").to_string();
+    let value = rhs_full.get(rhs_start..rhs_end).unwrap_or("").to_owned();
 
     Some(AssignmentParts {
         pattern,

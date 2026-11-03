@@ -50,12 +50,12 @@ fn shift_error(error: &Simple<SyntaxKind>, offset: usize) -> Simple<SyntaxKind> 
     };
 
     match label {
-        Some(label) => shifted.with_label(label),
+        Some(text) => shifted.with_label(text),
         None => shifted,
     }
 }
 
-fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
+const fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
     match delimiter {
         SyntaxKind::T_LPAREN => SyntaxKind::T_RPAREN,
         SyntaxKind::T_LBRACE => SyntaxKind::T_RBRACE,
@@ -64,7 +64,7 @@ fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
     }
 }
 
-fn shift_span(span: Span, offset: usize) -> Span {
+const fn shift_span(span: Span, offset: usize) -> Span {
     span.start.saturating_add(offset)..span.end.saturating_add(offset)
 }
 

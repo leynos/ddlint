@@ -46,7 +46,7 @@ where
     fn parse_if_clause(&mut self, expectation: &str, fallback: Option<Span>) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_ELSE)) {
             let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(span, expectation.to_string());
+            self.ts.push_error(span, expectation.to_owned());
             return None;
         }
         let error_count = self.ts.error_count();
@@ -57,7 +57,7 @@ where
                 .peek_span()
                 .or(fallback)
                 .unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(span, expectation.to_string());
+            self.ts.push_error(span, expectation.to_owned());
         }
         expr
     }
@@ -89,9 +89,9 @@ where
         })
     }
 
-    pub(super) fn parse_break_expression() -> Expr { Expr::Break }
+    pub(super) const fn parse_break_expression() -> Expr { Expr::Break }
 
-    pub(super) fn parse_continue_expression() -> Expr { Expr::Continue }
+    pub(super) const fn parse_continue_expression() -> Expr { Expr::Continue }
 
     pub(super) fn parse_return_expression(&mut self) -> Option<Expr> {
         if Self::is_return_value_terminator(self.ts.peek_kind()) {
@@ -116,7 +116,7 @@ where
         }
     }
 
-    fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
+    const fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
         matches!(
             kind,
             None | Some(
@@ -218,7 +218,7 @@ where
         last_span: Option<&Span>,
         context: &PatternContext,
     ) -> Option<Span> {
-        if context.validate_on_eof
+        if context.validate_on_eof()
             && !self.validate_delimiter_balance(
                 (state.paren_depth, state.brace_depth, state.bracket_depth),
                 last_span,
@@ -229,7 +229,7 @@ where
 
         self.ts.push_error(
             self.ts.eof_span(),
-            context.missing_terminator_msg.to_string(),
+            context.missing_terminator_msg().to_owned(),
         );
         None
     }

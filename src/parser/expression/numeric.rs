@@ -48,9 +48,9 @@ impl NumericLiteralError {
             Self::InvalidWidth(w) => format!("invalid numeric width '{w}'"),
             Self::ZeroWidth(w) => format!("numeric width must be non-zero (found {w})"),
             Self::WidthTooLarge(w) => format!("numeric width {w} exceeds maximum supported value"),
-            Self::MissingBase => "width-qualified literal is missing a base".to_string(),
+            Self::MissingBase => "width-qualified literal is missing a base".to_owned(),
             Self::InvalidBase(b) => format!("invalid numeric base '{b}'"),
-            Self::MissingDigits => "numeric literal is missing digits".to_string(),
+            Self::MissingDigits => "numeric literal is missing digits".to_owned(),
             Self::InvalidDigits(digits) => {
                 format!("invalid digits '{digits}' for numeric literal")
             }
@@ -75,7 +75,7 @@ impl NumericLiteralError {
 /// Parse a numeric literal into a structured representation.
 ///
 /// # Errors
-/// Returns a [`NumericLiteralError`] when the literal uses an invalid width,
+/// Returns a `NumericLiteralError` when the literal uses an invalid width,
 /// base, or value that does not fit the declared width, or when a float width
 /// other than `32`/`64` is specified.
 pub fn parse_numeric_literal(src: &str) -> Result<NumberLiteral, NumericLiteralError> {
@@ -109,13 +109,11 @@ fn parse_width_float(
         "32" => 32,
         "64" => 64,
         other => {
-            return Err(NumericLiteralError::UnsupportedFloatWidth(
-                other.to_string(),
-            ));
+            return Err(NumericLiteralError::UnsupportedFloatWidth(other.to_owned()));
         }
     };
     Ok(NumberLiteral::Float(FloatLiteral {
-        raw: raw.as_str().to_string(),
+        raw: raw.as_str().to_owned(),
         width: Some(float_width),
     }))
 }
@@ -146,7 +144,7 @@ fn parse_unqualified_literal(src: &str) -> Result<NumberLiteral, NumericLiteralE
     let (base, digits) = classify_int_base(src);
     if base == IntBase::Decimal && looks_like_decimal_float(src) {
         return Ok(NumberLiteral::Float(FloatLiteral {
-            raw: src.to_string(),
+            raw: src.to_owned(),
             width: None,
         }));
     }
@@ -166,7 +164,7 @@ fn parse_width(width_part: &WidthText) -> Result<u32, NumericLiteralError> {
     let width = width_part
         .as_str()
         .parse::<u32>()
-        .map_err(|_| NumericLiteralError::InvalidWidth(width_part.as_str().to_string()))?;
+        .map_err(|_| NumericLiteralError::InvalidWidth(width_part.as_str().to_owned()))?;
     if width == 0 {
         return Err(NumericLiteralError::ZeroWidth(width));
     }
@@ -225,7 +223,7 @@ fn build_int_literal(
         validate_int_range(width_bits, components.signed, &value)?;
     }
     Ok(IntLiteral {
-        raw: raw.as_str().to_string(),
+        raw: raw.as_str().to_owned(),
         width: components.width,
         base: components.base,
         signed: components.signed,
@@ -249,9 +247,9 @@ fn parse_int_value(cleaned: &DigitString, base: IntBase) -> Result<BigInt, Numer
     }
 
     let value = BigInt::parse_bytes(magnitude.as_bytes(), base.radix())
-        .ok_or_else(|| NumericLiteralError::InvalidDigits(cleaned_str.to_string()))?;
-    let value = if is_negative { -value } else { value };
-    Ok(value)
+        .ok_or_else(|| NumericLiteralError::InvalidDigits(cleaned_str.to_owned()))?;
+    let signed_value = if is_negative { -value } else { value };
+    Ok(signed_value)
 }
 
 fn validate_int_range(width: u32, signed: bool, value: &BigInt) -> Result<(), NumericLiteralError> {

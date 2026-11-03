@@ -31,9 +31,7 @@ where
 
     skip_whitespace_and_comments(iter);
     match iter.next() {
-        Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => {
-            Some(t.text().to_string())
-        }
+        Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_owned()),
         _ => None,
     }
 }
@@ -55,11 +53,11 @@ where
     }
 }
 
-pub(crate) fn parse_output_list<I>(iter: I) -> Vec<String>
+pub(crate) fn parse_output_list<I>(elements: I) -> Vec<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let mut iter = iter.peekable();
+    let mut iter = elements.peekable();
     skip_to_top_level_colon(&mut iter);
     collect_comma_separated_identifiers(&mut iter)
 }
@@ -95,7 +93,7 @@ mod tests {
             .cloned()
             .expect("transformer missing");
         let names = parse_output_list(tr.syntax().children_with_tokens());
-        assert_eq!(names, vec!["Out1".to_string(), "Out2".to_string()]);
+        assert_eq!(names, vec!["Out1".to_owned(), "Out2".to_owned()]);
     }
 
     #[test]
@@ -109,7 +107,7 @@ mod tests {
             .cloned()
             .expect("transformer missing");
         let names = parse_output_list(tr.syntax().children_with_tokens());
-        assert_eq!(names, vec!["Out1".to_string()]);
+        assert_eq!(names, vec!["Out1".to_owned()]);
     }
 
     #[test]

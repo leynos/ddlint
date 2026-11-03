@@ -137,24 +137,24 @@ fn stray_closing_paren_terminates_without_error() {
 }
 
 #[rstest]
-#[case("function f(): u32 {}", Some("u32".to_string()))]
-#[case("extern function f(): bool;", Some("bool".to_string()))]
+#[case("function f(): u32 {}", Some("u32".to_owned()))]
+#[case("extern function f(): bool;", Some("bool".to_owned()))]
 #[case("function f() {}", None)]
-#[case("function f():\n    u32 {}", Some("u32".to_string()))]
-#[case("function f(): /* c */ u32 {}", Some("u32".to_string()))]
+#[case("function f():\n    u32 {}", Some("u32".to_owned()))]
+#[case("function f(): /* c */ u32 {}", Some("u32".to_owned()))]
 #[case("function f(): {}", None)]
 #[case(
     "extern function f(): Map<string, Vec<(u32, Option<bool>)>>;",
-    Some("Map<string,Vec<(u32,Option<bool>)>>".to_string()),
+    Some("Map<string,Vec<(u32,Option<bool>)>>".to_owned()),
 )]
 #[case(
     "extern function f(): Map<Vec<u32>, (bool, [string])>;",
-    Some("Map<Vec<u32>,(bool,[string])>".to_string()),
+    Some("Map<Vec<u32>,(bool,[string])>".to_owned()),
 )]
 #[case(
     "extern function f(): Map<Vec<Map<string, (u32, [Option<bool>])>>,(bool,[Map<string,u8>])>;",
     Some(
-        "Map<Vec<Map<string,(u32,[Option<bool>])>>,(bool,[Map<string,u8>])>".to_string(),
+        "Map<Vec<Map<string,(u32,[Option<bool>])>>,(bool,[Map<string,u8>])>".to_owned(),
     ),
 )]
 fn trailing_type(

@@ -24,8 +24,8 @@ fn parses_apply_items_in_program() {
         panic!("apply missing");
     };
     assert_eq!(apply.transformer_name().as_deref(), Some("normalise"));
-    assert_eq!(apply.inputs(), vec!["User".to_string()]);
-    assert_eq!(apply.outputs(), vec!["Normalised".to_string()]);
+    assert_eq!(apply.inputs(), vec!["User".to_owned()]);
+    assert_eq!(apply.outputs(), vec!["Normalised".to_owned()]);
 }
 
 #[rstest]

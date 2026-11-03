@@ -12,7 +12,7 @@ use crate::parser::{
 pub struct NumericText(String);
 
 impl From<&str> for NumericText {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+    fn from(s: &str) -> Self { Self(s.to_owned()) }
 }
 
 impl AsRef<str> for NumericText {
@@ -27,7 +27,7 @@ impl AsRef<str> for NumericText {
 pub struct StringBody(String);
 
 impl From<&str> for StringBody {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+    fn from(s: &str) -> Self { Self(s.to_owned()) }
 }
 
 impl AsRef<str> for StringBody {
@@ -122,7 +122,7 @@ string_literal_helper!(
 
 fn string_literal(body: &str, kind: StringKind, interned: bool) -> Expr {
     Expr::Literal(Literal::String(StringLiteral {
-        body: body.to_string(),
+        body: body.to_owned(),
         kind,
         interned,
     }))
@@ -130,4 +130,4 @@ fn string_literal(body: &str, kind: StringKind, interned: bool) -> Expr {
 
 /// Construct a boolean [`Expr::Literal`].
 #[must_use]
-pub fn lit_bool(b: bool) -> Expr { Expr::Literal(Literal::Bool(b)) }
+pub const fn lit_bool(b: bool) -> Expr { Expr::Literal(Literal::Bool(b)) }

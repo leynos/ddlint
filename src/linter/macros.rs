@@ -280,14 +280,13 @@ mod tests {
         let mut diagnostics = Vec::new();
 
         for element in fixture.parsed.root().syntax().descendants_with_tokens() {
-            if rule.target_kinds().contains(&element.kind()) {
-                match &element {
-                    NodeOrToken::Node(node) => {
-                        rule.check_node(node, &fixture.ctx, &mut diagnostics);
-                    }
-                    NodeOrToken::Token(token) => {
-                        rule.check_token(token, &fixture.ctx, &mut diagnostics);
-                    }
+            if !rule.target_kinds().contains(&element.kind()) {
+                continue;
+            }
+            match &element {
+                NodeOrToken::Node(node) => rule.check_node(node, &fixture.ctx, &mut diagnostics),
+                NodeOrToken::Token(token) => {
+                    rule.check_token(token, &fixture.ctx, &mut diagnostics);
                 }
             }
         }

@@ -18,7 +18,7 @@ pub(crate) struct TokenParseContext<'a> {
 }
 
 impl<'a> TokenParseContext<'a> {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         buf: &'a mut String,
         stack: &'a mut DelimStack,
         errors: &'a mut Vec<ParseError>,

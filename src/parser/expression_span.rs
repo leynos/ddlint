@@ -68,7 +68,7 @@ impl DelimiterDepths {
         }
     }
 
-    fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
+    const fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
 fn locate_body_bounds(
@@ -189,7 +189,7 @@ fn trim_literal_span(
     (start < end).then_some(start..end)
 }
 
-fn is_trivia(kind: SyntaxKind) -> bool {
+const fn is_trivia(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 

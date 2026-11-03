@@ -38,20 +38,42 @@ fn parses_literal_expressions(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+/// One literal-parsing error case.
+struct LiteralErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    is_unclosed: bool,
+}
+
 #[rstest]
-#[case("\"no end", "unexpected token", 0, 7, true)]
-#[case("12abc", "unexpected token", 2, 5, false)]
-fn literal_parsing_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] unclosed: bool,
-) {
+#[case(LiteralErrorCase {
+    src: "\"no end",
+    msg: "unexpected token",
+    start: 0,
+    end: 7,
+    is_unclosed: true,
+})]
+#[case(LiteralErrorCase {
+    src: "12abc",
+    msg: "unexpected token",
+    start: 2,
+    end: 5,
+    is_unclosed: false,
+})]
+fn literal_parsing_errors(#[case] case: LiteralErrorCase) {
+    let LiteralErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        is_unclosed,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };
-    if unclosed {
+    if is_unclosed {
         assert_unclosed_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);

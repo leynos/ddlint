@@ -182,24 +182,36 @@ project:
     ```sh
     $(MAKE) check-build-tools
     $(CARGO) clippy $(CLIPPY_FLAGS)
+    RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
     $(MAKE) test-clippy-policy
     RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
     $(MAKE) spelling
     ```
 
     linting every target with all features enabled and denying all warnings.
-    `test-clippy-policy` also checks the build tools before running. The lint
-    target's final step is the gate described in [Spelling](#spelling).
+    `RUSTDOC_FLAGS` defaults to `--cfg docsrs -D warnings`, so a broken
+    intra-doc link fails the gate. `test-clippy-policy` also checks the build
+    tools before running. The lint target's final step is the gate described
+    in [Spelling](#spelling).
   - `make test` executes:
 
     ```sh
     RUSTFLAGS="-D warnings" $(CARGO) test --all-targets --all-features \
       $(BUILD_JOBS)
+    RUSTFLAGS="-D warnings" $(CARGO) test --workspace --doc --all-features \
+      $(BUILD_JOBS)
     ```
 
-    running the full workspace test suite with warnings treated as errors.
+    running the full workspace test suite and the doctests with warnings
+    treated as errors.
   - `make check` runs `check-fmt`, `typecheck`, `lint`, and `test` as sequential
     submakes.
+- The workspace lint baseline is authoritative in `Cargo.toml`
+  (`[workspace.lints.*]`, inherited by every member through
+  `[lints] workspace = true`) and `clippy.toml` (the complexity thresholds).
+  Fix findings at source; a tightly scoped, reasoned `#[expect]` is the only
+  accepted exception. See
+  [the developer's guide](docs/developers-guide.md#lint-baseline).
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in the code itself rather than
   silencing them.

@@ -40,7 +40,7 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
     /// let collector = SpanCollector::new(tokens, src, extra);
     /// ```
     #[must_use]
-    pub(crate) fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str, extra: Extra) -> Self {
+    pub(crate) const fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str, extra: Extra) -> Self {
         Self {
             stream: TokenStream::new(tokens, src),
             spans: Vec::new(),

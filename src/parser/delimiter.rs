@@ -17,7 +17,7 @@ pub(crate) struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
-    pub(crate) fn apply(&mut self, kind: SyntaxKind) {
+    pub(crate) const fn apply(&mut self, kind: SyntaxKind) {
         match kind {
             SyntaxKind::T_LPAREN => self.paren += 1,
             SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
@@ -32,7 +32,7 @@ impl DelimiterDepths {
     }
 
     #[must_use]
-    pub(crate) fn is_top_level(&self) -> bool {
+    pub(crate) const fn is_top_level(&self) -> bool {
         self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0
     }
 }

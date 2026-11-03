@@ -31,16 +31,20 @@ pub(crate) fn collect_index_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
-    let handle_index = |st: &mut State<'_>, span: Span| {
+    let handle_index = |state: &mut State<'_>, span: Span| {
         let start = span.start;
-        match parse_index_decl(st.stream.tokens(), st.stream.src(), st.stream.cursor()) {
+        match parse_index_decl(
+            state.stream.tokens(),
+            state.stream.src(),
+            state.stream.cursor(),
+        ) {
             Ok(end) => {
-                st.spans.push(start..end);
-                st.stream.skip_until(end);
+                state.spans.push(start..end);
+                state.stream.skip_until(end);
             }
             Err(error) => {
-                st.extra.push(*error);
-                st.skip_line();
+                state.extra.push(*error);
+                state.skip_line();
             }
         }
     };
@@ -190,6 +194,24 @@ fn parse_index_target(
     let mut end = consume_kind_or_invalid(tokens, src, cursor, SyntaxKind::T_IDENT)?;
     skip_trivia(tokens, cursor);
 
+    end = consume_target_path(tokens, src, cursor, end)?;
+    end = consume_apostrophe(tokens, cursor, end);
+    end = consume_target_arguments(tokens, src, cursor, end)?;
+
+    if matches!(tokens.get(*cursor), Some((SyntaxKind::T_MINUS, _))) {
+        end = parse_delay_suffix(tokens, src, cursor)?;
+    }
+
+    Ok(end)
+}
+
+/// Consume any `::`/`.`-separated path segments after the first identifier.
+fn consume_target_path(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    cursor: &mut usize,
+    mut end: usize,
+) -> ScanResult<usize> {
     while let Some((kind, _)) = tokens.get(*cursor) {
         if !matches!(kind, SyntaxKind::T_COLON_COLON | SyntaxKind::T_DOT) {
             break;
@@ -199,28 +221,38 @@ fn parse_index_target(
         end = consume_kind_or_invalid(tokens, src, cursor, SyntaxKind::T_IDENT)?;
         skip_trivia(tokens, cursor);
     }
-
-    if let Some((SyntaxKind::T_APOSTROPHE, span)) = tokens.get(*cursor) {
-        end = span.end;
-        *cursor += 1;
-        skip_trivia(tokens, cursor);
-    }
-
-    if let Some((kind, _)) = tokens.get(*cursor)
-        && matches!(
-            kind,
-            SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET | SyntaxKind::T_LBRACE
-        )
-    {
-        end = parse_balanced_arguments(tokens, src, cursor)?;
-        skip_trivia(tokens, cursor);
-    }
-
-    if matches!(tokens.get(*cursor), Some((SyntaxKind::T_MINUS, _))) {
-        end = parse_delay_suffix(tokens, src, cursor)?;
-    }
-
     Ok(end)
+}
+
+/// Consume an optional `'` suffix, returning the end of the consumed token.
+fn consume_apostrophe(tokens: &[(SyntaxKind, Span)], cursor: &mut usize, end: usize) -> usize {
+    let Some((SyntaxKind::T_APOSTROPHE, span)) = tokens.get(*cursor) else {
+        return end;
+    };
+    *cursor += 1;
+    skip_trivia(tokens, cursor);
+    span.end
+}
+
+/// Consume an optional balanced argument list after the target path.
+fn consume_target_arguments(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    cursor: &mut usize,
+    end: usize,
+) -> ScanResult<usize> {
+    let Some((kind, _)) = tokens.get(*cursor) else {
+        return Ok(end);
+    };
+    if !matches!(
+        kind,
+        SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET | SyntaxKind::T_LBRACE
+    ) {
+        return Ok(end);
+    }
+    let arguments_end = parse_balanced_arguments(tokens, src, cursor)?;
+    skip_trivia(tokens, cursor);
+    Ok(arguments_end)
 }
 
 fn parse_delay_suffix(

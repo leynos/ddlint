@@ -67,7 +67,7 @@ where
                 let SyntaxElement::Token(t) = e else {
                     continue;
                 };
-                names.push(t.text().to_string());
+                names.push(t.text().to_owned());
             }
             _ => {}
         }
@@ -108,13 +108,7 @@ mod tests {
             .cloned()
             .expect("apply missing");
         assert_eq!(apply.transformer_name().as_deref(), Some("transform"));
-        assert_eq!(
-            apply.inputs(),
-            vec!["RelA".to_string(), "func_b".to_string()]
-        );
-        assert_eq!(
-            apply.outputs(),
-            vec!["Out1".to_string(), "Out2".to_string()]
-        );
+        assert_eq!(apply.inputs(), vec!["RelA".to_owned(), "func_b".to_owned()]);
+        assert_eq!(apply.outputs(), vec!["Out1".to_owned(), "Out2".to_owned()]);
     }
 }

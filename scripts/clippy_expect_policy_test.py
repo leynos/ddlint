@@ -79,7 +79,10 @@ def test_clippy_expect_boundary(mode: str, tmp_path: Path) -> None:
     config_text = (ROOT / "clippy.toml").read_text(encoding="utf-8")
     assert tomllib.loads(config_text)["allow-expect-in-tests"] is True
     manifest = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
-    assert manifest["lints"]["clippy"]["expect_used"] == "deny"
+    # The workspace table is the single source of the lint baseline; the root
+    # package must inherit it rather than declare a table of its own.
+    assert manifest["lints"] == {"workspace": True}
+    assert manifest["workspace"]["lints"]["clippy"]["expect_used"] == "deny"
     if mode == "permission_removed":
         config_text = config_text.replace(
             "allow-expect-in-tests = true", "allow-expect-in-tests = false"

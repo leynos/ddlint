@@ -23,8 +23,8 @@ fn parse_pattern_or_panic(src: &str) -> Pattern {
 /// Accepts any type convertible into [`Name`].
 #[must_use]
 pub fn var(name: impl Into<Name>) -> Expr {
-    let name: Name = name.into();
-    Expr::Variable(name.0)
+    let resolved_name: Name = name.into();
+    Expr::Variable(resolved_name.0)
 }
 
 /// Construct an unresolved application [`Expr::Apply`].
@@ -32,9 +32,9 @@ pub fn var(name: impl Into<Name>) -> Expr {
 /// Accepts any type convertible into [`Name`] for the callee name.
 #[must_use]
 pub fn call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
-    let name: Name = name.into();
+    let resolved_name: Name = name.into();
     Expr::Apply {
-        callee: Box::new(Expr::Variable(name.0)),
+        callee: Box::new(Expr::Variable(resolved_name.0)),
         args,
     }
 }
@@ -51,9 +51,9 @@ pub fn call_expr(callee: Expr, args: Vec<Expr>) -> Expr {
 /// Construct a qualified function call [`Expr::Call`].
 #[must_use]
 pub fn qualified_call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
-    let name: Name = name.into();
+    let resolved_name: Name = name.into();
     Expr::Call {
-        callee: Box::new(Expr::Variable(name.0)),
+        callee: Box::new(Expr::Variable(resolved_name.0)),
         args,
     }
 }
@@ -61,38 +61,38 @@ pub fn qualified_call(name: impl Into<Name>, args: Vec<Expr>) -> Expr {
 /// Construct a method call [`Expr::MethodCall`].
 #[must_use]
 pub fn method_call(recv: Expr, name: impl Into<Name>, args: Vec<Expr>) -> Expr {
-    let name: Name = name.into();
+    let resolved_name: Name = name.into();
     Expr::MethodCall {
         recv: Box::new(recv),
-        name: name.0,
+        name: resolved_name.0,
         args,
     }
 }
 
 /// Construct a `break` [`Expr`].
 #[must_use]
-pub fn break_expr() -> Expr { Expr::Break }
+pub const fn break_expr() -> Expr { Expr::Break }
 
 /// Construct a `continue` [`Expr`].
 #[must_use]
-pub fn continue_expr() -> Expr { Expr::Continue }
+pub const fn continue_expr() -> Expr { Expr::Continue }
 
 /// Construct a `return` [`Expr`].
 #[must_use]
 pub fn return_expr(value: Option<Expr>) -> Expr {
-    let value = value.unwrap_or_else(|| Expr::Tuple(Vec::new()));
+    let returned_value = value.unwrap_or_else(|| Expr::Tuple(Vec::new()));
     Expr::Return {
-        value: Box::new(value),
+        value: Box::new(returned_value),
     }
 }
 
 /// Construct a field access [`Expr::FieldAccess`].
 #[must_use]
 pub fn field_access(expr: Expr, field: impl Into<Name>) -> Expr {
-    let field: Name = field.into();
+    let resolved_field: Name = field.into();
     Expr::FieldAccess {
         expr: Box::new(expr),
-        field: field.0,
+        field: resolved_field.0,
     }
 }
 
@@ -101,7 +101,7 @@ pub fn field_access(expr: Expr, field: impl Into<Name>) -> Expr {
 pub fn tuple_index(expr: Expr, index: &str) -> Expr {
     Expr::TupleIndex {
         expr: Box::new(expr),
-        index: index.to_string(),
+        index: index.to_owned(),
     }
 }
 
@@ -135,9 +135,9 @@ pub fn atom_delay(delay: u32, expr: Expr) -> Expr {
 /// Construct a struct literal [`Expr::Struct`].
 #[must_use]
 pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
-    let name: Name = name.into();
+    let resolved_name: Name = name.into();
     Expr::Struct {
-        name: name.0,
+        name: resolved_name.0,
         fields,
     }
 }
@@ -145,8 +145,8 @@ pub fn struct_expr(name: impl Into<Name>, fields: Vec<(String, Expr)>) -> Expr {
 /// Convenience to build a struct field tuple.
 #[must_use]
 pub fn field(name: impl Into<Name>, expr: Expr) -> (String, Expr) {
-    let name: Name = name.into();
-    (name.0, expr)
+    let resolved_name: Name = name.into();
+    (resolved_name.0, expr)
 }
 
 /// Construct a for-loop expression node.
@@ -158,9 +158,9 @@ pub fn for_loop(
     body: Expr,
 ) -> Expr {
     let pattern_src = pattern.into();
-    let pattern = parse_pattern_or_panic(&pattern_src);
+    let parsed_pattern = parse_pattern_or_panic(&pattern_src);
     Expr::ForLoop {
-        pattern,
+        pattern: parsed_pattern,
         iterable: Box::new(iterable),
         guard: guard.map(Box::new),
         body: Box::new(body),
@@ -169,7 +169,7 @@ pub fn for_loop(
 
 /// Construct a tuple literal [`Expr::Tuple`].
 #[must_use]
-pub fn tuple(items: Vec<Expr>) -> Expr { Expr::Tuple(items) }
+pub const fn tuple(items: Vec<Expr>) -> Expr { Expr::Tuple(items) }
 
 /// Construct a vector literal [`Expr::VecLit`].
 ///
@@ -182,7 +182,7 @@ pub fn tuple(items: Vec<Expr>) -> Expr { Expr::Tuple(items) }
 /// assert_eq!(v.to_sexpr(), "(vec 1 x)");
 /// ```
 #[must_use]
-pub fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
+pub const fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
 
 /// Construct a map literal [`Expr::MapLit`].
 ///
@@ -195,7 +195,7 @@ pub fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
 /// assert_eq!(m.to_sexpr(), "(map (entry a 1))");
 /// ```
 #[must_use]
-pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }
+pub const fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }
 
 /// Convenience function to build a map entry tuple.
 ///
@@ -208,7 +208,7 @@ pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }
 /// assert_eq!(entry.0.to_sexpr(), "\"key\"");
 /// ```
 #[must_use]
-pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
+pub const fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
 
 /// Construct a `match` arm with the provided pattern and body expression.
 ///
@@ -223,8 +223,11 @@ pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
 #[must_use]
 pub fn match_arm(pattern: impl Into<String>, body: Expr) -> MatchArm {
     let pattern_src = pattern.into();
-    let pattern = parse_pattern_or_panic(&pattern_src);
-    MatchArm { pattern, body }
+    let parsed_pattern = parse_pattern_or_panic(&pattern_src);
+    MatchArm {
+        pattern: parsed_pattern,
+        body,
+    }
 }
 
 /// Parse and construct a [`Pattern`] node for tests.
@@ -250,7 +253,7 @@ where
     S: AsRef<str>,
 {
     Expr::Closure {
-        params: params.into_iter().map(|p| p.as_ref().to_string()).collect(),
+        params: params.into_iter().map(|p| p.as_ref().to_owned()).collect(),
         body: Box::new(body),
     }
 }

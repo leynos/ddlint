@@ -6,11 +6,11 @@
 
 use std::io::{self, Write};
 
-fn main() {
+fn main() -> io::Result<()> {
     // Provide a minimal UX until the full CLI is implemented.
-    let _ = writeln!(
+    writeln!(
         io::stdout(),
         "ddlint: CLI not yet implemented. Run with --help for planned options."
-    );
+    )?;
     std::process::exit(1);
 }
