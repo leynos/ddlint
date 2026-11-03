@@ -11,6 +11,7 @@ use rstest::rstest;
 
 #[path = "provisioning_fixtures.rs"]
 mod fixtures;
+
 #[path = "provisioning_installation_tests.rs"]
 mod installation_tests;
 use fixtures::{PathPolicy, Sandbox, ToolScenario, pinned_toolchain};
@@ -203,7 +204,7 @@ fn lint_keeps_interrogate_cargo_whitaker_and_spelling_order() {
         .find("scripts/clippy_expect_policy_test.py")
         .expect("lint did not reach the Clippy policy script");
     let whitaker = transcript
-        .find("--all -- --all-targets --all-features")
+        .find("--all --workspace -- --all-targets --all-features")
         .expect("lint did not reach the injected Whitaker command");
     let spelling = transcript
         .find("gate --repository .")
