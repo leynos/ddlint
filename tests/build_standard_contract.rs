@@ -17,6 +17,8 @@ mod ci_steps;
 mod command_reader;
 #[path = "build_standard_support/config.rs"]
 mod config;
+#[path = "build_standard_support/doctest_policy.rs"]
+mod doctest_policy;
 #[path = "build_standard_support/exhaustive.rs"]
 mod exhaustive;
 #[path = "build_standard_support/fixtures.rs"]
@@ -35,6 +37,8 @@ mod process;
 ))]
 #[path = "build_standard_support/provisioning.rs"]
 mod provisioning;
+#[path = "build_standard_support/rustdoc_policy.rs"]
+mod rustdoc_policy;
 #[path = "build_standard_support/shell.rs"]
 mod shell;
 #[path = "build_standard_support/workflow_exhaustive.rs"]

@@ -14,6 +14,11 @@ CLIPPY_FLAGS ?= --all-targets --all-features -- -D warnings
 # fails the gate rather than scrolling past. `--cfg docsrs` matches the
 # configuration docs.rs builds under.
 RUSTDOC_FLAGS ?= --cfg docsrs -D warnings
+# Rustdoc compiles every doctest snippet as its own crate and reads
+# RUSTDOCFLAGS, not RUSTFLAGS, so the warning policy must be forwarded
+# explicitly. `--doctest-build-arg` is unstable; the toolchain is pinned to
+# nightly and `test` preflights it through `check-build-tools`.
+DOCTEST_RUSTDOCFLAGS := -Zunstable-options --doctest-build-arg=-Dwarnings
 MDLINT ?= $(shell command -v markdownlint-cli2 2>/dev/null || printf '%s' "$$HOME/.bun/bin/markdownlint-cli2")
 # `make fmt` and `make check-fmt` call mdtablefix directly. `--git` selects the
 # Markdown files Git tracks and `--include-untracked` adds the untracked files
@@ -176,7 +181,7 @@ clean: ## Remove build artifacts
 
 test: | check-build-tools ## Run tests and doctests with warnings treated as errors
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$${RUSTDOCFLAGS:+$$RUSTDOCFLAGS }$(DOCTEST_RUSTDOCFLAGS)" $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
 
 test-workflow-contracts: ## Validate the mutation-testing and CodeScene coverage workflow contracts
 	$(CV005_CONTRACTS) check --repository .
