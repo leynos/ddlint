@@ -198,12 +198,16 @@ project:
     ```sh
     RUSTFLAGS="-D warnings" $(CARGO) test --all-targets --all-features \
       $(BUILD_JOBS)
-    RUSTFLAGS="-D warnings" $(CARGO) test --workspace --doc --all-features \
-      $(BUILD_JOBS)
+    RUSTFLAGS="-D warnings" \
+      RUSTDOCFLAGS="${RUSTDOCFLAGS:+$RUSTDOCFLAGS }-Zunstable-options --doctest-build-arg=-Dwarnings" \
+      $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
     ```
 
     running the full workspace test suite and the doctests with warnings
-    treated as errors.
+    treated as errors. Rustdoc compiles each doctest snippet as a separate
+    crate and reads `RUSTDOCFLAGS`, so the recipe forwards the warning denial
+    to it with `--doctest-build-arg` under `-Zunstable-options` on the pinned
+    nightly.
   - `make check` runs `check-fmt`, `typecheck`, `lint`, and `test` as sequential
     submakes.
 - The workspace lint baseline is authoritative in `Cargo.toml`

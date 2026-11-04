@@ -13,6 +13,21 @@ user-facing behaviour.
 - The built-in command-line entrypoint currently only prints a placeholder
   message and exits with a non-zero status.
 
+### Unreleased behaviour changes
+
+Two current-behaviour corrections are not yet in a release. Neither removes an
+API, so no code migration is required, but results observed through the
+previous release can change:
+
+- The `unused-variable` rule treats grouping parentheses and unary operators as
+  transparent when it resolves uses. A binding used only under a wrapper is now
+  counted as used, so a source that previously reported such a binding no
+  longer does. See [Unused-variable rule](#unused-variable-rule).
+- `Function::return_type` now returns the declared return type for parameter
+  lists containing nested parenthesized types. It previously stopped at the
+  first closing parenthesis and could return a truncated type. See
+  [Function signatures](#function-signatures).
+
 ## Planned CLI configuration
 
 The CLI remains a placeholder. Roadmap item 5.1.5 defines the configuration
@@ -106,6 +121,25 @@ assert_eq!(parsed.root().relations().len(), 1);
 `Parsed` also exposes parse-time semantic rules and the recovered parse-tree
 root so downstream stages can work with structured syntax data.
 
+### Function signatures
+
+`Function::return_type` returns the declared return type, and
+`Function::parameters` returns the declared parameter names and types. Both
+handle parameter lists that contain nested parenthesized types: the scan tracks
+parenthesis depth, so the closing parenthesis of a nested type does not end the
+parameter list early.
+
+```rust
+use ddlint::parse;
+
+let source = "function f(pair: ((u32,bool),string)): u32 { }";
+let parsed = parse(source);
+let function = parsed.root().functions().into_iter().next().expect("one function");
+
+assert_eq!(function.return_type().as_deref(), Some("u32"));
+assert_eq!(function.parameters().len(), 1);
+```
+
 ## Run lint rules
 
 The linter flow is:
@@ -129,6 +163,19 @@ assert!(diagnostics.is_empty());
 When parsing produces errors, `Runner::run` returns no lint diagnostics and
 does not run rules against the recovered parse tree. Inspect and report the
 parser errors separately.
+
+### Unused-variable rule
+
+The `unused-variable` rule treats wrapper expressions as transparent when it
+resolves uses. A binding used only inside parentheses or under a unary operator
+still counts as used, so neither rule below reports `head_x`:
+
+```ddlog
+Output(head_x) :- Source((head_x)).
+Output(head_x) :- Source(-head_x).
+```
+
+Only a binding with no resolved use is reported.
 
 ## Rule authorship (high level)
 

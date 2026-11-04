@@ -220,9 +220,11 @@ row, because interrogate rounds its percentage to one decimal). It then runs
 Clippy, a Rustdoc build with `RUSTDOC_FLAGS` (`--cfg docsrs -D warnings` by
 default), the Clippy policy script, Whitaker, and the spelling gate.
 `make test` runs the workspace tests and then the doctests, both with warnings
-denied. `make markdownlint` also invokes the spelling gate for tracked Markdown.
-`make markdownlint` lints every Markdown source, and `make nixie` validates
-the Mermaid diagrams within them.
+denied. Workspace crates take `RUSTFLAGS`, while rustdoc compiles each doctest
+snippet separately and takes `RUSTDOCFLAGS`; the recipe forwards `-Dwarnings`
+to those compilations through `--doctest-build-arg`. `make markdownlint` also
+invokes the spelling gate for tracked Markdown. `make markdownlint` lints every
+Markdown source, and `make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
