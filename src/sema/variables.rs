@@ -47,6 +47,13 @@ impl<'a> VariableUseContext<'a> {
 }
 
 impl SemanticModelBuilder {
+    /// Records every variable use reachable from `expr`.
+    ///
+    /// The walk covers the whole expression tree, dispatching each variant to
+    /// a helper that knows how to reach its children, so uses nested inside
+    /// calls, wrappers, composite literals, conditionals, loops, and match
+    /// arms are all captured. `context` supplies the scope, source position,
+    /// and rule-order limit inherited by each recorded [`UseSite`].
     pub(crate) fn walk_variable_uses(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
         match expr {
             Expr::Variable(name) => self.record_variable_use(name, context),

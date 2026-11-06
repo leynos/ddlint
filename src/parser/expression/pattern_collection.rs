@@ -41,6 +41,8 @@ enum PatternSite {
 }
 
 impl PatternSite {
+    /// Returns the diagnostic for a pattern that ends without the terminator
+    /// that closes it (`->` for a match arm, `in` for a for-loop header).
     const fn missing_terminator_msg(self) -> &'static str {
         match self {
             Self::MatchArm => "expected '->' in match arm",
@@ -48,6 +50,8 @@ impl PatternSite {
         }
     }
 
+    /// Returns the diagnostic for a closing delimiter that has no matching
+    /// opener in this site's pattern.
     const fn unmatched_delimiter_msg(self, delimiter: DelimiterKind) -> &'static str {
         match (self, delimiter) {
             (Self::MatchArm, DelimiterKind::Paren) => {
@@ -67,6 +71,8 @@ impl PatternSite {
         }
     }
 
+    /// Returns the diagnostic for input that ends while the pattern is still
+    /// incomplete.
     const fn unexpected_end_msg(self) -> &'static str {
         match self {
             Self::MatchArm => "unexpected end of input in match pattern",
@@ -89,30 +95,46 @@ pub(super) struct PatternContext {
 }
 
 impl PatternContext {
+    /// Creates the context for a `match` arm pattern, which ends at `->`.
     pub(super) const fn for_match_pattern() -> Self {
         Self {
             site: PatternSite::MatchArm,
         }
     }
 
+    /// Creates the context for a `for` header pattern, which ends at `in`.
     pub(super) const fn for_for_loop_pattern() -> Self {
         Self {
             site: PatternSite::ForLoop,
         }
     }
 
+    /// Returns whether delimiter balance must be checked when input ends
+    /// before the terminator.
+    ///
+    /// A for-loop header must have balanced delimiters, so an unbalanced
+    /// header is diagnosed before the missing `in`; a match arm only needs the
+    /// missing `->` diagnostic.
     pub(super) const fn validate_on_eof(&self) -> bool { matches!(self.site, PatternSite::ForLoop) }
 
+    /// Returns whether a closing parenthesis may close the for-loop header's
+    /// wrapping delimiter instead of counting as unmatched.
+    ///
+    /// Only for-loop headers accept the `for (x) in xs` form.
     pub(super) const fn use_for_paren(&self) -> bool { matches!(self.site, PatternSite::ForLoop) }
 
+    /// Returns the site-specific diagnostic for a missing terminator.
     pub(super) const fn missing_terminator_msg(&self) -> &'static str {
         self.site.missing_terminator_msg()
     }
 
+    /// Returns the site-specific diagnostic for an unmatched closing
+    /// delimiter.
     pub(super) const fn unmatched_delimiter_msg(&self, delimiter: DelimiterKind) -> &'static str {
         self.site.unmatched_delimiter_msg(delimiter)
     }
 
+    /// Returns the site-specific diagnostic for input ending mid-pattern.
     pub(super) const fn unexpected_end_msg(&self) -> &'static str { self.site.unexpected_end_msg() }
 }
 
