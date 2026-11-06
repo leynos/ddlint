@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 
+import pytest
 import yaml
 
 from build_provisioning_common import APPROVED_SHARED_ACTIONS_REF, ROOT
@@ -29,33 +30,39 @@ INSTALL_WHITAKER_AT_PIN = f"{INSTALL_WHITAKER}@{APPROVED_SHARED_ACTIONS_REF}"
 FORBIDDEN_INPUTS = {"suite-version", "installer-version", "allow-suite-pin"}
 
 
-def _makefile_text() -> str:
-    """Return the Makefile source."""
-    return MAKEFILE.read_text(encoding="utf-8")
+@pytest.fixture(scope="module")
+def makefile_text() -> str:
+    """Read the Makefile once at the test boundary, failing the test readably."""
+    try:
+        return MAKEFILE.read_text(encoding="utf-8")
+    except OSError as error:
+        raise AssertionError(
+            f"could not read the Makefile at {MAKEFILE}: {error}"
+        ) from error
 
 
-def _variable(name: str) -> str:
+def _variable(makefile: str, name: str) -> str:
     """Return the value a `NAME ?=` or `NAME =` assignment gives, joined."""
     pattern = re.compile(rf"^{name}\s*\??=\s*((?:.*\\\n)*.*)$", re.MULTILINE)
-    match = pattern.search(_makefile_text())
+    match = pattern.search(makefile)
     assert match, f"the Makefile must assign {name}"
     return re.sub(r"\\\n\s*", " ", match.group(1)).strip()
 
 
-def _prerequisites(target: str) -> list[str]:
+def _prerequisites(makefile: str, target: str) -> list[str]:
     """Return the prerequisites declared for *target*."""
     pattern = re.compile(rf"^{re.escape(target)}:([^=\n]*)$", re.MULTILINE)
-    match = pattern.search(_makefile_text())
+    match = pattern.search(makefile)
     assert match, f"the Makefile must declare a {target} target"
     return match.group(1).split("##")[0].split()
 
 
-def _recipe(target: str) -> str:
+def _recipe(makefile: str, target: str) -> str:
     """Return the tab-indented recipe lines of *target*, or an empty string."""
     pattern = re.compile(
         rf"^{re.escape(target)}:[^\n]*\n((?:\t[^\n]*\n)*)", re.MULTILINE
     )
-    match = pattern.search(_makefile_text())
+    match = pattern.search(makefile)
     assert match, f"the Makefile must declare a {target} target"
     return match.group(1)
 
@@ -113,9 +120,9 @@ def test_ci_installs_whitaker_before_it_runs_make_lint() -> None:
     assert checked, "no CI job runs `make lint`"
 
 
-def test_lint_is_a_serial_composite_of_the_gates() -> None:
+def test_lint_is_a_serial_composite_of_the_gates(makefile_text: str) -> None:
     """Dropping a prerequisite removes that gate from `make lint`."""
-    assert _prerequisites("lint") == [
+    assert _prerequisites(makefile_text, "lint") == [
         "interrogate",
         "lint-clippy",
         "lint-whitaker",
@@ -123,18 +130,20 @@ def test_lint_is_a_serial_composite_of_the_gates() -> None:
     ], "`make lint` must keep the ordered gate prerequisites"
 
 
-def test_not_parallel_keeps_the_composite_ordered() -> None:
+def test_not_parallel_keeps_the_composite_ordered(makefile_text: str) -> None:
     """Without this, `-j` could overlap the Cargo-producing gates."""
-    match = re.search(r"^\.NOTPARALLEL:\s*(.+)$", _makefile_text(), re.MULTILINE)
+    match = re.search(r"^\.NOTPARALLEL:\s*(.+)$", makefile_text, re.MULTILINE)
     assert match, "the Makefile must declare .NOTPARALLEL"
     ordered = match.group(1).split()
     for target in ("lint", "lint-clippy", "lint-whitaker"):
         assert target in ordered, f".NOTPARALLEL does not cover {target}"
 
 
-def test_the_gate_target_keeps_the_literal_policy_and_packages() -> None:
+def test_the_gate_target_keeps_the_literal_policy_and_packages(
+    makefile_text: str,
+) -> None:
     """The gate must clear inherited flags and select the whole workspace."""
-    recipe = _recipe("lint-whitaker")
+    recipe = _recipe(makefile_text, "lint-whitaker")
     assert (
         'unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" '
         "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features"
@@ -143,19 +152,19 @@ def test_the_gate_target_keeps_the_literal_policy_and_packages() -> None:
     )
 
 
-def test_the_packages_variable_defaults_to_the_workspace() -> None:
+def test_the_packages_variable_defaults_to_the_workspace(makefile_text: str) -> None:
     """A package-less suite would silently check fewer crates."""
-    assert _variable("WHITAKER_PACKAGES") == "--workspace", (
+    assert _variable(makefile_text, "WHITAKER_PACKAGES") == "--workspace", (
         "the default must stay the whole workspace"
     )
 
 
-def test_the_composite_runs_no_cargo_itself() -> None:
+def test_the_composite_runs_no_cargo_itself(makefile_text: str) -> None:
     """The Rust gates belong to the split targets, not to the aggregate."""
-    assert "$(CARGO)" not in _recipe("lint"), (
+    assert "$(CARGO)" not in _recipe(makefile_text, "lint"), (
         "the aggregate must not invoke Cargo directly"
     )
 
-    recipe = _recipe("lint-clippy")
+    recipe = _recipe(makefile_text, "lint-clippy")
     for expected in ("$(CARGO) clippy", "$(CARGO) doc", "test-clippy-policy"):
         assert expected in recipe, f"lint-clippy must keep {expected}"
