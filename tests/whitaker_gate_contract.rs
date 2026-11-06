@@ -28,6 +28,7 @@ use controlled::{
     ToolSpec,
     WHITAKER_MARKER,
     assert_fails,
+    assert_fails_reporting,
     assert_stops_after,
 };
 
@@ -45,6 +46,31 @@ fn the_gate_target_fails_when_whitaker_fails() -> Result<(), String> {
     let whitaker = format!("WHITAKER={}", controlled.path());
     assert_fails(
         &Invocation::new(["lint-whitaker", whitaker.as_str()]),
+        WHITAKER_MARKER,
+    )
+}
+
+/// Scenario: the standalone gate target with Rustup unavailable.
+///
+/// Invariant: the build-tools preflight fails before Whitaker runs, so the
+/// missing Rustup is reported with its remedy instead of surfacing as a tool
+/// failure. The controlled Whitaker's marker would appear had the recipe
+/// started, so its absence proves the preflight stopped the target.
+#[test]
+fn the_gate_target_fails_the_preflight_without_rustup() -> Result<(), String> {
+    let controlled = ControlledTool::new(ToolSpec {
+        name: "whitaker",
+        marker: WHITAKER_MARKER,
+        behaviour: Behaviour::AlwaysFails,
+    })?;
+    let whitaker = format!("WHITAKER={}", controlled.path());
+    assert_fails_reporting(
+        &Invocation::new([
+            "lint-whitaker",
+            "RUSTUP=/nonexistent/rustup-for-contract",
+            whitaker.as_str(),
+        ]),
+        "rustup is required; install Rustup, then run make install-build-tools",
         WHITAKER_MARKER,
     )
 }
