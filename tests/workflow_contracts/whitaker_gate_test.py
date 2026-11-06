@@ -161,8 +161,12 @@ def test_the_packages_variable_defaults_to_the_workspace(makefile_text: str) -> 
 
 def test_the_composite_runs_no_cargo_itself(makefile_text: str) -> None:
     """The Rust gates belong to the split targets, not to the aggregate."""
-    assert "$(CARGO)" not in _recipe(makefile_text, "lint"), (
+    lint_recipe = _recipe(makefile_text, "lint")
+    assert "$(CARGO)" not in lint_recipe, (
         "the aggregate must not invoke Cargo directly"
+    )
+    assert not re.search(r"\bcargo\b", lint_recipe), (
+        "the aggregate must not run Cargo itself, even as a literal `cargo`"
     )
 
     recipe = _recipe(makefile_text, "lint-clippy")
