@@ -79,6 +79,8 @@ impl SemanticModelBuilder {
             && matches!(use_site.resolution(), Resolution::Resolved(_))
     }
 
+    /// Return the symbol id for a resolved use site, or `None` when it is
+    /// unresolved or ignored.
     const fn resolved_symbol_id(use_site: &crate::sema::UseSite) -> Option<SymbolId> {
         match use_site.resolution() {
             Resolution::Resolved(symbol_id) => Some(symbol_id),

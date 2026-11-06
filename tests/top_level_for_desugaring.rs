@@ -57,6 +57,7 @@ impl TopLevelForCase {
     }
 }
 
+/// Check top-level `for` desugaring outputs, diagnostics, and rule relations.
 #[rstest]
 #[case::single_line_desugar(TopLevelForCase {
     head: Some("(call Process x)"),

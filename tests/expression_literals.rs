@@ -47,6 +47,7 @@ struct LiteralErrorCase {
     is_unclosed: bool,
 }
 
+/// Check the diagnostic reported for each malformed literal expression.
 #[rstest]
 #[case(LiteralErrorCase {
     src: "\"no end",

@@ -32,10 +32,13 @@ struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
+    /// Return `true` when every tracked delimiter depth is zero.
     const fn at_top_level(&self) -> bool {
         self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0
     }
 
+    /// Update the tracked depths for `kind`, treating `T_SHL`/`T_SHR` as two
+    /// angle brackets and saturating on unmatched closers.
     const fn adjust_for_token(&mut self, kind: SyntaxKind) {
         match kind {
             SyntaxKind::T_LPAREN => self.paren += 1,

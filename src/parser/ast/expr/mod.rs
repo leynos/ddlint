@@ -34,6 +34,7 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
+    /// Return the source spelling of this unary operator.
     const fn symbol(self) -> &'static str {
         match self {
             Self::Not => "not",

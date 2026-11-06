@@ -29,9 +29,11 @@ struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
+    /// Return `true` when no parenthesis, brace, or bracket is open.
     const fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
+/// Update the tracked depths for `kind`, saturating on unmatched closers.
 const fn adjust_delimiter_depth(kind: SyntaxKind, depths: &mut DelimiterDepths) {
     match kind {
         SyntaxKind::T_LPAREN => depths.paren += 1,

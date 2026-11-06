@@ -70,6 +70,8 @@ struct DelimiterDepth {
 }
 
 impl DelimiterDepth {
+    /// Update parenthesis, brace, and bracket depths for `kind`; angle
+    /// brackets are not tracked here.
     const fn update(&mut self, kind: SyntaxKind) {
         match kind {
             SyntaxKind::T_LPAREN => self.paren += 1,
@@ -82,6 +84,7 @@ impl DelimiterDepth {
         }
     }
 
+    /// Return `true` when no parenthesis, brace, or bracket is open.
     const fn is_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 

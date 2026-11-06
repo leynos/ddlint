@@ -29,6 +29,7 @@ fn typedef_keyword_is_rejected_without_type_def_ast() {
     );
 }
 
+/// Check that a modern `type` definition still parses without an error.
 #[test]
 fn modern_type_keyword_still_parses_type_definitions() {
     let parsed = parse_ok("type Foo = u32\n");
@@ -121,6 +122,7 @@ fn legacy_type_names_are_rejected_outwith_type_position(#[case] expected: Expect
     assert_reserved_token_error(parsed.errors(), expected, expected_span);
 }
 
+/// Check that `<=>` is rejected in expressions and reported at its span.
 #[test]
 fn spaceship_operator_is_rejected_in_expression_context() {
     let Err(errors) = parse_expression("1 <=> 2") else {
@@ -177,6 +179,7 @@ fn reserved_errors_are_not_duplicated(#[case] scenario: ReservedTokenScenario) {
 #[case(ReservedTokenScenario::new("1 <=> # value", ExpectedReservedToken::BareHash))]
 #[case(ReservedTokenScenario::new("# [value]", ExpectedReservedToken::BareHash))]
 #[case(ReservedTokenScenario::new("#/*comment*/[value]", ExpectedReservedToken::BareHash))]
+/// Check that every reserved token in a failing expression is reported.
 fn expression_failures_report_every_reserved_token(#[case] scenario: ReservedTokenScenario) {
     let source = scenario.source.as_ref();
     let Err(errors) = parse_expression(source) else {
@@ -189,6 +192,7 @@ fn expression_failures_report_every_reserved_token(#[case] scenario: ReservedTok
     assert_eq!(reserved_token_spans(&errors, scenario.expected), expected);
 }
 
+/// Check that many reserved operators are each reported exactly once.
 #[test]
 fn many_reserved_operators_report_once_each() {
     const EXPRESSION_COUNT: usize = 128;
@@ -274,6 +278,7 @@ fn assert_reserved_token_error(
     assert_eq!(reserved_token_spans(errors, expected), vec![span]);
 }
 
+/// Collect the spans reported for `expected` across `errors`.
 fn reserved_token_spans(
     errors: &[Simple<SyntaxKind>],
     expected: ExpectedReservedToken,
@@ -287,6 +292,7 @@ fn reserved_token_spans(
         .collect()
 }
 
+/// Return the first source span of the token `expected` denotes.
 fn token_span(source: &str, expected: ExpectedReservedToken) -> Range<usize> {
     let token = expected.lexeme();
     let Some(start) = source.find(token) else {
@@ -295,6 +301,7 @@ fn token_span(source: &str, expected: ExpectedReservedToken) -> Range<usize> {
     start..start + token.len()
 }
 
+/// Check that `as` remains valid in an import alias.
 #[test]
 fn import_alias_keyword_is_preserved() {
     let parsed = parse_ok("import foo::bar as baz\n");

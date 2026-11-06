@@ -19,11 +19,14 @@ pub(super) struct TypeDepths {
 }
 
 impl TypeDepths {
+    /// Return `true` when no parenthesis, bracket, brace, or angle bracket is open.
     pub(super) const fn at_top_level(&self) -> bool {
         self.paren == 0 && self.bracket == 0 && self.brace == 0 && self.angle == 0
     }
 }
 
+/// Update `depths` for `kind`, counting `T_SHL`/`T_SHR` as two angle
+/// brackets and saturating so unmatched closers cannot underflow.
 pub(super) const fn adjust_type_depths(kind: SyntaxKind, depths: &mut TypeDepths) {
     match kind {
         SyntaxKind::T_LPAREN => depths.paren += 1,

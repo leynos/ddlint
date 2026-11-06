@@ -226,6 +226,8 @@ enum PreamblePart {
     Other(SyntaxKind),
 }
 
+/// Classify a preamble token as a relation role, kind, reference, name, or
+/// other token.
 const fn preamble_part(kind: SyntaxKind) -> PreamblePart {
     match kind {
         SyntaxKind::K_INPUT => PreamblePart::Role(RelationRole::Input),

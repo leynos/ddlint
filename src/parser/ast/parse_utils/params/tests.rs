@@ -252,6 +252,7 @@ struct ParameterScenario {
     error_validator: fn(&[ParseError]) -> bool,
 }
 
+/// Check parameter name/type pairs and diagnostics across parsing scenarios.
 #[rstest]
 #[case(ParameterScenario {
     src: "function f(x:, y:) {}",

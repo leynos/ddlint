@@ -67,6 +67,7 @@ struct FunctionParseCase {
     ret: Option<&'static str>,
 }
 
+/// Check function parsing for parameters, return types, and round-tripping.
 #[rstest]
 #[case::extern_fn(FunctionParseCase {
     src: extern_function(),

@@ -107,6 +107,9 @@ struct DelimiterAction {
     count: usize,
 }
 
+/// Classify `kind` as a delimiter open or close operation, if it is one.
+///
+/// `T_SHL` and `T_SHR` report a width of two so one token adjusts two levels.
 const fn detect_delimiter_operation(kind: SyntaxKind) -> Option<DelimiterAction> {
     let (op, delim, count) = match kind {
         SyntaxKind::T_LPAREN => (DelimiterOperation::Open, Delim::Paren, 1),
@@ -124,6 +127,8 @@ const fn detect_delimiter_operation(kind: SyntaxKind) -> Option<DelimiterAction>
     Some(DelimiterAction { op, delim, count })
 }
 
+/// Apply one delimiter `action` to the stack and buffer, returning `true`
+/// when a stray `)` ends the type expression without recording an error.
 fn process_delimiter<I>(
     action: DelimiterAction,
     token: &rowan::SyntaxToken<DdlogLanguage>,
@@ -182,6 +187,8 @@ where
     false
 }
 
+/// Return `true` when `kind` is a top-level separator that follows emitted
+/// type text and must terminate the expression.
 const fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) -> bool {
     stack_empty
         && !buf_empty

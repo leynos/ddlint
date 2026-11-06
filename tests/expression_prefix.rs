@@ -128,6 +128,7 @@ struct PrefixErrorCase {
     is_unclosed: bool,
 }
 
+/// Check the diagnostic reported for each malformed prefix expression.
 #[rstest]
 // Note: `{}` is now a valid empty map literal, so it's not an error.
 #[case(PrefixErrorCase {

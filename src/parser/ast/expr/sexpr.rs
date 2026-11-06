@@ -101,6 +101,7 @@ fn format_kv(key: &Expr, value: &Expr) -> String {
     rendered
 }
 
+/// Render a space-separated n-ary S-expression `(label item...)`.
 fn format_nary<I>(label: &str, items: I) -> String
 where
     I: IntoIterator<Item = String>,
