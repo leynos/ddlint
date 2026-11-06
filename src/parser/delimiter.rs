@@ -17,6 +17,8 @@ pub(crate) struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
+    /// Update the tracked depths for `kind`, ignoring tokens that are not
+    /// parentheses, braces, brackets, or angle brackets.
     pub(crate) const fn apply(&mut self, kind: SyntaxKind) {
         match kind {
             SyntaxKind::T_LPAREN => self.paren += 1,
@@ -31,6 +33,7 @@ impl DelimiterDepths {
         }
     }
 
+    /// Return `true` when all tracked delimiter depths are zero.
     #[must_use]
     pub(crate) const fn is_top_level(&self) -> bool {
         self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0

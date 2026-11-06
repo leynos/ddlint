@@ -55,6 +55,8 @@ fn shift_error(error: &Simple<SyntaxKind>, offset: usize) -> Simple<SyntaxKind> 
     }
 }
 
+/// Return the closing token paired with `delimiter`, or `delimiter` itself
+/// when it has no paired closer.
 const fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
     match delimiter {
         SyntaxKind::T_LPAREN => SyntaxKind::T_RPAREN,

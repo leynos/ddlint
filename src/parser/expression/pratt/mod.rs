@@ -59,6 +59,8 @@ impl StructLiteralState {
         }
     }
 
+    /// Suspend an active struct-literal guard, returning `false` when none is
+    /// active so the caller knows the guard was not suspended.
     const fn suspend(&mut self) -> bool {
         if self.active == 0 {
             return false;
@@ -77,6 +79,8 @@ impl StructLiteralState {
         self.suspension = self.suspension.saturating_sub(1);
     }
 
+    /// Return `true` when a `{` here may open a struct literal, which requires
+    /// either no active guard or a suspended one.
     const fn allows_struct_literal(&self) -> bool { self.active == 0 || self.suspension > 0 }
 }
 

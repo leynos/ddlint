@@ -68,6 +68,7 @@ impl DelimiterDepths {
         }
     }
 
+    /// Return `true` when no parenthesis, brace, or bracket is open.
     const fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 

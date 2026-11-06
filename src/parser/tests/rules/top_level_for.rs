@@ -40,6 +40,7 @@ impl DesugarCase {
     }
 }
 
+/// Exercise top-level `for` desugaring across rule and tuple-index shapes.
 #[rstest]
 #[case(DesugarCase {
     expected_heads: &["(call Process x)"],

@@ -140,6 +140,8 @@ where
     }
 }
 
+/// Parse a parenthesised parameter list into name/type pairs and errors.
+/// Returns empty vectors when no opening parenthesis is found.
 pub(crate) fn parse_name_type_pairs<I>(elements: I) -> (Vec<(String, String)>, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,

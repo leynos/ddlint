@@ -47,6 +47,7 @@ struct CallErrorCase {
     kind: Kind,
 }
 
+/// Check the diagnostic reported for each malformed call expression.
 #[rstest]
 #[case(CallErrorCase {
     src: "foo(",

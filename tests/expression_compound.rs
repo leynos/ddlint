@@ -59,6 +59,7 @@ struct CompoundErrorCase {
     is_unclosed: bool,
 }
 
+/// Check the diagnostic reported for each malformed compound expression.
 #[rstest]
 #[case(CompoundErrorCase {
     src: "Point { x: 1",

@@ -16,6 +16,8 @@ fn run(writer: &mut impl Write) -> io::Result<()> {
     )
 }
 
+/// Run the CLI entry point, reporting output failures to stderr and always
+/// exiting with a non-zero status while the tool is unimplemented.
 fn main() -> io::Result<()> {
     if let Err(error) = run(&mut io::stdout()) {
         // The placeholder has no other reporting channel, so send the failure

@@ -39,6 +39,7 @@ struct TopLevelDeclarationCase {
     expected_text: &'static str,
 }
 
+/// Check that top-level declarations record identifier name spans.
 #[rstest]
 #[case(TopLevelDeclarationCase {
     source: "input relation Source(x: u32)",
@@ -114,6 +115,7 @@ struct BindingDeclarationCase {
     expected_span_text: &'static str,
 }
 
+/// Check that binding declarations record identifier name spans.
 #[rstest]
 #[case(BindingDeclarationCase {
     source: "Output(Output) :- Output(_).",

@@ -43,6 +43,7 @@ struct PostfixErrorCase {
     is_unclosed: bool,
 }
 
+/// Check the diagnostic reported for each malformed postfix expression.
 #[rstest]
 #[case::unclosed_call(PostfixErrorCase {
     src: "foo.bar(",
