@@ -101,6 +101,27 @@ non-function item keeps its own diagnostic.
   Keeping a qualifying fixture on one line remains a source-authoring and
   formatting concern.
 
+## Addendum 2026-11-06: item-wide allowance qualification
+
+This addendum supersedes the broader claim, retained above as history, that
+"Genuine findings remain visible" and that the helper "leaves every other
+`unused_braces` finding visible".
+
+- The emitted `allow` is item-wide. It applies to the whole qualified function,
+  not only to the braces `rstest` introduces.
+- The qualification rule is syntactic: a function whose body is exactly one
+  expression statement without a trailing semicolon, that is
+  `[syn::Stmt::Expr(_, None)]`. That shape includes a semicolon-free
+  `return { value }`, which is a genuine `unused_braces` finding rather than a
+  macro-expansion artefact. The item-wide `allow` therefore also suppresses
+  that genuine finding in such a body.
+- The pass-through boundary remains accurate: multi-statement bodies, a single
+  expression statement ending in a trailing semicolon, and items that do not
+  parse as functions pass through unchanged, so genuine findings in those
+  shapes remain visible. The four compile-fail cases pin that boundary.
+- `fn_single_line` remains a separate, planned formatter configuration. It is
+  not enabled by this helper, and the helper neither inspects nor enforces it.
+
 ## Alternatives considered
 
 - **Source-level `#[allow(unused_braces)]` on each fixture.** Unconditional for

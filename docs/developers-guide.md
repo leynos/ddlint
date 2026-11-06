@@ -354,12 +354,18 @@ artefact, so the helper emits
 `#[allow(unused_braces, reason = "rstest fixture expansion")]` for the
 annotated item.
 
-The suppression is narrowed to single-expression bodies. The helper parses the
-item as a function and emits the `allow` only when the body is exactly one
-expression statement without a trailing semicolon. Multi-statement fixtures,
-and items that do not parse as functions, pass through unchanged, so a genuine
-`unused_braces` finding still surfaces. The compile-fail case
-`tests/ui/fixture_expansion_masking.rs` binds that behaviour.
+The suppression is narrowed to single-expression bodies, but it is item-wide
+for the items it qualifies. The helper parses the item as a function and emits
+the `allow` only when the body is exactly one expression statement without a
+trailing semicolon. That shape includes a semicolon-free `return { value }`,
+which is `syn::Stmt::Expr(_, None)`, so the item-wide `allow` can also suppress
+a genuine `unused_braces` finding in such a body. Multi-statement fixtures,
+fixtures whose single expression ends in a trailing semicolon, and items that
+do not parse as functions pass through unchanged, so genuine findings in those
+shapes still surface. The compile-fail case
+`tests/ui/fixture_expansion_masking.rs` binds the multi-statement pass-through,
+and `tests/ui/fixture_expansion_semicolon.rs` binds the trailing-semicolon
+pass-through.
 
 The helper uses `allow` rather than `expect` because `rstest` drops user-written
 `#[expect]` attributes, and a macro-emitted expectation is silently unchecked:

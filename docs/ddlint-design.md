@@ -1240,12 +1240,16 @@ A formatter profile that enables `fn_single_line` collapses a single-expression
 `{ { body } }`. Rustc's `unused_braces` lint reports the fixture's own braces
 as redundant whether the fixture was collapsed by a formatter or written on one
 line by hand. The canonical profile is adopted separately from this helper. The
-repository suppresses only that formatting artefact, through the
-`fixture-lints` proc macro, and leaves every other `unused_braces` finding
-visible. The helper's trigger is the item's syntactic shape, independent of
-formatter configuration: multi-statement bodies and items that do not parse as
-functions pass through unchanged, and the helper does not inspect or enforce
-formatter settings. The 2026-11-06 addendum in
+repository suppresses that formatting artefact through the `fixture-lints` proc
+macro. The allowance is item-wide for the items it qualifies: the helper emits
+it for any function whose body is exactly one expression statement without a
+trailing semicolon, including a semicolon-free `return { value }`, so it can
+also suppress a genuine `unused_braces` finding in such a body. Multi-statement
+bodies and items that do not parse as functions pass through unchanged, and a
+single expression statement with a trailing semicolon does not qualify, so
+genuine findings in those shapes remain visible. The helper's trigger is the
+item's syntactic shape, independent of formatter configuration, and it does not
+inspect or enforce formatter settings. The 2026-11-06 addendum in
 [ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
 limitations, alongside the qualification rule and compile-test contract.
 
