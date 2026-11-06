@@ -1,7 +1,7 @@
 //! Lint-scoped attribute helper for `rstest` fixture expansions.
 //!
-//! The repository formats with `fn_single_line`, which collapses a
-//! single-expression fixture onto one line. `rstest` then re-emits that body
+//! A fixture written as a single expression on one line — whether by hand or
+//! by a formatter configured with `fn_single_line` — is re-emitted by `rstest`
 //! inside generated code as `{ { body } }`, and rustc's `unused_braces` lint
 //! reports the fixture's own braces as redundant. The diagnostic is a
 //! formatting artefact rather than a defect in the fixture, so this attribute

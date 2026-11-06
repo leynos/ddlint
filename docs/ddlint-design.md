@@ -1235,14 +1235,19 @@ macro-level behaviour of the final executable.
 
 ### 6.4. Fixture expansion lint scope
 
-The canonical Rustfmt profile enables `fn_single_line`, which collapses a
-single-expression `rstest` fixture onto one line. `rstest` re-emits that body as
-`{ { body } }`, and rustc's `unused_braces` lint reports the fixture's own
-braces as redundant. The repository suppresses only that formatting artefact,
-through the `fixture-lints` proc macro, and leaves every other `unused_braces`
-finding visible. [ADR 005](adr-005-fixture-expansion-lint-helper.md) records
-the boundary, the qualification rule, and the compile-test contract that pins
-it.
+A formatter profile that enables `fn_single_line` collapses a single-expression
+`rstest` fixture onto one line, and `rstest` then re-emits that body as
+`{ { body } }`. Rustc's `unused_braces` lint reports the fixture's own braces
+as redundant whether the fixture was collapsed by a formatter or written on one
+line by hand. The canonical profile is adopted separately from this helper. The
+repository suppresses only that formatting artefact, through the
+`fixture-lints` proc macro, and leaves every other `unused_braces` finding
+visible. The helper's trigger is the item's syntactic shape, independent of
+formatter configuration: multi-statement bodies and items that do not parse as
+functions pass through unchanged, and the helper does not inspect or enforce
+formatter settings. The 2026-11-06 addendum in
+[ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
+limitations, alongside the qualification rule and compile-test contract.
 
 ## 7. Phased implementation roadmap and future work
 

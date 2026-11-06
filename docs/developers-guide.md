@@ -346,12 +346,13 @@ fn source() -> &'static str { "input relation R(x: u32);" }
 Permitted call-sites are `rstest` fixture items only. Do not apply the
 attribute to ordinary functions, modules, or non-fixture test helpers.
 
-`unused_braces` is a rustc lint, not a Clippy lint. The repository formats with
-`fn_single_line`, which collapses a single-expression fixture onto one line;
-`rstest` then re-emits that body as `{ { body } }`, and rustc reports the
-fixture's own braces as redundant. The diagnostic is a formatting artefact, so
-the helper emits `#[allow(unused_braces, reason = "rstest fixture expansion")]`
-for the annotated item.
+`unused_braces` is a rustc lint, not a Clippy lint. A single-expression fixture
+written on one line — whether by hand or by a formatter configured with
+`fn_single_line` — is re-emitted by `rstest` as `{ { body } }`, and rustc
+reports the fixture's own braces as redundant. The diagnostic is a formatting
+artefact, so the helper emits
+`#[allow(unused_braces, reason = "rstest fixture expansion")]` for the
+annotated item.
 
 The suppression is narrowed to single-expression bodies. The helper parses the
 item as a function and emits the `allow` only when the body is exactly one
@@ -365,12 +366,22 @@ The helper uses `allow` rather than `expect` because `rstest` drops user-written
 `report_in_external_macro` is false. The reasoned `allow` also satisfies the
 repository's `allow_attributes` and `allow_attributes_without_reason` policy.
 
+The helper is independent of formatter configuration: it triggers on a function
+whose body is a single expression statement without a trailing semicolon, and
+is correct whether or not `fn_single_line` is enabled. Multi-statement bodies
+and items that do not parse as functions pass through unchanged, `#[expect]` is
+unusable for the reason above, and the helper neither inspects nor enforces the
+repository's formatter settings. The 2026-11-06 addendum in
+[ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
+limitations.
+
 `tests/fixture_expansion_compile.rs` is the compile-test contract. Its pass
-case proves the suppression works for a single-line, single-expression fixture;
-its three compile-fail cases prove the diagnostic appears without the
-attribute, that the narrowing does not mask a genuine finding, and that a
-single statement with a trailing semicolon is not treated as a qualifying
-expression body.
+cases prove the suppression works for a single-line, single-expression fixture
+and that the attribute is transparent for an item that is not a function; its
+four compile-fail cases prove the diagnostic appears without the attribute,
+that the narrowing does not mask a genuine finding, that a single statement
+with a trailing semicolon is not treated as a qualifying expression body, and
+that a non-function item keeps its own `unused_braces` diagnostic.
 
 ### Build and dependency boundaries
 

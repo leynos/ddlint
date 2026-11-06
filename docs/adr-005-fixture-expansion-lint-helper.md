@@ -12,13 +12,12 @@ fixtures.
 
 ## Context and problem statement
 
-The repository formats Rust with `fn_single_line`, which collapses a
-single-expression function onto one line. `rstest` re-emits an annotated
-fixture's body inside its generated code as `{ { body } }`. Because the body
-already carries the fixture's braces, rustc's `unused_braces` lint reports the
-outer pair as redundant. The finding is an artefact of formatting plus macro
-expansion, not a defect in the fixture, and it would fail builds that treat
-warnings as errors.
+A fixture written as a single expression on one line — whether by hand or by a
+formatter configured with `fn_single_line` — is re-emitted by `rstest` inside
+its generated code as `{ { body } }`. Because the body already carries the
+fixture's braces, rustc's `unused_braces` lint reports the outer pair as
+redundant. The finding is an artefact of source shape plus macro expansion, not
+a defect in the fixture, and it would fail builds that treat warnings as errors.
 
 A source-level `#[allow(unused_braces)]` on the fixture would suppress the lint
 for the whole expanded item, including any genuine finding in the same fixture.
@@ -56,10 +55,10 @@ in one crate prevents the suppression from being copied and widened at
 individual call-sites.
 
 The helper narrows to a single expression statement without a trailing
-semicolon because only that shape is collapsed by `fn_single_line` into the
-double-braced expansion. A single statement ending in `;`, such as
-`return { value };`, is `syn::Stmt::Expr(_, Some(_))`; it is not the formatting
-artefact and must retain its genuine `unused_braces` diagnostic.
+semicolon because only that shape is collapsed onto one line and then
+re-emitted as the double-braced expansion. A single statement ending in `;`,
+such as `return { value };`, is `syn::Stmt::Expr(_, Some(_))`; it is not the
+formatting artefact and must retain its genuine `unused_braces` diagnostic.
 Multi-statement bodies are likewise untouched.
 
 The helper emits `allow` with a reason rather than `expect` because `rstest`
@@ -68,10 +67,11 @@ unchecked when `report_in_external_macro` is false. An unchecked expectation
 would defeat its purpose. The reasoned `allow` also satisfies the repository's
 `allow_attributes` and `allow_attributes_without_reason` policy.
 
-Genuine findings remain visible. The boundary is bound by three compile-fail
+Genuine findings remain visible. The boundary is bound by four compile-fail
 cases in `tests/fixture_expansion_compile.rs`: the diagnostic appears without
-the attribute, it is not masked in a multi-statement fixture, and a single
-statement with a trailing semicolon does not qualify.
+the attribute, it is not masked in a multi-statement fixture, a single
+statement with a trailing semicolon does not qualify, and an unparsable
+non-function item keeps its own diagnostic.
 
 ## Consequences
 
@@ -81,10 +81,25 @@ statement with a trailing semicolon does not qualify.
 - The helper is a path-only development dependency, so
   `cargo package -p ddlint` does not try to resolve it from a registry.
 - The compile-test contract must be updated whenever the qualification rule
-  changes; the three compile-fail cases pin the current boundary.
+  changes; the four compile-fail cases pin the current boundary.
 - A formatting change that stops collapsing a fixture could remove the
   artefact, and one that starts collapsing a different shape could introduce
   it. The compile cases make either change visible.
+
+## Addendum 2026-11-06: scope and limitations
+
+- The helper is independent of formatter configuration: it triggers on the
+  item's syntactic shape alone, matching a function whose body is a single
+  expression statement without a trailing semicolon. It is therefore correct
+  whether or not `fn_single_line` is enabled.
+- It is a no-op for multi-statement bodies and for items that are not
+  functions. Those items pass through unchanged.
+- It cannot use `#[expect]`; the [decision](#decision) above explains why
+  `rstest` drops user-written expectations and a macro-emitted expectation is
+  unchecked.
+- It does not detect or enforce the repository's formatter configuration.
+  Keeping a qualifying fixture on one line remains a source-authoring and
+  formatting concern.
 
 ## Alternatives considered
 
@@ -94,7 +109,9 @@ statement with a trailing semicolon does not qualify.
   expectations, so the attribute neither checks nor suppresses the diagnostic.
 - **Crate-level `unused_braces` allowance.** Masks every instance in the crate
   rather than the macro-expansion artefact.
-- **Disabling `fn_single_line`.** Changes the repository formatting standard to
-  accommodate a macro's expansion, with a wide blast radius.
+- **Not collapsing single-expression functions onto one line.** Removes a
+  formatting option that produces the artefact, but changes the repository
+  formatting standard to accommodate a macro's expansion, with a wide blast
+  radius.
 - **Emitting the allowance for every fixture.** Simpler, but it would hide a
   genuine finding in any multi-statement or trailing-semicolon fixture.
