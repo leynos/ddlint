@@ -5,7 +5,8 @@
 //! `RUSTDOCFLAGS`, not `RUSTFLAGS`, so the `test` recipe has to assign the
 //! policy itself. This module judges the repository's own recipe, and the
 //! checker that judges it, so canned cases prove each missing piece is
-//! reported.
+//! reported. The checker reads only the quoted `RUSTDOCFLAGS` value, so a
+//! matching flag elsewhere in the command cannot mask a missing one.
 
 use rstest::rstest;
 
@@ -15,11 +16,13 @@ use super::{
     process::real_make,
 };
 
-/// The pieces the doctest command must carry: the `RUSTDOCFLAGS` assignment
-/// itself, the caller's value inherited ahead of the policy, and the two
-/// arguments that build the snippets with warnings denied.
+/// The opening of the quoted `RUSTDOCFLAGS` assignment the recipe must carry.
+const RUSTDOCFLAGS_ASSIGNMENT: &str = "RUSTDOCFLAGS=\"";
+
+/// The pieces the quoted `RUSTDOCFLAGS` value must carry: the caller's value
+/// inherited ahead of the policy, and the two arguments that build the
+/// snippets with warnings denied.
 const REQUIRED_PIECES: &[&str] = &[
-    "RUSTDOCFLAGS=\"",
     "${RUSTDOCFLAGS:+$RUSTDOCFLAGS }",
     "-Zunstable-options",
     "--doctest-build-arg=-Dwarnings",
@@ -37,15 +40,33 @@ const REAL_SHAPE: &str = concat!(
 /// Returns the complaint about a doctest command that does not forward the
 /// warning policy, naming the pieces it lacks.
 ///
+/// The check is scoped to the quoted value of the `RUSTDOCFLAGS="..."`
+/// assignment, so an unrelated occurrence elsewhere in the command (for
+/// example `-Zunstable-options` in `RUSTFLAGS`) cannot satisfy a requirement.
+///
 /// ```text
 /// doctest_policy_problem(REAL_SHAPE) -> None
 /// doctest_policy_problem("cargo test --doc") -> Some("missing ...")
 /// ```
 pub fn doctest_policy_problem(command: &str) -> Option<String> {
+    let Some((_, after_assignment)) = command.split_once(RUSTDOCFLAGS_ASSIGNMENT) else {
+        return Some(format!(
+            "the --doc command drops the doctest warning policy; missing {RUSTDOCFLAGS_ASSIGNMENT}"
+        ));
+    };
+    let Some((value, _)) = after_assignment.split_once('"') else {
+        return Some(format!(
+            concat!(
+                "the --doc command drops the doctest warning policy; ",
+                "missing the closing quote of {}"
+            ),
+            RUSTDOCFLAGS_ASSIGNMENT
+        ));
+    };
     let missing: Vec<&str> = REQUIRED_PIECES
         .iter()
         .copied()
-        .filter(|piece| !command.contains(piece))
+        .filter(|piece| !value.contains(piece))
         .collect();
     let missing_list = missing.join(", ");
     (!missing_list.is_empty()).then(|| {
@@ -103,6 +124,15 @@ fn the_doctest_recipe_forwards_the_warning_policy() -> Result<(), String> {
 #[case::no_inherited_flags(
     Fixture(concat!(
         "RUSTDOCFLAGS=\"-Zunstable-options ",
+        "--doctest-build-arg=-Dwarnings\" ",
+        "cargo test --workspace --doc --all-features",
+    )),
+    true
+)]
+#[case::unstable_options_only_in_rustflags(
+    Fixture(concat!(
+        "RUSTFLAGS=\"-Zunstable-options\" ",
+        "RUSTDOCFLAGS=\"${RUSTDOCFLAGS:+$RUSTDOCFLAGS }",
         "--doctest-build-arg=-Dwarnings\" ",
         "cargo test --workspace --doc --all-features",
     )),

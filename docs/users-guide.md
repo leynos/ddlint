@@ -11,14 +11,31 @@ user-facing behaviour.
 - The linter runner executes registered CST rules and produces
   `LintDiagnostic` values.
 - The built-in command-line entrypoint currently only prints a placeholder
-  message and exits with a non-zero status.
+  message and exits with a non-zero status. When the message cannot be written
+  to standard output, the command reports the failure on standard error and
+  still exits non-zero.
+
+### Const-capable APIs
+
+The following public methods can be called in a `const` item or other
+compile-time context:
+
+- `RuleConfigValue::as_bool`
+- `UseOrigin::is_relation_read`
+- `SymbolOrigin::is_warning_eligible_rule_binding`
+- `StringLiteral::is_interpolated`
+
+The compile fixture `tests/ui/const_api_pass.rs` guards these qualifications
+against regression.
 
 ### Unreleased behaviour changes
 
-Two current-behaviour corrections are not yet in a release. Neither removes an
-API, so no code migration is required, but results observed through the
-previous release can change:
+Three changes are not yet in a release. None removes an API, so no code
+migration is required, but results observed through the previous release can
+change:
 
+- Public methods listed under [Const-capable APIs](#const-capable-apis) can now
+  be evaluated in `const` items. Existing calls are unaffected.
 - The `unused-variable` rule treats grouping parentheses and unary operators as
   transparent when it resolves uses. A binding used only under a wrapper is now
   counted as used, so a source that previously reported such a binding no
