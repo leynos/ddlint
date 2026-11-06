@@ -129,6 +129,10 @@ fn the_clippy_gate_fails_when_clippy_fails() -> Result<(), String> {
 
 /// Scenario: the aggregate `lint` with a controlled failing Clippy gate.
 ///
+/// The `interrogate` prerequisite is bypassed with `-o` so the aggregate
+/// reaches Clippy without needing `uv`; `lint-clippy` stays in place because
+/// the test must still exercise the Clippy gate.
+///
 /// Invariant: a failing Clippy run stops the aggregate, so the later Whitaker
 /// and spelling gates never start and the first real failure is the one
 /// reported.
@@ -156,6 +160,8 @@ fn the_aggregate_stops_after_a_failing_clippy_gate() -> Result<(), String> {
         &Invocation::new([
             "-j4",
             "lint",
+            "-o",
+            "interrogate",
             cargo_variable.as_str(),
             whitaker_variable.as_str(),
             spelling_variable.as_str(),
