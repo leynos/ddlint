@@ -216,6 +216,39 @@ pub(super) fn assert_fails(invocation: &Invocation, marker: Marker) -> Result<()
     }
 }
 
+/// Asserts that an invocation fails while reporting `expected_text`, and that
+/// it never reaches the tool printing `forbidden_marker`.
+///
+/// A preflight failure must name its remedy, and the forbidden marker proves
+/// the target stopped before the tool it guards could run.
+pub(super) fn assert_fails_reporting(
+    invocation: &Invocation,
+    expected_text: &str,
+    forbidden_marker: Marker,
+) -> Result<(), String> {
+    let (label, output) = invocation.run()?;
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    if output.status.success() {
+        return Err(format!("`make {label}` succeeded: {combined}"));
+    }
+    if !combined.contains(expected_text) {
+        let reason = format!("`make {label}` failed without reporting {expected_text:?}");
+        return Err(format!("{reason}; output: {combined}"));
+    }
+    if forbidden_marker.appears_in(&combined) {
+        let reason = format!(
+            "`make {label}` reached {:?} despite the preflight failure",
+            forbidden_marker.0
+        );
+        return Err(format!("{reason}; output: {combined}"));
+    }
+    Ok(())
+}
+
 /// The marker order an invocation must respect: `expected` must appear, and
 /// no `forbidden` marker may appear after it.
 #[derive(Clone, Copy)]
