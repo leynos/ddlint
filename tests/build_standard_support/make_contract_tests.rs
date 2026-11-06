@@ -1,9 +1,14 @@
 //! Contract tests for the Makefile targets that build under the standard.
 //!
-//! These read the repository's own `make -n` output rather than a fixture, so
-//! they are split from the contract root to keep each module within the module
-//! size budget. The readers they exercise live in [`super::make`] and
-//! [`super::process`].
+//! Some tests read this repository's own `make -n` output through
+//! `real_make` in [`super::process`], so a recipe that drifts fails rather
+//! than a fixture passing. Others pass canned command text to the readers
+//! in [`super::make`], pinning how a continued command, a target's assigned
+//! commands and an omitted warning policy are judged without depending on
+//! the current Makefile. Both prove the same contract: the reader tests
+//! establish that the judgement is sound, and the repository tests apply it
+//! to real output. They are split from the contract root to keep each
+//! module within the size budget.
 
 use rstest::rstest;
 
