@@ -350,7 +350,7 @@ those call sites; wider reuse requires an explicit ownership decision.
 ### Relation matrix case ownership
 
 The private `RelationFormCase` record belongs only to the 17 cases of
-`parses_relation_form_matrix` in `src/parser/tests/relations.rs`. It groups
+`parses_relation_form_matrix` in `src/parser/tests/relations/mod.rs`. It groups
 source text with the relation metadata compared by that test; parsing and
 assertions remain in the test body. It is not a shared parser expectation type.
 Wider reuse requires a separate ownership decision.
@@ -359,7 +359,7 @@ Wider reuse requires a separate ownership decision.
 
 The private `ExpectedRelation<'a>` record belongs only to the `input`,
 `output`, and `internal` cases of `parses_relations` in
-`src/parser/tests/relations.rs`. Direct named-field literals group the five
+`src/parser/tests/relations/mod.rs`. Direct named-field literals group the five
 expected outputs; each case supplies its source separately through the existing
 fixture. Parsing and comparisons remain in the test. The record has no
 constructor or parser API and is not shared with `RelationFormCase` or other
