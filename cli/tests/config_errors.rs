@@ -64,13 +64,37 @@ fn invalid_values_and_unknown_keys_fail(
 }
 
 /// Unknown rule names are rejected after successful deserialization.
+///
+/// The diagnostic must name the offending rule and advertise the exact
+/// supported-rule list, so drift in either the list or its rendering fails.
 #[rstest]
 fn unknown_rule_name_is_an_error() -> Result<(), Box<dyn std::error::Error>> {
     let file = ConfigFile::new("[cmds.lint.rules]\nnew-rule = 'error'\n")?;
     let error = load(Some(file.path()), empty_environment(), &no_cli_overrides())
         .expect_err("unknown rule names must fail validation");
+    let message = error.to_string();
 
-    assert!(error.to_string().contains("new-rule"), "{error:#?}");
+    assert!(message.contains("new-rule"), "{message}");
+    assert!(
+        message.contains("supported rules are `unused-relation` and `unused-variable`"),
+        "{message}"
+    );
+    Ok(())
+}
+
+/// Every rule advertised by the unknown-rule diagnostic is accepted on load.
+#[rstest]
+#[case("unused-relation")]
+#[case("unused-variable")]
+fn supported_rule_names_are_accepted(#[case] rule: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let contents = format!("[cmds.lint.rules]\n{rule} = 'error'\n");
+    let file = ConfigFile::new(&contents)?;
+    let settings = load(Some(file.path()), empty_environment(), &no_cli_overrides())?;
+
+    assert!(
+        settings.rule_levels.contains_key(rule),
+        "{rule} must be accepted"
+    );
     Ok(())
 }
 
