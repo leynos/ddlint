@@ -5,9 +5,14 @@ edition = "2024"
 rust-version = "1.89"
 publish = false
 
+# The bin shares its name with the root `ddlint` library target, so documenting
+# both writes to `target/doc/ddlint/` and Cargo warns about a filename collision
+# (rust-lang/cargo#6313). The binary has no public API of its own and defers to
+# the library, so only the library target is documented.
 [[bin]]
 name = "ddlint"
 path = "src/main.rs"
+doc = false
 
 [dependencies]
 clap = { version = "4.5.41", features = ["derive"] }
