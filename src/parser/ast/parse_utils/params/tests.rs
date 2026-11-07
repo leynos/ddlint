@@ -9,6 +9,12 @@ use fixture_lints::allow_fixture_expansion_lints;
 use rowan::{SyntaxElement, TextRange};
 use rstest::{fixture, rstest};
 
+/// Collect the syntax elements beneath the item selected from `src`.
+///
+/// The fixture prefers the first function, then the first relation, and
+/// otherwise falls back to the root's children. That order matches the item
+/// kinds exercised by the parameter-parsing cases, so each case can place its
+/// parameters in whichever position it needs.
 #[allow_fixture_expansion_lints]
 #[fixture]
 fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
