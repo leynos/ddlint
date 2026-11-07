@@ -4,6 +4,17 @@
 use super::pratt::Pratt;
 use crate::{Span, SyntaxKind, parser::ast::Expr};
 
+/// Shape of a comma-separated identifier list.
+///
+/// The terminator, diagnostic text, and trailing-comma policy always travel
+/// together, so grouping them keeps the list parser's argument count small.
+#[derive(Clone, Copy)]
+struct IdentifierListOptions {
+    terminator: SyntaxKind,
+    err_msg: &'static str,
+    allow_trailing_comma: bool,
+}
+
 impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
@@ -46,17 +57,7 @@ where
             return Some(Expr::Tuple(Vec::new()));
         }
         self.with_struct_literals_suspended(|this| {
-            let first = this.parse_expr(0)?;
-            let mut items = vec![first];
-            let mut is_tuple = false;
-            while matches!(this.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-                is_tuple = true;
-                this.ts.next_tok();
-                if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
-                    break;
-                }
-                items.push(this.parse_expr(0)?);
-            }
+            let (mut items, is_tuple) = this.parse_parenthesized_items()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
             }
@@ -70,6 +71,25 @@ where
                 Some(Expr::Group(Box::new(item)))
             }
         })
+    }
+
+    /// Parse the comma-separated items of a parenthesised expression.
+    ///
+    /// Returns the parsed items and whether a comma was seen, which decides
+    /// between a tuple and a single-item group.
+    fn parse_parenthesized_items(&mut self) -> Option<(Vec<Expr>, bool)> {
+        let first = self.parse_expr(0)?;
+        let mut items = vec![first];
+        let mut is_tuple = false;
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            is_tuple = true;
+            self.ts.next_tok();
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RPAREN)) {
+                break;
+            }
+            items.push(self.parse_expr(0)?);
+        }
+        Some((items, is_tuple))
     }
 
     /// Parse a vector literal `[e1, e2, ...]`.
@@ -225,17 +245,22 @@ where
 
     fn parse_closure_params(&mut self) -> Option<Vec<String>> {
         self.parse_comma_separated_identifiers(
-            SyntaxKind::T_PIPE,
-            "expected parameter name",
+            IdentifierListOptions {
+                terminator: SyntaxKind::T_PIPE,
+                err_msg: "expected parameter name",
+                allow_trailing_comma: true,
+            },
             |_parser, name| Some(name),
-            true,
         )
     }
 
     fn parse_struct_fields(&mut self) -> Option<Vec<(String, Expr)>> {
         self.parse_comma_separated_identifiers(
-            SyntaxKind::T_RBRACE,
-            "expected field name",
+            IdentifierListOptions {
+                terminator: SyntaxKind::T_RBRACE,
+                err_msg: "expected field name",
+                allow_trailing_comma: true,
+            },
             |parser, name| {
                 if !parser.ts.expect(SyntaxKind::T_COLON) {
                     return None;
@@ -243,37 +268,36 @@ where
                 let value = parser.parse_expr(0)?;
                 Some((name, value))
             },
-            true,
         )
     }
 
-    /// Parse a comma-separated list of identifiers up to (but not consuming) `terminator`.
-    /// Returns an empty vector if the next token is `terminator`. Callers must consume
-    /// `terminator`.
+    /// Parse a comma-separated list of identifiers up to (but not consuming) the
+    /// configured terminator.
+    ///
+    /// Returns an empty vector if the next token is the terminator. Callers must
+    /// consume the terminator.
     fn parse_comma_separated_identifiers<T>(
         &mut self,
-        terminator: SyntaxKind,
-        err_msg: &'static str,
+        options: IdentifierListOptions,
         mut process_item: impl FnMut(&mut Self, String) -> Option<T>,
-        allow_trailing_comma: bool,
     ) -> Option<Vec<T>> {
         let mut items = Vec::new();
-        if matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
+        if self.ts.peek_kind() == Some(options.terminator) {
             return Some(items);
         }
         loop {
-            let (k, sp) = self.ts.next_tok()?;
-            if k != SyntaxKind::T_IDENT {
-                self.ts.push_error(sp, err_msg);
+            let (kind, span) = self.ts.next_tok()?;
+            if kind != SyntaxKind::T_IDENT {
+                self.ts.push_error(span, options.err_msg);
                 return None;
             }
-            let name = self.ts.slice(&sp);
+            let name = self.ts.slice(&span);
             items.push(process_item(self, name)?);
-            if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            if self.ts.peek_kind() != Some(SyntaxKind::T_COMMA) {
                 break;
             }
             self.ts.next_tok();
-            if allow_trailing_comma && matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
+            if options.allow_trailing_comma && self.ts.peek_kind() == Some(options.terminator) {
                 break;
             }
         }

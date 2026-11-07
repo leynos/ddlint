@@ -75,7 +75,7 @@ pub enum UseOrigin {
 impl UseOrigin {
     /// Return `true` when this origin is a read-like relation position.
     #[must_use]
-    pub fn is_relation_read(self) -> bool {
+    pub const fn is_relation_read(self) -> bool {
         matches!(
             self,
             Self::RelationBody | Self::ForIterable | Self::ForGuard
@@ -86,7 +86,7 @@ impl UseOrigin {
 impl SymbolOrigin {
     /// Return `true` when this binding is user-authored and warning-eligible.
     #[must_use]
-    pub fn is_warning_eligible_rule_binding(self) -> bool {
+    pub const fn is_warning_eligible_rule_binding(self) -> bool {
         matches!(
             self,
             Self::RuleHead | Self::AssignmentPattern | Self::ForPattern
@@ -117,19 +117,19 @@ pub struct Scope {
 impl Scope {
     /// Category of this scope.
     #[must_use]
-    pub fn kind(&self) -> ScopeKind { self.kind }
+    pub const fn kind(&self) -> ScopeKind { self.kind }
 
     /// Parent scope, if any.
     #[must_use]
-    pub fn parent(&self) -> Option<ScopeId> { self.parent }
+    pub const fn parent(&self) -> Option<ScopeId> { self.parent }
 
     /// Provenance for this scope.
     #[must_use]
-    pub fn origin(&self) -> ScopeOrigin { self.origin }
+    pub const fn origin(&self) -> ScopeOrigin { self.origin }
 
     /// Source span covering the scope owner.
     #[must_use]
-    pub fn span(&self) -> &Span { &self.span }
+    pub const fn span(&self) -> &Span { &self.span }
 }
 
 /// One declaration or binding recorded in the symbol table.
@@ -152,31 +152,31 @@ impl Symbol {
 
     /// Declaration category.
     #[must_use]
-    pub fn kind(&self) -> DeclarationKind { self.kind }
+    pub const fn kind(&self) -> DeclarationKind { self.kind }
 
     /// Provenance for this symbol.
     #[must_use]
-    pub fn origin(&self) -> SymbolOrigin { self.origin }
+    pub const fn origin(&self) -> SymbolOrigin { self.origin }
 
     /// Scope that owns this symbol.
     #[must_use]
-    pub fn scope(&self) -> ScopeId { self.scope }
+    pub const fn scope(&self) -> ScopeId { self.scope }
 
     /// Source span that introduced this symbol.
     #[must_use]
-    pub fn span(&self) -> &Span { &self.span }
+    pub const fn span(&self) -> &Span { &self.span }
 
     /// Precise source span for the identifier token, when captured.
     #[must_use]
-    pub fn name_span(&self) -> Option<&Span> { self.name_span.as_ref() }
+    pub const fn name_span(&self) -> Option<&Span> { self.name_span.as_ref() }
 
     /// Stable source-order index within the owning scope.
     #[must_use]
-    pub fn source_order(&self) -> usize { self.source_order }
+    pub const fn source_order(&self) -> usize { self.source_order }
 
     /// First top-level rule-body position where this symbol becomes visible.
     #[must_use]
-    pub fn visible_from_rule_order(&self) -> usize { self.visible_from_rule_order }
+    pub const fn visible_from_rule_order(&self) -> usize { self.visible_from_rule_order }
 }
 
 /// One recorded name use together with its resolution outcome.
@@ -198,27 +198,27 @@ impl UseSite {
 
     /// Use category.
     #[must_use]
-    pub fn kind(&self) -> UseKind { self.kind }
+    pub const fn kind(&self) -> UseKind { self.kind }
 
     /// Provenance for this use site.
     #[must_use]
-    pub fn origin(&self) -> UseOrigin { self.origin }
+    pub const fn origin(&self) -> UseOrigin { self.origin }
 
     /// Scope in which the use occurred.
     #[must_use]
-    pub fn scope(&self) -> ScopeId { self.scope }
+    pub const fn scope(&self) -> ScopeId { self.scope }
 
     /// Source span covering this use site.
     #[must_use]
-    pub fn span(&self) -> &Span { &self.span }
+    pub const fn span(&self) -> &Span { &self.span }
 
     /// Stable source-order index for this use site.
     #[must_use]
-    pub fn source_order(&self) -> usize { self.source_order }
+    pub const fn source_order(&self) -> usize { self.source_order }
 
     /// Resolution outcome for this use site.
     #[must_use]
-    pub fn resolution(&self) -> Resolution { self.resolution }
+    pub const fn resolution(&self) -> Resolution { self.resolution }
 }
 
 /// Immutable semantic-analysis result for one parsed `DDlog` program.
@@ -239,7 +239,7 @@ pub struct SemanticModel {
 impl SemanticModel {
     /// Return the program scope identifier.
     #[must_use]
-    pub fn program_scope(&self) -> ScopeId { self.program_scope }
+    pub const fn program_scope(&self) -> ScopeId { self.program_scope }
 
     /// Return every recorded scope in stable build order.
     #[must_use]

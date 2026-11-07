@@ -10,6 +10,15 @@ CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
 RUSTUP ?= $(or $(shell command -v rustup 2>/dev/null),$(HOME)/.cargo/bin/rustup)
 BUILD_JOBS ?=
 CLIPPY_FLAGS ?= --all-targets --all-features -- -D warnings
+# Rustdoc denies warnings so a broken intra-doc link or a malformed code block
+# fails the gate rather than scrolling past. `--cfg docsrs` matches the
+# configuration docs.rs builds under.
+RUSTDOC_FLAGS ?= --cfg docsrs -D warnings
+# Rustdoc compiles every doctest snippet as its own crate and reads
+# RUSTDOCFLAGS, not RUSTFLAGS, so the warning policy must be forwarded
+# explicitly. `--doctest-build-arg` is unstable; the toolchain is pinned to
+# nightly and `test` preflights it through `check-build-tools`.
+DOCTEST_RUSTDOCFLAGS := -Zunstable-options --doctest-build-arg=-Dwarnings
 MDLINT ?= $(shell command -v markdownlint-cli2 2>/dev/null || printf '%s' "$$HOME/.bun/bin/markdownlint-cli2")
 # `make fmt` and `make check-fmt` call mdtablefix directly. `--git` selects the
 # Markdown files Git tracks and `--include-untracked` adds the untracked files
@@ -170,8 +179,9 @@ clean: ## Remove build artifacts
 	rm -rf .coverage .pytest_cache
 	rm -f .typos-oxendict-base.json .typos-oxendict-base.toml
 
-test: | check-build-tools ## Run tests with warnings treated as errors
+test: | check-build-tools ## Run tests and doctests with warnings treated as errors
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$${RUSTDOCFLAGS:+$$RUSTDOCFLAGS }$(DOCTEST_RUSTDOCFLAGS)" $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
 
 test-workflow-contracts: ## Validate the mutation-testing and CodeScene coverage workflow contracts
 	$(CV005_CONTRACTS) check --repository .
@@ -209,9 +219,10 @@ interrogate: ## Enforce complete Python docstring coverage
 # the development standard: its literal `RUSTFLAGS` displaces the `rustflags`
 # tables (no frontend flag, no `mold`) and inherits nothing from the caller. An
 # inherited `CARGO_ENCODED_RUSTFLAGS` outranks `RUSTFLAGS`, so it is cleared first.
-lint: interrogate ## Run Clippy and the Whitaker Dylint suite with warnings denied
+lint: interrogate ## Run Clippy, Rustdoc and the Whitaker Dylint suite with warnings denied
 	+$(MAKE) check-build-tools
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
 	+$(MAKE) test-clippy-policy
 	unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
 	+$(MAKE) spelling

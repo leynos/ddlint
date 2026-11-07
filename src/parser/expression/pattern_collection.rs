@@ -17,7 +17,7 @@ pub(super) struct DelimiterState {
 }
 
 impl DelimiterState {
-    pub(super) fn new() -> Self {
+    pub(super) const fn new() -> Self {
         Self {
             paren_depth: 0,
             brace_depth: 0,
@@ -27,70 +27,115 @@ impl DelimiterState {
         }
     }
 
-    pub(super) fn is_at_top_level(&self) -> bool {
+    pub(super) const fn is_at_top_level(&self) -> bool {
         type EmptyIter = std::iter::Empty<(SyntaxKind, Span)>;
         Pratt::<EmptyIter>::is_at_top_level(self.paren_depth, self.brace_depth, self.bracket_depth)
     }
 }
 
-/// Describes context-specific diagnostics for pattern collection.
-pub(super) struct PatternContext {
-    pub(super) missing_terminator_msg: &'static str,
-    pub(super) unmatched_paren_msg: &'static str,
-    pub(super) unmatched_brace_msg: &'static str,
-    pub(super) unmatched_bracket_msg: &'static str,
-    pub(super) unexpected_end_msg: &'static str,
-    pub(super) validate_on_eof: bool,
-    pub(super) use_for_paren: bool,
+/// The construct whose pattern is being collected.
+#[derive(Clone, Copy)]
+enum PatternSite {
+    MatchArm,
+    ForLoop,
 }
 
-impl PatternContext {
-    fn new(
-        pattern_type: &'static str,
-        missing_terminator_msg: &'static str,
-        validate_on_eof: bool,
-        use_for_paren: bool,
-    ) -> Self {
-        let (unmatched_paren_msg, unmatched_brace_msg, unmatched_bracket_msg, unexpected_end_msg) =
-            match pattern_type {
-                "match pattern" => (
-                    "unmatched closing parenthesis in match pattern",
-                    "unmatched closing brace in match pattern",
-                    "unmatched closing bracket in match pattern",
-                    "unexpected end of input in match pattern",
-                ),
-                "for-loop pattern" => (
-                    "unmatched closing parenthesis in for-loop pattern",
-                    "unmatched closing brace in for-loop pattern",
-                    "unmatched closing bracket in for-loop pattern",
-                    "unexpected end of input in for-loop pattern",
-                ),
-                _ => unreachable!("unknown pattern context: {pattern_type}"),
-            };
-
-        Self {
-            missing_terminator_msg,
-            unmatched_paren_msg,
-            unmatched_brace_msg,
-            unmatched_bracket_msg,
-            unexpected_end_msg,
-            validate_on_eof,
-            use_for_paren,
+impl PatternSite {
+    /// Returns the diagnostic for a pattern that ends without the terminator
+    /// that closes it (`->` for a match arm, `in` for a for-loop header).
+    const fn missing_terminator_msg(self) -> &'static str {
+        match self {
+            Self::MatchArm => "expected '->' in match arm",
+            Self::ForLoop => "expected 'in' in for-loop header",
         }
     }
 
-    pub(super) fn for_match_pattern() -> Self {
-        Self::new("match pattern", "expected '->' in match arm", false, false)
+    /// Returns the diagnostic for a closing delimiter that has no matching
+    /// opener in this site's pattern.
+    const fn unmatched_delimiter_msg(self, delimiter: DelimiterKind) -> &'static str {
+        match (self, delimiter) {
+            (Self::MatchArm, DelimiterKind::Paren) => {
+                "unmatched closing parenthesis in match pattern"
+            }
+            (Self::MatchArm, DelimiterKind::Brace) => "unmatched closing brace in match pattern",
+            (Self::MatchArm, DelimiterKind::Bracket) => {
+                "unmatched closing bracket in match pattern"
+            }
+            (Self::ForLoop, DelimiterKind::Paren) => {
+                "unmatched closing parenthesis in for-loop pattern"
+            }
+            (Self::ForLoop, DelimiterKind::Brace) => "unmatched closing brace in for-loop pattern",
+            (Self::ForLoop, DelimiterKind::Bracket) => {
+                "unmatched closing bracket in for-loop pattern"
+            }
+        }
     }
 
-    pub(super) fn for_for_loop_pattern() -> Self {
-        Self::new(
-            "for-loop pattern",
-            "expected 'in' in for-loop header",
-            true,
-            true,
-        )
+    /// Returns the diagnostic for input that ends while the pattern is still
+    /// incomplete.
+    const fn unexpected_end_msg(self) -> &'static str {
+        match self {
+            Self::MatchArm => "unexpected end of input in match pattern",
+            Self::ForLoop => "unexpected end of input in for-loop pattern",
+        }
     }
+}
+
+/// A closing delimiter that may appear inside a pattern.
+#[derive(Clone, Copy)]
+pub(super) enum DelimiterKind {
+    Paren,
+    Brace,
+    Bracket,
+}
+
+/// Describes context-specific diagnostics and behaviour for pattern collection.
+pub(super) struct PatternContext {
+    site: PatternSite,
+}
+
+impl PatternContext {
+    /// Creates the context for a `match` arm pattern, which ends at `->`.
+    pub(super) const fn for_match_pattern() -> Self {
+        Self {
+            site: PatternSite::MatchArm,
+        }
+    }
+
+    /// Creates the context for a `for` header pattern, which ends at `in`.
+    pub(super) const fn for_for_loop_pattern() -> Self {
+        Self {
+            site: PatternSite::ForLoop,
+        }
+    }
+
+    /// Returns whether delimiter balance must be checked when input ends
+    /// before the terminator.
+    ///
+    /// A for-loop header must have balanced delimiters, so an unbalanced
+    /// header is diagnosed before the missing `in`; a match arm only needs the
+    /// missing `->` diagnostic.
+    pub(super) const fn validate_on_eof(&self) -> bool { matches!(self.site, PatternSite::ForLoop) }
+
+    /// Returns whether a closing parenthesis may close the for-loop header's
+    /// wrapping delimiter instead of counting as unmatched.
+    ///
+    /// Only for-loop headers accept the `for (x) in xs` form.
+    pub(super) const fn use_for_paren(&self) -> bool { matches!(self.site, PatternSite::ForLoop) }
+
+    /// Returns the site-specific diagnostic for a missing terminator.
+    pub(super) const fn missing_terminator_msg(&self) -> &'static str {
+        self.site.missing_terminator_msg()
+    }
+
+    /// Returns the site-specific diagnostic for an unmatched closing
+    /// delimiter.
+    pub(super) const fn unmatched_delimiter_msg(&self, delimiter: DelimiterKind) -> &'static str {
+        self.site.unmatched_delimiter_msg(delimiter)
+    }
+
+    /// Returns the site-specific diagnostic for input ending mid-pattern.
+    pub(super) const fn unexpected_end_msg(&self) -> &'static str { self.site.unexpected_end_msg() }
 }
 
 /// Encapsulates the collection strategy for pattern parsing.
@@ -102,7 +147,7 @@ struct PatternCollectionStrategy<Terminator, PreCheck, Finalise> {
 }
 
 impl<Terminator, PreCheck, Finalise> PatternCollectionStrategy<Terminator, PreCheck, Finalise> {
-    fn new(
+    const fn new(
         should_terminate: Terminator,
         pre_check: PreCheck,
         consume_terminator: bool,
@@ -124,7 +169,7 @@ struct PatternCollectionConfig<Terminator, PreCheck, Finalise> {
 }
 
 impl<Terminator, PreCheck, Finalise> PatternCollectionConfig<Terminator, PreCheck, Finalise> {
-    fn new(
+    const fn new(
         strategy: PatternCollectionStrategy<Terminator, PreCheck, Finalise>,
         context: PatternContext,
     ) -> Self {
@@ -139,7 +184,7 @@ pub(super) struct DelimiterToken {
 }
 
 impl DelimiterToken {
-    pub(super) fn new(kind: SyntaxKind, span: Span) -> Self { Self { kind, span } }
+    pub(super) const fn new(kind: SyntaxKind, span: Span) -> Self { Self { kind, span } }
 }
 
 /// Encapsulates termination handling for pattern collection.
@@ -150,7 +195,11 @@ pub(super) struct TerminationHandler<Finalise> {
 }
 
 impl<Finalise> TerminationHandler<Finalise> {
-    pub(super) fn new(kind: SyntaxKind, consume_terminator: bool, finalise: Finalise) -> Self {
+    pub(super) const fn new(
+        kind: SyntaxKind,
+        consume_terminator: bool,
+        finalise: Finalise,
+    ) -> Self {
         Self {
             kind,
             consume_terminator,
@@ -269,48 +318,41 @@ where
             mut should_terminate,
             mut pre_check,
             consume_terminator,
-            finalise,
+            finalise: finalise_terminator,
         } = strategy;
-        let mut finalise_fn = Some(finalise);
-
         let mut state = DelimiterState::new();
         let mut last_span: Option<Span> = None;
         let mut collected: Vec<(SyntaxKind, Span)> = Vec::new();
 
-        loop {
+        let terminator_kind = loop {
             let Some(kind) = self.ts.peek_kind() else {
                 let _ = self.handle_eof_in_pattern_collection(&state, last_span.as_ref(), &context);
                 return None;
             };
 
             if should_terminate(&*self, kind, &state) {
-                #[expect(
-                    clippy::unreachable,
-                    reason = "pattern finaliser consumed exactly once"
-                )]
-                let Some(finalise) = finalise_fn.take() else {
-                    unreachable!("pattern finaliser already consumed");
-                };
-                let span = self.handle_pattern_termination(
-                    TerminationHandler::new(kind, consume_terminator, finalise),
-                    state,
-                    last_span.as_ref(),
-                )?;
-                return Some((collected, span));
+                break kind;
             }
 
             pre_check(self, kind, &state)?;
 
-            let Some((kind, span)) = self.ts.next_tok() else {
+            let Some((token_kind, span)) = self.ts.next_tok() else {
                 self.ts
-                    .push_error(self.ts.eof_span(), context.unexpected_end_msg.to_string());
+                    .push_error(self.ts.eof_span(), context.unexpected_end_msg().to_owned());
                 return None;
             };
             last_span = Some(span.clone());
-            collected.push((kind, span.clone()));
+            collected.push((token_kind, span.clone()));
 
-            let token = DelimiterToken::new(kind, span);
+            let token = DelimiterToken::new(token_kind, span);
             self.process_delimiter_token(&token, &mut state, &context)?;
-        }
+        };
+
+        let span = self.handle_pattern_termination(
+            TerminationHandler::new(terminator_kind, consume_terminator, finalise_terminator),
+            state,
+            last_span.as_ref(),
+        )?;
+        Some((collected, span))
     }
 }

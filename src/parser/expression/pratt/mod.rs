@@ -47,7 +47,7 @@ struct StructLiteralState {
 }
 
 impl StructLiteralState {
-    fn activate(&mut self) { self.active += 1; }
+    const fn activate(&mut self) { self.active += 1; }
 
     fn deactivate(&mut self) {
         // The guard depth must not underflow; saturate rather than panic if
@@ -59,7 +59,9 @@ impl StructLiteralState {
         }
     }
 
-    fn suspend(&mut self) -> bool {
+    /// Suspend an active struct-literal guard, returning `false` when none is
+    /// active so the caller knows the guard was not suspended.
+    const fn suspend(&mut self) -> bool {
         if self.active == 0 {
             return false;
         }
@@ -77,7 +79,9 @@ impl StructLiteralState {
         self.suspension = self.suspension.saturating_sub(1);
     }
 
-    fn allows_struct_literal(&self) -> bool { self.active == 0 || self.suspension > 0 }
+    /// Return `true` when a `{` here may open a struct literal, which requires
+    /// either no active guard or a suspended one.
+    const fn allows_struct_literal(&self) -> bool { self.active == 0 || self.suspension > 0 }
 }
 
 /// Parse a source string into an [`Expr`].
@@ -109,7 +113,7 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let mut errors = parser.ts.take_errors();
     complete_reserved_token_errors(&crate::tokenize_with_trivia(src), &mut errors);
     match expr {
-        Some(expr) if errors.is_empty() => Ok(expr),
+        Some(parsed) if errors.is_empty() => Ok(parsed),
         _ => Err(errors),
     }
 }
@@ -128,7 +132,7 @@ where
         }
     }
 
-    pub(super) fn allows_struct_literals(&self) -> bool {
+    pub(super) const fn allows_struct_literals(&self) -> bool {
         self.struct_literals.allows_struct_literal()
     }
 
@@ -184,8 +188,8 @@ where
     }
 
     fn parse_expr_inner(&mut self, min_bp: u8) -> Option<Expr> {
-        let lhs = self.parse_prefix()?;
-        let lhs = self.parse_postfix(lhs)?;
+        let prefix = self.parse_prefix()?;
+        let lhs = self.parse_postfix(prefix)?;
         self.parse_infix(lhs, min_bp)
     }
 
@@ -195,8 +199,8 @@ where
     /// rather than being consumed as type ascription.
     pub(super) fn parse_map_key_expr(&mut self, min_bp: u8) -> Option<Expr> {
         self.with_depth_check(|this| {
-            let lhs = this.parse_prefix()?;
-            let lhs = this.parse_postfix(lhs)?;
+            let prefix = this.parse_prefix()?;
+            let lhs = this.parse_postfix(prefix)?;
             this.parse_infix_with_colon_mode(lhs, min_bp, true)
         })
     }

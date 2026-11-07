@@ -99,10 +99,10 @@ fn check_unique(
         }
         match seen.entry(name) {
             Entry::Occupied(e) => {
-                let name = e.key();
+                let duplicate_name = e.key();
                 errors.push(Simple::custom(
                     span,
-                    format!("duplicate {category} name '{name}'"),
+                    format!("duplicate {category} name '{duplicate_name}'"),
                 ));
             }
             Entry::Vacant(e) => {

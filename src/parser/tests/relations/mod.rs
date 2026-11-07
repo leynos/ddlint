@@ -19,6 +19,7 @@ use crate::{
     test_util::{assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error},
 };
 
+/// Build a field-list relation body from name and type pairs.
 fn fields(items: &[(&str, &str)]) -> RelationBody {
     RelationBody::Fields(
         items
@@ -99,6 +100,7 @@ fn multiline_relation_parsed(multiline_relation: &str) {
     assert_eq!(pretty_print(rel.syntax()), multiline_relation);
 }
 
+/// Check that a spec-form primary key round-trips through pretty printing.
 #[test]
 fn preserves_spec_form_primary_key_text() {
     let source = "input relation Book(row: BookRow) primary key (row) (row.author, row.title)\n";
@@ -116,6 +118,7 @@ fn preserves_spec_form_primary_key_text() {
     assert_eq!(pretty_print(rel.syntax()), source);
 }
 
+/// Check that an unclosed relation parenthesis is reported as an error.
 #[rstest]
 fn relation_unbalanced_parentheses_is_error(relation_unbalanced_parentheses: &str) {
     let parsed = crate::parse(relation_unbalanced_parentheses);

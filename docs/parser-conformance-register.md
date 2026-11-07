@@ -163,7 +163,7 @@ This register tracks parser behaviour against the syntax specification.
   AST exposes `RelationRole`, `RelationKind`, `RelationBody`, keyword-presence
   flags, `is_ref()`, and compatibility `primary_key()` binder/list access
   (`src/parser/ast/relation/mod.rs`). Regression coverage includes the relation
-  form matrix and property tests (`src/parser/tests/relations.rs`,
+  form matrix and property tests (`src/parser/tests/relations/mod.rs`,
   `src/parser/tests/relation_proptest.rs`).
 - Spec/target behaviour: matches section 5.5. Absence of a role means internal;
   `internal` is not reserved. Absence of a kind means `relation`. Primary keys

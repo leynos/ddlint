@@ -102,8 +102,8 @@ fn collect_lowered_terms(
 fn is_supported_head_expression(expr: &Expr) -> bool {
     match expr {
         Expr::Call { .. } | Expr::Apply { .. } => true,
-        Expr::AtomDiff { expr } | Expr::AtomDelay { expr, .. } => {
-            is_supported_head_expression(expr)
+        Expr::AtomDiff { expr: inner } | Expr::AtomDelay { expr: inner, .. } => {
+            is_supported_head_expression(inner)
         }
         _ => false,
     }

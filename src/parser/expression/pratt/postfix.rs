@@ -195,10 +195,10 @@ mod tests {
         let expr = parse_expression("S'(x)").expect("diff postfix should parse");
 
         assert_eq!(expr.to_sexpr(), "(diff (call S x))");
-        let Expr::AtomDiff { expr } = expr else {
+        let Expr::AtomDiff { expr: inner } = expr else {
             panic!("expected diff postfix to wrap the completed call");
         };
-        assert_eq!(expr.to_sexpr(), "(call S x)");
+        assert_eq!(inner.to_sexpr(), "(call S x)");
     }
 
     #[test]

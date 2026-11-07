@@ -8,7 +8,7 @@
 
 mod support;
 
-use std::{collections::BTreeMap, fmt::Write as _};
+use std::collections::BTreeMap;
 
 use ddlint::linter::RuleLevel;
 use ddlint_cli::config::{LintCliArgs, OutputFormat};
@@ -86,7 +86,7 @@ fn layer_strategy() -> impl Strategy<Value = Layer> {
 }
 
 /// Return the TOML and environment spelling of an output format.
-fn format_spelling(format: OutputFormat) -> &'static str {
+const fn format_spelling(format: OutputFormat) -> &'static str {
     match format {
         OutputFormat::Rich => "rich",
         OutputFormat::Json => "json",
@@ -95,7 +95,7 @@ fn format_spelling(format: OutputFormat) -> &'static str {
 }
 
 /// Return the configuration spelling of a rule severity.
-fn level_spelling(level: RuleLevel) -> &'static str {
+const fn level_spelling(level: RuleLevel) -> &'static str {
     match level {
         RuleLevel::Allow => "allow",
         RuleLevel::Hint => "hint",
@@ -105,10 +105,15 @@ fn level_spelling(level: RuleLevel) -> &'static str {
 }
 
 /// Render a layer as the TOML document an explicit configuration file holds.
-fn render_file(layer: &Layer) -> String {
+///
+/// Writing to a `String` cannot fail, but the `Result` lets the caller use `?`
+/// and keeps the formatter's must-use result from being discarded.
+fn render_file(layer: &Layer) -> Result<String, std::fmt::Error> {
+    use std::fmt::Write as _;
+
     let mut document = String::from("[cmds.lint]\n");
     if let Some(format) = layer.format {
-        let _ = writeln!(document, "format = '{}'", format_spelling(format));
+        writeln!(document, "format = '{}'", format_spelling(format))?;
     }
     if let Some(patterns) = &layer.ignore_patterns {
         let quoted = patterns
@@ -116,15 +121,15 @@ fn render_file(layer: &Layer) -> String {
             .map(|pattern| format!("'{pattern}'"))
             .collect::<Vec<_>>()
             .join(", ");
-        let _ = writeln!(document, "ignore_patterns = [{quoted}]");
+        writeln!(document, "ignore_patterns = [{quoted}]")?;
     }
     if !layer.rules.is_empty() {
         document.push_str("[cmds.lint.rules]\n");
         for (name, level) in &layer.rules {
-            let _ = writeln!(document, "{name} = '{}'", level_spelling(*level));
+            writeln!(document, "{name} = '{}'", level_spelling(*level))?;
         }
     }
-    document
+    Ok(document)
 }
 
 /// Render patterns as the JSON string array an environment value carries.
@@ -208,8 +213,9 @@ proptest! {
         cli_format in prop::option::of(format_strategy()),
         no_ignore in any::<bool>(),
     ) {
-        let config_file = ConfigFile::new(&render_file(&file))
-            .expect("generated configuration file is created");
+        let rendered = render_file(&file).expect("writing to a String cannot fail");
+        let config_file =
+            ConfigFile::new(&rendered).expect("generated configuration file is created");
         let mut cli = no_cli_overrides();
         cli.format = cli_format;
         cli.no_ignore = no_ignore;

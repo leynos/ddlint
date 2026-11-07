@@ -105,8 +105,8 @@ fn runner_skips_rules_for_any_parse_error(
         !parsed.errors().is_empty(),
         "generic syntax error should prevent lint rule execution"
     );
-    if let Some(message) = message {
-        assert_custom_parse_error_contains(parsed.errors(), message);
+    if let Some(expected_message) = message {
+        assert_custom_parse_error_contains(parsed.errors(), expected_message);
     }
     assert!(
         parsed

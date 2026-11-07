@@ -55,7 +55,7 @@ impl SemanticRule {
 
     /// Origin category for this rule.
     #[must_use]
-    pub fn origin(&self) -> SemanticRuleOrigin { self.origin }
+    pub const fn origin(&self) -> SemanticRuleOrigin { self.origin }
 
     /// Source span that produced this semantic rule.
     #[must_use]
@@ -67,7 +67,7 @@ impl SemanticRule {
 
     /// Rule head expression.
     #[must_use]
-    pub fn head(&self) -> &Expr { &self.head }
+    pub const fn head(&self) -> &Expr { &self.head }
 
     /// Rule body expressions in evaluation order.
     #[must_use]

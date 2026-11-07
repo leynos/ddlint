@@ -245,9 +245,10 @@ R2(x) :- B(x).
     non_rule_spans.extend(index_spans);
     non_rule_spans.extend(function_spans);
     non_rule_spans.extend(transformer_spans);
-    let non_rule_spans = merge_spans(non_rule_spans);
+    let merged_non_rule_spans = merge_spans(non_rule_spans);
 
-    let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &non_rule_spans);
+    let (rule_spans, expr_spans, rule_errors) =
+        collect_rule_spans(&tokens, src, &merged_non_rule_spans);
     assert_eq!(rule_errors.len(), 0);
     assert_eq!(rule_spans.len(), 2, "expected two rules only");
     assert_eq!(expr_spans.len(), 2, "expected one expression per rule");
@@ -285,9 +286,9 @@ fn collect_rule_spans_respects_exclusions() {
     let (functions, fn_errors) = collect_function_spans(&tokens, src);
     assert_eq!(fn_errors.len(), 0);
 
-    let imports = merge_spans([imports, functions].concat());
+    let excluded_spans = merge_spans([imports, functions].concat());
 
-    let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &imports);
+    let (rule_spans, expr_spans, rule_errors) = collect_rule_spans(&tokens, src, &excluded_spans);
     assert_eq!(rule_errors.len(), 0);
     assert_eq!(rule_spans.len(), 1);
     assert_eq!(expr_spans.len(), 1);

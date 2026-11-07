@@ -276,18 +276,22 @@ mod tests {
         }
     }
 
+    /// Runs `rule` over every node and token in the fixture that matches one
+    /// of its target kinds, returning the diagnostics it emitted.
+    ///
+    /// This mirrors the linter's dispatch so the macro-generated handlers can
+    /// be exercised without constructing a full lint run.
     fn run_rule_over_cst(fixture: &MacroRuleFixture, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
         let mut diagnostics = Vec::new();
 
         for element in fixture.parsed.root().syntax().descendants_with_tokens() {
-            if rule.target_kinds().contains(&element.kind()) {
-                match &element {
-                    NodeOrToken::Node(node) => {
-                        rule.check_node(node, &fixture.ctx, &mut diagnostics);
-                    }
-                    NodeOrToken::Token(token) => {
-                        rule.check_token(token, &fixture.ctx, &mut diagnostics);
-                    }
+            if !rule.target_kinds().contains(&element.kind()) {
+                continue;
+            }
+            match &element {
+                NodeOrToken::Node(node) => rule.check_node(node, &fixture.ctx, &mut diagnostics),
+                NodeOrToken::Token(token) => {
+                    rule.check_token(token, &fixture.ctx, &mut diagnostics);
                 }
             }
         }

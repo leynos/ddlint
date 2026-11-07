@@ -26,6 +26,20 @@ fn rule_binding_symbol_id(model: &super::super::SemanticModel, name: &str) -> Sy
 #[rstest]
 #[case("Output(head_x) :- Source(head_x).", "head_x", true)]
 #[case("Output(head_x) :- Source(_).", "head_x", false)]
+// Wrapper expressions must still record the uses of their children.
+#[case("Output(head_x) :- Source((head_x)).", "head_x", true)]
+#[case("Output(head_x) :- Source(-head_x).", "head_x", true)]
+#[case("Output(head_x) :- Source(head_x.field).", "head_x", true)]
+#[case("Output(head_x) :- Source(head_x.0).", "head_x", true)]
+// A diff marker must bind to a postfix atom, so the wrapper carries a field
+// access whose child is the variable.
+#[case("Output(head_x) :- Source(head_x'.field).", "head_x", true)]
+#[case("Output(head_x) :- Source(head_x-<5>).", "head_x", true)]
+#[case("Output(head_x) :- Source(|ignored| head_x).", "head_x", true)]
+// `return` is only legal in function or closure bodies, never in a rule body,
+// so the wrapper is exercised through a closure while `head_x` stays a rule
+// binding.
+#[case("Output(head_x) :- Source(|ignored| return head_x).", "head_x", true)]
 #[case(
     "Output(result) :- Source(result), var assigned_x = Seed(result), Use(assigned_x).",
     "assigned_x",

@@ -87,10 +87,10 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
 }
 
 pub(super) fn rule_statement(
-    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
+    ws_parser: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
     recursive(|stmt| {
-        let ws = ws.clone();
+        let ws = ws_parser.clone();
         let pad = |p: BoxedParser<'static, SyntaxKind, (), Simple<SyntaxKind>>| {
             p.padded_by(ws.clone()).boxed()
         };
@@ -214,10 +214,10 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
 
     let start_idx = st.stream.cursor();
     let parser = rule_decl();
-    let (rule_span, err) = st.parse_span(parser, span.start);
+    let (maybe_rule_span, parse_errors) = st.parse_span(parser, span.start);
 
-    let Some(rule_span) = rule_span else {
-        st.extra.extend(err);
+    let Some(rule_span) = maybe_rule_span else {
+        st.extra.extend(parse_errors);
         let end = st.stream.line_end(st.stream.cursor());
         st.stream.skip_until(end);
         return;
@@ -232,8 +232,8 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
         st.extra.extend(errs);
     }
 
-    for span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
-        if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
+    for literal_span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
+        if let Err(err) = validate_expression(st.stream.src(), literal_span.clone()) {
             match err {
                 ExpressionError::Parse(errs) => {
                     st.extra.extend(errs);
@@ -244,7 +244,7 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
                 }
             }
         }
-        exprs.push(span);
+        exprs.push(literal_span);
     }
 
     st.stream.skip_until(end);

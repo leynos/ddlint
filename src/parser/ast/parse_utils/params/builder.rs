@@ -46,7 +46,7 @@ where
             end_pos,
         } = state;
         let span = create_text_span(start_pos, end_pos);
-        let name = name_buf.trim().to_string();
+        let name = name_buf.trim().to_owned();
         let ProcessingContext { iter, errors } = ctx;
         Self {
             name,
@@ -98,7 +98,7 @@ where
     fn report_missing_colon(&mut self) {
         if let Some(span) = self.span {
             self.errors.push(ParseError::MissingColon {
-                message: "Expected ':' after name, but found ',' or ')' instead".to_string(),
+                message: "Expected ':' after name, but found ',' or ')' instead".to_owned(),
                 span,
             });
         }

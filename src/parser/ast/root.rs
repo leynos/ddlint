@@ -29,7 +29,7 @@ pub struct Root {
 impl Root {
     /// Obtain the underlying syntax node.
     #[must_use]
-    pub fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> { &self.syntax }
+    pub const fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> { &self.syntax }
 
     /// Create a new `Root` from a green node.
     #[must_use]

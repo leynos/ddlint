@@ -34,7 +34,7 @@ where
     let Some(message) = err
         .downcast_ref::<String>()
         .cloned()
-        .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_string()))
+        .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_owned()))
     else {
         panic!("expected panic payload to be String or &str, got unknown type");
     };
@@ -131,7 +131,11 @@ pub fn assert_parse_error(
         rendered_normalised.contains(&pattern_normalised),
         "expected error to contain pattern '{pattern:?}', got '{rendered}'",
     );
-    assert_eq!(error.span(), start..end);
+    assert_eq!(
+        error.span(),
+        start..end,
+        "error span should cover the expected range"
+    );
 }
 
 /// Return `true` if any error in `errors` is a [`SimpleReason::Custom`] whose
@@ -258,7 +262,11 @@ fn assert_delimiter_error_impl<'a>(
         rendered_normalised.contains(&pattern_normalised),
         "expected error to contain pattern '{expected_pattern:?}', got '{rendered}'",
     );
-    assert_eq!(error.span(), span);
+    assert_eq!(
+        error.span(),
+        span,
+        "error span should cover the expected range"
+    );
     error
 }
 

@@ -58,24 +58,95 @@ fn function_nested_generics() -> &'static str {
 #[fixture]
 fn function_shift_param() -> &'static str { "function shift(x: Vec<<u8>>): bool {}\n" }
 
+/// One function-parsing case.
+struct FunctionParseCase {
+    src: &'static str,
+    name: &'static str,
+    is_extern: bool,
+    params: Vec<(&'static str, &'static str)>,
+    ret: Option<&'static str>,
+}
+
+/// Check function parsing for parameters, return types, and round-tripping.
 #[rstest]
-#[case::extern_fn(extern_function(), "hash", true, vec![("data", "string")], Some("u64"))]
-#[case::body(function_with_body(), "to_uppercase", false, vec![("s", "string")], Some("string"))]
-#[case::no_return(function_no_return(), "log_message", false, vec![("msg", "string")], None)]
-#[case::no_params(function_no_params(), "greet", false, vec![], Some("string"))]
-#[case::multi_params(function_multi_params(), "concat", false, vec![("a", "string"), ("b", "string")], Some("string"))]
-#[case::complex_params(function_complex_params(), "complex", false, vec![("p", "(u32,(u8,string))")], Some("bool"))]
-#[case::ws_comments(function_ws_comments(), "spaced", false, vec![("x", "string")], Some("u8"))]
-#[case::generic(function_generic_params(), "example", false, vec![("arg", "Vec<(u32,string)>") , ("map", "Map<string,u64>")], Some("bool"))]
-#[case::nested_generics(function_nested_generics(), "test", false, vec![("p", "Vec<Map<string,Vec<u8>>>") , ("arr", "[Vec<u32>]")], Some("bool"))]
-#[case::shift(function_shift_param(), "shift", false, vec![("x", "Vec<<u8>>")], Some("bool"))]
-fn parses_functions(
-    #[case] src: &str,
-    #[case] name: &str,
-    #[case] is_extern: bool,
-    #[case] params: Vec<(&str, &str)>,
-    #[case] ret: Option<&str>,
-) {
+#[case::extern_fn(FunctionParseCase {
+    src: extern_function(),
+    name: "hash",
+    is_extern: true,
+    params: vec![("data", "string")],
+    ret: Some("u64"),
+})]
+#[case::body(FunctionParseCase {
+    src: function_with_body(),
+    name: "to_uppercase",
+    is_extern: false,
+    params: vec![("s", "string")],
+    ret: Some("string"),
+})]
+#[case::no_return(FunctionParseCase {
+    src: function_no_return(),
+    name: "log_message",
+    is_extern: false,
+    params: vec![("msg", "string")],
+    ret: None,
+})]
+#[case::no_params(FunctionParseCase {
+    src: function_no_params(),
+    name: "greet",
+    is_extern: false,
+    params: vec![],
+    ret: Some("string"),
+})]
+#[case::multi_params(FunctionParseCase {
+    src: function_multi_params(),
+    name: "concat",
+    is_extern: false,
+    params: vec![("a", "string"), ("b", "string")],
+    ret: Some("string"),
+})]
+#[case::complex_params(FunctionParseCase {
+    src: function_complex_params(),
+    name: "complex",
+    is_extern: false,
+    params: vec![("p", "(u32,(u8,string))")],
+    ret: Some("bool"),
+})]
+#[case::ws_comments(FunctionParseCase {
+    src: function_ws_comments(),
+    name: "spaced",
+    is_extern: false,
+    params: vec![("x", "string")],
+    ret: Some("u8"),
+})]
+#[case::generic(FunctionParseCase {
+    src: function_generic_params(),
+    name: "example",
+    is_extern: false,
+    params: vec![("arg", "Vec<(u32,string)>"), ("map", "Map<string,u64>")],
+    ret: Some("bool"),
+})]
+#[case::nested_generics(FunctionParseCase {
+    src: function_nested_generics(),
+    name: "test",
+    is_extern: false,
+    params: vec![("p", "Vec<Map<string,Vec<u8>>>"), ("arr", "[Vec<u32>]")],
+    ret: Some("bool"),
+})]
+#[case::shift(FunctionParseCase {
+    src: function_shift_param(),
+    name: "shift",
+    is_extern: false,
+    params: vec![("x", "Vec<<u8>>")],
+    ret: Some("bool"),
+})]
+fn parses_functions(#[case] case: FunctionParseCase) {
+    let FunctionParseCase {
+        src,
+        name,
+        is_extern,
+        params,
+        ret,
+    } = case;
     let func = parse_function(src).expect("expected a single function");
     assert_eq!(func.name().as_deref(), Some(name));
     assert_eq!(func.is_extern(), is_extern);

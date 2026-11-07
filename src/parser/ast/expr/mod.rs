@@ -19,6 +19,7 @@ pub enum Literal {
     /// Boolean literal.
     Bool(bool),
 }
+
 /// Unary operators in expressions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
@@ -33,7 +34,8 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    fn symbol(self) -> &'static str {
+    /// Return the source spelling of this unary operator.
+    const fn symbol(self) -> &'static str {
         match self {
             Self::Not => "not",
             Self::Neg => "-",
@@ -133,7 +135,7 @@ impl BinaryOp {
         clippy::indexing_slicing,
         reason = "SYMBOLS is indexed by BinaryOp discriminants and kept in sync by a length check"
     )]
-    fn symbol(self) -> &'static str { Self::SYMBOLS[self as usize] }
+    const fn symbol(self) -> &'static str { Self::SYMBOLS[self as usize] }
 }
 
 const _: [(); BinaryOp::SYMBOLS.len()] = [(); (BinaryOp::Imply as usize) + 1];
