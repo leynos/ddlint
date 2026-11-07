@@ -75,7 +75,7 @@ impl SemanticModelBuilder {
 
     fn symbol_visible(&self, scope_id: ScopeId, symbol: &Symbol, rule_order_limit: usize) -> bool {
         match self.scope_kind(scope_id) {
-            ScopeKind::Program | ScopeKind::ForLoop => true,
+            ScopeKind::Program | ScopeKind::ForLoop | ScopeKind::Closure => true,
             ScopeKind::Rule => symbol.visible_from_rule_order() <= rule_order_limit,
         }
     }

@@ -1,10 +1,19 @@
 //! Variable-use traversal for semantic-model collection.
 
-use super::builder::SemanticModelBuilder;
+use super::builder::{ScopeSpec, SemanticModelBuilder, SymbolSpec};
 use crate::{
     Span,
     parser::ast::Expr,
-    sema::model::{ScopeId, UseKind, UseOrigin, UseSite},
+    sema::model::{
+        DeclarationKind,
+        ScopeId,
+        ScopeKind,
+        ScopeOrigin,
+        SymbolOrigin,
+        UseKind,
+        UseOrigin,
+        UseSite,
+    },
 };
 
 #[derive(Clone, Copy)]
@@ -51,9 +60,9 @@ impl SemanticModelBuilder {
     ///
     /// The walk covers the whole expression tree, dispatching each variant to
     /// a helper that knows how to reach its children, so uses nested inside
-    /// calls, wrappers, composite literals, conditionals, loops, and match
-    /// arms are all captured. `context` supplies the scope, source position,
-    /// and rule-order limit inherited by each recorded [`UseSite`].
+    /// calls, wrappers, composite literals, conditionals, loops, closures, and
+    /// match arms are all captured. `context` supplies the scope, source
+    /// position, and rule-order limit inherited by each recorded [`UseSite`].
     pub(crate) fn walk_variable_uses(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
         match expr {
             Expr::Variable(name) => self.record_variable_use(name, context),
@@ -67,12 +76,14 @@ impl SemanticModelBuilder {
             | Expr::AtomDiff { .. }
             | Expr::AtomDelay { .. }
             | Expr::Unary { .. }
-            | Expr::Closure { .. }
             | Expr::Return { .. } => {
                 // The helper dispatches on the wrapper before unwrapping it.
                 // Passing the child here would fall through its match and
                 // silently drop the variable uses inside.
                 self.walk_variable_uses_unary_simple(expr, context);
+            }
+            Expr::Closure { params, body } => {
+                self.walk_variable_uses_closure(params, body, context);
             }
             Expr::BitSlice { .. }
             | Expr::Struct { .. }
@@ -115,11 +126,54 @@ impl SemanticModelBuilder {
             | Expr::AtomDiff { expr: inner }
             | Expr::AtomDelay { expr: inner, .. }
             | Expr::Unary { expr: inner, .. }
-            | Expr::Closure { body: inner, .. }
             | Expr::Return { value: inner } => self.walk_variable_uses(inner, context),
             // The dispatcher routes only unary-simple expressions here.
             _ => {}
         }
+    }
+
+    /// Walks a closure body in a nested scope that owns the closure parameters.
+    ///
+    /// The child scope keeps `|head_x| head_x` from resolving to a rule-head
+    /// binding of the same name, which would hide a genuine unused-variable
+    /// diagnostic. A captured outer binding such as `head_x` in
+    /// `|ignored| head_x` still resolves, because lookup continues through the
+    /// closure's parent scope.
+    fn walk_variable_uses_closure(
+        &mut self,
+        params: &[String],
+        body: &Expr,
+        context: VariableUseContext<'_>,
+    ) {
+        let child_scope = self.new_scope(ScopeSpec {
+            kind: ScopeKind::Closure,
+            parent: Some(context.current_scope()),
+            origin: ScopeOrigin::Closure {
+                literal_index: context.literal_index(),
+            },
+            span: context.span().clone(),
+        });
+        for param in params {
+            self.declare_symbol(SymbolSpec {
+                name: param.clone(),
+                kind: DeclarationKind::RuleBinding,
+                origin: SymbolOrigin::ClosureParameter,
+                scope: child_scope,
+                span: context.span().clone(),
+                name_span: None,
+                source_order: self.symbols.len(),
+                visible_from_rule_order: 0,
+            });
+        }
+        self.walk_variable_uses(
+            body,
+            VariableUseContext::new(
+                child_scope,
+                context.literal_index(),
+                context.span(),
+                context.rule_order_limit(),
+            ),
+        );
     }
 
     fn walk_variable_uses_composite(&mut self, expr: &Expr, context: VariableUseContext<'_>) {

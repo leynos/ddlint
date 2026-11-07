@@ -46,6 +46,8 @@ pub enum SymbolOrigin {
     AssignmentPattern,
     /// Symbol comes from a `for`-loop pattern.
     ForPattern,
+    /// Symbol comes from a closure parameter.
+    ClosureParameter,
 }
 
 /// Name-use category recorded by semantic analysis.
