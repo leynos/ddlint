@@ -2,7 +2,8 @@
 //! baseline are usable from outside the crate.
 //!
 //! Removing `const` from any of these methods makes this fixture fail to
-//! compile, because each result is bound in a `const` item. Covered APIs:
+//! compile, because each is bound in a `const` item or called from a `const
+//! fn`. Covered APIs:
 //!
 //! - `RuleConfigValue::as_bool`;
 //! - `RuleConfigValue::as_integer`;
@@ -10,12 +11,20 @@
 //! - `SymbolOrigin::is_warning_eligible_rule_binding`;
 //! - `StringLiteral::is_interpolated`;
 //! - `ParseAttemptContext::category`;
-//! - `ParseAttemptContext::diagnostic_count`.
+//! - `ParseAttemptContext::diagnostic_count`;
+//! - `LintDiagnostic::rule_name`;
+//! - `LintDiagnostic::span`;
+//! - `RuleCtx::ast_root`;
+//! - `RuleCtx::cst_root`;
+//! - `RuleCtx::config`;
+//! - `Parsed::green`;
+//! - `Parsed::root`.
 
 use ddlint::{
     DiagnosticCategory,
     ParseAttemptContext,
-    linter::RuleConfigValue,
+    Parsed,
+    linter::{LintDiagnostic, RuleConfigValue, RuleCtx},
     parser::ast::{StringKind, StringLiteral},
     sema::{SymbolOrigin, UseOrigin},
 };
@@ -61,4 +70,27 @@ const _: () = assert!(IS_RELATION_READ);
 const _: () = assert!(IS_WARNING_ELIGIBLE);
 const _: () = assert!(IS_INTERPOLATED);
 
-fn main() {}
+/// Diagnostic accessors are callable from a `const fn`.
+const fn check_diagnostic(diagnostic: &LintDiagnostic) {
+    let _ = diagnostic.rule_name();
+    let _ = diagnostic.span();
+}
+
+/// Rule-context accessors are callable from a `const fn`.
+const fn check_rule_ctx(context: &RuleCtx) {
+    let _ = context.ast_root();
+    let _ = context.cst_root();
+    let _ = context.config();
+}
+
+/// Parse-result accessors are callable from a `const fn`.
+const fn check_parsed(parsed: &Parsed) {
+    let _ = parsed.green();
+    let _ = parsed.root();
+}
+
+fn main() {
+    // Reference the helpers so they are not dead code. Their `const fn` bodies
+    // are what prove the accessors above remain `const`.
+    let _ = (check_diagnostic, check_rule_ctx, check_parsed);
+}
