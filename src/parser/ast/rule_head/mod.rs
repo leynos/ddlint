@@ -147,9 +147,7 @@ fn parse_rule_head_span(
         let delay = parse_delay_suffix(trimmed, &tokens, segment_offset)?;
 
         let location_start = at_span.end;
-        let location_end = delay
-            .as_ref()
-            .map_or_else(|| trimmed.len(), |d| d.full.start);
+        let location_end = delay.as_ref().map_or(trimmed.len(), |d| d.full.start);
 
         let atom_src = trimmed.get(..at_span.start).unwrap_or("");
         let location_src = trimmed.get(location_start..location_end).unwrap_or("");
