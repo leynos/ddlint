@@ -223,3 +223,29 @@ impl SemanticModelBuilder {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    //! Dispatcher tests for the unary-simple variable-use helper.
+
+    use super::{Expr, ScopeId, SemanticModelBuilder, Span, VariableUseContext};
+    use crate::parse;
+
+    #[test]
+    fn unary_simple_helper_ignores_a_bare_variable() {
+        // `walk_variable_uses` records a bare variable itself and reserves
+        // this helper for wrapper expressions. The fallback must stay inert
+        // if a variable reaches it anyway, so a use is never recorded twice.
+        let parsed = parse("Output(x) :- Source(x).");
+        let mut builder = SemanticModelBuilder::new(parsed.root().syntax());
+        let span: Span = 0..8;
+        let context = VariableUseContext::new(ScopeId(0), 0, &span, 0);
+
+        builder.walk_variable_uses_unary_simple(&Expr::Variable("x".to_owned()), context);
+
+        assert!(
+            builder.uses.is_empty(),
+            "the unary helper must not record a bare variable use",
+        );
+    }
+}
