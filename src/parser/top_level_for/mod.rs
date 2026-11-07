@@ -5,15 +5,19 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{Expr, SemanticRule};
-use crate::parser::expression::parse_expression;
-use crate::parser::span_utils::{shift_errors, trim_byte_range};
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Expr, SemanticRule},
+        expression::parse_expression,
+        span_utils::{shift_errors, trim_byte_range},
+    },
+};
 
 mod lowering;
 
 pub(crate) use lowering::lower_top_level_for;
-
 #[cfg(test)]
 pub(crate) use lowering::{UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD};
 
@@ -77,9 +81,7 @@ impl DelimiterDepth {
         }
     }
 
-    fn is_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0
-    }
+    fn is_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
 /// Collect and desugar top-level `for` statements.

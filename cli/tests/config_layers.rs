@@ -71,8 +71,8 @@ fn absent_sources_use_documented_defaults() -> Result<(), Box<dyn std::error::Er
 #[rstest]
 fn file_and_environment_layers_resolve_under_cmds_lint() -> Result<(), Box<dyn std::error::Error>> {
     let file = ConfigFile::new(
-        "[cmds.lint]\nformat = 'json'\nignore_patterns = ['from-file']\n\
-         [cmds.lint.rules]\nunused-variable = 'error'\n",
+        "[cmds.lint]\nformat = 'json'\nignore_patterns = \
+         ['from-file']\n[cmds.lint.rules]\nunused-variable = 'error'\n",
     )?;
     let environment = MapEnv::new()
         .with_var("DDLINT_CMDS__LINT__FORMAT", "compact")

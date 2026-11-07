@@ -5,10 +5,12 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::lexer_helpers::{balanced_block, ident, inline_ws};
-use crate::{Span, SyntaxKind};
-
 use super::utils::{State, parse_and_record};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::lexer_helpers::{balanced_block, ident, inline_ws},
+};
 
 fn params() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> {
     balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)

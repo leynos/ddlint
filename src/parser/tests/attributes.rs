@@ -4,9 +4,9 @@
 //! attributes are recognized, wrapped in `N_ATTRIBUTE` CST nodes, and
 //! that misplaced attributes emit diagnostics.
 
-use crate::parse;
-use crate::test_util::assert_no_parse_errors;
 use rstest::rstest;
+
+use crate::{parse, test_util::assert_no_parse_errors};
 
 #[rstest]
 #[case("#[cold]\ntype T = u32")]

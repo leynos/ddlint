@@ -5,13 +5,12 @@
 
 use rowan::SyntaxElement;
 
-use crate::{DdlogLanguage, SyntaxKind};
-
-use super::super::skip_whitespace_and_comments;
 use super::{
+    super::skip_whitespace_and_comments,
     errors::{Delim, DelimStack, ParseError},
     token_utils::{TokenParseContext, close_delimiter, open_delimiter, push, skip_next_trivia},
 };
+use crate::{DdlogLanguage, SyntaxKind};
 
 /// Processes the next token within a type expression.
 ///
@@ -31,8 +30,7 @@ where
 
 /// Parses a type expression from a token stream, returning the textual
 /// representation and any parse errors. Stops when:
-/// - A top-level separator is reached (`,` / `{` / `;`) after emitting some
-///   text, or
+/// - A top-level separator is reached (`,` / `{` / `;`) after emitting some text, or
 /// - A closing-delimiter mismatch requires termination (e.g., `)`).
 pub(crate) fn parse_type_expr<I>(iter: &mut std::iter::Peekable<I>) -> (String, Vec<ParseError>)
 where
@@ -184,8 +182,7 @@ fn should_break_parsing(kind: SyntaxKind, stack_empty: bool, buf_empty: bool) ->
 
 /// Parses an optional type following a colon. Returns:
 /// - `Some(type_text)` when a colon is present, and a non-empty type is parsed
-/// - `None` when no colon is present, or when the next token is a terminator (`{` or
-///   `;`)
+/// - `None` when no colon is present, or when the next token is a terminator (`{` or `;`)
 pub(crate) fn parse_type_after_colon<I>(iter: &mut std::iter::Peekable<I>) -> Option<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,

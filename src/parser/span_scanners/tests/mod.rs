@@ -2,17 +2,28 @@
 
 mod relation_tests;
 
-use super::rules::rule_statement;
-use super::{
-    collect_function_spans, collect_import_spans, collect_index_spans, collect_relation_spans,
-    collect_rule_spans, collect_transformer_spans, collect_typedef_spans,
-};
-use crate::parser::lexer_helpers::inline_ws;
-use crate::parser::span_scanner::{merge_spans, parse_tokens};
-use crate::test_util::tokenize;
-use crate::{Span, SyntaxKind};
 use chumsky::{Parser, Stream};
 use rstest::rstest;
+
+use super::{
+    collect_function_spans,
+    collect_import_spans,
+    collect_index_spans,
+    collect_relation_spans,
+    collect_rule_spans,
+    collect_transformer_spans,
+    collect_typedef_spans,
+    rules::rule_statement,
+};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        lexer_helpers::inline_ws,
+        span_scanner::{merge_spans, parse_tokens},
+    },
+    test_util::tokenize,
+};
 
 /// Configuration for `assert_rule_span_collection`, allowing fluent toggling of optional behaviour.
 struct RuleSpanAssertConfig<'a> {

@@ -2,11 +2,14 @@
 //!
 //! Exercises type and extern type handling.
 
-use super::helpers::pretty_print;
-use crate::parse;
-use crate::parser::ast::{AstNode, TypeDef};
-use crate::test_util::assert_no_parse_errors;
 use rstest::rstest;
+
+use super::helpers::pretty_print;
+use crate::{
+    parse,
+    parser::ast::{AstNode, TypeDef},
+    test_util::assert_no_parse_errors,
+};
 
 /// Declaration boundaries preserve complete records and independent type nodes.
 #[rstest]

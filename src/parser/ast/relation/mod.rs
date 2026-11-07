@@ -62,9 +62,7 @@ pub struct Relation {
 impl Relation {
     /// Name of the relation if present.
     #[must_use]
-    pub fn name(&self) -> Option<String> {
-        self.preamble().name
-    }
+    pub fn name(&self) -> Option<String> { self.preamble().name }
 
     /// Precise source span for the relation name token, if present.
     #[must_use]
@@ -75,33 +73,23 @@ impl Relation {
 
     /// Role of this relation.
     #[must_use]
-    pub fn role(&self) -> RelationRole {
-        self.preamble().role
-    }
+    pub fn role(&self) -> RelationRole { self.preamble().role }
 
     /// Whether the source contained an explicit role keyword.
     #[must_use]
-    pub fn role_keyword_present(&self) -> bool {
-        self.preamble().role_keyword_present
-    }
+    pub fn role_keyword_present(&self) -> bool { self.preamble().role_keyword_present }
 
     /// Kind of this relation.
     #[must_use]
-    pub fn kind(&self) -> RelationKind {
-        self.preamble().kind
-    }
+    pub fn kind(&self) -> RelationKind { self.preamble().kind }
 
     /// Whether the source contained an explicit kind keyword.
     #[must_use]
-    pub fn kind_keyword_present(&self) -> bool {
-        self.preamble().kind_keyword_present
-    }
+    pub fn kind_keyword_present(&self) -> bool { self.preamble().kind_keyword_present }
 
     /// Whether the declaration contains the `&` ref marker.
     #[must_use]
-    pub fn is_ref(&self) -> bool {
-        self.preamble().is_ref
-    }
+    pub fn is_ref(&self) -> bool { self.preamble().is_ref }
 
     /// Body form for this relation.
     ///
@@ -152,15 +140,11 @@ impl Relation {
 
     /// Derived from [`Self::role()`]; prefer `role()` in new code.
     #[must_use]
-    pub fn is_input(&self) -> bool {
-        self.role() == RelationRole::Input
-    }
+    pub fn is_input(&self) -> bool { self.role() == RelationRole::Input }
 
     /// Derived from [`Self::role()`]; prefer `role()` in new code.
     #[must_use]
-    pub fn is_output(&self) -> bool {
-        self.role() == RelationRole::Output
-    }
+    pub fn is_output(&self) -> bool { self.role() == RelationRole::Output }
 
     /// Columns as pairs of (name, type).
     ///
@@ -188,9 +172,7 @@ impl Relation {
         }
     }
 
-    fn preamble(&self) -> inspect::RelationPreamble {
-        inspect::inspect_preamble(&self.syntax)
-    }
+    fn preamble(&self) -> inspect::RelationPreamble { inspect::inspect_preamble(&self.syntax) }
 
     /// Primary key binder or column names if specified.
     ///
@@ -205,9 +187,10 @@ impl Relation {
     /// but its binder list cannot be interpreted, or when the relation body is
     /// malformed or missing so the columns cannot be skipped.
     pub fn primary_key(&self) -> Result<Option<Vec<String>>, RelationParseErrors> {
+        use chumsky::Parser as _;
+
         use super::parse_utils::primary_key_clause;
         use crate::tokenize_with_trivia;
-        use chumsky::Parser as _;
 
         let inspection = inspect::inspect_body(&self.syntax);
         body_inspection_error(&inspection)?;

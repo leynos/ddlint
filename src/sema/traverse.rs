@@ -2,16 +2,28 @@
 
 use rowan::SyntaxNode;
 
-use crate::Span;
-use crate::parser::ast;
-use crate::parser::ast::{Expr, RuleBodyTerm, find_identifier_span};
-use crate::sema::model::{
-    DeclarationKind, ScopeId, ScopeKind, ScopeOrigin, SymbolOrigin, UseKind, UseOrigin, UseSite,
+use super::{
+    builder::{ScopeSpec, SemanticModelBuilder, SymbolSpec},
+    resolve::{collect_pattern_binding_names, relation_name},
+    variables::VariableUseContext,
 };
-
-use super::builder::{ScopeSpec, SemanticModelBuilder, SymbolSpec};
-use super::resolve::{collect_pattern_binding_names, relation_name};
-use super::variables::VariableUseContext;
+use crate::{
+    Span,
+    parser::{
+        ast,
+        ast::{Expr, RuleBodyTerm, find_identifier_span},
+    },
+    sema::model::{
+        DeclarationKind,
+        ScopeId,
+        ScopeKind,
+        ScopeOrigin,
+        SymbolOrigin,
+        UseKind,
+        UseOrigin,
+        UseSite,
+    },
+};
 
 #[derive(Clone, Copy)]
 pub(super) struct RuleHeadContext<'a> {

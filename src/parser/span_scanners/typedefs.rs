@@ -8,10 +8,11 @@
 
 use chumsky::error::Simple;
 
+use super::{
+    indexes_support::{TypeDepths, adjust_type_depths, is_trivia},
+    utils::State,
+};
 use crate::{Span, SyntaxKind};
-
-use super::indexes_support::{TypeDepths, adjust_type_depths, is_trivia};
-use super::utils::State;
 
 /// Keep balanced groups inside a type span, stopping at a top-level terminator.
 fn push_type_span(st: &mut State<'_>, start: usize) {
@@ -49,9 +50,7 @@ pub(crate) fn collect_typedef_spans(
     }
 
     /// Skip legacy `typedef`; its compatibility error is emitted centrally.
-    fn handle_typedef(st: &mut State<'_>, _span: Span) {
-        st.skip_line();
-    }
+    fn handle_typedef(st: &mut State<'_>, _span: Span) { st.skip_line(); }
 
     /// Collect an `extern type` span, or skip an `extern` form without `type`.
     fn handle_extern(st: &mut State<'_>, span: Span) {

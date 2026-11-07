@@ -2,15 +2,32 @@
 
 use chumsky::error::Simple;
 
-use crate::{Span, SyntaxKind};
-
-use super::cursor::{
-    adjust_stack, consume_text, current_span, parse_balanced_block, skip_inline_trivia,
-    skip_trivia, skip_trivia_end, token_text, token_text_at,
+use super::{
+    D_REL_004,
+    D_REL_006,
+    D_REL_007,
+    D_REL_008,
+    ParsedRelation,
+    ScanResult,
+    cursor::{
+        adjust_stack,
+        consume_text,
+        current_span,
+        parse_balanced_block,
+        skip_inline_trivia,
+        skip_trivia,
+        skip_trivia_end,
+        token_text,
+        token_text_at,
+    },
+    custom_error,
+    preamble::RelationRole,
 };
-use super::preamble::RelationRole;
-use super::{D_REL_004, D_REL_006, D_REL_007, D_REL_008, ParsedRelation, ScanResult, custom_error};
-use crate::parser::span_scanners::{BodyForm, RelationSuffixContext};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::span_scanners::{BodyForm, RelationSuffixContext},
+};
 
 pub(super) fn parse_relation_suffix(
     tokens: &[(SyntaxKind, Span)],

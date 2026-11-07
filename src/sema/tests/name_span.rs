@@ -149,7 +149,10 @@ fn binding_declarations_capture_identifier_name_spans(
 
 #[rstest]
 fn nested_for_loop_bindings_lack_name_span() {
-    let source = "Output(x) :- Source(x), for (outer in Items(x)) for (inner in Nested(outer)) Inner(inner).";
+    let source = concat!(
+        "Output(x) :- Source(x), for (outer in Items(x)) for (inner in Nested(outer)) ",
+        "Inner(inner)."
+    );
     let parsed = parse_ok(source);
     let semantic_model = super::super::build(&parsed);
     let symbol = find_symbol(

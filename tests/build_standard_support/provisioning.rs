@@ -3,10 +3,11 @@
 //! These cases are called only by `build_standard_contract.rs` and exercise
 //! Make through injected Cargo and inert child tools.
 
+use std::process::Output;
+
 use camino::Utf8Path;
 use cap_std::{ambient_authority, fs_utf8::Dir};
 use rstest::rstest;
-use std::process::Output;
 
 #[path = "provisioning_fixtures.rs"]
 mod fixtures;
@@ -51,8 +52,14 @@ fn pinned_mold_data_names_both_approved_linux_archives() {
         .expect("pinned mold checksums should be present");
     assert_eq!(version.trim(), "2.41.0");
     for expected in [
-        "a3696680d99e692970590a178bc3a33d78d60d1c6dc9db7a11b557b02b751f5d  mold-2.41.0-x86_64-linux.tar.gz",
-        "946de2774b06a71346bd59b55fddba610b65b8d93c3a4a1559cc84e103472710  mold-2.41.0-aarch64-linux.tar.gz",
+        concat!(
+            "a3696680d99e692970590a178bc3a33d78d60d1c6dc9db7a11b557b02b751f5d  ",
+            "mold-2.41.0-x86_64-linux.tar.gz"
+        ),
+        concat!(
+            "946de2774b06a71346bd59b55fddba610b65b8d93c3a4a1559cc84e103472710  ",
+            "mold-2.41.0-aarch64-linux.tar.gz"
+        ),
     ] {
         assert!(
             checksums.lines().any(|line| line == expected),

@@ -9,9 +9,8 @@ use std::fmt;
 
 use chumsky::error::{Simple, SimpleReason};
 
-use crate::{Span, SyntaxKind, parser::lexer_helpers::token_display};
-
 use super::diagnostics::{DiagnosticCategory, DiagnosticCode};
+use crate::{Span, SyntaxKind, parser::lexer_helpers::token_display};
 
 #[cfg(feature = "observability")]
 mod telemetry;
@@ -55,35 +54,25 @@ pub struct DiagnosticContext<'a> {
 impl<'a> DiagnosticContext<'a> {
     /// Return the stable diagnostic code, when one is assigned.
     #[must_use]
-    pub const fn code(&self) -> Option<DiagnosticCode> {
-        self.code
-    }
+    pub const fn code(&self) -> Option<DiagnosticCode> { self.code }
 
     /// Return the diagnostic's parser category.
     #[must_use]
-    pub const fn category(&self) -> DiagnosticCategory {
-        self.category
-    }
+    pub const fn category(&self) -> DiagnosticCategory { self.category }
 
     /// Return the source span associated with the diagnostic.
     #[must_use]
-    pub fn span(&self) -> &Span {
-        &self.span
-    }
+    pub fn span(&self) -> &Span { &self.span }
 
     /// Return the diagnostic severity.
     #[must_use]
-    pub const fn severity(&self) -> DiagnosticSeverity {
-        self.severity
-    }
+    pub const fn severity(&self) -> DiagnosticSeverity { self.severity }
 
     /// Return the human-facing diagnostic message.
     ///
     /// Message text is structured logging context, not a metrics label.
     #[must_use]
-    pub const fn message(&self) -> &'a str {
-        self.message
-    }
+    pub const fn message(&self) -> &'a str { self.message }
 }
 
 /// Completion context for one parser or scanner attempt.
@@ -105,18 +94,14 @@ impl ParseAttemptContext {
 
     /// Return the attempted parser category.
     #[must_use]
-    pub const fn category(self) -> DiagnosticCategory {
-        self.category
-    }
+    pub const fn category(self) -> DiagnosticCategory { self.category }
 
     /// Return the number of diagnostics associated with the completed attempt.
     ///
     /// For the top-level `Parser` category this is an aggregate count from all
     /// parser phases. Consumers should not add it to the per-phase counts.
     #[must_use]
-    pub const fn diagnostic_count(self) -> usize {
-        self.diagnostic_count
-    }
+    pub const fn diagnostic_count(self) -> usize { self.diagnostic_count }
 }
 
 /// Observer for deterministic parser attempts and diagnostics.
@@ -130,9 +115,7 @@ pub trait ParseObserver {
     /// The default reports every diagnostic. An observer that does not need
     /// diagnostic context may return `false` to skip message formatting; parse
     /// attempt callbacks remain enabled.
-    fn should_report_diagnostics(&self) -> bool {
-        true
-    }
+    fn should_report_diagnostics(&self) -> bool { true }
 
     /// Observe the start of a parser or scanner attempt.
     fn parse_attempt_started(&self, _category: DiagnosticCategory) {}
@@ -153,9 +136,7 @@ pub trait ParseObserver {
 pub struct NoopParseObserver;
 
 impl ParseObserver for NoopParseObserver {
-    fn should_report_diagnostics(&self) -> bool {
-        false
-    }
+    fn should_report_diagnostics(&self) -> bool { false }
 }
 
 pub(crate) fn report_diagnostics(

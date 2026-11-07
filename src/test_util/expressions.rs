@@ -1,8 +1,10 @@
 //! Helpers for constructing expression nodes in tests.
 
 use super::Name;
-use crate::parser::ast::{Expr, MatchArm, Pattern};
-use crate::parser::pattern::parse_pattern;
+use crate::parser::{
+    ast::{Expr, MatchArm, Pattern},
+    pattern::parse_pattern,
+};
 
 /// Parse `src` as a pattern, panicking with a diagnostic on failure.
 ///
@@ -69,15 +71,11 @@ pub fn method_call(recv: Expr, name: impl Into<Name>, args: Vec<Expr>) -> Expr {
 
 /// Construct a `break` [`Expr`].
 #[must_use]
-pub fn break_expr() -> Expr {
-    Expr::Break
-}
+pub fn break_expr() -> Expr { Expr::Break }
 
 /// Construct a `continue` [`Expr`].
 #[must_use]
-pub fn continue_expr() -> Expr {
-    Expr::Continue
-}
+pub fn continue_expr() -> Expr { Expr::Continue }
 
 /// Construct a `return` [`Expr`].
 #[must_use]
@@ -171,24 +169,20 @@ pub fn for_loop(
 
 /// Construct a tuple literal [`Expr::Tuple`].
 #[must_use]
-pub fn tuple(items: Vec<Expr>) -> Expr {
-    Expr::Tuple(items)
-}
+pub fn tuple(items: Vec<Expr>) -> Expr { Expr::Tuple(items) }
 
 /// Construct a vector literal [`Expr::VecLit`].
 ///
 /// # Examples
 ///
 /// ```
-/// use ddlint::test_util::{lit_num, vec_lit, var};
+/// use ddlint::test_util::{lit_num, var, vec_lit};
 ///
 /// let v = vec_lit(vec![lit_num("1"), var("x")]);
 /// assert_eq!(v.to_sexpr(), "(vec 1 x)");
 /// ```
 #[must_use]
-pub fn vec_lit(items: Vec<Expr>) -> Expr {
-    Expr::VecLit(items)
-}
+pub fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
 
 /// Construct a map literal [`Expr::MapLit`].
 ///
@@ -201,9 +195,7 @@ pub fn vec_lit(items: Vec<Expr>) -> Expr {
 /// assert_eq!(m.to_sexpr(), "(map (entry a 1))");
 /// ```
 #[must_use]
-pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr {
-    Expr::MapLit(entries)
-}
+pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }
 
 /// Convenience function to build a map entry tuple.
 ///
@@ -216,9 +208,7 @@ pub fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr {
 /// assert_eq!(entry.0.to_sexpr(), "\"key\"");
 /// ```
 #[must_use]
-pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) {
-    (key, value)
-}
+pub fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
 
 /// Construct a `match` arm with the provided pattern and body expression.
 ///
@@ -239,9 +229,7 @@ pub fn match_arm(pattern: impl Into<String>, body: Expr) -> MatchArm {
 
 /// Parse and construct a [`Pattern`] node for tests.
 #[must_use]
-pub fn pat(src: &str) -> Pattern {
-    parse_pattern_or_panic(src)
-}
+pub fn pat(src: &str) -> Pattern { parse_pattern_or_panic(src) }
 
 /// Construct a `match` expression from a scrutinee and a list of arms.
 #[must_use]

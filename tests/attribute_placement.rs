@@ -4,8 +4,7 @@
 //! items where the specification forbids them, and accepts attributes on
 //! permitted targets.
 
-use ddlint::parse;
-use ddlint::test_util::assert_no_parse_errors;
+use ddlint::{parse, test_util::assert_no_parse_errors};
 use rstest::rstest;
 
 #[rstest]

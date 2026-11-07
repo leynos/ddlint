@@ -27,21 +27,15 @@ impl SpanListIssue {
 
     /// The span list name that failed validation.
     #[must_use]
-    pub fn list(&self) -> &str {
-        &self.list
-    }
+    pub fn list(&self) -> &str { &self.list }
 
     /// The earlier span in the invalid ordering.
     #[must_use]
-    pub fn prev(&self) -> &Span {
-        &self.prev
-    }
+    pub fn prev(&self) -> &Span { &self.prev }
 
     /// The later span in the invalid ordering.
     #[must_use]
-    pub fn next(&self) -> &Span {
-        &self.next
-    }
+    pub fn next(&self) -> &Span { &self.next }
 }
 
 impl std::fmt::Display for SpanListIssue {
@@ -76,9 +70,7 @@ impl SpanListValidationError {
 
     /// Access the underlying validation issues.
     #[must_use]
-    pub fn issues(&self) -> &[SpanListIssue] {
-        &self.issues
-    }
+    pub fn issues(&self) -> &[SpanListIssue] { &self.issues }
 }
 
 /// Spans for each parsed statement category.
@@ -249,71 +241,49 @@ impl ParsedSpansBuilder {
 impl ParsedSpans {
     /// Start building a [`ParsedSpans`] instance.
     #[must_use]
-    pub fn builder() -> ParsedSpansBuilder {
-        ParsedSpansBuilder::default()
-    }
+    pub fn builder() -> ParsedSpansBuilder { ParsedSpansBuilder::default() }
 
     // constructor removed; instances are built via the builder
 
     /// Access `import` statement spans.
     #[must_use]
-    pub fn imports(&self) -> &[Span] {
-        &self.imports
-    }
+    pub fn imports(&self) -> &[Span] { &self.imports }
 
     /// Access `typedef` statement spans.
     #[must_use]
-    pub fn typedefs(&self) -> &[Span] {
-        &self.typedefs
-    }
+    pub fn typedefs(&self) -> &[Span] { &self.typedefs }
 
     /// Access `relation` declaration spans.
     #[must_use]
-    pub fn relations(&self) -> &[Span] {
-        &self.relations
-    }
+    pub fn relations(&self) -> &[Span] { &self.relations }
 
     /// Access `index` declaration spans.
     #[must_use]
-    pub fn indexes(&self) -> &[Span] {
-        &self.indexes
-    }
+    pub fn indexes(&self) -> &[Span] { &self.indexes }
 
     /// Access `function` definition spans.
     #[must_use]
-    pub fn functions(&self) -> &[Span] {
-        &self.functions
-    }
+    pub fn functions(&self) -> &[Span] { &self.functions }
 
     /// Access `transformer` declaration spans.
     #[must_use]
-    pub fn transformers(&self) -> &[Span] {
-        &self.transformers
-    }
+    pub fn transformers(&self) -> &[Span] { &self.transformers }
 
     /// Access `apply` statement spans.
     #[must_use]
-    pub fn applys(&self) -> &[Span] {
-        &self.applys
-    }
+    pub fn applys(&self) -> &[Span] { &self.applys }
 
     /// Access rule spans.
     #[must_use]
-    pub fn rules(&self) -> &[Span] {
-        &self.rules
-    }
+    pub fn rules(&self) -> &[Span] { &self.rules }
 
     /// Access expression spans.
     #[must_use]
-    pub fn expressions(&self) -> &[Span] {
-        &self.expressions
-    }
+    pub fn expressions(&self) -> &[Span] { &self.expressions }
 
     /// Access attribute spans.
     #[must_use]
-    pub fn attributes(&self) -> &[Span] {
-        &self.attributes
-    }
+    pub fn attributes(&self) -> &[Span] { &self.attributes }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

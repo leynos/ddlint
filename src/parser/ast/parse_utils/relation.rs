@@ -5,8 +5,11 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::lexer_helpers::{ident, inline_ws};
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::lexer_helpers::{ident, inline_ws},
+};
 
 #[expect(
     clippy::result_large_err,

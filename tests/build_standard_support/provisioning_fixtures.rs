@@ -3,23 +3,30 @@
 //! This fixture module is private to `provisioning.rs`. Child processes use
 //! offline fake installers and never receive a redirected Cargo cache.
 
-use camino::{Utf8Path, Utf8PathBuf};
-use cap_std::{
-    ambient_authority,
-    fs_utf8::{Dir, Permissions, PermissionsExt},
-};
 use std::{
     io,
     process::{Command, Output},
     sync::atomic::{AtomicU64, Ordering},
 };
 
+use camino::{Utf8Path, Utf8PathBuf};
+use cap_std::{
+    ambient_authority,
+    fs_utf8::{Dir, Permissions, PermissionsExt},
+};
+
 #[path = "provisioning_scripts.rs"]
 mod scripts;
 
 use scripts::{
-    CHECKSUM_SCRIPT, CURL_SCRIPT, RUSTC_SCRIPT, RUSTUP_SCRIPT, TAR_SCRIPT, TEXT_UTILITY_SCRIPT,
-    UNAME_SCRIPT, WGET_SCRIPT,
+    CHECKSUM_SCRIPT,
+    CURL_SCRIPT,
+    RUSTC_SCRIPT,
+    RUSTUP_SCRIPT,
+    TAR_SCRIPT,
+    TEXT_UTILITY_SCRIPT,
+    UNAME_SCRIPT,
+    WGET_SCRIPT,
 };
 
 /// Disambiguates scratch directories created by concurrent contract cases.
@@ -93,9 +100,7 @@ impl ScratchDirectory {
     }
 
     /// Resolves a fixture-relative path for child-process environment values.
-    fn path(&self, relative_path: &str) -> Utf8PathBuf {
-        self.absolute_path.join(relative_path)
-    }
+    fn path(&self, relative_path: &str) -> Utf8PathBuf { self.absolute_path.join(relative_path) }
 
     /// Reads a fixture file through its capability root.
     fn read(&self, relative_path: &str) -> io::Result<String> {
@@ -105,9 +110,7 @@ impl ScratchDirectory {
 
 impl Drop for ScratchDirectory {
     /// Removes the temporary tree after each provisioning case.
-    fn drop(&mut self) {
-        let _ = self.parent.remove_dir_all(&self.relative_path);
-    }
+    fn drop(&mut self) { let _ = self.parent.remove_dir_all(&self.relative_path); }
 }
 
 /// Names the build-tool states exercised by provisioning contracts.
@@ -208,14 +211,10 @@ impl Sandbox {
     }
 
     /// Returns the fake-command directory used by the child PATH.
-    fn bin_path(&self) -> Utf8PathBuf {
-        self.directory.path("bin")
-    }
+    fn bin_path(&self) -> Utf8PathBuf { self.directory.path("bin") }
 
     /// Includes standard system directories after the fake-command directory.
-    fn path_with_system_tools(&self) -> String {
-        format!("{}:/usr/bin:/bin", self.bin_path())
-    }
+    fn path_with_system_tools(&self) -> String { format!("{}:/usr/bin:/bin", self.bin_path()) }
 
     /// Runs Make with injected harmless build commands and scenario tools.
     pub(super) fn run_make(
@@ -278,9 +277,7 @@ impl Sandbox {
     }
 
     /// Reads the recorded fake-tool command sequence.
-    pub(super) fn trace(&self) -> io::Result<String> {
-        self.directory.read("trace.log")
-    }
+    pub(super) fn trace(&self) -> io::Result<String> { self.directory.read("trace.log") }
 
     /// Reads the mold file placed under the private HOME prefix by fake tar.
     pub(super) fn installed_mold(&self) -> io::Result<String> {

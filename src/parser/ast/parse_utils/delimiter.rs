@@ -54,11 +54,8 @@ impl std::error::Error for UnclosedDelimiterError {}
 /// #     .syntax()
 /// #     .children_with_tokens()
 /// #     .peekable();
-/// let text = extract_delimited(
-///     &mut elems,
-///     SyntaxKind::T_LPAREN,
-///     SyntaxKind::T_RPAREN,
-/// ).expect("expected matching closing delimiter");
+/// let text = extract_delimited(&mut elems, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
+///     .expect("expected matching closing delimiter");
 /// assert_eq!(text, "nested (content)");
 /// ```
 ///

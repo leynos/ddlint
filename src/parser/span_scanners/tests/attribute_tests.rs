@@ -1,8 +1,9 @@
 //! Tests for the attribute span scanner.
 
+use rstest::rstest;
+
 use super::super::collect_attribute_spans;
 use crate::test_util::tokenize;
-use rstest::rstest;
 
 #[rstest]
 #[case("#[inline]\nfunction f() {}\n", None)]

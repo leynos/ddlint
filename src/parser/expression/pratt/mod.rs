@@ -8,11 +8,16 @@ use std::collections::HashMap;
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{Expr, StringLiteral};
-use crate::parser::reserved_tokens::{complete_reserved_token_errors, rejection_for};
-use crate::{Span, SyntaxKind, tokenize_without_trivia};
-
 use super::token_stream::TokenStream;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Expr, StringLiteral},
+        reserved_tokens::{complete_reserved_token_errors, rejection_for},
+    },
+    tokenize_without_trivia,
+};
 
 mod delay;
 mod diff;
@@ -42,9 +47,7 @@ struct StructLiteralState {
 }
 
 impl StructLiteralState {
-    fn activate(&mut self) {
-        self.active += 1;
-    }
+    fn activate(&mut self) { self.active += 1; }
 
     fn deactivate(&mut self) {
         // The guard depth must not underflow; saturate rather than panic if
@@ -74,9 +77,7 @@ impl StructLiteralState {
         self.suspension = self.suspension.saturating_sub(1);
     }
 
-    fn allows_struct_literal(&self) -> bool {
-        self.active == 0 || self.suspension > 0
-    }
+    fn allows_struct_literal(&self) -> bool { self.active == 0 || self.suspension > 0 }
 }
 
 /// Parse a source string into an [`Expr`].

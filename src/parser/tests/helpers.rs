@@ -3,7 +3,8 @@
 //! Utilities here support concise feature-focused parser tests.
 
 use crate::{
-    SyntaxKind, parse,
+    SyntaxKind,
+    parse,
     parser::ast::{Function, Import, Index, Relation, Transformer},
 };
 
@@ -19,21 +20,15 @@ type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
 pub(super) struct SourceText(String);
 
 impl From<&str> for SourceText {
-    fn from(src: &str) -> Self {
-        Self(src.to_string())
-    }
+    fn from(src: &str) -> Self { Self(src.to_string()) }
 }
 
 impl From<String> for SourceText {
-    fn from(src: String) -> Self {
-        Self(src)
-    }
+    fn from(src: String) -> Self { Self(src) }
 }
 
 impl AsRef<str> for SourceText {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
+    fn as_ref(&self) -> &str { &self.0 }
 }
 
 /// Collect the text of a syntax subtree.

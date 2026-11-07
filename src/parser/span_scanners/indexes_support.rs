@@ -6,8 +6,7 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::lexer_helpers::token_display;
-use crate::{Span, SyntaxKind};
+use crate::{Span, SyntaxKind, parser::lexer_helpers::token_display};
 
 pub(super) type ScanResult<T> = Result<T, Box<Simple<SyntaxKind>>>;
 

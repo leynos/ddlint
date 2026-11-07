@@ -24,7 +24,6 @@ pub use delimiter::extract_delimited;
 /// Legacy alias retained for backwards compatibility; schedule removal in the
 /// next minor release.
 pub use delimiter::extract_delimited as extract_parenthesized;
-
 pub(crate) use outputs::parse_output_list;
 pub(crate) use params::parse_name_type_pairs;
 pub(crate) use relation::primary_key_clause;

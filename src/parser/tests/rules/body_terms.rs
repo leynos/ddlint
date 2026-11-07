@@ -1,8 +1,10 @@
 //! Tests for rule body term classification.
 
 use super::super::helpers::parse_err;
-use crate::parser::ast::{Expr, Pattern, RuleBodyTerm};
-use crate::test_util::{call, var};
+use crate::{
+    parser::ast::{Expr, Pattern, RuleBodyTerm},
+    test_util::{call, var},
+};
 
 macro_rules! assert_body_assignment {
     ($src:expr, $expected_terms_count:expr, $assignment_index:expr $(,)?) => {{

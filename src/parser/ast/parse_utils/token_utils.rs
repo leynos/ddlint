@@ -4,10 +4,10 @@
 //! string, classify trivia, and report delimiter mismatches via
 //! [`ParseError`].
 
-use crate::{DdlogLanguage, SyntaxKind};
 use rowan::{SyntaxElement, TextRange};
 
 use super::errors::{Delim, DelimStack, DelimiterError, ParseError};
+use crate::{DdlogLanguage, SyntaxKind};
 
 /// Shared context for token parsing utilities.
 #[derive(Debug)]
@@ -136,10 +136,10 @@ where
 #[cfg(test)]
 mod tests {
     //! Tests for token utility helpers.
-    use super::*;
-    use crate::SyntaxKind;
-    use crate::parser::parse;
     use rowan::SyntaxElement;
+
+    use super::*;
+    use crate::{SyntaxKind, parser::parse};
 
     fn token_of_kind(src: &str, kind: SyntaxKind) -> rowan::SyntaxToken<DdlogLanguage> {
         let parsed = parse(src);

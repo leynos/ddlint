@@ -32,6 +32,4 @@ pub fn multiline_relation() -> &'static str {
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-pub fn relation_unbalanced_parentheses() -> &'static str {
-    "relation Foo(x: u32"
-}
+pub fn relation_unbalanced_parentheses() -> &'static str { "relation Foo(x: u32" }

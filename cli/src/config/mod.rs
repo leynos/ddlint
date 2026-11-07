@@ -1,14 +1,11 @@
 //! Configuration types and source resolution for the planned `ddlint` CLI.
 
-use std::collections::BTreeMap;
-use std::ffi::OsString;
-use std::sync::Arc;
+use std::{collections::BTreeMap, ffi::OsString, sync::Arc};
 
 use clap::{Args, ValueEnum};
 use ddlint::linter::RuleLevel;
 use ortho_config::{OrthoConfig, OrthoError, SharedEnvSource, SharedScanEnvSource};
-use serde::de::Error as DeError;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use thiserror::Error;
 
 /// Output style selected by the future lint command.
@@ -47,6 +44,21 @@ pub struct ValidatedLintSettings {
     pub rule_levels: BTreeMap<String, RuleLevel>,
 }
 
+/// Rule names this build accepts in `[cmds.lint.rules]`.
+///
+/// This is the single source of truth for both the membership check in
+/// [`validate_lint_config`] and the text of [`ConfigError::UnknownRule`].
+const SUPPORTED_RULES: &[&str] = &["unused-relation", "unused-variable"];
+
+/// Render the supported rules for the `UnknownRule` message.
+fn supported_rules_display() -> String {
+    SUPPORTED_RULES
+        .iter()
+        .map(|rule| format!("`{rule}`"))
+        .collect::<Vec<_>>()
+        .join(" and ")
+}
+
 /// Failures while loading or validating application configuration.
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -56,7 +68,8 @@ pub enum ConfigError {
 
     /// A severity override names a rule not shipped by this version of ddlint.
     #[error(
-        "unknown lint rule `{name}` in `[cmds.lint.rules]`; supported rules are `unused-relation` and `unused-variable`"
+        "unknown lint rule `{name}` in `[cmds.lint.rules]`; supported rules are {}",
+        supported_rules_display()
     )]
     UnknownRule {
         /// Unrecognised rule identifier from the configuration source.
@@ -186,18 +199,15 @@ impl From<ConfigRuleLevel> for RuleLevel {
 ///
 /// ```rust
 /// use std::sync::Arc;
-/// use ortho_config::{MapEnv, SharedEnvSource, SharedScanEnvSource};
+///
 /// use ddlint_cli::config::{LintCliArgs, OutputFormat, load_lint_settings_with_sources};
+/// use ortho_config::{MapEnv, SharedEnvSource, SharedScanEnvSource};
 ///
 /// let environment = Arc::new(MapEnv::new());
 /// let discovery: SharedEnvSource = environment.clone();
 /// let merge: SharedScanEnvSource = environment;
-/// let settings = load_lint_settings_with_sources(
-///     ["ddlint"],
-///     &LintCliArgs::default(),
-///     discovery,
-///     merge,
-/// )?;
+/// let settings =
+///     load_lint_settings_with_sources(["ddlint"], &LintCliArgs::default(), discovery, merge)?;
 /// assert_eq!(settings.format, OutputFormat::Rich);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
@@ -255,9 +265,10 @@ fn has_cli_config_selector(arguments: &[OsString]) -> bool {
 fn validate_lint_config(config: LintConfig) -> Result<ValidatedLintSettings, ConfigError> {
     let mut rule_levels = BTreeMap::new();
     for (name, level) in config.rules {
-        let domain_name = match name.as_str() {
-            "unused-relation" | "unused-variable" => name,
-            _ => return Err(ConfigError::UnknownRule { name }),
+        let domain_name = if SUPPORTED_RULES.contains(&name.as_str()) {
+            name
+        } else {
+            return Err(ConfigError::UnknownRule { name });
         };
         rule_levels.insert(domain_name, RuleLevel::from(level));
     }

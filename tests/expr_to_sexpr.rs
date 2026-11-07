@@ -3,9 +3,13 @@
 //! These unit tests construct AST nodes directly and assert that
 //! `Expr::to_sexpr` yields the expected S-expression strings.
 
-use ddlint::parser::ast::{BinaryOp, Expr, Literal, StringKind, StringLiteral, UnaryOp};
-use ddlint::parser::expression::parse_numeric_literal;
-use ddlint::test_util::pat;
+use ddlint::{
+    parser::{
+        ast::{BinaryOp, Expr, Literal, StringKind, StringLiteral, UnaryOp},
+        expression::parse_numeric_literal,
+    },
+    test_util::pat,
+};
 use rstest::rstest;
 
 fn num(n: &str) -> Expr {
@@ -34,13 +38,9 @@ fn raw_str(body: &str, interpolated: bool, interned: bool) -> Expr {
     }))
 }
 
-fn bool_lit(b: bool) -> Expr {
-    Expr::Literal(Literal::Bool(b))
-}
+fn bool_lit(b: bool) -> Expr { Expr::Literal(Literal::Bool(b)) }
 
-fn var(name: &str) -> Expr {
-    Expr::Variable(name.into())
-}
+fn var(name: &str) -> Expr { Expr::Variable(name.into()) }
 
 #[rstest]
 #[case(num("1"), "1")]

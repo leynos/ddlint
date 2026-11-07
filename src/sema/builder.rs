@@ -4,17 +4,28 @@ use std::collections::{HashMap, HashSet};
 
 use rowan::SyntaxNode;
 
-use crate::Span;
-use crate::SyntaxKind;
-use crate::parser::ast;
-use crate::parser::ast::SemanticRule;
-use crate::parser::ast::rule::text_range_to_span;
-use crate::sema::model::{
-    DeclarationKind, Resolution, Scope, ScopeId, ScopeKind, ScopeOrigin, SemanticModel, Symbol,
-    SymbolId, SymbolOrigin, UseKind,
-};
-
 use super::resolve::{collect_head_binding_names, collect_pattern_binding_names};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast,
+        ast::{SemanticRule, rule::text_range_to_span},
+    },
+    sema::model::{
+        DeclarationKind,
+        Resolution,
+        Scope,
+        ScopeId,
+        ScopeKind,
+        ScopeOrigin,
+        SemanticModel,
+        Symbol,
+        SymbolId,
+        SymbolOrigin,
+        UseKind,
+    },
+};
 
 pub(crate) struct SymbolSpec {
     pub(crate) name: String,
@@ -159,7 +170,10 @@ impl SemanticModelBuilder {
                 debug_assert_eq!(
                     body_nodes_len,
                     terms.len(),
-                    "rule body node/term count mismatch should stay visible during semantic collection"
+                    concat!(
+                        "rule body node/term count mismatch should stay visible during ",
+                        "semantic collection"
+                    )
                 );
 
                 for (literal_index, term) in terms.into_iter().enumerate() {

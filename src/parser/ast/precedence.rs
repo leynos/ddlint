@@ -4,9 +4,8 @@
 //! operators. Keeping the precedence data here avoids inconsistencies when
 //! adjusting operator rules.
 
-use crate::SyntaxKind;
-
 use super::{BinaryOp, UnaryOp};
+use crate::SyntaxKind;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct PrefixEntry {

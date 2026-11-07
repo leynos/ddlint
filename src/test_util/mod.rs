@@ -9,23 +9,58 @@ mod expressions;
 mod literals;
 
 pub use assertions::{
-    assert_custom_parse_error_contains, assert_delimiter_error,
+    assert_custom_parse_error_contains,
+    assert_delimiter_error,
     assert_first_rule_without_parse_stage_aggregation_errors,
-    assert_no_custom_parse_error_contains, assert_no_parse_errors, assert_panic_with_message,
-    assert_parse_error, assert_unclosed_delimiter_error, find_matching_error,
+    assert_no_custom_parse_error_contains,
+    assert_no_parse_errors,
+    assert_panic_with_message,
+    assert_parse_error,
+    assert_unclosed_delimiter_error,
+    find_matching_error,
 };
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
     crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
 pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
     crate::parser::error_messages::CAPITALIZED_TRANSFORMER_NAME_ERROR;
 pub use expressions::{
-    atom_delay, atom_diff, bit_slice, break_expr, call, call_expr, closure, continue_expr, field,
-    field_access, for_loop, if_expr, map_entry, map_lit, match_arm, match_expr, method_call, pat,
-    qualified_call, return_expr, struct_expr, tuple, tuple_index, var, vec_lit,
+    atom_delay,
+    atom_diff,
+    bit_slice,
+    break_expr,
+    call,
+    call_expr,
+    closure,
+    continue_expr,
+    field,
+    field_access,
+    for_loop,
+    if_expr,
+    map_entry,
+    map_lit,
+    match_arm,
+    match_expr,
+    method_call,
+    pat,
+    qualified_call,
+    return_expr,
+    struct_expr,
+    tuple,
+    tuple_index,
+    var,
+    vec_lit,
 };
 pub use literals::{
-    NumericText, StringBody, lit_bool, lit_interned_raw_interpolated_str, lit_interned_raw_str,
-    lit_interned_str, lit_interpolated_str, lit_num, lit_raw_interpolated_str, lit_raw_str,
+    NumericText,
+    StringBody,
+    lit_bool,
+    lit_interned_raw_interpolated_str,
+    lit_interned_raw_str,
+    lit_interned_str,
+    lit_interpolated_str,
+    lit_num,
+    lit_raw_interpolated_str,
+    lit_raw_str,
     lit_str,
 };
 
@@ -44,9 +79,7 @@ use crate::{Span, SyntaxKind, tokenize_with_trivia};
 /// # }
 /// ```
 #[must_use]
-pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
-    tokenize_with_trivia(src)
-}
+pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> { tokenize_with_trivia(src) }
 
 /// Slice `source` by a validated byte span for test assertions.
 ///
@@ -76,15 +109,11 @@ pub fn span_text<'a>(source: &'a str, span: &Span) -> &'a str {
 pub struct Name(pub(crate) String);
 
 impl From<&str> for Name {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
 impl From<String> for Name {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 /// Common error message patterns for parser assertions.
@@ -94,9 +123,7 @@ pub enum ErrorPattern {
 }
 
 impl From<&str> for ErrorPattern {
-    fn from(s: &str) -> Self {
-        Self::Custom(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self::Custom(s.to_string()) }
 }
 
 /// Replace internal token names with human-readable forms.

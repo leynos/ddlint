@@ -1,9 +1,14 @@
 //! Tests for operator precedence in the Pratt expression parser.
 
-use crate::parser::ast::{BinaryOp, Expr, UnaryOp};
-use crate::parser::expression::parse_expression;
-use crate::test_util::{lit_num, var};
 use rstest::rstest;
+
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr, UnaryOp},
+        expression::parse_expression,
+    },
+    test_util::{lit_num, var},
+};
 
 #[rstest]
 #[case("1 + 2 * 3", Expr::Binary { op: BinaryOp::Add, lhs: Box::new(lit_num("1")), rhs: Box::new(Expr::Binary { op: BinaryOp::Mul, lhs: Box::new(lit_num("2")), rhs: Box::new(lit_num("3")) }) })]

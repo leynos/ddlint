@@ -1,7 +1,6 @@
 //! Fallible setup shared by rule-behaviour integration tests.
 
-use ddlint::parse;
-use ddlint::parser::ast::Rule;
+use ddlint::{parse, parser::ast::Rule};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::fixture;
 
@@ -73,6 +72,4 @@ const MIXED_RULE_SOURCE: &str = "R(x, y) :- Pre(x), for (y in Items(y)) Process(
 /// `Pre`, `Items`, `Process`, then `Post`.
 #[allow_fixture_expansion_lints]
 #[fixture]
-pub(super) fn mixed_rule() -> Result<Rule, String> {
-    parse_and_extract_rule(MIXED_RULE_SOURCE)
-}
+pub(super) fn mixed_rule() -> Result<Rule, String> { parse_and_extract_rule(MIXED_RULE_SOURCE) }

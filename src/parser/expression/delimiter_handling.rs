@@ -4,10 +4,11 @@
 //! and closing tokens, ensuring diagnostics remain precise without bloating the
 //! control-flow parsing module.
 
+use super::{
+    pattern_collection::{DelimiterState, DelimiterToken, PatternContext},
+    pratt::Pratt,
+};
 use crate::{Span, SyntaxKind};
-
-use super::pattern_collection::{DelimiterState, DelimiterToken, PatternContext};
-use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where

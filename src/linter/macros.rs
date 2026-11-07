@@ -200,8 +200,12 @@ mod tests {
     use rowan::NodeOrToken;
     use rstest::{fixture, rstest};
 
-    use crate::linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel};
-    use crate::{Parsed, SyntaxKind, parse};
+    use crate::{
+        Parsed,
+        SyntaxKind,
+        linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel},
+        parse,
+    };
 
     crate::declare_lint! {
         /// ## What it does

@@ -7,13 +7,12 @@
 
 use rowan::{SyntaxElement, TextRange, TextSize};
 
-use crate::{DdlogLanguage, SyntaxKind};
-
-use super::super::skip_whitespace_and_comments;
 use super::{
+    super::skip_whitespace_and_comments,
     errors::{Delim, ParseError},
     token_utils::{record_delimiter_error, skip_next_trivia},
 };
+use crate::{DdlogLanguage, SyntaxKind};
 
 mod builder;
 

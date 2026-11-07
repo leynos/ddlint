@@ -1,10 +1,8 @@
 //! Parsing helpers for identifiers, struct literals, closures, groupings, and
 //! collection literals.
 
-use crate::parser::ast::Expr;
-use crate::{Span, SyntaxKind};
-
 use super::pratt::Pratt;
+use crate::{Span, SyntaxKind, parser::ast::Expr};
 
 impl<I> Pratt<'_, I>
 where
@@ -250,7 +248,8 @@ where
     }
 
     /// Parse a comma-separated list of identifiers up to (but not consuming) `terminator`.
-    /// Returns an empty vector if the next token is `terminator`. Callers must consume `terminator`.
+    /// Returns an empty vector if the next token is `terminator`. Callers must consume
+    /// `terminator`.
     fn parse_comma_separated_identifiers<T>(
         &mut self,
         terminator: SyntaxKind,

@@ -8,9 +8,11 @@ use std::collections::HashMap;
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::rule::text_range_to_span;
-use crate::parser::ast::{AstNode, Root};
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::ast::{AstNode, Root, rule::text_range_to_span},
+};
 
 /// Validate that no two top-level declarations share the same name.
 ///
@@ -141,13 +143,12 @@ fn check_function_uniqueness(errors: &mut Vec<Simple<SyntaxKind>>, root: &Root) 
 #[cfg(test)]
 mod tests {
     //! Tests for name uniqueness validation.
-    use crate::parse;
     use rstest::rstest;
 
+    use crate::parse;
+
     /// Render a `Simple` error via `Debug` for pattern matching.
-    fn render(err: &chumsky::error::Simple<crate::SyntaxKind>) -> String {
-        format!("{err:?}")
-    }
+    fn render(err: &chumsky::error::Simple<crate::SyntaxKind>) -> String { format!("{err:?}") }
 
     /// Helper to assert a single duplicate-name error with the expected message.
     fn assert_duplicate_name_error(src: &str, expected_message: &str) {

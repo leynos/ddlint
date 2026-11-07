@@ -10,8 +10,7 @@ mod suffix;
 
 use chumsky::error::Simple;
 
-use crate::parser::diagnostics::DiagnosticCode;
-use crate::{Span, SyntaxKind};
+use crate::{Span, SyntaxKind, parser::diagnostics::DiagnosticCode};
 
 const D_REL_004: &str = DiagnosticCode::RelationBracketPrimaryKey.message_text();
 const D_REL_005: &str = DiagnosticCode::RelationInvalidBracketElementType.message_text();
@@ -20,16 +19,19 @@ const D_REL_007: &str = DiagnosticCode::RelationMalformedPrimaryKey.message_text
 const D_REL_008: &str = DiagnosticCode::RelationBracketWrappedPrimaryKey.message_text();
 
 use cursor::{
-    adjust_stack, consume_kind, current_span, is_trivia, parse_balanced_block, skip_trivia,
+    adjust_stack,
+    consume_kind,
+    current_span,
+    is_trivia,
+    parse_balanced_block,
+    skip_trivia,
     token_text,
 };
+pub(super) use preamble::RelationRole;
 use preamble::parse_preamble;
 use suffix::{parse_relation_suffix, starts_primary_key};
 
-pub(super) use preamble::RelationRole;
-
-use super::utils::State;
-use super::{BodyForm, RelationSuffixContext};
+use super::{BodyForm, RelationSuffixContext, utils::State};
 
 pub(super) type ScanResult<T> = Result<T, Box<Simple<SyntaxKind>>>;
 

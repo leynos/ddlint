@@ -4,16 +4,20 @@
 
 mod fixtures;
 
-use super::helpers::{parse_relation, pretty_print};
-use crate::parser::ast::{AstNode, RelationBody, RelationKind, RelationRole};
-use crate::test_util::{
-    assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
-};
 use fixtures::{
-    input_relation_pk, internal_relation_no_pk, multiline_relation, output_relation_no_pk,
+    input_relation_pk,
+    internal_relation_no_pk,
+    multiline_relation,
+    output_relation_no_pk,
     relation_unbalanced_parentheses,
 };
 use rstest::rstest;
+
+use super::helpers::{parse_relation, pretty_print};
+use crate::{
+    parser::ast::{AstNode, RelationBody, RelationKind, RelationRole},
+    test_util::{assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error},
+};
 
 fn fields(items: &[(&str, &str)]) -> RelationBody {
     RelationBody::Fields(
@@ -24,9 +28,7 @@ fn fields(items: &[(&str, &str)]) -> RelationBody {
     )
 }
 
-fn element_type(ty: &str) -> RelationBody {
-    RelationBody::ElementType(ty.into())
-}
+fn element_type(ty: &str) -> RelationBody { RelationBody::ElementType(ty.into()) }
 
 /// Expected outputs used only by the basic relation declaration table.
 struct ExpectedRelation<'a> {

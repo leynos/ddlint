@@ -1,7 +1,9 @@
 //! Helpers for constructing literal expression nodes in tests.
 
-use crate::parser::ast::{Expr, Literal, StringKind, StringLiteral};
-use crate::parser::expression::parse_numeric_literal;
+use crate::parser::{
+    ast::{Expr, Literal, StringKind, StringLiteral},
+    expression::parse_numeric_literal,
+};
 
 /// Newtype wrapper for numeric literal text.
 ///
@@ -10,15 +12,11 @@ use crate::parser::expression::parse_numeric_literal;
 pub struct NumericText(String);
 
 impl From<&str> for NumericText {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
 impl AsRef<str> for NumericText {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
+    fn as_ref(&self) -> &str { &self.0 }
 }
 
 /// Newtype wrapper for string literal body content.
@@ -29,15 +27,11 @@ impl AsRef<str> for NumericText {
 pub struct StringBody(String);
 
 impl From<&str> for StringBody {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
 impl AsRef<str> for StringBody {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
+    fn as_ref(&self) -> &str { &self.0 }
 }
 
 /// Construct a numeric [`Expr::Literal`].
@@ -136,6 +130,4 @@ fn string_literal(body: &str, kind: StringKind, interned: bool) -> Expr {
 
 /// Construct a boolean [`Expr::Literal`].
 #[must_use]
-pub fn lit_bool(b: bool) -> Expr {
-    Expr::Literal(Literal::Bool(b))
-}
+pub fn lit_bool(b: bool) -> Expr { Expr::Literal(Literal::Bool(b)) }

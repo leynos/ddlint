@@ -1,7 +1,6 @@
 //! Integration tests for expression parsing.
 
-use crate::test_util::assert_no_parse_errors;
-use crate::{SyntaxKind, parse};
+use crate::{SyntaxKind, parse, test_util::assert_no_parse_errors};
 
 #[test]
 fn rule_body_expression_creates_node() {

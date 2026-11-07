@@ -5,9 +5,8 @@
 
 use rowan::SyntaxElement;
 
-use crate::{DdlogLanguage, SyntaxKind};
-
 use super::super::skip_whitespace_and_comments;
+use crate::{DdlogLanguage, SyntaxKind};
 
 pub(crate) fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
 where
@@ -83,8 +82,7 @@ where
 mod tests {
     //! Tests for parse output helpers.
     use super::*;
-    use crate::parser::ast::AstNode;
-    use crate::parser::parse;
+    use crate::parser::{ast::AstNode, parse};
 
     #[test]
     fn collects_output_names() {

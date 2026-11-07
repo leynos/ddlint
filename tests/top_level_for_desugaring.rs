@@ -4,8 +4,10 @@
 //! without polluting CST rule spans, while explicit rule-body `for` remains
 //! unchanged.
 
-use ddlint::parse;
-use ddlint::test_util::{ErrorPattern, find_matching_error};
+use ddlint::{
+    parse,
+    test_util::{ErrorPattern, find_matching_error},
+};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
@@ -19,9 +21,7 @@ const UNTERMINATED_FOR_PATTERN: &str =
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn parse_case(#[default("")] src: &str) -> ddlint::Parsed {
-    parse(src)
-}
+fn parse_case(#[default("")] src: &str) -> ddlint::Parsed { parse(src) }
 
 #[rstest]
 #[case::single_line_desugar(

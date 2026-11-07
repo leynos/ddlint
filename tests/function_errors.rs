@@ -3,8 +3,7 @@
 //! These tests feed malformed function declarations into the parser, ensuring
 //! that specific delimiter issues are reported with precise spans.
 
-use ddlint::parser::parse;
-use ddlint::test_util::assert_delimiter_error;
+use ddlint::{parser::parse, test_util::assert_delimiter_error};
 use rstest::rstest;
 
 #[rstest]
