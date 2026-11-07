@@ -85,6 +85,18 @@ fn expected_supported_rules_clause() -> String {
     format!("supported rules are {rules}")
 }
 
+/// Render the whole diagnostic an unknown rule must produce.
+///
+/// Comparing the complete sentence rather than a substring also fails when
+/// production advertises extra rules, since a third name changes the rendered
+/// clause instead of merely extending it.
+fn expected_unknown_rule_message(name: &str) -> String {
+    format!(
+        "unknown lint rule `{name}` in `[cmds.lint.rules]`; {}",
+        expected_supported_rules_clause()
+    )
+}
+
 /// Unknown rule names are rejected after successful deserialization.
 ///
 /// The diagnostic must name the offending rule and advertise the exact
@@ -95,11 +107,8 @@ fn unknown_rule_name_is_an_error() {
         .expect("the configuration fixture must be written");
     let error = load(Some(file.path()), empty_environment(), &no_cli_overrides())
         .expect_err("unknown rule names must fail validation");
-    let message = error.to_string();
-    let supported_clause = expected_supported_rules_clause();
 
-    assert!(message.contains("new-rule"), "{message}");
-    assert!(message.contains(&supported_clause), "{message}");
+    assert_eq!(error.to_string(), expected_unknown_rule_message("new-rule"));
 }
 
 /// The validator accepts every advertised rule and rejects an unlisted one.
