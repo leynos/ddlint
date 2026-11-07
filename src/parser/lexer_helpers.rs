@@ -225,10 +225,11 @@ pub(super) fn balanced_block_nonempty(
 #[cfg(test)]
 mod tests {
     //! Unit tests for the lexer helper utilities.
-    use super::*;
-    use crate::{Span, parser::token_stream::TokenStream, test_util::tokenize};
     use chumsky::Stream;
     use rstest::rstest;
+
+    use super::*;
+    use crate::{Span, parser::token_stream::TokenStream, test_util::tokenize};
 
     #[rstest]
     #[case(SyntaxKind::T_LPAREN, "(")]

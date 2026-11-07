@@ -1,11 +1,14 @@
 //! Behavioural tests for linter rule traits and hook dispatch.
 
+use ddlint::{
+    Parsed,
+    SyntaxKind,
+    linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx},
+    parse,
+};
 use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
-
-use ddlint::linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleConfigValue, RuleCtx};
-use ddlint::{Parsed, SyntaxKind, parse};
 
 const CONTEXT_HIT_MESSAGE: &str = "context hit";
 const NODE_HIT_MESSAGE: &str = "node hit";
@@ -25,17 +28,11 @@ impl CountingRule {
 }
 
 impl Rule for CountingRule {
-    fn name(&self) -> &'static str {
-        "counting-rule"
-    }
+    fn name(&self) -> &'static str { "counting-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
-    fn docs(&self) -> &'static str {
-        "Counts matching node and token visits."
-    }
+    fn docs(&self) -> &'static str { "Counts matching node and token visits." }
 }
 
 impl CstRule for CountingRule {
@@ -65,17 +62,11 @@ impl CstRule for CountingRule {
 struct MetadataOnlyRule;
 
 impl Rule for MetadataOnlyRule {
-    fn name(&self) -> &'static str {
-        "metadata-only-rule"
-    }
+    fn name(&self) -> &'static str { "metadata-only-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
-    fn docs(&self) -> &'static str {
-        "Uses default no-op hook methods."
-    }
+    fn docs(&self) -> &'static str { "Uses default no-op hook methods." }
 }
 
 impl CstRule for MetadataOnlyRule {
@@ -87,13 +78,9 @@ impl CstRule for MetadataOnlyRule {
 struct ContextAwareRule;
 
 impl Rule for ContextAwareRule {
-    fn name(&self) -> &'static str {
-        "context-aware-rule"
-    }
+    fn name(&self) -> &'static str { "context-aware-rule" }
 
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
+    fn group(&self) -> &'static str { "correctness" }
 
     fn docs(&self) -> &'static str {
         "Validates that RuleCtx exposes source, config, and AST context."
@@ -101,9 +88,7 @@ impl Rule for ContextAwareRule {
 }
 
 impl CstRule for ContextAwareRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::N_RELATION_DECL]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RELATION_DECL] }
 
     fn check_node(
         &self,

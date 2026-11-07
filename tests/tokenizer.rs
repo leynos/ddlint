@@ -10,9 +10,7 @@ use rstest::{fixture, rstest};
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn simple_input() -> &'static str {
-    "input relation R(x: u32)"
-}
+fn simple_input() -> &'static str { "input relation R(x: u32)" }
 
 #[rstest]
 #[case("input", vec![SyntaxKind::K_INPUT])]
@@ -27,8 +25,9 @@ fn single_tokens(#[case] source: &str, #[case] expected: Vec<SyntaxKind>) {
 mod expect_used {
     //! Tests exercising expect-style tokenizer assertions.
 
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     fn token_spans(simple_input: &str) {

@@ -1,10 +1,14 @@
 //! Infix operator handling for the Pratt parser.
 
-use crate::parser::ast::{Expr, infix_binding_power};
-use crate::parser::reserved_tokens::rejection_for;
-use crate::{Span, SyntaxKind};
-
 use super::pratt::Pratt;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Expr, infix_binding_power},
+        reserved_tokens::rejection_for,
+    },
+};
 
 impl<I> Pratt<'_, I>
 where

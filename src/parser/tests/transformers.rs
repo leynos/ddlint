@@ -2,14 +2,19 @@
 //!
 //! Validates extern transformer syntax and edge cases.
 
-use super::helpers::parse_transformer;
-use crate::test_util::{
-    CAPITALIZED_TRANSFORMER_NAME_ERROR, ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR,
-    assert_custom_parse_error_contains, assert_no_custom_parse_error_contains,
-    assert_no_parse_errors, assert_parse_error,
-};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
+
+use super::helpers::parse_transformer;
+use crate::test_util::{
+    CAPITALIZED_TRANSFORMER_NAME_ERROR,
+    ErrorPattern,
+    MISSING_OUTPUT_SIGNATURE_ERROR,
+    assert_custom_parse_error_contains,
+    assert_no_custom_parse_error_contains,
+    assert_no_parse_errors,
+    assert_parse_error,
+};
 
 #[allow_fixture_expansion_lints]
 #[fixture]
@@ -31,9 +36,7 @@ fn transformer_invalid() -> &'static str {
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_invalid_inputs() -> &'static str {
-    "extern transformer malformed(input: SomeData"
-}
+fn transformer_invalid_inputs() -> &'static str { "extern transformer malformed(input: SomeData" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
@@ -43,15 +46,11 @@ fn transformer_invalid_inputs_multiline() -> &'static str {
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_no_inputs() -> &'static str {
-    "extern transformer no_inputs(): OutputType"
-}
+fn transformer_no_inputs() -> &'static str { "extern transformer no_inputs(): OutputType" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_no_outputs() -> &'static str {
-    "extern transformer no_outputs(input: InputType):"
-}
+fn transformer_no_outputs() -> &'static str { "extern transformer no_outputs(input: InputType):" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
@@ -79,15 +78,11 @@ fn transformer_reserved_names() -> &'static str {
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_non_extern() -> &'static str {
-    "transformer local(input: InputType): OutputType"
-}
+fn transformer_non_extern() -> &'static str { "transformer local(input: InputType): OutputType" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_non_extern_malformed() -> &'static str {
-    "transformer local(input: InputType)"
-}
+fn transformer_non_extern_malformed() -> &'static str { "transformer local(input: InputType)" }
 
 #[rstest]
 #[case(transformer_single_io(), "normalize", vec![("input", "UnnormalizedData")], vec!["NormalizedData".into()])]

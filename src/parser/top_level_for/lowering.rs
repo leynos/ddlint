@@ -8,11 +8,10 @@
 //! introduce bindings for the lowered rule scope.
 //!
 //! Consumers should expect two main invariants from this module:
-//! - successful lowering yields a `SemanticRule` whose body terms are emitted
-//!   in evaluation order and whose head is atom-like;
-//! - unsupported control-flow constructs in the lowered body, or a non
-//!   atom-like head, are rejected with targeted diagnostics instead of
-//!   producing a partial rule.
+//! - successful lowering yields a `SemanticRule` whose body terms are emitted in evaluation order
+//!   and whose head is atom-like;
+//! - unsupported control-flow constructs in the lowered body, or a non atom-like head, are rejected
+//!   with targeted diagnostics instead of producing a partial rule.
 //!
 //! This module therefore owns the parser-side binding and scope hand-off for
 //! top-level `for` desugaring. Related helpers for interpreting those patterns
@@ -20,10 +19,11 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{
-    BinaryOp, Expr, Pattern, SemanticRule, SemanticRuleOrigin, SemanticRuleSpec,
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::ast::{BinaryOp, Expr, Pattern, SemanticRule, SemanticRuleOrigin, SemanticRuleSpec},
 };
-use crate::{Span, SyntaxKind};
 
 /// Diagnostic for top-level `for` statements whose bodies cannot lower.
 pub(crate) const UNSUPPORTED_TOP_LEVEL_FOR_BODY: &str = concat!(

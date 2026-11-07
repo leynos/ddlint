@@ -43,11 +43,8 @@
 
 use chumsky::{Error, error::Simple};
 
-use crate::parser::diagnostics::DiagnosticCode;
-use crate::{Span, SyntaxKind};
-
-use super::cursor::skip_trivia;
-use super::{ScanResult, custom_error};
+use super::{ScanResult, cursor::skip_trivia, custom_error};
+use crate::{Span, SyntaxKind, parser::diagnostics::DiagnosticCode};
 
 /// Relation role annotation parsed from a relation preamble keyword.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,8 +60,8 @@ pub(in crate::parser::span_scanners) enum RelationRole {
 /// # Fields
 ///
 /// - `role` records an optional `input` or `output` preamble keyword.
-/// - `has_kind` records whether `relation`, `stream`, or `multiset` was
-///   present before the relation name.
+/// - `has_kind` records whether `relation`, `stream`, or `multiset` was present before the relation
+///   name.
 #[derive(Debug)]
 pub(super) struct Preamble {
     /// Optional `input` or `output` relation role.

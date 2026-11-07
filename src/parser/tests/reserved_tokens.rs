@@ -3,18 +3,18 @@
 //! These tests pin the parser-facing diagnostics for legacy `DDlog` tokens whose
 //! lexer kinds remain available only so recovery can report precise spans.
 
-use chumsky::error::{Simple, SimpleReason};
-use rstest::rstest;
 use std::ops::Range;
 
-use crate::SyntaxKind;
-use crate::parser::expression::parse_expression;
-use crate::test_util::assert_no_parse_errors;
+use chumsky::error::{Simple, SimpleReason};
+use rstest::rstest;
+
+use crate::{SyntaxKind, parser::expression::parse_expression, test_util::assert_no_parse_errors};
 
 mod fixtures;
 
-use super::helpers::{SourceText, count_nodes_by_kind, parse_err, parse_ok};
 use fixtures::{DeclarationPosition, ExpectedReservedToken, ReservedTokenScenario};
+
+use super::helpers::{SourceText, count_nodes_by_kind, parse_err, parse_ok};
 
 #[test]
 fn typedef_keyword_is_rejected_without_type_def_ast() {

@@ -3,11 +3,19 @@
 //! These cases cover field access, method calls, indexing, diff markers, and
 //! delay syntax that extend an already parsed atom in the shared fixture suite.
 
-use crate::parser::ast::Expr;
-use crate::parser::tests::expression::fixtures::ExpressionCase;
-use crate::test_util::{
-    atom_delay, atom_diff, bit_slice, call_expr, field_access, lit_num, method_call, tuple_index,
-    var,
+use crate::{
+    parser::{ast::Expr, tests::expression::fixtures::ExpressionCase},
+    test_util::{
+        atom_delay,
+        atom_diff,
+        bit_slice,
+        call_expr,
+        field_access,
+        lit_num,
+        method_call,
+        tuple_index,
+        var,
+    },
 };
 
 fn field_and_method_call_cases() -> Vec<ExpressionCase> {

@@ -7,9 +7,7 @@ use std::fmt;
 
 mod sexpr;
 
-use super::number::NumberLiteral;
-use super::pattern::Pattern;
-use super::string_literal::StringLiteral;
+use super::{number::NumberLiteral, pattern::Pattern, string_literal::StringLiteral};
 
 /// Literal values that can appear in expressions.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,9 +44,7 @@ impl UnaryOp {
 }
 
 impl fmt::Display for UnaryOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.symbol())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str(self.symbol()) }
 }
 
 /// Binary operators in expressions.
@@ -135,19 +131,15 @@ impl BinaryOp {
 
     #[expect(
         clippy::indexing_slicing,
-        reason = "SYMBOLS is indexed by BinaryOp discriminants and is kept in sync via a compile-time length check"
+        reason = "SYMBOLS is indexed by BinaryOp discriminants and kept in sync by a length check"
     )]
-    fn symbol(self) -> &'static str {
-        Self::SYMBOLS[self as usize]
-    }
+    fn symbol(self) -> &'static str { Self::SYMBOLS[self as usize] }
 }
 
 const _: [(); BinaryOp::SYMBOLS.len()] = [(); (BinaryOp::Imply as usize) + 1];
 
 impl fmt::Display for BinaryOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.symbol())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str(self.symbol()) }
 }
 
 #[cfg(test)]

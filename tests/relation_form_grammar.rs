@@ -3,9 +3,11 @@
 //! Verifies that the public `ddlint::parse` entrypoint accepts the canonical
 //! role/kind/body/ref forms and rejects invalid primary-key combinations.
 
-use ddlint::ast::{Relation, RelationBody, RelationKind, RelationRole};
-use ddlint::parse;
-use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
+use ddlint::{
+    ast::{Relation, RelationBody, RelationKind, RelationRole},
+    parse,
+    test_util::{assert_custom_parse_error_contains, assert_no_parse_errors},
+};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 

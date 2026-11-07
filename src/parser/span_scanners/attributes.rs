@@ -6,8 +6,7 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::span_collector::SpanCollector;
-use crate::{Span, SyntaxKind};
+use crate::{Span, SyntaxKind, parser::span_collector::SpanCollector};
 
 type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 

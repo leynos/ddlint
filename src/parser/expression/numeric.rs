@@ -5,10 +5,11 @@
 //! validation (positive widths, integer fit checks, and supported float
 //! widths) and returns structured literal representations for the AST.
 
-use super::numeric_newtypes::{DigitString, FloatSuffix, QualifierRest, RawLiteral, WidthText};
-use crate::parser::ast::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 use num_bigint::BigInt;
 use num_traits::{One, Signed};
+
+use super::numeric_newtypes::{DigitString, FloatSuffix, QualifierRest, RawLiteral, WidthText};
+use crate::parser::ast::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 
 /// Error returned when a numeric literal fails validation.
 #[derive(Debug, Clone, PartialEq, Eq)]

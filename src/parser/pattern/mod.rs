@@ -6,10 +6,15 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{Pattern, PatternLiteral, StringLiteral};
-use crate::parser::expression::parse_numeric_literal;
-use crate::parser::token_stream::TokenStream;
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Pattern, PatternLiteral, StringLiteral},
+        expression::parse_numeric_literal,
+        token_stream::TokenStream,
+    },
+};
 
 mod type_expr;
 
@@ -27,13 +32,9 @@ impl<'a> PatternTokenStream<'a> {
         }
     }
 
-    fn peek_kind(&self) -> Option<SyntaxKind> {
-        self.stream.peek().map(|(k, _)| *k)
-    }
+    fn peek_kind(&self) -> Option<SyntaxKind> { self.stream.peek().map(|(k, _)| *k) }
 
-    fn peek_span(&self) -> Option<Span> {
-        self.stream.peek().map(|(_, sp)| sp.clone())
-    }
+    fn peek_span(&self) -> Option<Span> { self.stream.peek().map(|(_, sp)| sp.clone()) }
 
     fn next_tok(&mut self) -> Option<(SyntaxKind, Span)> {
         self.stream
@@ -57,9 +58,7 @@ impl<'a> PatternTokenStream<'a> {
         self.errors.push(Simple::custom(span, msg.into()));
     }
 
-    fn eof_span(&self) -> Span {
-        self.stream.src().len()..self.stream.src().len()
-    }
+    fn eof_span(&self) -> Span { self.stream.src().len()..self.stream.src().len() }
 
     fn slice(&self, span: &Span) -> String {
         debug_assert!(
@@ -73,9 +72,7 @@ impl<'a> PatternTokenStream<'a> {
             .to_string()
     }
 
-    fn take_errors(self) -> Vec<Simple<SyntaxKind>> {
-        self.errors
-    }
+    fn take_errors(self) -> Vec<Simple<SyntaxKind>> { self.errors }
 }
 
 /// Parse a pattern from a standalone string.

@@ -6,10 +6,18 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{Expr, UnaryOp};
-use crate::parser::expression::parse_expression;
-use crate::parser::span_utils::{parse_u32_decimal, shift_errors, trim_byte_range};
-use crate::{DdlogLanguage, Span, SyntaxKind, tokenize_with_trivia, tokenize_without_trivia};
+use crate::{
+    DdlogLanguage,
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Expr, UnaryOp},
+        expression::parse_expression,
+        span_utils::{parse_u32_decimal, shift_errors, trim_byte_range},
+    },
+    tokenize_with_trivia,
+    tokenize_without_trivia,
+};
 
 const REF_NEW_FN: &str = "ref_new";
 
@@ -21,9 +29,7 @@ struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
-    fn at_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0
-    }
+    fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
 fn adjust_delimiter_depth(kind: SyntaxKind, depths: &mut DelimiterDepths) {

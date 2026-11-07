@@ -2,10 +2,10 @@
 
 use rstest::rstest;
 
-use crate::parser::expression_span::{
-    ExpressionError, rule_body_literal_spans, validate_expression,
+use crate::{
+    parser::expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
+    test_util::tokenize,
 };
-use crate::test_util::tokenize;
 
 #[test]
 fn validate_expression_reports_out_of_bounds() {

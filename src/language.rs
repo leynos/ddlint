@@ -8,8 +8,7 @@
 
 use num_derive::{FromPrimitive as FromPrimitiveDerive, ToPrimitive as ToPrimitiveDerive};
 use num_traits::FromPrimitive;
-use rowan::Language as RowanLanguage;
-use rowan::SyntaxKind as RowanSyntaxKind;
+use rowan::{Language as RowanLanguage, SyntaxKind as RowanSyntaxKind};
 
 /// Every possible token or node in the `DDlog` syntax tree.
 #[derive(
@@ -265,9 +264,11 @@ pub enum SyntaxKind {
     N_ATTRIBUTE,
     /// Reserved for a field of a struct or constructor; the parser does not emit it yet.
     N_FIELD,
-    /// Reserved for a typed argument in a function or transformer signature; the parser does not emit it yet.
+    /// Reserved for a typed argument in a function or transformer signature; the parser does not
+    /// emit it yet.
     N_ARG_TYPE,
-    /// Reserved for an identifier with its position in a relation declaration; the parser does not emit it yet.
+    /// Reserved for an identifier with its position in a relation declaration; the parser does not
+    /// emit it yet.
     N_IDENTIFIER_WITH_POS,
     /// Reserved for a type expression; the parser does not emit it yet.
     N_TYPE,
@@ -279,9 +280,11 @@ pub enum SyntaxKind {
     N_CONSTRUCTOR,
     /// Reserved for the key expression of a relation; the parser does not emit it yet.
     N_KEY_EXPR,
-    /// Reserved for the role of a relation (`input`, `output` or internal); the parser does not emit it yet.
+    /// Reserved for the role of a relation (`input`, `output` or internal); the parser does not
+    /// emit it yet.
     N_RELATION_ROLE,
-    /// Reserved for the semantics of a relation (set, stream or multiset); the parser does not emit it yet.
+    /// Reserved for the semantics of a relation (set, stream or multiset); the parser does not emit
+    /// it yet.
     N_RELATION_SEMANTICS,
     /// Reserved for a relation declaration; the parser does not emit it yet.
     N_RELATION,

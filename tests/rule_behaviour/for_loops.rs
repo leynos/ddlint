@@ -3,8 +3,12 @@
 use ddlint::parser::ast::{AggregationSource, Rule, RuleBodyTerm};
 
 use super::{
-    assert_body_terms_error_contains, assert_body_terms_ok, assert_expression_term_sexpr,
-    assert_flattened_expression_terms, mixed_rule, parse_and_extract_rule,
+    assert_body_terms_error_contains,
+    assert_body_terms_ok,
+    assert_expression_term_sexpr,
+    assert_flattened_expression_terms,
+    mixed_rule,
+    parse_and_extract_rule,
 };
 
 #[test]

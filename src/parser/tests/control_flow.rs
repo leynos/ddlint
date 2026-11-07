@@ -4,13 +4,25 @@
 //! to guarantee that the Pratt parser produces the expected AST nodes even
 //! before the broader integration suite exercises them inside loops.
 
-use crate::parser::ast::{BinaryOp, Expr};
-use crate::parser::expression::parse_expression;
-use crate::test_util::{
-    assert_parse_error, break_expr, continue_expr, for_loop, match_arm, match_expr, return_expr,
-    tuple, var,
-};
 use rstest::rstest;
+
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        expression::parse_expression,
+    },
+    test_util::{
+        assert_parse_error,
+        break_expr,
+        continue_expr,
+        for_loop,
+        match_arm,
+        match_expr,
+        return_expr,
+        tuple,
+        var,
+    },
+};
 
 #[rstest]
 #[case("break", break_expr())]

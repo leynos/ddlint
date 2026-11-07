@@ -198,7 +198,5 @@ impl StringLiteral {
 
     /// Render the literal for `Expr::to_sexpr` output.
     #[must_use]
-    pub fn to_sexpr(&self) -> String {
-        self.to_source()
-    }
+    pub fn to_sexpr(&self) -> String { self.to_source() }
 }

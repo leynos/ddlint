@@ -27,15 +27,11 @@ impl Apply {
 
     /// Input identifiers passed to the transformer.
     #[must_use]
-    pub fn inputs(&self) -> Vec<String> {
-        self.collect_lists().0
-    }
+    pub fn inputs(&self) -> Vec<String> { self.collect_lists().0 }
 
     /// Output relation identifiers produced by the transformer.
     #[must_use]
-    pub fn outputs(&self) -> Vec<String> {
-        self.collect_lists().1
-    }
+    pub fn outputs(&self) -> Vec<String> { self.collect_lists().1 }
 
     fn collect_lists(&self) -> (Vec<String>, Vec<String>) {
         let mut iter = self.syntax.children_with_tokens().peekable();

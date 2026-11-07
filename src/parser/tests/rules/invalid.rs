@@ -1,8 +1,9 @@
 //! Tests covering invalid rule parsing scenarios.
 
+use rstest::rstest;
+
 use super::super::helpers::parse_err;
 use crate::test_util::{ErrorPattern, assert_parse_error};
-use rstest::rstest;
 
 #[rstest]
 #[case(

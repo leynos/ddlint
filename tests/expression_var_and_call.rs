@@ -3,11 +3,17 @@
 //! These tests cover the public `parse_expression` API to ensure identifiers
 //! become variables and that calls parse their argument lists correctly.
 
-use ddlint::parser::ast::Expr;
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, assert_unclosed_delimiter_error, call, lit_num,
-    qualified_call, var,
+use ddlint::{
+    parser::{ast::Expr, expression::parse_expression},
+    test_util::{
+        assert_delimiter_error,
+        assert_parse_error,
+        assert_unclosed_delimiter_error,
+        call,
+        lit_num,
+        qualified_call,
+        var,
+    },
 };
 use rstest::rstest;
 

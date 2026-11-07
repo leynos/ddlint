@@ -6,13 +6,15 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::error_messages::{
-    CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR,
-};
-use crate::parser::lexer_helpers::{balanced_block, ident, inline_ws};
-use crate::{Span, SyntaxKind};
-
 use super::utils::State;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        error_messages::{CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR},
+        lexer_helpers::{balanced_block, ident, inline_ws},
+    },
+};
 
 const NON_EXTERN_TRANSFORMER_ERROR: &str = "transformer declarations must be extern";
 
@@ -246,9 +248,7 @@ fn skip_balanced_parens(tokens: &[(SyntaxKind, Span)], start: usize) -> Option<(
     None
 }
 
-fn declaration_error_end(src: &str, fallback_end: usize) -> usize {
-    line_end_at(src, fallback_end)
-}
+fn declaration_error_end(src: &str, fallback_end: usize) -> usize { line_end_at(src, fallback_end) }
 
 fn line_end_at(src: &str, start: usize) -> usize {
     src.as_bytes()

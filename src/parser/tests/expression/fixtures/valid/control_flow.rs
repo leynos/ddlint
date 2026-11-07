@@ -3,11 +3,24 @@
 //! These grouped cases cover `if`, `match`, and `for` expressions, including
 //! nested forms that build larger ASTs for the shared valid-expression suite.
 
-use crate::parser::ast::{BinaryOp, Expr};
-use crate::parser::tests::expression::fixtures::ExpressionCase;
-use crate::test_util::{
-    call, field, field_access, for_loop, if_expr, lit_bool, lit_num, match_arm, match_expr,
-    struct_expr, var,
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        tests::expression::fixtures::ExpressionCase,
+    },
+    test_util::{
+        call,
+        field,
+        field_access,
+        for_loop,
+        if_expr,
+        lit_bool,
+        lit_num,
+        match_arm,
+        match_expr,
+        struct_expr,
+        var,
+    },
 };
 
 /// Returns control-flow expression fixtures grouped by kind.

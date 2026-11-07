@@ -5,9 +5,7 @@
 //! builder-call sequences, and that `Parsed::semantic_rules()` does not
 //! synthesize collection-specific semantic rules.
 
-use ddlint::parse;
-use ddlint::parser::ast::Expr;
-use ddlint::test_util::assert_no_parse_errors;
+use ddlint::{parse, parser::ast::Expr, test_util::assert_no_parse_errors};
 use rstest::rstest;
 
 /// Verify that a rule body containing a collection literal parses without errors,

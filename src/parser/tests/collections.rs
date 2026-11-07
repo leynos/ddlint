@@ -4,12 +4,27 @@
 //! literals, including edge cases like empty collections, trailing commas,
 //! nested structures, and disambiguation from brace groups.
 
-use crate::parser::ast::{BinaryOp, Expr};
-use crate::parser::expression::parse_expression;
-use crate::test_util::{
-    call, field, lit_bool, lit_num, lit_str, map_entry, map_lit, struct_expr, tuple, var, vec_lit,
-};
 use rstest::rstest;
+
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        expression::parse_expression,
+    },
+    test_util::{
+        call,
+        field,
+        lit_bool,
+        lit_num,
+        lit_str,
+        map_entry,
+        map_lit,
+        struct_expr,
+        tuple,
+        var,
+        vec_lit,
+    },
+};
 
 // ============================================================================
 // Vector literal tests

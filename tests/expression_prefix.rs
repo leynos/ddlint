@@ -4,12 +4,28 @@
 //! struct literals, and literal parsing through the public `parse_expression`
 //! API.
 
-use ddlint::parser::ast::Expr;
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_interned_str,
-    lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str, map_lit, match_arm, match_expr,
-    return_expr, struct_expr, tuple, var, vec_lit,
+use ddlint::{
+    parser::{ast::Expr, expression::parse_expression},
+    test_util::{
+        assert_delimiter_error,
+        assert_parse_error,
+        closure,
+        field,
+        lit_bool,
+        lit_interned_str,
+        lit_num,
+        lit_raw_interpolated_str,
+        lit_raw_str,
+        lit_str,
+        map_lit,
+        match_arm,
+        match_expr,
+        return_expr,
+        struct_expr,
+        tuple,
+        var,
+        vec_lit,
+    },
 };
 use rstest::rstest;
 

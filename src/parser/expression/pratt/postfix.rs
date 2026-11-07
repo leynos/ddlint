@@ -3,11 +3,12 @@
 //! `parse_postfix` dispatches `(`, `[`, `.`, `-<`, and `'` postfix forms to
 //! dedicated helpers, coordinating diff-marker tracking across the full chain.
 
-use crate::parser::ast::Expr;
-use crate::parser::expression::qualified::is_qualified_function_callee;
-use crate::{Span, SyntaxKind};
-
 use super::Pratt;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{ast::Expr, expression::qualified::is_qualified_function_callee},
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -164,9 +165,10 @@ mod tests {
     //! Tests for postfix expression parsing.
     use chumsky::error::SimpleReason;
 
-    use crate::SyntaxKind;
-    use crate::parser::ast::Expr;
-    use crate::parser::expression::parse_expression;
+    use crate::{
+        SyntaxKind,
+        parser::{ast::Expr, expression::parse_expression},
+    };
 
     #[test]
     fn qualified_callee_uses_call_postfix() {

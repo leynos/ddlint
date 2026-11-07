@@ -3,19 +3,22 @@
 //! Parses `index` statements, capturing their spans and any syntax errors.
 
 use chumsky::prelude::*;
-
-use crate::parser::lexer_helpers::token_display;
-use crate::{Span, SyntaxKind};
-
-use super::utils::State;
-
-use super::indexes_support as support;
-
 use support::{
-    ScanResult, TypeDepths, adjust_type_depths, consume_kind, consume_kind_or_invalid,
-    current_span, expected_closing_for, expected_eof, is_trivia, skip_trivia,
+    ScanResult,
+    TypeDepths,
+    adjust_type_depths,
+    consume_kind,
+    consume_kind_or_invalid,
+    current_span,
+    expected_closing_for,
+    expected_eof,
+    is_trivia,
+    skip_trivia,
     update_delimiter_stack,
 };
+
+use super::{indexes_support as support, utils::State};
+use crate::{Span, SyntaxKind, parser::lexer_helpers::token_display};
 
 pub(crate) const MISSING_INDEX_FIELD_LIST: &str =
     "index declarations require a typed field list `(name: Type, ...)` before `on`";

@@ -31,11 +31,18 @@ use chumsky::error::Simple;
 
 mod classification;
 
-use super::rule_head::{RuleHead, first_head_text, parse_rule_heads};
-use super::{AstNode, Expr, Pattern};
-use crate::parser::delimiter::find_top_level_eq_span;
-use crate::parser::span_utils::trim_byte_range;
-use crate::{DdlogLanguage, Span, SyntaxKind};
+use super::{
+    AstNode,
+    Expr,
+    Pattern,
+    rule_head::{RuleHead, first_head_text, parse_rule_heads},
+};
+use crate::{
+    DdlogLanguage,
+    Span,
+    SyntaxKind,
+    parser::{delimiter::find_top_level_eq_span, span_utils::trim_byte_range},
+};
 
 /// Typed wrapper for a rule declaration.
 #[derive(Debug, Clone)]
@@ -46,9 +53,7 @@ pub struct Rule {
 impl Rule {
     /// Text of the first rule head atom.
     #[must_use]
-    pub fn head(&self) -> Option<String> {
-        first_head_text(&self.syntax)
-    }
+    pub fn head(&self) -> Option<String> { first_head_text(&self.syntax) }
 
     /// Parse the rule heads into structured expressions.
     ///
@@ -155,11 +160,19 @@ impl Rule {
     /// # use ddlint::parse;
     /// # use ddlint::parser::ast::RuleBodyTerm;
     /// let parsed = parse("R(x) :- for (x in Source(x) if pred(x)) Target(x).");
-    /// let rule = parsed.root().rules().first().cloned().expect("rule missing");
+    /// let rule = parsed
+    ///     .root()
+    ///     .rules()
+    ///     .first()
+    ///     .cloned()
+    ///     .expect("rule missing");
     /// let flattened = rule.flattened_body_terms().expect("should flatten");
     /// // Contains: Source(x), pred(x), Target(x)
     /// assert_eq!(flattened.len(), 3);
-    /// assert!(matches!(flattened.first(), Some(RuleBodyTerm::Expression(_))));
+    /// assert!(matches!(
+    ///     flattened.first(),
+    ///     Some(RuleBodyTerm::Expression(_))
+    /// ));
     /// ```
     ///
     /// # Errors
@@ -194,15 +207,11 @@ pub struct RuleBodyExpression {
 impl RuleBodyExpression {
     /// Full text of the expression as written in the source.
     #[must_use]
-    pub fn text(&self) -> String {
-        self.syntax.text().to_string()
-    }
+    pub fn text(&self) -> String { self.syntax.text().to_string() }
 
     /// Source span covering this body expression.
     #[must_use]
-    pub fn span(&self) -> Span {
-        text_range_to_span(self.syntax.text_range())
-    }
+    pub fn span(&self) -> Span { text_range_to_span(self.syntax.text_range()) }
 
     fn parse_term(
         &self,

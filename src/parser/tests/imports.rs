@@ -2,14 +2,14 @@
 //!
 //! Covers standard and aliased imports along with basic error recovery.
 
+use rstest::rstest;
+
+use super::helpers::parse_import;
 use crate::{
     ast::Import,
     parse,
     test_util::{assert_no_parse_errors, assert_parse_error},
 };
-use rstest::rstest;
-
-use super::helpers::parse_import;
 
 #[rstest]
 #[case::standard("import standard_library", "standard_library", None)]

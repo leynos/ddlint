@@ -3,11 +3,23 @@
 //! These tests cover struct literals, tuple literals and closure expressions
 //! through the public `parse_expression` API.
 
-use ddlint::parser::ast::{BinaryOp, Expr};
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, closure, field, if_expr, lit_bool,
-    lit_num, struct_expr, tuple, var,
+use ddlint::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        expression::parse_expression,
+    },
+    test_util::{
+        assert_parse_error,
+        assert_unclosed_delimiter_error,
+        closure,
+        field,
+        if_expr,
+        lit_bool,
+        lit_num,
+        struct_expr,
+        tuple,
+        var,
+    },
 };
 use rstest::rstest;
 

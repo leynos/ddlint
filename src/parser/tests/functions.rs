@@ -2,34 +2,27 @@
 //!
 //! Exercises extern and normal functions with varied signatures.
 
-use super::helpers::{parse_function, pretty_print};
-use crate::{parser::ast::AstNode, test_util::assert_parse_error};
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
-#[allow_fixture_expansion_lints]
-#[fixture]
-fn extern_function() -> &'static str {
-    "extern function hash(data: string): u64\n"
-}
+use super::helpers::{parse_function, pretty_print};
+use crate::{parser::ast::AstNode, test_util::assert_parse_error};
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn function_with_body() -> &'static str {
-    "function to_uppercase(s: string): string {\n}\n"
-}
+fn extern_function() -> &'static str { "extern function hash(data: string): u64\n" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn function_no_return() -> &'static str {
-    "function log_message(msg: string) {\n}\n"
-}
+fn function_with_body() -> &'static str { "function to_uppercase(s: string): string {\n}\n" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn function_no_params() -> &'static str {
-    "function greet(): string {\n}\n"
-}
+fn function_no_return() -> &'static str { "function log_message(msg: string) {\n}\n" }
+
+#[allow_fixture_expansion_lints]
+#[fixture]
+fn function_no_params() -> &'static str { "function greet(): string {\n}\n" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
@@ -63,9 +56,7 @@ fn function_nested_generics() -> &'static str {
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn function_shift_param() -> &'static str {
-    "function shift(x: Vec<<u8>>): bool {}\n"
-}
+fn function_shift_param() -> &'static str { "function shift(x: Vec<<u8>>): bool {}\n" }
 
 #[rstest]
 #[case::extern_fn(extern_function(), "hash", true, vec![("data", "string")], Some("u64"))]
@@ -99,21 +90,15 @@ fn parses_functions(
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn extern_function_missing_colon() -> &'static str {
-    "extern function missing_colon u32\n"
-}
+fn extern_function_missing_colon() -> &'static str { "extern function missing_colon u32\n" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn function_unterminated_body() -> &'static str {
-    "function foo() {"
-}
+fn function_unterminated_body() -> &'static str { "function foo() {" }
 
 #[allow_fixture_expansion_lints]
 #[fixture]
-fn function_unclosed_params() -> &'static str {
-    "function bad(a: string { }\n"
-}
+fn function_unclosed_params() -> &'static str { "function bad(a: string { }\n" }
 
 #[rstest]
 fn extern_function_missing_colon_is_error(extern_function_missing_colon: &str) {

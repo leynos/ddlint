@@ -8,7 +8,12 @@ use std::fmt::Write as _;
 use super::{
     config::{Pin, THREADS_FLAG},
     make::{
-        Host, MakeRunner, Target, development_problems, held_out_problems, held_out_problems_for,
+        Host,
+        MakeRunner,
+        Target,
+        development_problems,
+        held_out_problems,
+        held_out_problems_for,
         held_out_target_count,
     },
 };
@@ -52,7 +57,12 @@ fn bare_test_make(_target: Target<'_>, _host: Host) -> Result<String, String> {
 fn bare_lint_make(_target: Target<'_>, host: Host) -> Result<String, String> {
     let linker = linker_flag(host);
     canned(format_args!(
-        "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo test\ncargo clippy --all-targets\nwhitaker --all\n"
+        concat!(
+            "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo ",
+            "test\ncargo clippy --all-targets\nwhitaker --all\n"
+        ),
+        THREADS_FLAG = THREADS_FLAG,
+        linker = linker
     ))
 }
 
@@ -60,7 +70,13 @@ fn bare_lint_make(_target: Target<'_>, host: Host) -> Result<String, String> {
 fn exempt_commands_make(_target: Target<'_>, host: Host) -> Result<String, String> {
     let linker = linker_flag(host);
     canned(format_args!(
-        "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo test\ncargo fmt --all --check\ncargo metadata --format-version 1\nRUSTDOCFLAGS=\"-D warnings\" cargo doc\n"
+        concat!(
+            "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo ",
+            "test\ncargo fmt --all --check\ncargo metadata --format-version 1\n",
+            "RUSTDOCFLAGS=\"-D warnings\" cargo doc\n"
+        ),
+        THREADS_FLAG = THREADS_FLAG,
+        linker = linker
     ))
 }
 
@@ -71,16 +87,25 @@ fn release_clearing_make(_target: Target<'_>, _host: Host) -> Result<String, Str
 
 /// A fake runner whose held-out target runs an inspection command beside an assigning build.
 fn held_out_inspecting_make(_target: Target<'_>, _host: Host) -> Result<String, String> {
-    canned(format_args!(
-        "cargo metadata --format-version 1 --locked\nRUSTFLAGS=\"-D warnings\" cargo build --release\n"
-    ))
+    canned(format_args!(concat!(
+        "cargo metadata --format-version 1 --locked\n",
+        "RUSTFLAGS=\"-D warnings\" cargo build --release\n"
+    )))
 }
 
 /// A fake runner whose chained recipe leaves its second command bare beside a probe that assigns.
 fn chained_bare_make(_target: Target<'_>, host: Host) -> Result<String, String> {
     let linker = linker_flag(host);
     canned(format_args!(
-        "if RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo nextest --version; then cargo nextest run; else echo \"falling back to cargo test\"; RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo test; fi\n"
+        concat!(
+            "if RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo ",
+            "nextest --version; then cargo nextest run; else echo \"falling back to cargo test\"; ",
+            "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" ",
+            "cargo test; ",
+            "fi\n"
+        ),
+        THREADS_FLAG = THREADS_FLAG,
+        linker = linker
     ))
 }
 
@@ -274,8 +299,8 @@ const RELEASE_FORMS: [ReleaseForm; 8] = [
 
 /// Scenario: a release command in each form it can take, fed through the injected runner.
 ///
-/// Invariant: a release command is accepted exactly when it assigns `RUSTFLAGS` in a form that keeps
-/// the caller's value, with or without flags of its own; an empty, unquoted, standard-only or
+/// Invariant: a release command is accepted exactly when it assigns `RUSTFLAGS` in a form that
+/// keeps the caller's value, with or without flags of its own; an empty, unquoted, standard-only or
 /// own-flags-only assignment is refused, whether as a complaint or as an unreadable line.
 #[test]
 fn a_release_command_is_accepted_only_when_it_keeps_the_callers_rustflags() -> Result<(), String> {

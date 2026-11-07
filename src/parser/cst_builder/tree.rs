@@ -4,9 +4,8 @@ use log::warn;
 use rowan::{GreenNode, GreenNodeBuilder, Language};
 use smallvec::SmallVec;
 
-use crate::{DdlogLanguage, Span, SyntaxKind};
-
 use super::spans::ParsedSpans;
+use crate::{DdlogLanguage, Span, SyntaxKind};
 
 type SpanSliceGetter = fn(&ParsedSpans) -> &[Span];
 
@@ -172,12 +171,16 @@ fn push_error_wrapped(builder: &mut GreenNodeBuilder, raw: rowan::SyntaxKind, te
 #[cfg(test)]
 mod tests {
     //! Tests for CST tree construction.
-    use super::*;
-    use crate::parser::ast::Root;
-    use crate::parser::ast::rule::text_range_to_span;
-    use crate::parser::span_scanner::parse_tokens;
-    use crate::test_util::tokenize;
     use rowan::SyntaxNode;
+
+    use super::*;
+    use crate::{
+        parser::{
+            ast::{Root, rule::text_range_to_span},
+            span_scanner::parse_tokens,
+        },
+        test_util::tokenize,
+    };
 
     #[test]
     fn build_green_tree_round_trip() {

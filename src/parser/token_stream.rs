@@ -56,9 +56,7 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(pos, 0);
     /// ```
     #[must_use]
-    pub(crate) fn cursor(&self) -> usize {
-        self.cursor
-    }
+    pub(crate) fn cursor(&self) -> usize { self.cursor }
 
     /// Returns the token at the current cursor position, if any.
     ///
@@ -73,9 +71,7 @@ impl<'a> TokenStream<'a> {
     /// }
     /// ```
     #[must_use]
-    pub(crate) fn peek(&self) -> Option<&(SyntaxKind, Span)> {
-        self.tokens.get(self.cursor)
-    }
+    pub(crate) fn peek(&self) -> Option<&(SyntaxKind, Span)> { self.tokens.get(self.cursor) }
 
     /// Moves the cursor forward by one token if not already at the end of the token stream.
     ///
@@ -102,9 +98,7 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(all_tokens.len(), tokens.len());
     /// ```
     #[must_use]
-    pub(crate) fn tokens(&self) -> &[(SyntaxKind, Span)] {
-        self.tokens
-    }
+    pub(crate) fn tokens(&self) -> &[(SyntaxKind, Span)] { self.tokens }
 
     /// Returns a reference to the source text associated with this token stream.
     ///
@@ -115,13 +109,12 @@ impl<'a> TokenStream<'a> {
     /// assert_eq!(stream.src(), "let x = 1;");
     /// ```
     #[must_use]
-    pub(crate) fn src(&self) -> &str {
-        self.src
-    }
+    pub(crate) fn src(&self) -> &str { self.src }
 
     /// Advances the cursor past all tokens whose span ends at or before the specified position.
     ///
-    /// Tokens are skipped until a token is found whose span end is greater than `end`, or until no tokens remain.
+    /// Tokens are skipped until a token is found whose span end is greater than `end`, or until no
+    /// tokens remain.
     ///
     /// # Examples
     ///
@@ -142,9 +135,12 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    /// Returns the position immediately after the next newline character following the token at `start`, or the end of the source if no newline is found.
+    /// Returns the position immediately after the next newline character following the token at
+    /// `start`, or the end of the source if no newline is found.
     ///
-    /// Iterates through tokens starting at the given index, updating the end position to each token's span end. Stops at the first token whose span contains a newline character, or returns the source length if no such token exists.
+    /// Iterates through tokens starting at the given index, updating the end position to each
+    /// token's span end. Stops at the first token whose span contains a newline character, or
+    /// returns the source length if no such token exists.
     ///
     /// # Examples
     ///

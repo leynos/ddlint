@@ -1,9 +1,11 @@
 //! Assertion helpers for verifying parser errors in tests.
 
+use std::ops::Range;
+
+use chumsky::error::{Simple, SimpleReason};
+
 use super::{ErrorPattern, normalise_tokens};
 use crate::SyntaxKind;
-use chumsky::error::{Simple, SimpleReason};
-use std::ops::Range;
 
 /// Assert that `f` panics and return its panic message.
 ///
@@ -99,7 +101,7 @@ pub fn assert_first_rule_without_parse_stage_aggregation_errors(
 ///
 /// ```
 /// use chumsky::error::Simple;
-/// use ddlint::{test_util::assert_parse_error, SyntaxKind};
+/// use ddlint::{SyntaxKind, test_util::assert_parse_error};
 ///
 /// let err: Simple<SyntaxKind> = Simple::custom(0..1, "oops");
 /// assert_parse_error(&[err], "oops", 0, 1);
@@ -214,7 +216,10 @@ pub fn assert_no_custom_parse_error_contains(
 ///
 /// ```
 /// use chumsky::error::Simple;
-/// use ddlint::{SyntaxKind, test_util::{ErrorPattern, find_matching_error}};
+/// use ddlint::{
+///     SyntaxKind,
+///     test_util::{ErrorPattern, find_matching_error},
+/// };
 ///
 /// let errors = vec![
 ///     Simple::custom(0..1, "other error"),
@@ -333,7 +338,7 @@ delimiter_error_assertion!(
 delimiter_error_assertion!(
     assert_unclosed_delimiter_error,
     DelimiterErrorKind::Unclosed,
-    "Assert that a parser error indicates an unclosed delimiter.\n\n\
-     This verifies the error span points to the opening delimiter, and that no\n\
-     closing token was found whilst matching the expected pattern."
+    "Assert that a parser error indicates an unclosed delimiter.\n\nThis verifies the error span \
+     points to the opening delimiter, and that no\nclosing token was found whilst matching the \
+     expected pattern."
 );

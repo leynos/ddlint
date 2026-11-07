@@ -3,8 +3,10 @@
 //! Verifies that the public `ddlint::parse` entrypoint accepts the canonical
 //! spec-form index declaration and rejects the legacy shorthand.
 
-use ddlint::parse;
-use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
+use ddlint::{
+    parse,
+    test_util::{assert_custom_parse_error_contains, assert_no_parse_errors},
+};
 use rstest::rstest;
 
 #[test]

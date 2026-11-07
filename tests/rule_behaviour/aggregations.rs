@@ -6,7 +6,10 @@ use super::{assert_body_terms_error_contains, assert_body_terms_ok, parse_and_ex
 
 #[test]
 fn parses_rules_with_flatmap_and_group_by_terms() {
-    let src = "Totals(user, total) :- Orders(user, amt), var rows = FlatMap(fetch_rows(amt)), group_by(sum(amt), user), total = __group.";
+    let src = concat!(
+        "Totals(user, total) :- Orders(user, amt), var rows = FlatMap(fetch_rows(amt)), ",
+        "group_by(sum(amt), user), total = __group."
+    );
     let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 4);
@@ -20,7 +23,10 @@ fn parses_rules_with_flatmap_and_group_by_terms() {
 
 #[test]
 fn rule_body_terms_non_aggregation_classification() {
-    let src = "NonAgg(x) :- some_predicate(1, 2), var x = FlatMap(some_function(3)), another_predicate(x, 4).";
+    let src = concat!(
+        "NonAgg(x) :- some_predicate(1, 2), var x = FlatMap(some_function(3)), ",
+        "another_predicate(x, 4)."
+    );
     let rule = parse_and_extract_rule(src).expect("source should parse and contain a rule");
     let terms = assert_body_terms_ok(&rule);
     assert_eq!(terms.len(), 3);

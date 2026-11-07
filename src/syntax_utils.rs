@@ -5,8 +5,9 @@
 //! on `rowan` syntax elements without constructing additional nodes.
 //! They are shared by AST wrappers when extracting text from the CST.
 
-use crate::{DdlogLanguage, SyntaxKind};
 use rowan::SyntaxElement;
+
+use crate::{DdlogLanguage, SyntaxKind};
 
 /// Skips to the first `(` then collects comma-separated substrings while
 /// preserving nested parentheses.
