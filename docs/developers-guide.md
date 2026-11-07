@@ -104,6 +104,23 @@ parsing pipeline.
   `Expr::AtomDelay` on success.
 - Keeps delay-specific validation separate from the generic postfix loop.
 
+### `src/parser/expression/pattern_collection.rs`
+
+- Owns the shared pattern-collection context for `match` arms and `for`
+  headers. A `PatternContext` carries a `PatternSite` (`MatchArm` or `ForLoop`)
+  and supplies the diagnostics and delimiter rules for that site.
+- Builds the context with `for_match_pattern()` or `for_for_loop_pattern()`.
+  A match arm ends at `->`; a for-loop header ends at `in`.
+- Applies site-specific behaviour through `validate_on_eof()` and
+  `use_for_paren()`, which are true only for a for-loop pattern. An unbalanced
+  for-loop header is therefore diagnosed before the missing `in`, and the
+  `for (x) in xs` form is accepted.
+- Renders site-specific text through `missing_terminator_msg()`,
+  `unmatched_delimiter_msg()`, and `unexpected_end_msg()`.
+- Defines `DelimiterKind` (`Paren`, `Brace`, `Bracket`).
+  `unmatched_delimiter_msg()` takes it to name the offending delimiter in the
+  site's message.
+
 ## Boundary rules
 
 - Keep formatting helpers in `sexpr.rs` rather than mixing them into the core
