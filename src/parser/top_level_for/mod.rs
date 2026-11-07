@@ -12,6 +12,7 @@ use crate::{
         ast::{Expr, SemanticRule},
         expression::parse_expression,
         span_utils::{shift_errors, trim_byte_range},
+        token_stream::TokenStream,
     },
 };
 
@@ -36,7 +37,7 @@ struct ExclusionCursor<'a> {
 }
 
 impl<'a> ExclusionCursor<'a> {
-    fn new(exclusions: &'a [Span]) -> Self {
+    const fn new(exclusions: &'a [Span]) -> Self {
         Self {
             exclusions,
             index: 0,
@@ -69,7 +70,9 @@ struct DelimiterDepth {
 }
 
 impl DelimiterDepth {
-    fn update(&mut self, kind: SyntaxKind) {
+    /// Update parenthesis, brace, and bracket depths for `kind`; angle
+    /// brackets are not tracked here.
+    const fn update(&mut self, kind: SyntaxKind) {
         match kind {
             SyntaxKind::T_LPAREN => self.paren += 1,
             SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
@@ -81,7 +84,8 @@ impl DelimiterDepth {
         }
     }
 
-    fn is_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
+    /// Return `true` when no parenthesis, brace, or bracket is open.
+    const fn is_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
 /// Collect and desugar top-level `for` statements.
@@ -115,11 +119,11 @@ pub(crate) fn collect_desugared_top_level_for_rules(
         if *kind == SyntaxKind::K_FOR && is_at_line_start(tokens, src, cursor, span.start) {
             let (parsed, parse_errors) = parse_top_level_for_statement(tokens, src, cursor);
             if let Some((statement_span, expression, next_cursor)) = parsed {
-                if let Some(rule) =
-                    lower_top_level_for(expression, statement_span.clone(), &mut errors)
-                {
-                    rules.push(rule);
-                }
+                rules.extend(lower_top_level_for(
+                    expression,
+                    statement_span.clone(),
+                    &mut errors,
+                ));
                 cursor = next_cursor;
                 continue;
             }
@@ -185,15 +189,14 @@ fn parse_top_level_for_statement(
 
 /// Return `true` when the token at `span` is a top-level terminating dot.
 fn is_terminating_dot(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
+    stream: &TokenStream<'_>,
     kind: SyntaxKind,
     span: &Span,
     depth: &DelimiterDepth,
 ) -> bool {
     kind == SyntaxKind::T_DOT
         && depth.is_top_level()
-        && is_top_level_for_statement_terminator_dot(tokens, src, span.start)
+        && is_top_level_for_statement_terminator_dot(stream.tokens(), stream.src(), span.start)
 }
 
 fn find_top_level_dot(
@@ -204,7 +207,7 @@ fn find_top_level_dot(
     let mut depth = DelimiterDepth::default();
     for (idx, (kind, span)) in tokens.iter().enumerate().skip(start_idx) {
         depth.update(*kind);
-        if is_terminating_dot(tokens, src, *kind, span, &depth) {
+        if is_terminating_dot(&TokenStream::new(tokens, src), *kind, span, &depth) {
             return Some((span.clone(), idx));
         }
     }

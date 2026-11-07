@@ -62,7 +62,7 @@ impl<'a> DiagnosticContext<'a> {
 
     /// Return the source span associated with the diagnostic.
     #[must_use]
-    pub fn span(&self) -> &Span { &self.span }
+    pub const fn span(&self) -> &Span { &self.span }
 
     /// Return the diagnostic severity.
     #[must_use]
@@ -180,8 +180,10 @@ fn diagnostic_message(error: &Simple<SyntaxKind>) -> String {
             let mut expected: Vec<String> = error
                 .expected()
                 .map(|kind| {
-                    kind.as_ref()
-                        .map_or_else(|| "end of input".to_owned(), |kind| display_kind(*kind))
+                    kind.as_ref().map_or_else(
+                        || "end of input".to_owned(),
+                        |expected_kind| display_kind(*expected_kind),
+                    )
                 })
                 .collect();
             expected.sort();

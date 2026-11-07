@@ -104,6 +104,23 @@ parsing pipeline.
   `Expr::AtomDelay` on success.
 - Keeps delay-specific validation separate from the generic postfix loop.
 
+### `src/parser/expression/pattern_collection.rs`
+
+- Owns the shared pattern-collection context for `match` arms and `for`
+  headers. A `PatternContext` carries a `PatternSite` (`MatchArm` or `ForLoop`)
+  and supplies the diagnostics and delimiter rules for that site.
+- Builds the context with `for_match_pattern()` or `for_for_loop_pattern()`.
+  A match arm ends at `->`; a for-loop header ends at `in`.
+- Applies site-specific behaviour through `validate_on_eof()` and
+  `use_for_paren()`, which are true only for a for-loop pattern. An unbalanced
+  for-loop header is therefore diagnosed before the missing `in`, and the
+  `for (x) in xs` form is accepted.
+- Renders site-specific text through `missing_terminator_msg()`,
+  `unmatched_delimiter_msg()`, and `unexpected_end_msg()`.
+- Defines `DelimiterKind` (`Paren`, `Brace`, `Bracket`).
+  `unmatched_delimiter_msg()` takes it to name the offending delimiter in the
+  site's message.
+
 ## Boundary rules
 
 - Keep formatting helpers in `sexpr.rs` rather than mixing them into the core
@@ -172,6 +189,35 @@ reports errors, `Runner::run` skips registered rules and returns no lint
 diagnostics; recovery CST nodes are not linted. Callers must report parser
 errors separately from the returned lint diagnostics.
 
+## Lint baseline
+
+The workspace lint baseline is authoritative in two files:
+
+- `Cargo.toml` holds the `[workspace.lints.rust]`,
+  `[workspace.lints.rustdoc]`, and `[workspace.lints.clippy]` tables. Every
+  member opts in with `[lints] workspace = true`, so a rule added once applies
+  to the whole estate.
+- `clippy.toml` holds the numeric thresholds: cognitive complexity 9, too many
+  arguments 4, too many lines 70, and excessive nesting 4. They match
+  CodeScene's ceilings so the local and hosted gates agree about the same
+  function.
+
+The baseline denies the restriction lints it names. Fix a finding at its
+source: rename a shadowed binding, group related parameters in a struct, or
+extract a helper. A reasoned `#[expect(lint, reason = "...")]` is the only
+accepted exception, and it must be tightly scoped; `#[allow]` is not a backlog
+mechanism. An `#[expect]` for a lint that is still allow-by-default is itself
+an error under `-D warnings`, so a lint and its fixes land together.
+
+Environment-dependent behaviour is injected rather than read from the process
+environment: use the `mockable` crate, or a shared guard and mutex in a test
+helper crate. Direct environment mutation in tests is forbidden.
+
+The gate needs the pinned nightly toolchain with `rustfmt`, `clippy`, and
+`rust-analyzer` (see `rust-toolchain.toml`), plus `mold` on Linux. Run
+`make check-build-tools` to verify them and `make install-build-tools` to
+provision them.
+
 ## Contributor workflow
 
 Run these gates in order before committing:
@@ -187,10 +233,15 @@ This is the required pre-commit sequence, matching `AGENTS.md`.
 
 `make lint` first runs `make interrogate`, which needs `uv` and requires a
 docstring on every Python definition under `tests` (it fails on any `MISSED`
-row, because interrogate rounds its percentage to one decimal). It also
-includes the spelling gate, and `make markdownlint` also invokes the spelling
-gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
-`make nixie` validates the Mermaid diagrams within them.
+row, because interrogate rounds its percentage to one decimal). It then runs
+Clippy, a Rustdoc build with `RUSTDOC_FLAGS` (`--cfg docsrs -D warnings` by
+default), the Clippy policy script, Whitaker, and the spelling gate.
+`make test` runs the workspace tests and then the doctests, both with warnings
+denied. Workspace crates take `RUSTFLAGS`, while rustdoc compiles each doctest
+snippet separately and takes `RUSTDOCFLAGS`; the recipe forwards `-Dwarnings`
+to those compilations through `--doctest-build-arg`. `make markdownlint` also
+invokes the spelling gate for tracked Markdown. `make markdownlint` lints every
+Markdown source, and `make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
@@ -316,7 +367,7 @@ those call sites; wider reuse requires an explicit ownership decision.
 ### Relation matrix case ownership
 
 The private `RelationFormCase` record belongs only to the 17 cases of
-`parses_relation_form_matrix` in `src/parser/tests/relations.rs`. It groups
+`parses_relation_form_matrix` in `src/parser/tests/relations/mod.rs`. It groups
 source text with the relation metadata compared by that test; parsing and
 assertions remain in the test body. It is not a shared parser expectation type.
 Wider reuse requires a separate ownership decision.
@@ -325,7 +376,7 @@ Wider reuse requires a separate ownership decision.
 
 The private `ExpectedRelation<'a>` record belongs only to the `input`,
 `output`, and `internal` cases of `parses_relations` in
-`src/parser/tests/relations.rs`. Direct named-field literals group the five
+`src/parser/tests/relations/mod.rs`. Direct named-field literals group the five
 expected outputs; each case supplies its source separately through the existing
 fixture. Parsing and comparisons remain in the test. The record has no
 constructor or parser API and is not shared with `RelationFormCase` or other

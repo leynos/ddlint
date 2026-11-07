@@ -305,6 +305,10 @@ Important invariants:
   cases.
 - Optional return type parsing (`parse_type_after_colon`) reuses the same type
   expression logic and trivia skipping.
+- `Function::return_type` advances past the parameter list with a
+  parenthesis-depth scan. A nested tuple type such as `((u32, bool), bool)` in
+  the parameter list therefore does not end the scan early, and the declared
+  return type is still returned.
 - Index declarations now use the canonical spec-form grammar
   `index Name(field: Type, ...) on Atom`. The span scanner rejects the legacy
   shorthand `index Name on Relation(columns)` with a targeted diagnostic, and

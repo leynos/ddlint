@@ -15,8 +15,8 @@ pub(super) fn parse_type_expr(ts: &mut PatternTokenStream<'_>) -> Option<String>
             break;
         }
 
-        let (kind, span) = ts.next_tok()?;
-        depths.adjust_for_token(kind);
+        let (token_kind, span) = ts.next_tok()?;
+        depths.adjust_for_token(token_kind);
         buf.push_str(&ts.slice(&span));
     }
 
@@ -32,11 +32,14 @@ struct DelimiterDepths {
 }
 
 impl DelimiterDepths {
-    fn at_top_level(&self) -> bool {
+    /// Return `true` when every tracked delimiter depth is zero.
+    const fn at_top_level(&self) -> bool {
         self.paren == 0 && self.brace == 0 && self.bracket == 0 && self.angle == 0
     }
 
-    fn adjust_for_token(&mut self, kind: SyntaxKind) {
+    /// Update the tracked depths for `kind`, treating `T_SHL`/`T_SHR` as two
+    /// angle brackets and saturating on unmatched closers.
+    const fn adjust_for_token(&mut self, kind: SyntaxKind) {
         match kind {
             SyntaxKind::T_LPAREN => self.paren += 1,
             SyntaxKind::T_RPAREN => self.paren = self.paren.saturating_sub(1),
@@ -53,7 +56,7 @@ impl DelimiterDepths {
     }
 }
 
-fn is_type_delimiter(kind: SyntaxKind) -> bool {
+const fn is_type_delimiter(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::T_COMMA
@@ -74,6 +77,6 @@ fn validate_type_result(ts: &mut PatternTokenStream<'_>, buf: &str) -> Option<St
         ts.push_error(span, "expected type after ':' in pattern");
         None
     } else {
-        Some(text.to_string())
+        Some(text.to_owned())
     }
 }

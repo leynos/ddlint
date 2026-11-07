@@ -23,8 +23,8 @@ fn canonical_index_declaration_parses() {
     assert_eq!(
         index.fields(),
         Ok(vec![
-            ("user".to_string(), "UserId".to_string()),
-            ("ts".to_string(), "Timestamp".to_string()),
+            ("user".to_owned(), "UserId".to_owned()),
+            ("ts".to_owned(), "Timestamp".to_owned()),
         ])
     );
     assert_eq!(index.on_target().as_deref(), Some("Orders[user,ts]"));

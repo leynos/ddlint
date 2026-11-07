@@ -119,28 +119,51 @@ fn parses_return_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+/// One prefix-form error case.
+struct PrefixErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    is_unclosed: bool,
+}
+
+/// Check the diagnostic reported for each malformed prefix expression.
 #[rstest]
 // Note: `{}` is now a valid empty map literal, so it's not an error.
-#[case("|x x", "expected pipe", 3, 4, false)]
-#[case("match (x) {}", "expected at least one match arm", 11, 12, false)]
-#[case(
-    "match (x) { _ -> x",
-    "expected ',' or '}' after match arm",
-    18,
-    18,
-    false
-)]
-fn prefix_form_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] unclosed: bool,
-) {
+#[case(PrefixErrorCase {
+    src: "|x x",
+    msg: "expected pipe",
+    start: 3,
+    end: 4,
+    is_unclosed: false,
+})]
+#[case(PrefixErrorCase {
+    src: "match (x) {}",
+    msg: "expected at least one match arm",
+    start: 11,
+    end: 12,
+    is_unclosed: false,
+})]
+#[case(PrefixErrorCase {
+    src: "match (x) { _ -> x",
+    msg: "expected ',' or '}' after match arm",
+    start: 18,
+    end: 18,
+    is_unclosed: false,
+})]
+fn prefix_form_errors(#[case] case: PrefixErrorCase) {
+    let PrefixErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        is_unclosed,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };
-    if unclosed {
+    if is_unclosed {
         assert_delimiter_error(&errors, msg, start, end);
     } else {
         let Some(error) = errors.first() else {

@@ -50,22 +50,22 @@ fn index_whitespace_variations() -> &'static str {
 #[case(
     index_single_column(),
     "Idx_User_username",
-    vec![("username".to_string(), "string".to_string())],
+    vec![("username".to_owned(), "string".to_owned())],
     "User[username]"
 )]
 #[case(
     index_multi_column(),
     "Idx_Session_user_time",
     vec![
-        ("user_id".to_string(), "u32".to_string()),
-        ("start_time".to_string(), "u64".to_string())
+        ("user_id".to_owned(), "u32".to_owned()),
+        ("start_time".to_owned(), "u64".to_owned())
     ],
     "UserSession[user_id,start_time]"
 )]
 #[case(
     index_bracket_target(),
     "Idx_lower_username",
-    vec![("username".to_string(), "string".to_string())],
+    vec![("username".to_owned(), "string".to_owned())],
     "User[lower(username)]"
 )]
 fn parses_indexes(

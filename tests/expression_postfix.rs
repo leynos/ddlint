@@ -34,30 +34,71 @@ fn parses_postfix_expressions(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+/// One postfix-expression error case.
+struct PostfixErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    is_unclosed: bool,
+}
+
+/// Check the diagnostic reported for each malformed postfix expression.
 #[rstest]
-#[case::unclosed_call("foo.bar(", "right paren", 8, 8, true)]
-#[case::trailing_dot("foo.", "expected identifier or tuple index after '.'", 4, 4, false)]
-#[case::bit_slice_missing_comma("e[1]", "expected comma", 3, 4, false)]
-#[case::bit_slice_unclosed("e[1,0", "expected right bracket", 5, 5, true)]
-#[case::diff_marker_without_args(
-    "S'",
-    "diff marker must be followed by atom arguments",
-    1,
-    2,
-    false
-)]
-#[case::delay_out_of_range("A() -<4294967296>", "delay must fit u32", 6, 16, false)]
-fn postfix_expression_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] unclosed: bool,
-) {
+#[case::unclosed_call(PostfixErrorCase {
+    src: "foo.bar(",
+    msg: "right paren",
+    start: 8,
+    end: 8,
+    is_unclosed: true,
+})]
+#[case::trailing_dot(PostfixErrorCase {
+    src: "foo.",
+    msg: "expected identifier or tuple index after '.'",
+    start: 4,
+    end: 4,
+    is_unclosed: false,
+})]
+#[case::bit_slice_missing_comma(PostfixErrorCase {
+    src: "e[1]",
+    msg: "expected comma",
+    start: 3,
+    end: 4,
+    is_unclosed: false,
+})]
+#[case::bit_slice_unclosed(PostfixErrorCase {
+    src: "e[1,0",
+    msg: "expected right bracket",
+    start: 5,
+    end: 5,
+    is_unclosed: true,
+})]
+#[case::diff_marker_without_args(PostfixErrorCase {
+    src: "S'",
+    msg: "diff marker must be followed by atom arguments",
+    start: 1,
+    end: 2,
+    is_unclosed: false,
+})]
+#[case::delay_out_of_range(PostfixErrorCase {
+    src: "A() -<4294967296>",
+    msg: "delay must fit u32",
+    start: 6,
+    end: 16,
+    is_unclosed: false,
+})]
+fn postfix_expression_errors(#[case] case: PostfixErrorCase) {
+    let PostfixErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        is_unclosed,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };
-    if unclosed {
+    if is_unclosed {
         assert_unclosed_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);

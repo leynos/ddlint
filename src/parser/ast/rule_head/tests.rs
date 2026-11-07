@@ -17,7 +17,7 @@ fn collect_head_binding_spans_skips_relation_callee_collision() {
 
     let spans = collect_head_binding_spans(source, 0);
 
-    assert_eq!(spans.as_slice(), &[("Output".to_string(), 7..13)]);
+    assert_eq!(spans.as_slice(), &[("Output".to_owned(), 7..13)]);
 }
 
 #[test]

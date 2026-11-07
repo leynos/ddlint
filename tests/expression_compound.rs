@@ -50,23 +50,64 @@ fn parses_compound_expressions(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+/// One compound-expression error case.
+struct CompoundErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    is_unclosed: bool,
+}
+
+/// Check the diagnostic reported for each malformed compound expression.
 #[rstest]
-#[case("Point { x: 1", "expected", 12, 12, true)]
-#[case("(1, 2", "expected", 5, 5, true)]
-#[case("|x|", "invalid expression", 3, 3, false)]
-#[case("|x x", "expected pipe", 3, 4, false)]
-#[case("||", "invalid expression", 2, 2, false)]
-fn compound_expression_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] unclosed: bool,
-) {
+#[case(CompoundErrorCase {
+    src: "Point { x: 1",
+    msg: "expected",
+    start: 12,
+    end: 12,
+    is_unclosed: true,
+})]
+#[case(CompoundErrorCase {
+    src: "(1, 2",
+    msg: "expected",
+    start: 5,
+    end: 5,
+    is_unclosed: true,
+})]
+#[case(CompoundErrorCase {
+    src: "|x|",
+    msg: "invalid expression",
+    start: 3,
+    end: 3,
+    is_unclosed: false,
+})]
+#[case(CompoundErrorCase {
+    src: "|x x",
+    msg: "expected pipe",
+    start: 3,
+    end: 4,
+    is_unclosed: false,
+})]
+#[case(CompoundErrorCase {
+    src: "||",
+    msg: "invalid expression",
+    start: 2,
+    end: 2,
+    is_unclosed: false,
+})]
+fn compound_expression_errors(#[case] case: CompoundErrorCase) {
+    let CompoundErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        is_unclosed,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };
-    if unclosed {
+    if is_unclosed {
         assert_unclosed_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);

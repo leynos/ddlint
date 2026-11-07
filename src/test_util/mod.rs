@@ -109,7 +109,7 @@ pub fn span_text<'a>(source: &'a str, span: &Span) -> &'a str {
 pub struct Name(pub(crate) String);
 
 impl From<&str> for Name {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+    fn from(s: &str) -> Self { Self(s.to_owned()) }
 }
 
 impl From<String> for Name {
@@ -123,7 +123,7 @@ pub enum ErrorPattern {
 }
 
 impl From<&str> for ErrorPattern {
-    fn from(s: &str) -> Self { Self::Custom(s.to_string()) }
+    fn from(s: &str) -> Self { Self::Custom(s.to_owned()) }
 }
 
 /// Replace internal token names with human-readable forms.
@@ -146,7 +146,7 @@ pub(crate) fn normalise_tokens(s: &str) -> String {
         (K::T_IDENT, "identifier"),
         (K::T_NUMBER, "number"),
     ];
-    let mut out = s.to_string();
+    let mut out = s.to_owned();
     for (k, human) in keys {
         let raw = format!("{k:?}");
         out = out.replace(&raw, human);

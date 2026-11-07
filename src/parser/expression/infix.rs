@@ -36,9 +36,7 @@ where
             }
 
             if let Some(message) = rejection_for(op_kind) {
-                let Some((_, op_span)) = self.ts.next_tok() else {
-                    unreachable!("peeked reserved token");
-                };
+                let (_, op_span) = self.ts.next_tok()?;
                 self.ts.push_reserved_error(op_span, message);
                 return None;
             }
@@ -49,14 +47,11 @@ where
             if l_bp < min_bp {
                 break;
             }
-            let Some((_, op_span)) = self.ts.next_tok() else {
-                unreachable!("peeked operator");
-            };
-            let rhs = match op_kind {
+            let (_, op_span) = self.ts.next_tok()?;
+            let Some(rhs) = (match op_kind {
                 SyntaxKind::T_COLON | SyntaxKind::K_AS => self.parse_type(),
                 _ => self.parse_expr_for_map_key(r_bp, colon_terminates),
-            };
-            let Some(rhs) = rhs else {
+            }) else {
                 self.ts
                     .push_error(op_span, "missing right-hand side for operator");
                 return None;

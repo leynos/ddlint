@@ -149,7 +149,7 @@ fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case
     let opener_kind = match opener {
         "(" => SyntaxKind::T_LPAREN,
         "[" => SyntaxKind::T_LBRACKET,
-        _ => unreachable!("unsupported opener"),
+        _ => panic!("unsupported opener"),
     };
     let spans: Vec<TextRange> = elements
         .iter()
@@ -177,7 +177,7 @@ fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case
         ParseError::UnclosedDelimiter { span, .. } => {
             assert_eq!(*span, open_span);
         }
-        _ => unreachable!(),
+        other => panic!("unexpected error: {other:?}"),
     }
 }
 
@@ -244,74 +244,82 @@ fn parse_error_cases(
     expectation.assert_matches(err);
 }
 
+/// One parameter-parsing scenario.
+struct ParameterScenario {
+    src: &'static str,
+    expected_pairs: usize,
+    expected_count: Option<usize>,
+    error_validator: fn(&[ParseError]) -> bool,
+}
+
+/// Check parameter name/type pairs and diagnostics across parsing scenarios.
 #[rstest]
-#[case(
-    "function f(x:, y:) {}",
-    0,
-    Some(2),
-    |errors: &[ParseError]| errors
+#[case(ParameterScenario {
+    src: "function f(x:, y:) {}",
+    expected_pairs: 0,
+    expected_count: Some(2),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingType { .. }))
-)]
-#[case(
-    "function f(:u32, :u64) {}",
-    0,
-    Some(2),
-    |errors: &[ParseError]| errors
+        .all(|e| matches!(e, ParseError::MissingType { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(:u32, :u64) {}",
+    expected_pairs: 0,
+    expected_count: Some(2),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingName { .. }))
-)]
-#[case(
-    "function f(x: {) {}",
-    0,
-    None,
-    |errors: &[ParseError]| errors
+        .all(|e| matches!(e, ParseError::MissingName { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(x: {) {}",
+    expected_pairs: 0,
+    expected_count: None,
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .any(|e| matches!(e, ParseError::MissingType { .. }))
-)]
-#[case(
-    "function f(x:) {}",
-    0,
-    Some(1),
-    |errors: &[ParseError]| errors
+        .any(|e| matches!(e, ParseError::MissingType { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(x:) {}",
+    expected_pairs: 0,
+    expected_count: Some(1),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingType { .. }))
-)]
-#[case(
-    "function f(:u32) {}",
-    0,
-    Some(1),
-    |errors: &[ParseError]| errors
+        .all(|e| matches!(e, ParseError::MissingType { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(:u32) {}",
+    expected_pairs: 0,
+    expected_count: Some(1),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingName { .. }))
-)]
-#[case(
-    "function f() {}",
-    0,
-    Some(0),
-    |errors: &[ParseError]| errors.is_empty()
-)]
-#[case(
-    "function f(x: u32) {}",
-    1,
-    Some(0),
-    |errors: &[ParseError]| errors.is_empty()
-)]
-#[case(
-    "",
-    0,
-    Some(0),
-    |errors: &[ParseError]| errors.is_empty()
-)]
-fn parameter_parsing_scenarios(
-    #[case] src: &str,
-    #[case] expected_pairs: usize,
-    #[case] expected_count: Option<usize>,
-    #[case] error_validator: fn(&[ParseError]) -> bool,
-    #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
-) {
-    let _ = src;
-    let (pairs, errors) = parse_name_type_pairs(tokens_for.into_iter());
+        .all(|e| matches!(e, ParseError::MissingName { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f() {}",
+    expected_pairs: 0,
+    expected_count: Some(0),
+    error_validator: |errors: &[ParseError]| errors.is_empty(),
+})]
+#[case(ParameterScenario {
+    src: "function f(x: u32) {}",
+    expected_pairs: 1,
+    expected_count: Some(0),
+    error_validator: |errors: &[ParseError]| errors.is_empty(),
+})]
+#[case(ParameterScenario {
+    src: "",
+    expected_pairs: 0,
+    expected_count: Some(0),
+    error_validator: |errors: &[ParseError]| errors.is_empty(),
+})]
+fn parameter_parsing_scenarios(#[case] case: ParameterScenario) {
+    let ParameterScenario {
+        src,
+        expected_pairs,
+        expected_count,
+        error_validator,
+    } = case;
+    let (pairs, errors) = parse_name_type_pairs(tokens_for(src).into_iter());
     assert_eq!(pairs.len(), expected_pairs);
 
     if let Some(count) = expected_count {

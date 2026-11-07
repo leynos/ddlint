@@ -42,7 +42,7 @@ fn import_invalid_then_valid() {
     assert_ne!(parsed.errors().len(), 0);
     let imports = parsed.root().imports();
     assert_eq!(imports.len(), 1);
-    assert_eq!(imports.first().map(Import::path), Some("foo".to_string()));
+    assert_eq!(imports.first().map(Import::path), Some("foo".to_owned()));
 }
 
 #[rstest]

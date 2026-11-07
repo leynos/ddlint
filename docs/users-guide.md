@@ -11,7 +11,39 @@ user-facing behaviour.
 - The linter runner executes registered CST rules and produces
   `LintDiagnostic` values.
 - The built-in command-line entrypoint currently only prints a placeholder
-  message and exits with a non-zero status.
+  message and exits with a non-zero status. When the message cannot be written
+  to standard output, the command reports the failure on standard error and
+  still exits non-zero.
+
+### Const-capable APIs
+
+The following public methods can be called in a `const` item or other
+compile-time context:
+
+- `RuleConfigValue::as_bool`
+- `UseOrigin::is_relation_read`
+- `SymbolOrigin::is_warning_eligible_rule_binding`
+- `StringLiteral::is_interpolated`
+
+The compile fixture `tests/ui/const_api_pass.rs` guards these qualifications
+against regression.
+
+### Unreleased behaviour changes
+
+Three changes are not yet in a release. None removes an API, so no code
+migration is required, but results observed through the previous release can
+change:
+
+- Public methods listed under [Const-capable APIs](#const-capable-apis) can now
+  be evaluated in `const` items. Existing calls are unaffected.
+- The `unused-variable` rule treats grouping parentheses and unary operators as
+  transparent when it resolves uses. A binding used only under a wrapper is now
+  counted as used, so a source that previously reported such a binding no
+  longer does. See [Unused-variable rule](#unused-variable-rule).
+- `Function::return_type` now returns the declared return type for parameter
+  lists containing nested parenthesized types. It previously stopped at the
+  first closing parenthesis and could return a truncated type. See
+  [Function signatures](#function-signatures).
 
 ## Planned CLI configuration
 
@@ -106,6 +138,25 @@ assert_eq!(parsed.root().relations().len(), 1);
 `Parsed` also exposes parse-time semantic rules and the recovered parse-tree
 root so downstream stages can work with structured syntax data.
 
+### Function signatures
+
+`Function::return_type` returns the declared return type, and
+`Function::parameters` returns the declared parameter names and types. Both
+handle parameter lists that contain nested parenthesized types: the scan tracks
+parenthesis depth, so the closing parenthesis of a nested type does not end the
+parameter list early.
+
+```rust
+use ddlint::parse;
+
+let source = "function f(pair: ((u32,bool),string)): u32 { }";
+let parsed = parse(source);
+let function = parsed.root().functions().into_iter().next().expect("one function");
+
+assert_eq!(function.return_type().as_deref(), Some("u32"));
+assert_eq!(function.parameters().len(), 1);
+```
+
 ## Run lint rules
 
 The linter flow is:
@@ -129,6 +180,19 @@ assert!(diagnostics.is_empty());
 When parsing produces errors, `Runner::run` returns no lint diagnostics and
 does not run rules against the recovered parse tree. Inspect and report the
 parser errors separately.
+
+### Unused-variable rule
+
+The `unused-variable` rule treats wrapper expressions as transparent when it
+resolves uses. A binding used only inside parentheses or under a unary operator
+still counts as used, so neither rule below reports `head_x`:
+
+```ddlog
+Output(head_x) :- Source((head_x)).
+Output(head_x) :- Source(-head_x).
+```
+
+Only a binding with no resolved use is reported.
 
 ## Rule authorship (high level)
 

@@ -70,7 +70,7 @@ pub(super) fn inspect_preamble(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Rel
             }
             SyntaxKind::T_AMP => preamble.is_ref = true,
             SyntaxKind::T_IDENT => {
-                preamble.name = Some(token.text().to_string());
+                preamble.name = Some(token.text().to_owned());
                 break;
             }
             SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET => break,

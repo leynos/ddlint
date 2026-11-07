@@ -54,7 +54,7 @@ impl Pattern {
     #[must_use]
     pub fn to_source(&self) -> String {
         match self {
-            Self::Wildcard => "_".to_string(),
+            Self::Wildcard => "_".to_owned(),
             Self::Var { declared, name } => Self::format_var(*declared, name),
             Self::Tuple(items) => Self::format_tuple(items),
             Self::Struct { name, fields } => Self::format_struct(name, fields),
@@ -67,7 +67,7 @@ impl Pattern {
         if declared {
             format!("var {name}")
         } else {
-            name.to_string()
+            name.to_owned()
         }
     }
 

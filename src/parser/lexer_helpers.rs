@@ -25,7 +25,7 @@ use crate::SyntaxKind;
 ///     "expected '{}'", token_display(SyntaxKind::T_RPAREN)
 /// ));
 /// ```
-pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
+pub(super) const fn token_display(kind: SyntaxKind) -> &'static str {
     match kind {
         SyntaxKind::T_LPAREN => "(",
         SyntaxKind::T_RPAREN => ")",

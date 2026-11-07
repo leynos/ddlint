@@ -227,10 +227,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    let arguments = arguments.into_iter().map(Into::into).collect::<Vec<_>>();
+    let owned_arguments = arguments.into_iter().map(Into::into).collect::<Vec<_>>();
     let has_config_selector =
-        has_cli_config_selector(&arguments) || discovery.get("DDLINT_CONFIG_PATH").is_some();
-    let config = AppConfig::load_from_iter_with_sources(arguments, discovery, merge)?;
+        has_cli_config_selector(&owned_arguments) || discovery.get("DDLINT_CONFIG_PATH").is_some();
+    let config = AppConfig::load_from_iter_with_sources(owned_arguments, discovery, merge)?;
     if let Some(name) = config
         .extra
         .keys()

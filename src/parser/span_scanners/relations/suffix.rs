@@ -26,7 +26,10 @@ use super::{
 use crate::{
     Span,
     SyntaxKind,
-    parser::span_scanners::{BodyForm, RelationSuffixContext},
+    parser::{
+        span_scanners::{BodyForm, RelationSuffixContext},
+        token_stream::TokenStream,
+    },
 };
 
 pub(super) fn parse_relation_suffix(
@@ -41,8 +44,7 @@ pub(super) fn parse_relation_suffix(
     if starts_bracket_wrapped_primary_key(tokens, src, cursor) {
         let mut has_content = true;
         let recovery_end = parse_balanced_block(
-            tokens,
-            src,
+            &TokenStream::new(tokens, src),
             &mut cursor,
             SyntaxKind::T_RBRACKET,
             &mut has_content,
@@ -91,7 +93,12 @@ fn parse_primary_key_clause(
     // so an empty-clause D-REL-007 anchors at the `()`, not the next token.
     let empty_key_span = current_span(tokens, src, *cursor);
     let mut has_column = false;
-    let mut end = parse_balanced_block(tokens, src, cursor, SyntaxKind::T_RPAREN, &mut has_column)?;
+    let mut end = parse_balanced_block(
+        &TokenStream::new(tokens, src),
+        cursor,
+        SyntaxKind::T_RPAREN,
+        &mut has_column,
+    )?;
     if !has_column {
         return Err(Box::new(custom_error(&empty_key_span, D_REL_007)));
     }

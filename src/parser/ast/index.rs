@@ -179,7 +179,7 @@ fn token_kind(element: Option<&rowan::SyntaxElement<DdlogLanguage>>) -> Option<S
 
 fn element_text(element: &rowan::SyntaxElement<DdlogLanguage>) -> String {
     match element {
-        rowan::NodeOrToken::Token(token) => token.text().to_string(),
+        rowan::NodeOrToken::Token(token) => token.text().to_owned(),
         rowan::NodeOrToken::Node(node) => node.text().to_string(),
     }
 }
@@ -205,7 +205,7 @@ mod tests {
         assert_eq!(idx.name().as_deref(), Some("I"));
         assert_eq!(
             idx.fields(),
-            Ok(vec![("name".to_string(), "string".to_string())])
+            Ok(vec![("name".to_owned(), "string".to_owned())])
         );
         assert_eq!(idx.on_target().as_deref(), Some("R[lower(name)]"));
     }

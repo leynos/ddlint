@@ -70,9 +70,9 @@ where
         rest
     }
 
-    pub(super) fn error_count(&self) -> usize { self.errors.len() }
+    pub(super) const fn error_count(&self) -> usize { self.errors.len() }
 
-    pub(super) fn has_errors(&self) -> bool { self.error_count() > 0 }
+    pub(super) const fn has_errors(&self) -> bool { self.error_count() > 0 }
 
     pub(super) fn take_errors(&mut self) -> Vec<Simple<SyntaxKind>> {
         std::mem::take(&mut self.errors)
@@ -96,10 +96,10 @@ where
 
     pub(super) fn slice(&self, span: &Span) -> String {
         debug_assert!(span.end <= self.src.len(), "lexer produced invalid span");
-        self.src.get(span.clone()).unwrap_or("").to_string()
+        self.src.get(span.clone()).unwrap_or("").to_owned()
     }
 
-    pub(super) fn eof_span(&self) -> Span { self.src.len()..self.src.len() }
+    pub(super) const fn eof_span(&self) -> Span { self.src.len()..self.src.len() }
 
-    pub(super) fn src(&self) -> &'a str { self.src }
+    pub(super) const fn src(&self) -> &'a str { self.src }
 }

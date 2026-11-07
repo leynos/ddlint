@@ -20,7 +20,7 @@ type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
 pub(super) struct SourceText(String);
 
 impl From<&str> for SourceText {
-    fn from(src: &str) -> Self { Self(src.to_string()) }
+    fn from(src: &str) -> Self { Self(src.to_owned()) }
 }
 
 impl From<String> for SourceText {
@@ -88,8 +88,8 @@ pub(super) fn normalize_whitespace(text: &str) -> String {
 /// Parse `src`, and assert that the program is well formed.
 #[track_caller]
 pub(super) fn parse_ok(src: impl Into<SourceText>) -> crate::Parsed {
-    let src = src.into();
-    let parsed = parse(src.as_ref());
+    let source = src.into();
+    let parsed = parse(source.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     parsed
@@ -98,8 +98,8 @@ pub(super) fn parse_ok(src: impl Into<SourceText>) -> crate::Parsed {
 /// Parse `src` expecting at least one error.
 #[track_caller]
 pub(super) fn parse_err(src: impl Into<SourceText>) -> crate::Parsed {
-    let src = src.into();
-    let parsed = parse(src.as_ref());
+    let source = src.into();
+    let parsed = parse(source.as_ref());
     assert!(
         !parsed.errors().is_empty(),
         "expected parse to fail but it succeeded"
@@ -112,9 +112,9 @@ pub(super) fn parse_err(src: impl Into<SourceText>) -> crate::Parsed {
 /// Parse and ensure the source round-trips via `pretty_print`.
 #[track_caller]
 pub(super) fn round_trip(src: impl Into<SourceText>) {
-    let src = src.into();
-    let parsed = parse_ok(src.as_ref());
-    assert_eq!(pretty_print(parsed.root().syntax()), src.as_ref());
+    let source = src.into();
+    let parsed = parse_ok(source.as_ref());
+    assert_eq!(pretty_print(parsed.root().syntax()), source.as_ref());
 }
 
 /// Parse a program and extract the first item produced by `extractor`.
@@ -128,8 +128,8 @@ fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
     src: impl Into<SourceText>,
     extractor: F,
 ) -> Option<T> {
-    let src = src.into();
-    let parsed = parse(src.as_ref());
+    let source = src.into();
+    let parsed = parse(source.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     let items = extractor(parsed.root());

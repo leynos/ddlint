@@ -34,8 +34,8 @@ fn parses_apply_statements(
 ) {
     let apply = parse_apply(src).expect("expected a single apply");
     assert_eq!(apply.transformer_name().as_deref(), Some(name));
-    let inputs_expected: Vec<String> = inputs.into_iter().map(str::to_string).collect();
-    let outputs_expected: Vec<String> = outputs.into_iter().map(str::to_string).collect();
+    let inputs_expected: Vec<String> = inputs.into_iter().map(str::to_owned).collect();
+    let outputs_expected: Vec<String> = outputs.into_iter().map(str::to_owned).collect();
     assert_eq!(apply.inputs(), inputs_expected);
     assert_eq!(apply.outputs(), outputs_expected);
 }

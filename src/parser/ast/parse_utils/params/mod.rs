@@ -26,7 +26,7 @@ struct ParameterParsingState {
 }
 
 impl ParameterParsingState {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             name_buf: String::new(),
             found_colon: false,
@@ -140,23 +140,26 @@ where
     }
 }
 
-pub(crate) fn parse_name_type_pairs<I>(iter: I) -> (Vec<(String, String)>, Vec<ParseError>)
+/// Parse a parenthesised parameter list into name/type pairs and errors.
+/// Returns empty vectors when no opening parenthesis is found.
+pub(crate) fn parse_name_type_pairs<I>(elements: I) -> (Vec<(String, String)>, Vec<ParseError>)
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let mut iter = iter.peekable();
+    let mut iter = elements.peekable();
     let open_span = find_opening_paren(&mut iter);
     if open_span.is_none() {
         return (Vec::new(), Vec::new());
     }
     let mut errors = Vec::new();
     let (pairs, terminated) = parse_parameter_list(&mut iter, &mut errors);
-    let (pairs, maybe_error) = report_unclosed_parameter_list(terminated, open_span, pairs);
+    let (reported_pairs, maybe_error) =
+        report_unclosed_parameter_list(terminated, open_span, pairs);
     if let Some(error) = maybe_error {
         errors.push(error);
     }
     collect_trailing_delimiter_errors(iter, &mut errors);
-    (pairs, errors)
+    (reported_pairs, errors)
 }
 
 fn report_unclosed_parameter_list(

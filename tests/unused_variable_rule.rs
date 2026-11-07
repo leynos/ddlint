@@ -16,6 +16,9 @@ fn run_rule(source: &str) -> Vec<ddlint::linter::LintDiagnostic> {
     vec!["variable `head_x` is defined but never used in this rule"],
 )]
 #[case("Output(head_x) :- Source(head_x).", Vec::new())]
+// Wrapper expressions must not hide the use of their children.
+#[case("Output(x) :- Source((x)).", Vec::new())]
+#[case("Output(x) :- Source(-x).", Vec::new())]
 #[case(
     "Output(result) :- Source(result), var assigned_x = Seed(result), Use(result).",
     vec!["variable `assigned_x` is defined but never used in this rule"],

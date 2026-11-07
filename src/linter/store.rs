@@ -75,17 +75,17 @@ impl CstRuleStore {
     /// multiple kind entries without duplication.  Returns `&mut Self` for
     /// chaining.
     pub fn register(&mut self, rule: Box<dyn CstRule>) -> &mut Self {
-        let rule: Arc<dyn CstRule> = Arc::from(rule);
+        let shared_rule: Arc<dyn CstRule> = Arc::from(rule);
         let mut seen = HashSet::new();
-        for &kind in rule.target_kinds() {
+        for &kind in shared_rule.target_kinds() {
             if seen.insert(kind) {
                 self.by_kind
                     .entry(kind)
                     .or_default()
-                    .push(Arc::clone(&rule));
+                    .push(Arc::clone(&shared_rule));
             }
         }
-        self.rules.push(rule);
+        self.rules.push(shared_rule);
         self
     }
 
