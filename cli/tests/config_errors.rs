@@ -135,4 +135,3 @@ fn invalid_environment_value_is_an_error() {
 
     assert!(error.to_string().contains("xml"), "{error:#?}");
 }
-// weave: run 'weave explain cli/tests/config_errors.rs' for per-hunk detail, 'weave check' to verify your resolution
