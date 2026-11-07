@@ -1233,6 +1233,26 @@ This comprehensive, three-tiered testing strategy ensures that every aspect of
 the linter is validated, from the micro-level logic of a single rule to the
 macro-level behaviour of the final executable.
 
+### 6.4. Fixture expansion lint scope
+
+A formatter profile that enables `fn_single_line` collapses a single-expression
+`rstest` fixture onto one line, and `rstest` then re-emits that body as
+`{ { body } }`. Rustc's `unused_braces` lint reports the fixture's own braces
+as redundant whether the fixture was collapsed by a formatter or written on one
+line by hand. The canonical profile is adopted separately from this helper. The
+repository suppresses that formatting artefact through the `fixture-lints` proc
+macro. The allowance is item-wide for the items it qualifies: the helper emits
+it for any function whose body is exactly one expression statement without a
+trailing semicolon, including a semicolon-free `return { value }`, so it can
+also suppress a genuine `unused_braces` finding in such a body. Multi-statement
+bodies and items that do not parse as functions pass through unchanged, and a
+single expression statement with a trailing semicolon does not qualify, so
+genuine findings in those shapes remain visible. The helper's trigger is the
+item's syntactic shape, independent of formatter configuration, and it does not
+inspect or enforce formatter settings. The 2026-11-06 addendum in
+[ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
+limitations, alongside the qualification rule and compile-test contract.
+
 ## 7. Phased implementation roadmap and future work
 
 This design is translated into an actionable, multiphase project plan. Each

@@ -2,6 +2,7 @@
 
 mod rules;
 
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
 
@@ -45,6 +46,7 @@ fn sequential_dispatch(
 
 // -- fixtures -----------------------------------------------------------------
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parsed_fixture(
     #[default(include_str!("../../examples/hello_join.dl"))] source: &str,

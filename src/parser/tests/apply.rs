@@ -2,18 +2,22 @@
 
 use super::helpers::parse_apply;
 use super::helpers::{parse_err, parse_ok};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn apply_single() -> &'static str {
     "apply normalise(User) -> (Normalised)"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn apply_multi() -> &'static str {
     "apply pipeline(User, enrich) -> (Out1, Out2)"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn apply_empty_lists() -> &'static str {
     "apply empty() -> ()"

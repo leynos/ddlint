@@ -331,6 +331,95 @@ fixture. Parsing and comparisons remain in the test. The record has no
 constructor or parser API and is not shared with `RelationFormCase` or other
 test families; wider reuse requires a separate ownership decision.
 
+## Fixture expansion lint policy
+
+`crates/fixture-lints` owns `#[allow_fixture_expansion_lints]`, the only
+sanctioned helper for suppressing `unused_braces` in `rstest` fixture
+expansions. Apply it immediately above `#[fixture]`:
+
+```ignore
+#[allow_fixture_expansion_lints]
+#[fixture]
+fn source() -> &'static str { "input relation R(x: u32);" }
+```
+
+Permitted call-sites are `rstest` fixture items only. Do not apply the
+attribute to ordinary functions, modules, or non-fixture test helpers.
+
+`unused_braces` is a rustc lint, not a Clippy lint. A single-expression fixture
+written on one line — whether by hand or by a formatter configured with
+`fn_single_line` — is re-emitted by `rstest` as `{ { body } }`, and rustc
+reports the fixture's own braces as redundant. The diagnostic is a formatting
+artefact, so the helper emits
+`#[allow(unused_braces, reason = "rstest fixture expansion")]` for the
+annotated item.
+
+The suppression is narrowed to single-expression bodies, but it is item-wide
+for the items it qualifies. The helper parses the item as a function and emits
+the `allow` only when the body is exactly one expression statement without a
+trailing semicolon. That shape includes a semicolon-free `return { value }`,
+which is `syn::Stmt::Expr(_, None)`, so the item-wide `allow` can also suppress
+a genuine `unused_braces` finding in such a body. Multi-statement fixtures,
+fixtures whose single expression ends in a trailing semicolon, and items that
+do not parse as functions pass through unchanged, so genuine findings in those
+shapes still surface. The compile-fail case
+`tests/ui/fixture_expansion_masking.rs` binds the multi-statement pass-through,
+and `tests/ui/fixture_expansion_semicolon.rs` binds the trailing-semicolon
+pass-through.
+
+The helper uses `allow` rather than `expect` because `rstest` drops user-written
+`#[expect]` attributes, and a macro-emitted expectation is silently unchecked:
+`report_in_external_macro` is false. The reasoned `allow` also satisfies the
+repository's `allow_attributes` and `allow_attributes_without_reason` policy.
+
+The helper is independent of formatter configuration: it triggers on a function
+whose body is a single expression statement without a trailing semicolon, and
+is correct whether or not `fn_single_line` is enabled. Multi-statement bodies
+and items that do not parse as functions pass through unchanged, `#[expect]` is
+unusable for the reason above, and the helper neither inspects nor enforces the
+repository's formatter settings. The 2026-11-06 addendum in
+[ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
+limitations.
+
+`tests/fixture_expansion_compile.rs` is the compile-test contract. Its pass
+cases prove the suppression works for a single-line, single-expression fixture
+and that the attribute is transparent for an item that is not a function; its
+four compile-fail cases prove the diagnostic appears without the attribute,
+that the narrowing does not mask a genuine finding, that a single statement
+with a trailing semicolon is not treated as a qualifying expression body, and
+that a non-function item keeps its own `unused_braces` diagnostic.
+
+### Build and dependency boundaries
+
+`crates/fixture-lints` is a workspace member and a default member, so a
+workspace-wide build compiles it alongside the root package and `cli`. The root
+package takes a path-only development dependency on it; with no registry
+version, `cargo package -p ddlint` does not try to resolve the unpublished
+helper from crates.io, so the publishable root crate stays packageable. The
+crate sets `publish = false` because it exists only for this repository's tests
+and has no external contract to maintain.
+
+The crate declares `rust-version = "1.89"` and edition 2024, and a contributor
+adding a syntax form must keep both honest rather than relying on the
+workspace's own toolchain. It denies `missing_docs`, `allow_attributes`,
+`allow_attributes_without_reason`, `unwrap_used` and `expect_used`, and enables
+the `pedantic` Clippy group at warning level, matching the repository lint
+baseline. Every public item carries Rustdoc covering its purpose, parameters,
+return value and an example.
+
+### Maintaining fixtures
+
+When adding an `rstest` fixture, place `#[allow_fixture_expansion_lints]`
+immediately above `#[fixture]` in the same change. A fixture that omits the
+attribute fails `make test` once the formatter collapses a single-expression
+body, because the test profile denies warnings and `unused_braces` then reports
+the `rstest` expansion. Update the compile-test contract when the qualification
+rule changes: a newly suppressed shape needs a matching pass case, and a newly
+rejected shape needs a compile-fail case with its `.stderr` baseline.
+
+The proc-macro boundary and its rationale are recorded in
+[ADR 005](adr-005-fixture-expansion-lint-helper.md).
+
 ## Spelling policy
 
 Run the spelling gate with `make spelling`. It enforces British English with

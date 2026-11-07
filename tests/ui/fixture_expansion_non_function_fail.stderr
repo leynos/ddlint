@@ -1,0 +1,16 @@
+error: unnecessary braces around assigned value
+  --> tests/ui/fixture_expansion_non_function_fail.rs:12:19
+   |
+12 | const VALUE: u8 = { 1 };
+   |                   ^^ ^^
+   |
+note: the lint level is defined here
+  --> tests/ui/fixture_expansion_non_function_fail.rs:7:9
+   |
+ 7 | #![deny(unused_braces)]
+   |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+12 - const VALUE: u8 = { 1 };
+12 + const VALUE: u8 = 1;
+   |

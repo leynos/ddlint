@@ -6,9 +6,17 @@ use super::*;
 use crate::SyntaxKind;
 use crate::parser::ast::AstNode;
 use crate::parser::parse;
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::SyntaxElement;
 use rstest::{fixture, rstest};
 
+/// Collect the syntax elements beneath the item selected from `src`.
+///
+/// The fixture prefers the first function, then the first relation, and
+/// otherwise falls back to the root's children. That order matches the item
+/// kinds exercised by the type-expression cases, so each case can place its
+/// annotation in whichever position it needs.
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
     let parsed = parse(src);
@@ -25,6 +33,14 @@ fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<Ddlo
     )
 }
 
+/// Return the trailing return type of the first function in `src`.
+///
+/// The fixture walks past the parameter list, tracking parenthesis depth so a
+/// nested tuple in a parameter does not end the scan early, and then parses
+/// the type after the colon. It returns `None` when the function declares no
+/// trailing type, letting cases distinguish that from a parse failure. A source
+/// without a function panics, because every case is expected to declare one.
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn return_type_for(#[default("function t() {}")] src: &str) -> Option<String> {
     let parsed = parse(src);

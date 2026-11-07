@@ -1,5 +1,6 @@
 //! Unit tests for core lint rule traits and supporting types.
 
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::TextSize;
 use rstest::{fixture, rstest};
 
@@ -74,6 +75,7 @@ struct RuleCtxFixture {
     ctx: RuleCtx,
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn rule_ctx_fixture() -> RuleCtxFixture {
     let source = "input relation R(x: u32);";

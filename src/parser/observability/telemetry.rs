@@ -91,6 +91,7 @@ mod tests {
     use std::fmt;
     use std::sync::{Arc, Mutex};
 
+    use fixture_lints::allow_fixture_expansion_lints;
     use metrics_util::debugging::{DebugValue, DebuggingRecorder};
     use rstest::{fixture, rstest};
     use tracing::{
@@ -114,6 +115,7 @@ mod tests {
     /// rest of the process. Several tests drive the same observer callsites, so
     /// every one of them installs an interested dispatcher first; otherwise a
     /// concurrent test can silence the tracing tests at random.
+    #[allow_fixture_expansion_lints]
     #[fixture]
     fn interested_dispatcher() -> tracing::Dispatch {
         tracing::Dispatch::new(RecordingSubscriber::default())

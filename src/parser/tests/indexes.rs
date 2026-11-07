@@ -6,33 +6,40 @@ use super::helpers::{normalize_whitespace, parse_index, pretty_print};
 use crate::test_util::{
     assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
 };
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_single_column() -> &'static str {
     "index Idx_User_username(username: string) on User[username]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_multi_column() -> &'static str {
     "index Idx_Session_user_time(user_id: u32, start_time: u64) on UserSession[user_id, start_time]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_invalid_missing_on() -> &'static str {
     "index Idx_Invalid(username: string) User[username]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_bracket_target() -> &'static str {
     "index Idx_lower_username(username: string) on User[lower(username)]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_legacy_shorthand() -> &'static str {
     "index Idx_Legacy on User(username)"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_whitespace_variations() -> &'static str {
     "  index  Idx_User_ws (\n    username: string\n  ) \t on\n  User [\n    username  ]  "

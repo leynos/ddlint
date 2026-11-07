@@ -1,5 +1,6 @@
 //! Behavioural tests for linter rule traits and hook dispatch.
 
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
 
@@ -185,6 +186,7 @@ fn collect_token_ranges(parsed: &Parsed) -> Vec<rowan::TextRange> {
         .collect()
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parsed_fixture(
     #[default(include_str!("../examples/hello_join.dl"))] source: &str,

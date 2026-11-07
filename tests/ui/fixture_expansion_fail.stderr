@@ -1,0 +1,16 @@
+error: unnecessary braces around block return value
+  --> tests/ui/fixture_expansion_fail.rs:11:29
+   |
+11 | fn source() -> &'static str { "input relation R(x: u32);" }
+   |                             ^^                           ^^
+   |
+note: the lint level is defined here
+  --> tests/ui/fixture_expansion_fail.rs:6:9
+   |
+ 6 | #![deny(unused_braces)]
+   |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+11 - fn source() -> &'static str { "input relation R(x: u32);" }
+11 + fn source() -> &'static str "input relation R(x: u32);"
+   |

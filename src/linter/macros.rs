@@ -196,6 +196,7 @@ macro_rules! declare_lint {
 #[cfg(test)]
 mod tests {
     //! Tests for the linter rule macros.
+    use fixture_lints::allow_fixture_expansion_lints;
     use rowan::NodeOrToken;
     use rstest::{fixture, rstest};
 
@@ -256,6 +257,7 @@ mod tests {
         ctx: RuleCtx,
     }
 
+    #[allow_fixture_expansion_lints]
     #[fixture]
     fn macro_rule_fixture() -> MacroRuleFixture {
         let source = "input relation R(x: u32);";

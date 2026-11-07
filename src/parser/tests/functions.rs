@@ -4,53 +4,64 @@
 
 use super::helpers::{parse_function, pretty_print};
 use crate::{parser::ast::AstNode, test_util::assert_parse_error};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn extern_function() -> &'static str {
     "extern function hash(data: string): u64\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_with_body() -> &'static str {
     "function to_uppercase(s: string): string {\n}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_no_return() -> &'static str {
     "function log_message(msg: string) {\n}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_no_params() -> &'static str {
     "function greet(): string {\n}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_multi_params() -> &'static str {
     "function concat(a: string, b: string): string {\n}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_complex_params() -> &'static str {
     "function complex(p: (u32,(u8,string))): bool {\n}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_ws_comments() -> &'static str {
     "function  spaced  (  x : string )  :  u8 { /*empty*/ }\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_generic_params() -> &'static str {
     "function example(arg: Vec<(u32,string)>, map: Map<string,u64>): bool {\n}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_nested_generics() -> &'static str {
     "function test(p: Vec<Map<string,Vec<u8>>>, arr: [Vec<u32>]): bool {}\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_shift_param() -> &'static str {
     "function shift(x: Vec<<u8>>): bool {}\n"
@@ -86,16 +97,19 @@ fn parses_functions(
     assert_eq!(pretty_print(func.syntax()), src);
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn extern_function_missing_colon() -> &'static str {
     "extern function missing_colon u32\n"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_unterminated_body() -> &'static str {
     "function foo() {"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn function_unclosed_params() -> &'static str {
     "function bad(a: string { }\n"

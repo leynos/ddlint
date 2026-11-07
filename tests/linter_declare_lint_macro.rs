@@ -1,5 +1,6 @@
 //! Behavioural tests for `declare_lint!` rules running through the linter core.
 
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
 
@@ -95,6 +96,7 @@ fn sequential_dispatch(source: &str, rule: &dyn CstRule) -> Vec<LintDiagnostic> 
     diagnostics
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn source() -> &'static str {
     include_str!("../examples/hello_join.dl")

@@ -2,48 +2,58 @@
 
 use super::super::helpers::{parse_err, parse_ok, pretty_print};
 use crate::parser::ast::AstNode;
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn simple_rule() -> &'static str {
     "ActiveUser(user_id) :- User(user_id, _, true)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn multi_literal_rule() -> &'static str {
     "UserLogin(username, session_id) :- User(user_id, username, _), UserSession(user_id, session_id, _)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn fact_rule() -> &'static str {
     "SystemAlert(\"System is now online.\")."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn for_loop_rule() -> &'static str {
     "ItemsProcessed(count) :- for (entry in Items(entry)) Process(entry)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn for_loop_with_if_iterable() -> &'static str {
     "ItemsProcessed(count) :- for (entry in if cond(entry) { Items(entry) } else { Others(entry) }) Process(entry)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn for_loop_with_guard_rule() -> &'static str {
     "FilteredItems(entry) :- for (entry in Items(entry) if true) Process(entry)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn nested_for_loop_rule() -> &'static str {
     "PairProcessed(a, b) :- for (a in A(a)) for (b in B(b)) ProcessPair(a, b)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn multi_head_rule_with_adornments() -> &'static str {
     "&A(x), B'(y)@loc(y) -<1> :- C(x, y)."
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn rule_head_delay_out_of_range() -> &'static str {
     "A()@loc() -<4294967296> :- B()."
