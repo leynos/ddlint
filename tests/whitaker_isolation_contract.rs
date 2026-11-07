@@ -10,9 +10,14 @@ use std::process::Command;
 use rstest::rstest;
 
 /// Returns the `make -n lint` line that runs Whitaker.
+///
+/// `--no-print-directory` matters because `lint` now recurses into `$(MAKE)`:
+/// without it, make prints `Entering`/`Leaving` messages that name the working
+/// directory, and a checkout whose path contains "whitaker" would match before
+/// the recipe line does.
 fn whitaker_line() -> Result<String, String> {
     let output = Command::new("make")
-        .args(["-n", "-B", "lint"])
+        .args(["--no-print-directory", "-n", "-B", "lint"])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .output()
         .map_err(|error| format!("running make: {error}"))?;

@@ -135,15 +135,15 @@ project:
 - Use `make` or `make build` for a debug build and `make release` for a release
   build. These entrypoints invoke Cargo on every request, leaving freshness and
   incremental compilation to Cargo.
-- `build`, `test`, `typecheck` and `test-clippy-policy` preflight the selected
-  Rust toolchain and, on Linux, the pinned linker. `lint` runs `interrogate`
-  first, then checks the build tools before Clippy. `check-fmt` does not need
-  linker preflight. Use `make check-build-tools` to run the check directly and
-  `make install-build-tools` if setup is needed. The installer ensures the
-  selected Rust toolchain has `rustfmt`, `clippy` and `rust-analyzer`, and
-  provisions the pinned `mold` 2.41.0 release on Linux x86-64 and 64-bit ARM.
-  Other Linux architectures are unsupported by this installer; on other
-  operating systems, Cargo uses the platform linker.
+- `build`, `test`, `typecheck`, `test-clippy-policy`, `lint-clippy` and
+  `lint-whitaker` preflight the selected Rust toolchain and, on Linux, the
+  pinned linker. `lint` runs `interrogate` first, then the two Rust gates.
+  `check-fmt` does not need linker preflight. Use `make check-build-tools` to
+  run the check directly and `make install-build-tools` if setup is needed. The
+  installer ensures the selected Rust toolchain has `rustfmt`, `clippy` and
+  `rust-analyzer`, and provisions the pinned `mold` 2.41.0 release on Linux
+  x86-64 and 64-bit ARM. Other Linux architectures are unsupported by this
+  installer; on other operating systems, Cargo uses the platform linker.
 - The development flags are `-Zthreads=8` and, on Linux,
   `-Clink-arg=-fuse-ld=mold`. Make build recipes append these after inherited
   `RUSTFLAGS`; caller-supplied flags remain the caller's responsibility.
@@ -173,26 +173,34 @@ project:
     ```
 
     formatting Rust and Markdown sources.
-  - `make lint` first runs `make interrogate`, which needs `uv` and fails on any
-    Python definition under `tests` without a docstring (and on any `MISSED`
-    row, since interrogate rounds its percentage to one decimal;
-    `tests/workflow_contracts/interrogate_gate_test.py` asserts the wiring),
-    then checks the build tools, and then executes:
+  - `make lint` is a serial composite of four gates: `interrogate`,
+    `lint-clippy`, `lint-whitaker` and `spelling`. `.NOTPARALLEL` keeps them
+    in that order even under `-j`, so a failing Clippy run stops Whitaker from
+    starting and the gate reports the first real failure. Each gate can also
+    be run on its own. `interrogate` needs `uv` and fails on any Python
+    definition under `tests` without a docstring (and on any `MISSED` row,
+    since interrogate rounds its percentage to one decimal;
+    `tests/workflow_contracts/interrogate_gate_test.py` asserts the wiring).
+    `lint-clippy` checks the build tools and then executes:
 
     ```sh
-    $(MAKE) check-build-tools
     $(CARGO) clippy $(CLIPPY_FLAGS)
     RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
     $(MAKE) test-clippy-policy
-    RUSTFLAGS="-D warnings" $(WHITAKER) --all -- --all-targets --all-features
-    $(MAKE) spelling
     ```
 
     linting every target with all features enabled and denying all warnings.
     `RUSTDOC_FLAGS` defaults to `--cfg docsrs -D warnings`, so a broken
-    intra-doc link fails the gate. `test-clippy-policy` also checks the build
-    tools before running. The lint target's final step is the gate described
-    in [Spelling](#spelling).
+    intra-doc link fails the gate. `lint-whitaker` checks the build tools and
+    runs:
+
+    ```sh
+    unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" \
+      $(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features
+    ```
+
+    `WHITAKER_PACKAGES` defaults to `--workspace`. The lint target's final
+    gate is the one described in [Spelling](#spelling).
   - `make test` executes:
 
     ```sh

@@ -1,7 +1,8 @@
 //! Helpers for constructing expression nodes and asserting parser errors in
 //! tests.
 //!
-//! These functions reduce boilerplate when asserting over [`Expr`] nodes and
+//! These functions reduce boilerplate when asserting over
+//! [`Expr`](crate::parser::ast::Expr) nodes and
 //! verifying that parsing failures surface precise spans and messages.
 
 mod assertions;
