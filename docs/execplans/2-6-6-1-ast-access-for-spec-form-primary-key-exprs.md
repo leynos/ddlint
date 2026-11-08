@@ -5,7 +5,8 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: DRAFT (design review applied; awaiting user approval)
+Status: DRAFT (design review applied; rebased onto `21f306d`; awaiting user
+approval)
 
 Branch: `2-6-6-1-ast-access-for-spec-form-primary-key-exprs`
 
@@ -71,17 +72,33 @@ decide the typed shape for primary-key expression access."
 - `Parsed::errors()` gains no diagnostics for malformed key expressions. Key
   expressions are parsed lazily, the same way rule-body expressions are parsed
   lazily through `Rule::body_expressions()` and `Rule::body_terms()` in
-  `src/parser/ast/rule.rs`. The only permitted changes to `Parsed::errors()`
-  are the two `EP-M1` scanner corrections.
+  `src/parser/ast/rule/mod.rs`. The only permitted changes to
+  `Parsed::errors()` are the two `EP-M1` scanner corrections.
 - Binder access must not depend on expression validity. A malformed key
   expression must never make `Relation::primary_key()` return `Err`.
 - No production code may panic. `.expect()` and `.unwrap()` are allowed only
   in `#[test]` and `#[scenario]` bodies. Shared fixtures, BDD step definitions,
-  and helpers must return `Result` and use `?`, per `docs/developers-guide.md`
-  (lines 216 to 221) and Whitaker's `no_expect_outside_tests` lint.
-- No Rust source file may exceed 400 lines.
-  `src/parser/span_scanners/relations.rs` is at 400 lines and
-  `src/parser/ast/relation.rs` at 361, so new logic goes into new submodules.
+  and helpers must return `Result` (or `Option`) and use `?`, per
+  `docs/developers-guide.md` "Parser test helpers" and Whitaker's
+  `no_expect_outside_tests` lint. Since `nightly-2026-10-30` Clippy no longer
+  rejects an `expect` in such items, so Whitaker is the only guard.
+- No Rust source file may exceed 400 lines. `src/parser/ast/relation/mod.rs`
+  is at 347 lines and `src/parser/tests/relations/mod.rs` at 381, so new logic
+  and new tests go into new modules.
+- Follow the workspace lint baseline (`[workspace.lints]` and `clippy.toml`):
+  - cognitive complexity at most 9;
+  - at most 4 arguments per function;
+  - at most 70 lines per function;
+  - nesting depth at most 4;
+  - no new `#[allow]` (a reasoned `#[expect]` only as a documented last
+    resort);
+  - Rustdoc and doctests build with warnings denied.
+- Follow the module layout convention: a module with child files uses a
+  directory entrypoint named `mod.rs` (`docs/developers-guide.md`, "Module
+  layout").
+- Place `#[allow_fixture_expansion_lints]` immediately above every new
+  `#[fixture]`, including BDD fixtures (`docs/developers-guide.md`, "Fixture
+  expansion lint policy"; ADR 005).
 - Every new module starts with a `//!` comment, including inline `mod tests`
   modules, because Whitaker enforces this.
 - The only new dev-dependencies authorized are `googletest`,
@@ -116,7 +133,7 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   expressions, bracket-body keys, and newline-after-body keys.
 - Dependencies: stop and escalate if any dependency is needed beyond the four
   authorized dev-dependencies. Also stop if `rstest-bdd` 0.6 cannot build with
-  the repository's `rstest` 0.27.
+  the repository's `rstest` 0.28.
 - Iterations: stop and escalate if a gate still fails after three fix attempts
   in the same milestone.
 - Ambiguity: stop and present options if the `EP-M0` probe contradicts
@@ -140,13 +157,14 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   `thiserror` 2), and every new crate queues through shared compile admission.
   Severity: low. Likelihood: certain. Mitigation: add the dependency in its own
   commit with a one-scenario smoke test. Its macros emit `#[rstest::rstest]`,
-  which resolves against the repository's `rstest` 0.27.
+  which resolves against the repository's `rstest` 0.28; `rstest-bdd` itself
+  depends on `rstest` only as a development dependency of its own.
 - Risk: googletest's `#[gtest]` wraps the test body in a closure, and the
   repository's Clippy expect-policy specimens (`tests/clippy_expect_policy.rs`)
   do not cover that shape. Severity: low. Likelihood: medium. Mitigation:
   googletest tests return `googletest::Result<()>` and use `verify_that!` with
-  `?` rather than `.expect()`. The first red commit proves `make lint` accepts
-  the shape.
+  `?` rather than `.expect()`. The first red commit proves `make lint-clippy`
+  and `make lint-whitaker` accept the shape.
 - Risk: the new proptest module exceeds 400 lines. Severity: low.
   Likelihood: medium. Mitigation: split it up front into a strategies module
   and a properties module (see `EP-M3`).
@@ -167,6 +185,9 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   into this revision.
 - [x] (2026-10-23) `EP-M0` probe run and transcript recorded in
   `Artefacts and notes`. `GAP-SEMI` confirmed; scratch file deleted.
+- [x] (2026-11-08) Rebased onto `main` at `21f306d` without conflicts, and
+  reconciled the plan with conventions `main` introduced since `5108bdd` (D9
+  revised, D10 added).
 - [ ] Plan approved by the user.
 - [ ] `EP-M1` scanner boundary corrections.
 - [ ] `EP-M2` typed primary-key model and accessor.
@@ -194,7 +215,7 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   Impact: lazy key-expression parsing matches the existing contract.
 - Observation (design review): the relation node does not end where the key
   expression ends. `parse_relation_suffix` calls `skip_trivia_end`
-  (`src/parser/span_scanners/relations.rs`, around line 192), which pulls
+  (`src/parser/span_scanners/relations/suffix.rs`, line 74), which pulls
   trailing trivia, including comments on later lines, into the node. Impact:
   the expression is the non-trivia hull of the tokens after the binder list. D1
   is restated accordingly.
@@ -221,6 +242,25 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   `primary_key()` returns `Ok(None)` alongside the D-REL-004 or D-REL-006
   diagnostic.
 
+- Observation (2026-11-08 rebase validation): on this host, `make lint` fails
+  in `lint-whitaker` on code from `main` that this branch does not touch.
+  - Cause: the host's Whitaker suite library
+    (`~/.local/share/whitaker/lints/nightly-2026-05-28/`, updated 2026-11-08)
+    includes a newer `string_continuation_style` lint. It rejects
+    backslash-continued string literals, starting with
+    `tests/aggregation_boundary.rs:38`. About a dozen similar sites exist across
+    `src/`, `tests/`, and `cli/`.
+  - Evidence: CI on `main` at `21f306d` passes, because it uses the pinned
+    `install-whitaker` action. On this candidate, `lint-clippy`,
+    `make check-fmt`, `make typecheck`, `make test`, `make markdownlint`,
+    `make nixie`, and `make spelling` all pass.
+  - Impact: implementation milestones run on this host will see the same
+    failure until `main` adopts `concat!()` for these literals, or the local
+    Whitaker install is re-aligned with the CI pin. Fix it in a separate base
+    pull request, not inside this plan's milestones. New code written under
+    this plan must use `concat!()` for multi-line literals, as `AGENTS.md`
+    already requires.
+
 ## Decision log
 
 - D1. Decision: implement typed access over the existing tokens of
@@ -234,12 +274,12 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   into `ParsedSpans::expressions`, so the existing `N_EXPR_NODE` nests inside
   `N_RELATION_DECL`. That would set the boundary by construction and fit
   ADR-001's "typed fields and nodes" goal more closely. It was rejected for now
-  because it touches the 400-line relation scanner, `span_scanner.rs` (383
-  lines) and `ParsedSpans` ordering validation, and it churns CST shape. It is
-  recorded as the migration path for the ADR-001 crate split. The public value
-  types own their text (`String`), so a node-backed implementation could adopt
-  them unchanged. Date/Author: 2026-10-18, planning agent; revised 2026-10-23
-  after design review.
+  because it touches the relation scanner, `span_scanner.rs`, and `ParsedSpans`
+  ordering validation, and it churns CST shape. It is recorded as the migration
+  path for the ADR-001 crate split. The public value types own their text
+  (`String`), so a node-backed implementation could adopt them unchanged.
+  Date/Author: 2026-10-18, planning agent; revised 2026-10-23 after design
+  review.
 - D2. Decision: change `Relation::primary_key()` to return
   `Result<Option<PrimaryKey>, RelationParseErrors>` rather than add a second
   accessor. Rationale: one clause accessor parses the clause once, keeps the
@@ -294,12 +334,29 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   repository uses only inline insta snapshots (`src/parser/ast/expr/sexpr.rs`).
   One inline snapshot still guards the three output forms a consumer reads
   against drift. Date/Author: 2026-10-23 after design review.
-- D9. Decision: place the scanner split at
-  `src/parser/span_scanners/relations/primary_key.rs`, beside the existing
-  `relations/cursor.rs` and `relations/preamble.rs`. Rationale: the relation
-  scanner already uses a submodule directory, and other scanners'
-  `*_support.rs` sibling-file convention does not apply to it. Date/Author:
-  2026-10-23.
+- D9. Decision (superseded 2026-11-08): `EP-M1` no longer splits the
+  relation scanner. The originally planned move of the primary-key functions
+  into `src/parser/span_scanners/relations/primary_key.rs` is unnecessary,
+  because `main` commit `00bc1af` (#391, "Normalize Rust module layout")
+  already extracted relation suffix scanning into
+  `src/parser/span_scanners/relations/suffix.rs` (179 lines). `EP-M1` edits
+  that file in place. Date/Author: 2026-10-23; revised 2026-11-08 after rebase.
+- D10. Decision: adopt the conventions `main` introduced between `5108bdd` and
+  `21f306d`. These are:
+  - `mod.rs` directory entrypoints for modules with child files, so the new
+    accessor module is `src/parser/ast/relation/primary_key/mod.rs` with
+    `primary_key/tests.rs`;
+  - `#[allow_fixture_expansion_lints]` on every new `rstest` fixture (#426,
+    ADR 005);
+  - the workspace lint baseline's function-size and complexity ceilings
+    (#428);
+  - `make typecheck` and the split `make lint-clippy` / `make lint-whitaker`
+    gates (#429);
+  - `rstest` 0.28 (#412).
+  Rationale: the plan must conform to the current repository rather than to the
+  tree it was drafted against. None of these changes alters the API, the
+  invariants, or the verification strategy. Date/Author: 2026-11-08, after
+  rebase onto `21f306d`.
 
 ## Outcomes & retrospective
 
@@ -321,8 +378,10 @@ whitespace and comment tokens (`T_WHITESPACE`, `T_COMMENT`). A line comment
 token, `//[^\n]*`, does not include its newline. A CRLF line ending is a single
 whitespace token.
 
-The relation scanner is `src/parser/span_scanners/relations.rs`, with submodules
-`relations/cursor.rs` and `relations/preamble.rs`:
+The relation scanner is the directory module
+`src/parser/span_scanners/relations/`: `mod.rs` (grammar and recovery, 276
+lines), `cursor.rs` (token cursor helpers, including `skip_trivia_end`),
+`preamble.rs`, and `suffix.rs` (primary-key suffix parsing, 179 lines):
 
 - `parse_relation_suffix` accepts a primary-key clause only on `input`
   relations with record bodies. Other placements produce diagnostics D-REL-004,
@@ -340,9 +399,9 @@ The relation scanner is `src/parser/span_scanners/relations.rs`, with submodules
 - The CST node `N_RELATION_DECL` holds all of these tokens as flat children.
   `primary` and `key` are `T_IDENT` tokens, not keywords.
 
-The AST wrapper is `Relation` in `src/parser/ast/relation.rs`:
+The AST wrapper is `Relation` in `src/parser/ast/relation/mod.rs`:
 
-- `Relation::primary_key()` (around lines 207 to 242) first checks the body
+- `Relation::primary_key()` (around lines 189 to 230) first checks the body
   with `inspect::inspect_body`.
 - It skips the column list with `skip_to_end_of_columns`, which uses
   `extract_delimited` from `src/parser/ast/parse_utils/delimiter.rs`.
@@ -356,40 +415,43 @@ The AST wrapper is `Relation` in `src/parser/ast/relation.rs`:
 
 Expressions are parsed by
 `parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>>` in
-`src/parser/expression/pratt.rs`:
+`src/parser/expression/pratt/mod.rs`:
 
 - It is re-exported as `ddlint::parser::expression::parse_expression` and
   tokenizes without trivia.
-- `Expr` (`src/parser/ast/expr.rs`) derives `PartialEq` but not `Eq`. Its
+- `Expr` (`src/parser/ast/expr/mod.rs`) derives `PartialEq` but not `Eq`. Its
   s-expression renderer `Expr::to_sexpr` lives in
   `src/parser/ast/expr/sexpr.rs`; for example, `Group` renders as `(group …)`,
   `FieldAccess` as `(field a b)`, and `Tuple` as `(tuple …)`.
 - `shift_errors` in `src/parser/span_utils.rs` moves error spans, including a
   `Simple`'s inner `Unclosed` span, by an offset.
-- The private `parse_expr_with_offset` in `src/parser/ast/rule_head.rs` trims
-  by `char::is_whitespace` (through `trim_byte_range`), parses, and shifts.
-  Trimming only whitespace leaves comments in place, so this plan must not
-  reuse its trimming step.
+- The private `parse_expr_with_offset` in `src/parser/ast/rule_head/mod.rs`
+  trims by `char::is_whitespace` (through `trim_byte_range`), parses, and
+  shifts. Trimming only whitespace leaves comments in place, so this plan must
+  not reuse its trimming step.
 - Test builders for expected `Expr` values live in
   `src/test_util/expressions.rs`, for example `var`, `field_access`, `tuple`,
   and `call`.
 
 The current callers of `Relation::primary_key()` are all tests or doctests:
 
-- `src/parser/ast/relation.rs` (module doctest).
-- `src/parser/ast/relation/tests.rs` (lines 142, 161).
-- `src/parser/ast/relation/inspect.rs` (lines 296, 312).
-- `src/parser/tests/relations.rs` (lines 79, 94, 111).
+- `src/parser/ast/relation/mod.rs` (module doctest).
+- `src/parser/ast/relation/tests.rs` (lines 143, 162).
+- `src/parser/ast/relation/inspect.rs` (lines 300, 316).
+- `src/parser/tests/relations/mod.rs` (lines 84, 99, 117).
 - `src/parser/tests/specs.rs` (line 93, the `RelationSpec::pk` builder used by
   `src/parser/tests/parser.rs`).
-- `src/parser/tests/relation_proptest.rs` (line 200).
-- `tests/relation_form_grammar.rs` (line 38).
+- `src/parser/tests/relation_proptest.rs` (line 201).
+- `tests/relation_form_grammar.rs` (line 42).
+
+These line numbers are as of `main` at `21f306d`; re-locate them with
+`rg -n 'primary_key\(\)' src tests` before editing.
 
 Existing test tooling:
 
-- `Cargo.toml` `[dev-dependencies]` holds `rstest` 0.27, `proptest` 1.6, and
-  `insta` 1.47. `googletest`, `pretty_assertions`, and `rstest-bdd` are not yet
-  present.
+- `Cargo.toml` `[dev-dependencies]` holds `fixture-lints` (path dependency),
+  `rstest` 0.28, `proptest` 1.6, and `insta` 1.47. `googletest`,
+  `pretty_assertions`, and `rstest-bdd` are not yet present.
 - The repository has no BDD feature files, Kani harnesses, or Verus proofs.
   Kani is installed on the host but has no `Makefile` target. Verus is not
   installed.
@@ -398,9 +460,12 @@ Existing test tooling:
   `cargo test --lib <filter>` selects those tests.
 
 The gate commands come from `AGENTS.md` and the `Makefile`: `make fmt`,
-`make check-fmt`, `make lint`, `make test`, `make markdownlint`, and
-`make nixie`. `make lint` also runs `make spelling`, the Clippy policy tests,
-and the Whitaker Dylint suite.
+`make check-fmt`, `make typecheck`, `make lint`, `make test`,
+`make markdownlint`, and `make nixie`. `make lint` is a serial composite of
+`interrogate`, `lint-clippy` (Clippy, Rustdoc with warnings denied, and the
+Clippy policy contract), `lint-whitaker` (the Whitaker Dylint suite), and
+`spelling`. Each part can be run alone while iterating. `make test` also runs
+the workspace doctests with warnings denied.
 
 Signposted documentation for the implementer:
 
@@ -419,8 +484,16 @@ Signposted documentation for the implementer:
 - `docs/adr-002-relation-role-kind-modelling.md`: the decision this plan
   closes.
 - `docs/parser-conformance-register.md`: item 13.
-- `docs/developers-guide.md`: lines 216 to 221 on fallible BDD steps and
-  fixtures.
+- `docs/developers-guide.md`:
+  - "Module layout" for `mod.rs` directory entrypoints;
+  - "Parser test helpers" for fallible helpers, fixtures, and BDD steps, and
+    the `Option`-returning `parse_relation` helper in
+    `src/parser/tests/helpers.rs`;
+  - "Fixture expansion lint policy" for `#[allow_fixture_expansion_lints]`;
+  - the test-record ownership sections ("Relation matrix case ownership"),
+    whose pattern any new private case record must follow.
+- `docs/adr-005-fixture-expansion-lint-helper.md`: why fixtures carry the
+  attribute.
 
 Signposted skills:
 
@@ -783,11 +856,12 @@ register it in `src/parser/tests/mod.rs`. Add the `INV-TERM`, `GAP-SEMI`, and
 
 Green:
 
-1. Move `parse_primary_key_clause`, `consume_opaque_primary_key_expr`, and
-   `next_token_is_same_line_expression` unchanged from
-   `src/parser/span_scanners/relations.rs` into a new submodule,
-   `src/parser/span_scanners/relations/primary_key.rs` (D9). Commit this move
-   on its own as a refactor once the gates pass.
+1. Work in `src/parser/span_scanners/relations/suffix.rs`, which already
+   holds `parse_primary_key_clause`, `consume_opaque_primary_key_expr`, and
+   `next_token_is_same_line_expression` (D9). If the binder-list validation
+   would push the file towards 400 lines, or any function past the 70-line or
+   complexity-9 ceilings, extract a `validate_binder_list` helper rather than
+   lengthening `parse_primary_key_clause`.
 2. In `next_token_is_same_line_expression`, also reject `T_SEMI`. Add a
    comment explaining that `T_IMPLIES`, `T_DOT`, and `T_SEMI` terminate the
    enclosing statement, so they cannot start a key expression.
@@ -809,7 +883,7 @@ describing the two diagnostic corrections.
 
 Red:
 
-1. Add `googletest = "0.14.3"` and `pretty_assertions = "1.4.1"` to
+1. Add `googletest = "0.14.4"` and `pretty_assertions = "1.4.1"` to
    `[dev-dependencies]`.
 2. Create `src/parser/ast/relation/primary_key/tests.rs` (with a `//!` doc).
    Put the named cases from `Verification plan` there as rstest tables, with
@@ -828,10 +902,10 @@ Red:
 
 Green:
 
-1. Create `src/parser/ast/relation/primary_key.rs` with a `//!` module
+1. Create `src/parser/ast/relation/primary_key/mod.rs` with a `//!` module
    comment. Move `Relation::primary_key()`, `skip_to_end_of_columns`, and
    `first_non_trivia_text` into it as an `impl Relation` block, which shrinks
-   `relation.rs`.
+   `relation/mod.rs`.
 2. Define `PrimaryKey`, `PrimaryKeyBinder`, and `PrimaryKeyExpression` as
    specified in `Interfaces and dependencies`.
 3. Implement the accessor over CST tokens. This is simpler than the
@@ -855,12 +929,13 @@ Green:
    `char::is_whitespace`. The text is already bounded by non-trivia tokens.
 5. Re-export the three types from `src/parser/ast/mod.rs`, next to
    `Relation`.
-6. Update the module doctest in `relation.rs`, and add doctests to the new
+6. Update the module doctest in `relation/mod.rs`, and add doctests to the new
    public items, per `AGENTS.md`. Doctests use `.expect()`, because neither
    error type implements `std::error::Error`.
 
-Refactor: keep functions small, check line counts for `relation.rs` and
-`primary_key.rs`, then run all gates.
+Refactor: keep functions within the lint baseline (at most 70 lines, 4
+arguments, complexity 9, nesting 4). Check line counts for `relation/mod.rs` and
+`primary_key/mod.rs`, then run all gates.
 
 ### `EP-M3` property and behavioural verification
 
@@ -877,7 +952,9 @@ Refactor: keep functions small, check line counts for `relation.rs` and
    `tests/relation_primary_key_bdd.rs`, with a `//!` doc, step definitions, and
    one `#[scenario]` binding per scenario.
    - Step definitions are fallible: they return `Result` and use `?`, never
-     `.expect()`, per `docs/developers-guide.md` lines 216 to 221.
+     `.expect()`, per `docs/developers-guide.md` "Parser test helpers".
+   - Every BDD fixture carries `#[allow_fixture_expansion_lints]` above
+     `#[fixture]`.
    - State passes between steps through an rstest fixture holding the parsed
      result.
 
@@ -955,7 +1032,8 @@ in `src/parser/diagnostics/`. Confirm its exact wording there.
    mentions `2.6.6.1`. Document the lazy parse, the absolute spans, the
    non-trivia hull, and the terminator rule.
 5. In `docs/developers-guide.md`:
-   - update the `relation.rs` entry, documenting `PrimaryKey`,
+   - update the `src/parser/ast/relation/mod.rs` entry, documenting
+     `PrimaryKey`,
      `PrimaryKeyBinder`, and `PrimaryKeyExpression`;
    - add their reuse policy: they are the only supported way to read key
      clauses, and lint rules must not re-tokenize relation text;
@@ -993,7 +1071,8 @@ in `src/parser/diagnostics/`. Confirm its exact wording there.
 - Compatibility decision: none.
 
 `EP-M1`: a keyed relation followed by `;` behaves like a keyless one, binder
-lists must be identifiers, and the relation scanner is split under the line cap.
+lists must be identifiers, and `relations/suffix.rs` stays within the lint
+baseline and the 400-line cap.
 
 - Requirements and gaps: `GAP-SEMI`, `GAP-BINDER`, and the scanner half of
   `REQ-PK-AGREE`.
@@ -1015,7 +1094,7 @@ lists must be identifiers, and the relation scanner is split under the line cap.
   - `REQ-PK-SPAN`, at example level;
   - `REQ-PK-LOSSLESS`, through the existing round-trip tests.
 - Acceptance evidence: the new unit tests and updated tests pass, and
-  `make check-fmt`, `make lint`, and `make test` pass.
+  `make check-fmt`, `make typecheck`, `make lint`, and `make test` pass.
 - Conformance check, one line per item:
   - public API change limited to `Relation::primary_key()` and the three new
     types;
@@ -1079,6 +1158,7 @@ At each milestone boundary, run the gates sequentially:
 ```sh
 make fmt 2>&1 | tee /tmp/fmt-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
 make check-fmt 2>&1 | tee /tmp/check-fmt-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
+make typecheck 2>&1 | tee /tmp/typecheck-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
 make lint 2>&1 | tee /tmp/lint-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
 make test 2>&1 | tee /tmp/test-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
 make markdownlint 2>&1 | tee /tmp/markdownlint-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
@@ -1110,10 +1190,10 @@ The work is done when all of the following hold:
    lists relations `R` and `S`, with the same diagnostics as the keyless form.
 4. Parsing `input relation R(x: u32) primary key (x.y)` gives exactly one
    D-REL-007 diagnostic.
-5. `make check-fmt`, `make lint`, `make test`, `make markdownlint`, and
-   `make nixie` pass. Each new test named in `Conformance basis` fails before
-   its milestone's change (or fails to compile for missing types) and passes
-   after.
+5. `make check-fmt`, `make typecheck`, `make lint`, `make test`,
+   `make markdownlint`, and `make nixie` pass. Each new test named in
+   `Conformance basis` fails before its milestone's change (or fails to compile
+   for missing types) and passes after.
 6. Each seeded fault in `Verification plan` was run once, failed for the
    intended reason, and was reverted, with transcripts recorded below.
 
@@ -1209,8 +1289,8 @@ Probe conclusions:
 
 ## Interfaces and dependencies
 
-Define these items in `src/parser/ast/relation/primary_key.rs` and re-export
-them from `src/parser/ast/mod.rs`:
+Define these items in `src/parser/ast/relation/primary_key/mod.rs` and
+re-export them from `src/parser/ast/mod.rs`:
 
 ```rust
 /// A `primary key (binders) expr?` clause on an input relation.
@@ -1288,7 +1368,7 @@ Reuse policy:
 
 Existing helpers are reused rather than duplicated:
 
-- `parse_expression` (`src/parser/expression/pratt.rs`);
+- `parse_expression` (`src/parser/expression/pratt/mod.rs`);
 - `shift_errors` (`src/parser/span_utils.rs`);
 - `extract_delimited` (`src/parser/ast/parse_utils/delimiter.rs`);
 - `primary_key_clause` (`src/parser/ast/parse_utils/relation.rs`), extended
@@ -1300,7 +1380,7 @@ is deliberately not reused, because it trims whitespace but not comments.
 
 New dev-dependencies, all with caret requirements:
 
-- `googletest = "0.14.3"`;
+- `googletest = "0.14.4"`;
 - `pretty_assertions = "1.4.1"`;
 - `rstest-bdd = "0.6.0"`;
 - `rstest-bdd-macros = "0.6.0"`.
@@ -1323,3 +1403,15 @@ New dev-dependencies, all with caret requirements:
   - Raised the tolerances and defined how they are counted.
 
   The remaining work is unchanged in order; `EP-M1` now always runs.
+- 2026-11-08: rebased onto `main` at `21f306d`. Reconciled the plan with
+  changes landed since `5108bdd`:
+  - Module paths now follow the `mod.rs` directory layout from #391, and the
+    caller line numbers are refreshed.
+  - `EP-M1` edits the existing `relations/suffix.rs` instead of splitting the
+    scanner (D9).
+  - Adopted `#[allow_fixture_expansion_lints]` for fixtures (#426), the
+    workspace lint ceilings (#428), the split `lint-clippy` and
+    `lint-whitaker` gates plus `make typecheck` (#429), `rstest` 0.28, and
+    `googletest` 0.14.4 (D10).
+
+  API, invariants, and verification strategy are unchanged.
