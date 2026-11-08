@@ -24,11 +24,13 @@ struct SmokeWorld {
 #[fixture]
 fn world() -> SmokeWorld { SmokeWorld::default() }
 
-#[given("the source \"{source}\"")]
-fn given_source(world: &SmokeWorld, source: String) { *world.source.borrow_mut() = source; }
+#[given("the source {source:string}")]
+fn given_source(world: &SmokeWorld, source: &str) {
+    source.clone_into(&mut world.source.borrow_mut());
+}
 
 #[when("its first primary key is inspected")]
-fn inspect_primary_key(world: &SmokeWorld) -> StepResult<(), String> {
+fn inspect_primary_key(world: &SmokeWorld) {
     let parsed = parse(&world.source.borrow());
     let count = parsed
         .root()
@@ -38,7 +40,6 @@ fn inspect_primary_key(world: &SmokeWorld) -> StepResult<(), String> {
         .and_then(|relation| relation.primary_key().ok().flatten())
         .map_or(0, |key| key.binders().len());
     *world.binder_count.borrow_mut() = Some(count);
-    Ok(())
 }
 
 #[then("the binder count is {expected}")]
