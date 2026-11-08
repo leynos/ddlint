@@ -265,10 +265,36 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     started after the fixes were written); and the commit-time quality hook
     re-ran `make check-fmt`, `make lint` and `make typecheck` without a gate
     failure.
-- [ ] `EP-M3` property and behavioural verification.
+- [x] (2026-11-08) `EP-M3` property verification implemented and checked.
+  - Added `relation_primary_key_strategies.rs` (generators plus a coverage
+    class per value) and `relation_primary_key_props.rs` (`INV-AGREE`,
+    `INV-INDEP`, `INV-SHIFT`, `INV-FIDELITY`, `INV-TERM`, and the fixed-seed
+    class-coverage test), registered in `src/parser/tests/mod.rs`.
+  - `INV-AGREE` exposed a real defect: `primary_key_clause` bound binder spans
+    to `ident()`, whose padding covers following trivia, so
+    `primary key (a , b)` reported the name `"a "`. The parser now binds
+    `just(T_IDENT)`, keeping both name and span on the identifier token, with
+    regression cases in `primary_key/tests.rs`.
+  - Genuine regression seeds are kept in
+    `proptest-regressions/parser/tests/relation_primary_key_props.txt`.
+  - Focused suite: `cargo test --lib --all-features relation_primary_key`
+    passes 6 tests
+    (`/tmp/test-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs-epm3-props4.out`).
+  - Seeded faults 1 to 3 were each run once and reverted; transcripts are in
+    `Artefacts and notes`. Seeds written by those runs were deleted.
+- [ ] `EP-M3` behavioural (BDD) verification.
 - [ ] `EP-M4` documentation, ADR amendment, changelog, and roadmap closure.
 
 ## Surprises & discoveries
+
+- Observation (`EP-M3`): the binder parser captured trailing trivia.
+  `INV-AGREE` shrank a failure to
+  `input relation R(a: u32, b: u32, c: u32) primary key (a , a) a + * 1`, whose
+  binder names were `["a ", "a"]`. Cause: `ident()` pads itself with
+  `inline_ws().repeated()`, and `map_with_span` covered that padding. Impact:
+  fixed in `primary_key_clause` by binding `just(T_IDENT)`; binder names and
+  spans now address the identifier token alone. A named regression case covers
+  `primary key (a , b)` and a comment before the comma.
 
 - Observation: upstream DDlog's key grammar is
   `key_expr = withPos $ KeyExpr nopos <$> (parens varIdent) <*> expr`: exactly
@@ -1399,6 +1425,50 @@ Probe conclusions:
   `2..3`). Tests must compare error-span sets, or sort them, rather than assume
   an order.
 - Every expected s-expression in the feature file matches the probe.
+
+### `EP-M3` seeded-fault transcripts
+
+Each fault was applied alone to production code, exercised with
+`cargo test --lib --all-features relation_primary_key`, and reverted before the
+next one.
+
+Fault 1, trailing trivia included in the hull (`expression_after` keeps the
+tail to the end of the element list). `INV-AGREE` failed:
+
+```plaintext
+Test failed: assertion failed: `(left == right)`
+  left: `Some("a // trailing note")`,
+ right: `Some("a")` at src/parser/tests/relation_primary_key_props.rs:85.
+minimal failing input: source: "input relation R(a: u32, b: u32, c: u32) primary key (a) a // trailing note",
+    class: TrailingComment
+```
+
+Log: `/tmp/fault1-ddlint-2-6-6-1-seeded.out`.
+
+Fault 2, binder group taken from the last balanced group (`binder_group_close`
+returns the final depth-zero group). Three properties failed:
+
+```plaintext
+accessor_agrees_with_generated_clause:
+  left: `None`, right: `Some("(a, a)")`
+  source: "input relation R(a: u32, b: u32, c: u32) primary key (a) (a, a)"
+binders_are_independent_of_expression: Test failed: valid arm has no expression
+error_spans_are_shifted:           Test failed: invalid mutation has no expression
+```
+
+Log: `/tmp/fault2-ddlint-2-6-6-1-seeded.out`.
+
+Fault 3, expression-error shift dropped (`shift_errors(errors, 0)`).
+`INV-SHIFT` failed:
+
+```plaintext
+Test failed: assertion failed: `(left == right)`
+  left: `4`,
+ right: `61` at src/parser/tests/relation_primary_key_props.rs:140.
+minimal failing input: source: "input relation R(a: u32, b: u32, c: u32) primary key (a) a + * 1"
+```
+
+Log: `/tmp/fault3-ddlint-2-6-6-1-seeded.out`.
 
 ## Interfaces and dependencies
 

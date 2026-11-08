@@ -14,6 +14,8 @@ mod imports;
 mod indexes;
 mod numeric_literals;
 mod operator_precedence;
+mod relation_primary_key_props;
+mod relation_primary_key_strategies;
 mod relation_proptest;
 mod relation_terminators;
 mod relations;

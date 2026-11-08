@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 750654625e02bdbef57cad67a23b4dd86744b5cdcc99533f07a080d0e4e16f5b # shrinks to pair = IndependencePair { binders: ["a", "a"], valid_source: "input relation R(a: u32, b: u32, c: u32) primary key (a , a) a", invalid_source: "input relation R(a: u32, b: u32, c: u32) primary key (a , a) a + * 1" }
+cc 60efe7e9cb3751a9c1149c9e7977f121c4bfa477e032d5a61ca5ff0592810a83 # shrinks to generated = GeneratedKey { source: "input relation R(a: u32, b: u32, c: u32) primary key (a , a) a + * 1", keyless_source: "input relation R(a: u32, b: u32, c: u32)", binders: ["a", "a"], expression: Some("a + * 1"), class: InvalidMutation }
