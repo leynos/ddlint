@@ -72,7 +72,6 @@ pub(crate) fn primary_key_clause(
             just(SyntaxKind::T_LPAREN)
                 .ignore_then(
                     binder
-                        .clone()
                         .padded_by(ws.clone())
                         .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
                         .at_least(1),
