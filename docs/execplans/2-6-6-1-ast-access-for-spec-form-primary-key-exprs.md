@@ -282,7 +282,33 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     (`/tmp/test-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs-epm3-props4.out`).
   - Seeded faults 1 to 3 were each run once and reverted; transcripts are in
     `Artefacts and notes`. Seeds written by those runs were deleted.
-- [ ] `EP-M3` behavioural (BDD) verification.
+- [x] (2026-11-08) `rstest-bdd` dependency wiring proved with a smoke binding.
+  - Added `rstest-bdd = "0.6.0"` and `rstest-bdd-macros = "0.6.0"` to
+    `[dev-dependencies]`, plus `tests/features/relation_primary_key_smoke.feature`
+    and `tests/relation_primary_key_smoke.rs`, which inspect one binding.
+  - `cargo test --test relation_primary_key_smoke` passed 1 test
+    (`/tmp/test-bdd-smoke-ddlint-2-6-6-1.out`).
+  - The follow-up Clippy run exposed a `clone_on_copy` finding that `b9729fd`
+    introduced when it rebound the binder parser: the new parser is `Copy`, so
+    the existing `.clone()` became redundant. The redundant call is removed and
+    committed separately.
+- [x] (2026-11-08) `EP-M3` behavioural (BDD) verification implemented.
+  - Added `tests/features/relation_primary_key.feature` with the seven
+    scenarios from the plan and `tests/relation_primary_key_bdd.rs` binding
+    each one. Steps return `StepResult<(), String>` and use `?`; state passes
+    through a `PrimaryKeyWorld` fixture carrying the recorded inspection, and
+    the fixture is annotated with `#[allow_fixture_expansion_lints]`.
+  - Quoted step arguments use the `:string` placeholder hint with `&str`
+    parameters, which matches the Gherkin quoting and avoids
+    `needless_pass_by_value`.
+  - `cargo test --test relation_primary_key_bdd` passes 7 tests
+    (`/tmp/test-bdd-ddlint-2-6-6-1.out`).
+  - Focused `cargo clippy --test relation_primary_key_bdd --all-features --
+    -D warnings` passes after making the infallible `When` step return unit
+    rather than `StepResult` (`unnecessary_wraps`)
+    (`/tmp/clippy-bdd2-ddlint-2-6-6-1.out`).
+  - The one-scenario smoke binding is retained as a guard on the BDD harness
+    wiring.
 - [ ] `EP-M4` documentation, ADR amendment, changelog, and roadmap closure.
 
 ## Surprises & discoveries
