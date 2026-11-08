@@ -15,6 +15,7 @@ mod indexes;
 mod numeric_literals;
 mod operator_precedence;
 mod relation_proptest;
+mod relation_terminators;
 mod relations;
 mod reserved_tokens;
 mod round_trip;

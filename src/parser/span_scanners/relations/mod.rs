@@ -219,7 +219,10 @@ impl RelationScanContext {
     fn is_top_level_line_start(&self) -> bool {
         self.delimiters.is_empty()
             && self.previous_non_trivia.is_none_or(|previous| {
-                self.saw_newline_since_non_trivia
+                // A `;` terminates the enclosing statement, so the next
+                // declaration may start on the same line. Otherwise a newline
+                // must separate statements.
+                (self.saw_newline_since_non_trivia || previous == SyntaxKind::T_SEMI)
                     && !matches!(
                         previous,
                         SyntaxKind::K_ON

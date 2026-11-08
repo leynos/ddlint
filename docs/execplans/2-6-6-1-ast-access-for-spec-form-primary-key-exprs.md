@@ -5,8 +5,8 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: DRAFT (design review applied; rebased onto `21f306d`; awaiting user
-approval)
+Status: APPROVED (design review applied; rebased onto `21f306d`; approved by
+the user on 2026-11-08)
 
 Branch: `2-6-6-1-ast-access-for-spec-form-primary-key-exprs`
 
@@ -188,8 +188,13 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
 - [x] (2026-11-08) Rebased onto `main` at `21f306d` without conflicts, and
   reconciled the plan with conventions `main` introduced since `5108bdd` (D9
   revised, D10 added).
-- [ ] Plan approved by the user.
-- [ ] `EP-M1` scanner boundary corrections.
+- [x] (2026-11-08) Plan approved by the user.
+- [x] (2026-11-08) `EP-M1` scanner boundary corrections implemented. Red
+  evidence: with the three corrections reverted, six of the eight focused cases
+  failed, including `statement_terminator_does_not_hide_next_declaration` and
+  all five `non_identifier_binders_are_rejected` cases; with the corrections in
+  place all eight pass (`cargo test --lib relation_terminators`; transcript in
+  `/tmp/ep-m1-red-ddlint-2-6-6-1.out`).
 - [ ] `EP-M2` typed primary-key model and accessor.
 - [ ] `EP-M3` property and behavioural verification.
 - [ ] `EP-M4` documentation, ADR amendment, changelog, and roadmap closure.
@@ -231,6 +236,13 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   same-line `; output relation S(x: u32)`, which then vanishes from
   `Root::relations()`. The keyless form `input relation R(x: u32);` appears in
   `src/parser/tests/round_trip.rs`. Impact: `EP-M1` is unconditional.
+- Observation (2026-11-08 `EP-M1` red run): reverting only the `;`
+  terminator, the `T_SEMI` top-level start, and the binder-list validation
+  leaves the two `keyed_semicolon_matches_keyless` cases green, because both
+  forms then swallow the terminator identically. The discriminating case is
+  `statement_terminator_does_not_hide_next_declaration`, which failed, as did
+  all five binder-list cases. This is why the differential cases are pinned
+  alongside the absolute `["R", "S"]` assertion.
 - Observation (design review): `next_token_is_same_line_expression` refuses
   to start an expression at `T_IMPLIES` (`:-`) or `T_DOT`. That keeps a
   same-line rule or fact terminator out of the key, but only checks the first
@@ -357,6 +369,18 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   tree it was drafted against. None of these changes alters the API, the
   invariants, or the verification strategy. Date/Author: 2026-11-08, after
   rebase onto `21f306d`.
+- D11. Decision: extend `EP-M1`'s `;` terminator correction to the scanner's
+  top-level start predicate. `RelationScanContext::is_top_level_line_start` now
+  accepts a `;` as a statement boundary, so a declaration may start on the same
+  line after one. Rationale: stopping the key expression before `;` alone
+  leaves the following `output relation S(...)` unscanned, because the
+  predicate otherwise requires a newline. That would fail validation criterion
+  3, the `INV-TERM` differential case, and the BDD scenario "Statement
+  terminator after a key does not hide the next declaration". The change is
+  part of the same `;` terminator rule: a top-level `;` ends the current
+  statement. It only affects input where a `;` is followed by a
+  declaration-shaped token sequence. Date/Author: 2026-11-08, during `EP-M1`
+  implementation.
 
 ## Outcomes & retrospective
 
