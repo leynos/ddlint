@@ -62,6 +62,20 @@ fn exposes_binders_and_clause_span(
     Ok(())
 }
 
+#[rstest]
+#[case::space_before_comma("input relation R(a: u32, b: u32) primary key (a , b)")]
+#[case::comment_between_name_and_comma(
+    "input relation R(a: u32, b: u32) primary key (a /* first */, b)"
+)]
+fn binder_names_and_spans_exclude_surrounding_trivia(#[case] src: &str) {
+    let key = primary_key_of(src).expect("primary key");
+
+    assert_eq!(key.binder_names(), ["a", "b"]);
+    for binder in key.binders() {
+        assert_eq!(src.get(binder.span()), Some(binder.name()));
+    }
+}
+
 #[test]
 fn no_clause_returns_none() {
     assert!(matches!(

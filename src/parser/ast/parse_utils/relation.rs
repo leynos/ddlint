@@ -5,11 +5,7 @@
 
 use chumsky::prelude::*;
 
-use crate::{
-    Span,
-    SyntaxKind,
-    parser::lexer_helpers::{ident, inline_ws},
-};
+use crate::{Span, SyntaxKind, parser::lexer_helpers::inline_ws};
 
 #[expect(
     clippy::result_large_err,
@@ -63,8 +59,10 @@ pub(crate) fn primary_key_clause(
     src: &str,
 ) -> impl Parser<SyntaxKind, Vec<(String, Span)>, Error = Simple<SyntaxKind>> + '_ {
     let ws = inline_ws().repeated();
-    let binder = ident()
-        .map_with_span(move |(), sp: Span| (src.get(sp.clone()).unwrap_or("").to_owned(), sp));
+    // Bind the span to the identifier token alone. `ident()` pads itself with
+    // whitespace, which would leak trailing trivia into the name and the span.
+    let binder = just(SyntaxKind::T_IDENT)
+        .map_with_span(move |_, sp: Span| (src.get(sp.clone()).unwrap_or("").to_owned(), sp));
 
     inline_ws()
         .repeated()
