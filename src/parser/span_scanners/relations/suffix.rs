@@ -120,10 +120,7 @@ fn consume_opaque_primary_key_expr(
     let mut end = current_span(tokens, src, *cursor).start;
 
     while let Some((kind, span)) = tokens.get(*cursor) {
-        if stack.is_empty()
-            && (*kind == SyntaxKind::T_SEMI
-                || token_text(src, span).is_some_and(|text| text.contains('\n')))
-        {
+        if stack.is_empty() && starts_statement_boundary(*kind, src, span) {
             break;
         }
         adjust_stack(*kind, &mut stack);
@@ -139,6 +136,16 @@ fn consume_opaque_primary_key_expr(
             D_REL_007,
         )))
     }
+}
+
+/// Whether a depth-zero token starts a new statement rather than continuing
+/// the key expression.
+///
+/// A `;` terminator or a newline-bearing token ends the declaration. Keeping
+/// the test in a helper also keeps the scan loop's condition within Whitaker's
+/// branch limit.
+fn starts_statement_boundary(kind: SyntaxKind, src: &str, span: &Span) -> bool {
+    kind == SyntaxKind::T_SEMI || token_text(src, span).is_some_and(|text| text.contains('\n'))
 }
 
 pub(super) fn starts_primary_key(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> bool {

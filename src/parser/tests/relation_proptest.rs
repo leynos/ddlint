@@ -77,10 +77,10 @@ impl GeneratedPrimaryKey {
         }
     }
 
-    fn expected(self) -> Vec<String> {
+    fn expected(self) -> Vec<&'static str> {
         match self {
-            Self::Single => vec!["id".into()],
-            Self::Compound => vec!["id".into(), "status".into()],
+            Self::Single => vec!["id"],
+            Self::Compound => vec!["id", "status"],
         }
     }
 }
@@ -197,7 +197,15 @@ proptest! {
             }
         }
 
-        let expected_primary_key = generated.primary_key.map(GeneratedPrimaryKey::expected);
-        prop_assert_eq!(relation.primary_key(), Ok(expected_primary_key));
+        let expected_primary_key = generated.primary_key.map(|key| {
+            key.expected()
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        });
+        let actual_primary_key = relation
+            .primary_key()
+            .map(|clause| clause.map(|key| super::helpers::owned_binder_names(&key)));
+        prop_assert_eq!(actual_primary_key, Ok(expected_primary_key));
     }
 }

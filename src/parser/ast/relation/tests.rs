@@ -159,5 +159,13 @@ fn input_record_primary_key_is_ok(#[case] src: &str, #[case] expected: Vec<Strin
         .cloned()
         .expect("relation missing");
 
-    assert_eq!(rel.primary_key(), Ok(Some(expected)));
+    let binders = rel.primary_key().map(|clause| {
+        clause.map(|key| {
+            key.binder_names()
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+    });
+    assert_eq!(binders, Ok(Some(expected)));
 }

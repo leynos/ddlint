@@ -195,7 +195,76 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   all five `non_identifier_binders_are_rejected` cases; with the corrections in
   place all eight pass (`cargo test --lib relation_terminators`; transcript in
   `/tmp/ep-m1-red-ddlint-2-6-6-1.out`).
-- [ ] `EP-M2` typed primary-key model and accessor.
+- [x] (2026-11-08) `EP-M1` committed as `d74479c`. Its own gate evidence is
+  limited to the focused suite: the `/tmp` logs from 17:28–17:31 predate the
+  milestone and are not evidence for it, and a delegated gate run started
+  before the commit was superseded when the tree moved on. The full gate
+  sequence is therefore run once against the cumulative `EP-M1` + `EP-M2`
+  candidate before `EP-M2` is committed, so the verified tree contains both
+  milestones.
+- [x] (2026-11-08) `EP-M2` typed primary-key model and accessor implemented.
+  - Types: `PrimaryKey`, `PrimaryKeyBinder`, `PrimaryKeyExpression` in
+    `src/parser/ast/relation/primary_key/mod.rs`, with CST readers in
+    `primary_key/clause.rs`; all three are re-exported from
+    `src/parser/ast/mod.rs`.
+  - Accessor: `Relation::primary_key() -> Result<Option<PrimaryKey>,
+    RelationParseErrors>` replaces the `Option<Vec<String>>` returning version.
+    The expression is the non-trivia token hull after the binder list, and
+    `PrimaryKeyExpression::parse` shifts lazy expression errors by the hull
+    start.
+  - Red evidence: `cargo check --all-targets --all-features` reported
+    `E0515` at every caller that mapped `binder_names()` out of a temporary
+    `PrimaryKey`, `E0716` where a temporary key was dropped before its
+    expression was used, and `E0599` for `DdlogLanguage::kind_to_raw` without
+    `rowan::Language` in scope. Transcript
+    `/tmp/check-ddlint-2-6-6-1-epm2.out` (first run).
+  - Green evidence: `cargo check --all-targets --all-features` passes;
+    `cargo test --lib primary_key` passes 23 tests;
+    `cargo test --doc primary_key` passes 11 doctests (including the tuple
+    s-expression); `cargo test --test relation_form_grammar` passes 5 tests.
+    Logs: `/tmp/{check,test-pk,test-doc,test-relform}-ddlint-2-6-6-1*.out`.
+  - Inline snapshot `renders_probe_corpus_as_binders_text_span_and_sexpr`
+    pins the rendered binder/text/span/s-expression lines for the probe
+    corpus.
+- [x] (2026-11-08) First full gate run against the cumulative candidate.
+  - Passed: `make fmt`, `make check-fmt`, `make typecheck`, `make test` (all
+    workspace targets and doctests), `make markdownlint`, `make nixie`,
+    `make spelling`.
+  - `make lint` failed in `lint-clippy` with three diagnostics in
+    `primary_key/mod.rs`: `doc_markdown` for `DDlog` at the module doc and in
+    the `parse` doc, and `missing_const_for_fn` for `expression()`. Fixed by
+    adding backticks and making the accessor `const`. `test-clippy-policy`
+    failed only as a cascade of the same diagnostics.
+  - A separate `make lint-whitaker` run then exposed
+    `conditional_max_n_branches` at
+    `src/parser/span_scanners/relations/suffix.rs:123`, introduced by the
+    `EP-M1` commit rather than by `EP-M2`. Fixed by extracting
+    `starts_statement_boundary`, keeping the scan loop within the two-branch
+    limit.
+  - Evidence:
+    `/tmp/{fmt,check-fmt,typecheck,lint,test,markdownlint,nixie,spelling,test-clippy-policy,lint-whitaker}-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out`.
+- [x] (2026-11-08) Gate rerun with fresh `-rerun` log names.
+  - Passed: `make fmt`, `make check-fmt`, `make typecheck`, `make test` (all
+    workspace targets and doctests), `make markdownlint`, `make nixie`,
+    `make spelling`, `make lint-whitaker` (the `suffix.rs` finding above is
+    gone) and `make test-clippy-policy`.
+  - `make lint-clippy` failed with five diagnostics in candidate test code:
+    `string_slice` at `primary_key/tests.rs` lines 57, 82 and 128,
+    `shadow_reuse` at `relation/tests.rs` line 163, and
+    `needless_pass_by_value` for `owned_binder_names` in
+    `src/parser/tests/helpers.rs` (also present in
+    `tests/relation_form_grammar.rs`, which the same compile did not reach).
+    Fixed by reading spans through `str::get`, renaming the inner closure
+    binding to `clause`, and taking `&PrimaryKey`; every call site now maps
+    `|clause| clause.map(|key| owned_binder_names(&key))`.
+  - Post-fix evidence: `make fmt` is clean;
+    `cargo clippy --all-targets --all-features -- -D warnings` passes
+    (`/tmp/lint-clippy-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs-fix1.out`);
+    `make test` passed against the fixed sources
+    (`/tmp/test-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs-rerun.out`,
+    started after the fixes were written); and the commit-time quality hook
+    re-ran `make check-fmt`, `make lint` and `make typecheck` without a gate
+    failure.
 - [ ] `EP-M3` property and behavioural verification.
 - [ ] `EP-M4` documentation, ADR amendment, changelog, and roadmap closure.
 
@@ -253,6 +322,26 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   (`recoverable_relation`). Their clauses are not inside `N_RELATION_DECL`, so
   `primary_key()` returns `Ok(None)` alongside the D-REL-004 or D-REL-006
   diagnostic.
+- Observation (2026-11-08 `EP-M2` gate round): the host Whitaker suite is not
+  limited to the known `string_continuation_style` finding. It also reports
+  `conditional_max_n_branches` for
+  `stack.is_empty() && (kind == T_SEMI || text.contains('\n'))` in
+  `consume_opaque_primary_key_expr`
+  (`src/parser/span_scanners/relations/ suffix.rs`), a condition introduced by
+  `EP-M1`. The `EP-M1` commit was therefore not Whitaker-clean even though the
+  earlier run never reached this lint. Impact: the condition is now
+  `starts_statement_boundary(kind, src, span)` with a two-branch body, and
+  `EP-M1`'s commit needs this amendment carried in the `EP-M2` commit. Future
+  milestones must run `make lint-whitaker` directly instead of assuming
+  `make lint`'s abort ordering has exercised it.
+- Observation (2026-11-08 `EP-M2`): `src/parser/tests/specs.rs` is not in the
+  compiled module tree. It declares `mod specs;` from
+  `src/parser/tests/parser.rs`, but neither that file nor `specs.rs` is
+  declared by `src/parser/tests/mod.rs`. The plan's caller list named
+  `RelationSpec::pk` there; the edit is kept for consistency but the shared
+  owned-name helper used by compiled tests lives in
+  `src/parser/tests/helpers.rs`. Impact: future plans must not treat
+  `parser.rs`/`specs.rs` edits as gate-verified.
 
 - Observation (2026-11-08 rebase validation): on this host, `make lint` fails
   in `lint-whitaker` on code from `main` that this branch does not touch.

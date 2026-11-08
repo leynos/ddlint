@@ -5,8 +5,16 @@
 use crate::{
     SyntaxKind,
     parse,
-    parser::ast::{Function, Import, Index, Relation, Transformer},
+    parser::ast::{Function, Import, Index, PrimaryKey, Relation, Transformer},
 };
+
+/// Binder names of a primary-key clause as owned strings.
+///
+/// `PrimaryKey::binder_names` borrows from the key, so comparisons that keep
+/// the names alive past the key need owned copies.
+pub(super) fn owned_binder_names(key: &PrimaryKey) -> Vec<String> {
+    key.binder_names().into_iter().map(str::to_owned).collect()
+}
 
 type SyntaxNode = rowan::SyntaxNode<crate::DdlogLanguage>;
 type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;

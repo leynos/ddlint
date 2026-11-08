@@ -13,7 +13,7 @@ use fixtures::{
 };
 use rstest::rstest;
 
-use super::helpers::{parse_relation, pretty_print};
+use super::helpers::{owned_binder_names, parse_relation, pretty_print};
 use crate::{
     parser::ast::{AstNode, RelationBody, RelationKind, RelationRole},
     test_util::{assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error},
@@ -78,10 +78,13 @@ fn parses_relations(#[case] src: &str, #[case] expected: ExpectedRelation<'_>) {
         .map(|(n, t)| (n.into(), t.into()))
         .collect();
     assert_eq!(rel.columns(), Ok(cols));
-    let pk: Option<Vec<String>> = expected
+    let pk = rel
+        .primary_key()
+        .map(|clause| clause.map(|key| owned_binder_names(&key)));
+    let expected_pk = expected
         .primary_key
-        .map(|v| v.into_iter().map(String::from).collect());
-    assert_eq!(rel.primary_key(), Ok(pk));
+        .map(|names| names.into_iter().map(str::to_owned).collect::<Vec<_>>());
+    assert_eq!(pk, Ok(expected_pk));
 }
 
 #[rstest]
@@ -96,7 +99,11 @@ fn multiline_relation_parsed(multiline_relation: &str) {
             ("message".into(), "string".into())
         ])
     );
-    assert_eq!(rel.primary_key(), Ok(Some(vec!["id".into()])));
+    assert_eq!(
+        rel.primary_key()
+            .map(|clause| clause.map(|key| owned_binder_names(&key))),
+        Ok(Some(vec!["id".to_owned()]))
+    );
     assert_eq!(pretty_print(rel.syntax()), multiline_relation);
 }
 
@@ -114,7 +121,11 @@ fn preserves_spec_form_primary_key_text() {
         .next()
         .unwrap_or_else(|| panic!("relation missing for source: {source}"));
 
-    assert_eq!(rel.primary_key(), Ok(Some(vec!["row".into()])));
+    assert_eq!(
+        rel.primary_key()
+            .map(|clause| clause.map(|key| owned_binder_names(&key))),
+        Ok(Some(vec!["row".to_owned()]))
+    );
     assert_eq!(pretty_print(rel.syntax()), source);
 }
 
