@@ -37,7 +37,8 @@ compiler semantic model.
 - Avoid reserving an `internal` keyword that upstream DDlog does not reserve.
 - Keep existing `is_input()` and `is_output()` users working through phase 2.
 - Defer typed primary-key expression access until the semantic boundary is
-  ready to own expression-level modelling.
+  ready to own expression-level modelling (superseded by the amendment below,
+  roadmap item `2.6.6.1`).
 
 ## Options considered
 
@@ -76,11 +77,12 @@ keyword was present. `kind_keyword_present()` means the source explicitly wrote
 one of `relation`, `stream`, or `multiset`.
 
 `Relation::primary_key()` returns
-`Result<Option<Vec<String>>, RelationParseErrors>`: `Ok(None)` when no clause
-is present, `Ok(Some(..))` with the names from the parenthesized binder/list,
-and `Err(..)` when a clause is present but malformed. Spec-form trailing
-primary-key expressions are preserved in CST text, but typed expression access
-is deferred to roadmap follow-up `2.6.6.1`.
+`Result<Option<PrimaryKey>, RelationParseErrors>`: `Ok(None)` when no clause is
+present, `Ok(Some(..))` when a well-formed clause is present, and `Err(..)`
+when a clause is present but malformed. `PrimaryKey` exposes `binders()`,
+`binder_names()`, `span()`, and `expression()`; each `PrimaryKeyBinder` carries
+`name()` and a source-absolute `span()`; `PrimaryKeyExpression` carries
+`text()`, `span()`, and `parse()`. See the amendment below.
 
 ## Goals and non-goals
 
@@ -95,7 +97,8 @@ Non-goals:
 
 - define the final compiler semantic relation model,
 - type-check relation semantics beyond parser-level diagnostics, or
-- expose typed access to primary-key expressions in this ADR.
+- interpret primary-key binders or expressions; binder scope and
+  row-versus-column interpretation stay in the semantic layer.
 
 ## Known risks and limitations
 
@@ -103,8 +106,8 @@ Non-goals:
   several CST tokens.
 - The syntax-layer API can still evolve before the ADR-001 crate split freezes
   public parser contracts.
-- `Relation::primary_key()` exposes only binder/list names; callers that need
-  the trailing expression must wait for `2.6.6.1`.
+- `Relation::primary_key()` parses the clause on demand; callers that only need
+  binder text should use `binder_names()` rather than `expression()`.
 
 ## Architectural rationale
 
@@ -116,10 +119,43 @@ spans for diagnostics and provenance.
 
 ## Outstanding decisions
 
-- Roadmap item `2.6.6.1` must decide the typed shape for primary-key expression
-  access.
 - Phase `2.8` must decide whether `is_input()` and `is_output()` remain public
   stable helpers or become compatibility shims.
+
+## Amendment: primary-key expression access (2.6.6.1)
+
+Roadmap item `2.6.6.1` amends this ADR. It adds typed syntax-layer access to
+the primary-key clause and its optional spec-form expression without adding a
+CST node.
+
+- `Relation::primary_key()` returns
+  `Result<Option<PrimaryKey>, RelationParseErrors>`; the `Vec<String>`
+  binder/list form is retired.
+- `PrimaryKey` exposes `binders()`, `binder_names()`, `span()`, and
+  `expression()`. `PrimaryKeyBinder` carries `name()` and a source-absolute
+  `span()`. `PrimaryKeyExpression` carries `text()`, `span()`, and `parse()`.
+- `PrimaryKeyExpression::parse()` returns
+  `Result<Expr, Vec<Simple<SyntaxKind>>>` with source-absolute error spans. It
+  parses the preserved text lazily; the syntax layer owns no expression scope.
+- The expression is the non-trivia hull of the existing `N_RELATION_DECL`
+  tokens after the binder list. No `N_EXPR_NODE` nests inside the relation
+  node. Nesting one is the migration path recorded for the ADR-001 crate split.
+- The syntax layer does not decide whether a binder names a row or a column.
+  That remains semantic-layer work in `ddlog-sema`.
+
+The API is shaped by three invariants:
+
+- `INV-INDEP`: a malformed or unparsable expression never hides the binders.
+  `expression()` and `parse()` are separate observations.
+- `INV-SHIFT`: errors returned by `parse()` are shifted to source-absolute
+  spans, so a diagnostic can point into the original file.
+- `INV-AGREE`: the scanner and the accessor agree on clause well-formedness. A
+  depth-zero `;` ends the clause, and a binder list that is not a
+  comma-separated identifier list is rejected with `D-REL-007`.
+
+Decisions `D1` to `D11` in the ExecPlan record the alternatives considered. In
+particular, `D3` notes that the ADR-001 crate split should replace the exposed
+`chumsky::error::Simple` type with a domain error type.
 
 ## Consequences
 

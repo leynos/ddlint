@@ -309,7 +309,51 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     (`/tmp/clippy-bdd2-ddlint-2-6-6-1.out`).
   - The one-scenario smoke binding is retained as a guard on the BDD harness
     wiring.
-- [ ] `EP-M4` documentation, ADR amendment, changelog, and roadmap closure.
+- [x] (2026-11-09) Smoke binding lint fix committed as `2f291e6`.
+  - The first full-gate run on `a973cee` failed `make lint-clippy` with
+    `unnecessary_wraps` on the smoke `When` step, the same defect already fixed
+    in the BDD binding. The step now returns `()`, and its `Given` source is
+    taken as `&str` through the `:string` hint. Focused evidence:
+    `/tmp/clippy-smoke-ddlint-2-6-6-1.out` (exit 0) and
+    `/tmp/test-smoke2-ddlint-2-6-6-1.out` (1 passed).
+- [x] (2026-11-09) Full gate set and milestone CodeRabbit review on `2f291e6`.
+  - Passed sequentially: `make check-fmt`, `make lint`, `make typecheck`,
+    `make test` (workspace targets and doctests), `make markdownlint`,
+    `make nixie`, all exit 0. Logs use the `-m3` suffix under `/tmp`; the
+    run's progress log is `/tmp/gates-m3-progress.log`.
+  - CodeRabbit `review --agent` completed against `origin/main` after one
+    discarded attempt (the CLI warns that an early stop discards the review),
+    with two findings: `.expect()`/`.expect_err()` in the property helpers, and
+    the missing `Relation::primary_key()` breaking-change entry.
+- [x] (2026-11-09) CodeRabbit findings resolved.
+  - `check_shift`, `check_fidelity`, and `draw_classes` now return
+    `Result<_, TestCaseError>` and propagate with `?`, so an unexpected
+    success fails the case instead of panicking outside proptest's shrinking
+    path. `strategies_cover_every_class` returns `Result` too.
+  - The `CHANGELOG.md` breaking-change entry records the new return type and
+    the migration from `Vec<String>` comparisons to `binder_names()`.
+  - Re-verified with focused `cargo clippy --lib` (exit 0,
+    `/tmp/props-verify-ddlint-2-6-6-1.out`) and the focused property suite.
+- [x] (2026-11-09) `EP-M4` documentation, ADR amendment, changelog, and
+  roadmap closure.
+  - `docs/adr-002-relation-role-kind-modelling.md` gains an "Amendment:
+    primary-key expression access (2.6.6.1)" section recording D1 to D11 and
+    `INV-INDEP`, `INV-SHIFT`, and `INV-AGREE`; the superseded decision driver,
+    the `primary_key()` paragraph, the non-goal, and the risk bullet are
+    rewritten, and `ADR2-OD1` is removed from the outstanding decisions.
+  - `docs/differential-datalog-parser-syntax-spec-updated.md` §5.5 now records
+    lazy typed access, the identifier-only binder list, and the `;` terminator
+    rule; the §10 crosswalk names the `PrimaryKey` shape.
+  - `docs/parser-conformance-register.md` item 13 names the typed types and
+    their coverage paths, and `docs/parser-implementation-notes.md` records the
+    hull, the lazy shift, and the terminator rule.
+  - `docs/developers-guide.md` records the typed-access ownership and reuse
+    policy, the property-generator split, the `#[gtest]`-above-`#[rstest]`
+    convention, and the rstest-bdd conventions.
+  - `docs/users-guide.md` documents typed access and the two `EP-M1` scanner
+    corrections; `docs/ddlint-design.md` §2 points at the amendment; the
+    CHANGELOG entry is in place; `docs/contents.md` already listed this plan;
+    and `docs/roadmap.md` marks `2.6.6.1` done.
 
 ## Surprises & discoveries
 
@@ -525,7 +569,47 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
 
 ## Outcomes & retrospective
 
-Not started. Complete this section at each milestone boundary and at completion.
+All four milestones are complete.
+
+What changed:
+
+- The scanner now ends a primary-key clause at a depth-zero `;`, rescans a
+  declaration that follows one, and rejects binder lists that are not a
+  comma-separated identifier list with `D-REL-007`.
+- `Relation::primary_key()` returns
+  `Result<Option<PrimaryKey>, RelationParseErrors>`. `PrimaryKey`,
+  `PrimaryKeyBinder`, and `PrimaryKeyExpression` expose the binder list, the
+  clause span, and the optional spec-form expression, which is parsed lazily
+  with source-absolute error spans. No CST node was added.
+- Verification is layered: `rstest` unit tables, oracle-based `proptest`
+  properties with coverage classes and retained regression seeds, a seven-
+  scenario `rstest-bdd` feature plus a harness smoke binding, and an inline
+  `insta` snapshot.
+
+What went well:
+
+- The `EP-M0` probe fixed the expected values before any code changed, so the
+  BDD scenarios could be written from observed output rather than assumption.
+- `INV-AGREE` found a real defect that unit tables had missed: the binder
+  parser captured trailing trivia in names and spans.
+- Splitting the property generators from the properties kept each file small
+  enough for the module-size gate and made the coverage classes reviewable.
+
+What cost time:
+
+- Full gate runs are queue-bound on this host, and one `make test` invocation
+  was cut off at the harness limit; the cached re-run passed.
+- The same `unnecessary_wraps` defect existed in both BDD bindings and was
+  found one file at a time. A single focused `cargo clippy --all-targets` after
+  writing the first binding would have found both at once.
+
+Left deliberately undone:
+
+- No `N_EXPR_NODE` nests inside `N_RELATION_DECL`. That remains the migration
+  path for the ADR-001 crate split, and the value types can adopt a node-backed
+  representation unchanged.
+- Verus and Kani were not used; the Verification plan records why differential
+  property coverage fits the scanner, `rowan`, and `chumsky` boundaries better.
 
 ## Context and orientation
 
@@ -726,6 +810,11 @@ SPEC-5.5-PK -> REQ-PK-LOSSLESS -> EP-M2 -> existing round-trip tests plus relati
 RM-2.6.6.1 -> EP-M3 -> tests/features/relation_primary_key.feature
 ADR2-DRV, ADR2-PK, ADR2-NG, ADR2-OD1, PCR-13, SPEC-10-REL -> REQ-PK-DOC -> EP-M4 -> docs diff and make markdownlint
 ```
+
+Conformance outcome: every requirement above is satisfied. `REQ-PK-DOC` is
+closed by the `EP-M4` documentation change, which also removes the last
+"deferred to `2.6.6.1`" statements from the live documents named by `ADR2-DRV`,
+`ADR2-PK`, `ADR2-NG`, `ADR2-OD1`, `PCR-13`, and `SPEC-10-REL`.
 
 ## Verification plan
 

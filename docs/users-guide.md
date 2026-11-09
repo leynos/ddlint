@@ -294,8 +294,17 @@ The parser preserves spec-form clauses such as:
 input relation Book(row: BookRow) primary key (row) (row.author, row.title)
 ```
 
-The current typed AST exposes the binder/list names from `primary key (...)`.
-Typed access to the trailing expression is deferred to roadmap item `2.6.6.1`.
+The typed AST exposes the clause through `primary_key()`. `binder_names()`
+lists the identifiers, each binder and the whole clause carry spans, and
+`expression()` returns the optional spec-form expression. Parsing the
+expression is lazy: `PrimaryKeyExpression::parse()` reports errors at
+source-absolute spans, and a failed parse never hides the binders.
+
+Two scanner corrections accompany this. A `;` now ends a primary-key clause
+instead of being absorbed into it, so a following declaration on the same line
+is still scanned. A binder list that is not a comma-separated list of
+identifiers, such as `(x.y)` or `(x,)`, reports `D-REL-007` instead of being
+accepted.
 
 ## Relation diagnostics
 
