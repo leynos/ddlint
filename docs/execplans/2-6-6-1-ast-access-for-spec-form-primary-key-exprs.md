@@ -531,6 +531,15 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   declarations. A property that restates part of an invariant can still be
   green; the missing half has to be named and asserted explicitly.
 
+- Observation (2026-11-10 ExecPlan assessment): the `EP-M4` documentation
+  criterion named an exact set of files an item-number search would find, and
+  it under-listed them. `docs/parser-conformance-register.md` and
+  `docs/contents.md` carry legitimate references that the criterion did not
+  name. Impact: a documentation criterion that enumerates expected matches goes
+  stale as soon as a useful cross-reference is added. State the property the
+  matches must satisfy — each remaining reference is a live cross-reference,
+  not deferred work — and name only examples.
+
 ## Decision log
 
 - D1. Decision: implement typed access over the existing tokens of
@@ -651,6 +660,17 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   and diagnostics agree. The named regression test in
   `src/parser/tests/relation_terminators.rs` compares the adjusted span and the
   CST after the relation.
+- D13. Decision: deliver the approved verification layers above the size
+  tolerance, with the deviation recorded and escalated, rather than shrinking
+  the test layers to fit. Rationale: the `Verification plan` requires the
+  property, BDD, and table layers that account for most of the 2,062 net Rust
+  lines, and the file-count tolerance that guards review breadth is inside its
+  limit at 25 of 28 counted files. The escalation is recorded in
+  `Outcomes & retrospective` with the measured figures and reported to the user
+  at handoff, so the decision is visible rather than inferred; a user direction
+  to reduce test breadth would be a new plan revision, not a silent trim.
+  Date/Author: 2026-11-10, during the `ddlint-409-execplan-20261110-b`
+  assessment.
 
 ## Outcomes & retrospective
 
@@ -694,14 +714,16 @@ What cost time:
 Tolerance deviations:
 
 - The scope tolerance is exceeded on size but not on breadth. The change
-  touches 25 counted files, inside the 28-file limit, but adds 2,077 net Rust
-  lines against the 1,100-line limit (measured on 2026-11-09 with
-  `git diff --shortstat origin/main -- '*.rs'`: 2,206 insertions and 129
-  deletions). The excess is concentrated in tests: the property generators, the
-  two differential suites, the seven-scenario BDD feature with its step
-  definitions, and the googletest tables. The product change is the scanner
-  correction plus the typed wrapper. The deviation is recorded rather than
-  retro-fitted into the tolerance, so a later reader can judge it; the file
+  touches 25 counted files, inside the 28-file limit, but adds 2,062 net Rust
+  lines against the 1,100-line limit (measured on 2026-11-10 with
+  `git diff --shortstat origin/main -- '*.rs'`: 2,191 insertions and 129
+  deletions; an earlier measurement of 2,206 insertions and 2,077 net was taken
+  before the shared test helpers were hoisted). The excess is concentrated in
+  tests: the property generators, the two differential suites, the
+  seven-scenario BDD feature with its step definitions, and the googletest
+  tables. The product change is the scanner correction plus the typed wrapper.
+  The deviation is recorded rather than retro-fitted into the tolerance, so a
+  later reader can judge it, and D13 records the escalation decision; the file
   count, which guards review breadth, stays within its limit.
 
 Left deliberately undone:
@@ -1477,8 +1499,11 @@ each seeded fault was seen to fail.
 
 - Requirements and gaps: `REQ-PK-DOC`.
 - Acceptance evidence:
-  - `rg -n "2\.6\.6\.1" docs --glob '!docs/execplans/**'` shows only the
-    roadmap entry (now done) and the ADR-002 amendment;
+  - `rg -n "2\.6\.6\.1" docs --glob '!docs/execplans/**'` finds live
+    cross-references only, with no deferred-work wording left behind; examples
+    are the roadmap entry (now done), the ADR-002 amendment, the conformance
+    register entry naming the roadmap item, and the `docs/contents.md` index
+    entry for this plan;
   - no "deferred" wording remains in the ADR-002, developers' guide, users'
     guide, conformance register, or implementation notes passages listed in
     `EP-M4`;
@@ -1824,3 +1849,10 @@ New dev-dependencies, all with caret requirements:
     and the CST after the relation, over eight `;`-prefixed suffixes.
   - Corrected four stale trace-link test names and recorded the net-Rust-line
     tolerance deviation in "Outcomes & retrospective".
+- 2026-11-10: acted on the `ddlint-409-execplan-20261110-b` assessment.
+  - Confirmed and recorded the scope-escalation decision (D13): the change
+    delivers the approved verification layers at 2,062 net Rust lines across 25
+    counted files, and the deviation is escalated rather than waived.
+  - Reconciled the `EP-M4` documentation criterion with the live
+    cross-references in the conformance register and `docs/contents.md`.
+  - Refreshed the recorded tolerance measurement to the current diff.
