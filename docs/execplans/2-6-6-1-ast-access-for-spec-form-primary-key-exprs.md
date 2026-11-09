@@ -334,6 +334,23 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     the migration from `Vec<String>` comparisons to `binder_names()`.
   - Re-verified with focused `cargo clippy --lib` (exit 0,
     `/tmp/props-verify-ddlint-2-6-6-1.out`) and the focused property suite.
+- [x] (2026-11-09) `clippy::panic_in_result_fn` in the class-coverage test
+  fixed as `65930e9`.
+  - `cargo clippy --all-targets --all-features` reported
+    `panic_in_result_fn` at `strategies_cover_every_class`: the test returns
+    `Result<(), TestCaseError>` yet used `assert!` and `assert_eq!`, so a
+    missed class panicked instead of returning the error type its signature
+    promises. The siblings fixed for the same class of finding
+    (`check_shift`, `check_fidelity`, `draw_classes`) already returned
+    `Result`; this call site kept the assertion macros.
+  - The assertions are now `prop_assert!` and `prop_assert_eq!`, which report
+    through `TestCaseError`. `prop_assert_eq!` expands its message through
+    `concat!`, so captured format identifiers are rejected there; the message
+    passes `combined` as an explicit argument instead.
+  - Evidence: focused clippy exit 0
+    (`/tmp/clippy-propsfix2-ddlint-2-6-6-1.out`), the focused property suite
+    passes 6 tests, and `cargo fmt --all -- --check` is clean
+    (`/tmp/test-propsfix-ddlint-2-6-6-1.out`).
 - [x] (2026-11-09) `EP-M4` documentation, ADR amendment, changelog, and
   roadmap closure.
   - `docs/adr-002-relation-role-kind-modelling.md` gains an "Amendment:
