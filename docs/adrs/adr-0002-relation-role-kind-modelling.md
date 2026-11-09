@@ -6,7 +6,7 @@ Proposed.
 
 ## Date
 
-2026-06-16
+2026-11-09
 
 ## Context and problem statement
 
@@ -122,7 +122,7 @@ spans for diagnostics and provenance.
 - Phase `2.8` must decide whether `is_input()` and `is_output()` remain public
   stable helpers or become compatibility shims.
 
-## Amendment: primary-key expression access (2.6.6.1)
+## Amendment, 2026-11-09: primary-key expression access (2.6.6.1)
 
 Roadmap item `2.6.6.1` amends this ADR. It adds typed syntax-layer access to
 the primary-key clause and its optional spec-form expression without adding a

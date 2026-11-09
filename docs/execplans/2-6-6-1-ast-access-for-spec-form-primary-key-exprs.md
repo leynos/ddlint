@@ -381,6 +381,16 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     visible.
   - Re-verified with `cargo test --doc primary_key` (11 doctests pass) and
     focused `cargo clippy --lib --all-features` (exit 0).
+- [x] (2026-11-09) Fourth-round CodeRabbit finding resolved.
+  - All six gates passed on `3fada5b` (logs suffixed `-final4`; progress log
+    `/tmp/gates-final4-progress.log`).
+  - The review raised one minor finding: the ADR-002 amendment heading was
+    undated and the ADR `Date` field still read `2026-06-16`, although `EP-M4`
+    step 1 asks for a dated amendment and the documentation style guide
+    requires the date to track the last update.
+  - The heading is now
+    `## Amendment, 2026-11-09: primary-key expression access (2.6.6.1)` and
+    the `Date` field reads `2026-11-09`.
 - [x] (2026-11-09) `EP-M4` documentation, ADR amendment, changelog, and
   roadmap closure.
   - `docs/adr-002-relation-role-kind-modelling.md` gains an "Amendment:
