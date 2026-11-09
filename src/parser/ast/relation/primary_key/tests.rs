@@ -76,12 +76,17 @@ fn binder_names_and_spans_exclude_surrounding_trivia(#[case] src: &str) {
     }
 }
 
-#[test]
-fn no_clause_returns_none() {
+/// A relation without a readable clause exposes no primary key.
+///
+/// `primary_key()` returns `Ok(None)` for a relation that has no clause and
+/// for one whose clause the scanner could not attach to the relation node.
+#[rstest]
+#[case::no_clause("input relation R(x: u32)")]
+#[case::bracket_body("input R[Row] primary key (row)")]
+#[case::output_relation("output relation R(x: u32) primary key (x)")]
+fn primary_key_is_absent(#[case] src: &str) {
     assert!(matches!(
-        relation("input relation R(x: u32)")
-            .expect("relation")
-            .primary_key(),
+        relation(src).expect("relation").primary_key(),
         Ok(None)
     ));
 }
@@ -150,26 +155,6 @@ fn expression_at_end_of_file_without_newline_is_captured() {
 
     assert_eq!(expression.text(), "x.id");
     assert!(parse_expression(expression.text()).is_ok());
-}
-
-#[test]
-fn keyed_bracket_body_has_no_clause() {
-    assert!(matches!(
-        relation("input R[Row] primary key (row)")
-            .expect("relation")
-            .primary_key(),
-        Ok(None)
-    ));
-}
-
-#[test]
-fn keyed_output_relation_has_no_clause() {
-    assert!(matches!(
-        relation("output relation R(x: u32) primary key (x)")
-            .expect("relation")
-            .primary_key(),
-        Ok(None)
-    ));
 }
 
 #[test]

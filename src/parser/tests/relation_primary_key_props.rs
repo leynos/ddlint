@@ -9,16 +9,19 @@ use std::{cell::RefCell, collections::HashSet};
 use chumsky::error::SimpleReason;
 use proptest::{prelude::*, test_runner::TestRunner};
 
-use super::relation_primary_key_strategies::{
-    GeneratedKey,
-    IndependencePair,
-    KeyClass,
-    VALID_CLASSES,
-    generated_key_strategy,
-    independence_pair_strategy,
-    invalid_key_strategy,
-    terminator_key_strategy,
-    valid_key_strategy,
+use super::{
+    helpers::{first_relation_end, structure_after},
+    relation_primary_key_strategies::{
+        GeneratedKey,
+        IndependencePair,
+        KeyClass,
+        VALID_CLASSES,
+        generated_key_strategy,
+        independence_pair_strategy,
+        invalid_key_strategy,
+        terminator_key_strategy,
+        valid_key_strategy,
+    },
 };
 use crate::{
     Parsed,
@@ -167,13 +170,56 @@ fn check_fidelity(generated: &GeneratedKey) -> Result<(), TestCaseError> {
     Ok(())
 }
 
-/// `INV-TERM`: a `;` after a key does not change what follows.
-fn check_terminator(generated: &GeneratedKey) -> Result<(), TestCaseError> {
-    let keyed = parse(&generated.source_with_suffix(";"));
-    let keyless = parse(&format!("{};", generated.keyless_source));
+/// Suffixes beginning with `;` that vary the recovery which follows it.
+///
+/// `INV-TERM` holds for any suffix starting with `;`, so the samples pin the
+/// statement boundary itself, the trivia around it, and one or two following
+/// declarations on the same line and on the next.
+const TERMINATOR_SUFFIXES: [&str; 8] = [
+    ";",
+    ";  ",
+    ";\n",
+    "; // done\n",
+    "; /* between */\n",
+    ";\noutput relation S(x: u32)",
+    "; output relation S(x: u32)",
+    ";\ninput relation T(y: u32)\noutput relation S(x: u32)",
+];
+
+/// `INV-TERM` for one key and one suffix.
+///
+/// Removing the key clause shortens the source by exactly the clause text, so
+/// the relation span must shrink by the same amount. That catches trivia left
+/// inside the keyed relation but outside the keyless twin, which a comparison
+/// of names and diagnostics alone cannot see.
+fn check_terminator_suffix(generated: &GeneratedKey, suffix: &str) -> Result<(), TestCaseError> {
+    let keyed_source = generated.source_with_suffix(suffix);
+    let keyless_source = format!("{}{suffix}", generated.keyless_source);
+    let keyed = parse(&keyed_source);
+    let keyless = parse(&keyless_source);
     prop_assert_eq!(relation_names(&keyed), relation_names(&keyless));
     prop_assert_eq!(diagnostic_messages(&keyed), diagnostic_messages(&keyless));
     prop_assert!(!relation_names(&keyed).is_empty());
+
+    let removed = u32::try_from(keyed_source.len() - keyless_source.len())
+        .map_err(|_| TestCaseError::fail("generated source exceeds the u32 offset range"))?;
+    let keyed_end = first_relation_end(&keyed)
+        .ok_or_else(|| TestCaseError::fail("keyed source produced no relation"))?;
+    let keyless_end = first_relation_end(&keyless)
+        .ok_or_else(|| TestCaseError::fail("keyless source produced no relation"))?;
+    prop_assert_eq!(keyed_end, keyless_end + removed);
+    prop_assert_eq!(
+        structure_after(&keyed, keyed_end),
+        structure_after(&keyless, keyless_end)
+    );
+    Ok(())
+}
+
+/// `INV-TERM`: a `;` after a key does not change what follows.
+fn check_terminator(generated: &GeneratedKey) -> Result<(), TestCaseError> {
+    for suffix in TERMINATOR_SUFFIXES {
+        check_terminator_suffix(generated, suffix)?;
+    }
     Ok(())
 }
 

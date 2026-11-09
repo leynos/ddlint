@@ -13,8 +13,8 @@ use super::{
         adjust_stack,
         consume_text,
         current_span,
+        inline_trivia_end,
         parse_balanced_block,
-        skip_inline_trivia,
         skip_trivia,
         skip_trivia_end,
         token_text,
@@ -104,8 +104,9 @@ fn parse_primary_key_clause(
     if !has_column || !is_binder_identifier_list(tokens, list_start, *cursor) {
         return Err(Box::new(custom_error(&binder_list_span, D_REL_007)));
     }
-    skip_inline_trivia(tokens, src, cursor);
-    if next_token_is_same_line_expression(tokens, src, *cursor) {
+    let expression_start = inline_trivia_end(tokens, src, *cursor);
+    if next_token_is_same_line_expression(tokens, src, expression_start) {
+        *cursor = expression_start;
         end = consume_opaque_primary_key_expr(tokens, src, cursor)?;
     }
     Ok(end)

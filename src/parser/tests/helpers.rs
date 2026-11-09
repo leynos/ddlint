@@ -5,7 +5,7 @@
 use crate::{
     SyntaxKind,
     parse,
-    parser::ast::{Function, Import, Index, PrimaryKey, Relation, Transformer},
+    parser::ast::{AstNode, Function, Import, Index, PrimaryKey, Relation, Transformer},
 };
 
 /// Binder names of a primary-key clause as owned strings.
@@ -62,6 +62,37 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
     }
 
     out
+}
+
+/// End offset of the first relation declaration node in `parsed`.
+///
+/// `None` means the source produced no relation, which lets callers decide
+/// whether that is a test failure or a skipped case.
+pub(super) fn first_relation_end(parsed: &crate::Parsed) -> Option<u32> {
+    parsed
+        .root()
+        .relations()
+        .into_iter()
+        .next()
+        .map(|relation| u32::from(relation.syntax().text_range().end()))
+}
+
+/// CST kinds and token texts for elements that start at or after `start`.
+///
+/// Comparing this sequence is how `INV-TERM` checks that a key clause changes
+/// nothing after the relation. Token text is included so a difference in
+/// trivia ownership is visible rather than hidden by a kinds-only comparison.
+pub(super) fn structure_after(parsed: &crate::Parsed, start: u32) -> Vec<String> {
+    parsed
+        .root()
+        .syntax()
+        .descendants_with_tokens()
+        .filter(|element| u32::from(element.text_range().start()) >= start)
+        .map(|element| match element {
+            rowan::NodeOrToken::Node(node) => format!("{:?}", node.kind()),
+            rowan::NodeOrToken::Token(token) => format!("{:?} {:?}", token.kind(), token.text()),
+        })
+        .collect()
 }
 
 /// Count descendant nodes of a given `SyntaxKind`.

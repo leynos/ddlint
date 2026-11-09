@@ -8,6 +8,7 @@
 use chumsky::error::SimpleReason;
 use rstest::rstest;
 
+use super::helpers::{first_relation_end, structure_after};
 use crate::{parse, test_util::assert_no_parse_errors};
 
 /// Return the names of the relations scanned from `src`.
@@ -61,6 +62,47 @@ fn statement_terminator_does_not_hide_next_declaration() {
     assert_no_parse_errors(keyless_parsed.errors());
     assert_eq!(relation_names(keyed), relation_names(keyless));
     assert_eq!(relation_names(keyed), vec!["R".to_owned(), "S".to_owned()]);
+}
+
+/// A keyed declaration must own the same trailing trivia as its keyless twin.
+///
+/// `INV-TERM` adjusts spans for the removed clause: the relation span must
+/// shrink by exactly the clause length, and the CST after the relation must be
+/// identical. A keyed relation that stops at its binder list leaves inline
+/// trivia outside the relation while the keyless twin absorbs it, which this
+/// comparison detects.
+#[rstest]
+#[case(
+    "input relation R(x: u32) primary key (x)  ;",
+    "input relation R(x: u32)  ;"
+)]
+#[case(
+    "input relation R(x: u32) primary key (x) /* note */ ;\noutput relation S(x: u32)",
+    "input relation R(x: u32) /* note */ ;\noutput relation S(x: u32)"
+)]
+#[case(
+    "input relation R(x: u32) primary key (a, b)\n  ;\ninput relation T(y: u32)",
+    "input relation R(x: u32)\n  ;\ninput relation T(y: u32)"
+)]
+fn keyed_relation_owns_the_same_trivia_as_its_keyless_twin(
+    #[case] keyed: &str,
+    #[case] keyless: &str,
+) {
+    let keyed_parsed = parse(keyed);
+    let keyless_parsed = parse(keyless);
+    assert_no_parse_errors(keyed_parsed.errors());
+    assert_no_parse_errors(keyless_parsed.errors());
+    assert_eq!(relation_names(keyed), relation_names(keyless));
+
+    let removed =
+        u32::try_from(keyed.len() - keyless.len()).expect("test sources fit the u32 offset range");
+    let keyed_end = first_relation_end(&keyed_parsed).expect("keyed source has a relation");
+    let keyless_end = first_relation_end(&keyless_parsed).expect("keyless source has a relation");
+    assert_eq!(keyed_end, keyless_end + removed);
+    assert_eq!(
+        structure_after(&keyed_parsed, keyed_end),
+        structure_after(&keyless_parsed, keyless_end)
+    );
 }
 
 #[rstest]

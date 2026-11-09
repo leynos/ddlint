@@ -152,10 +152,14 @@ The API is shaped by three invariants:
 - `INV-AGREE`: the scanner and the accessor agree on clause well-formedness. A
   depth-zero `;` ends the clause, and a binder list that is not a
   comma-separated identifier list is rejected with `D-REL-007`.
+- `INV-TERM`: a `;` after a key changes nothing that follows. A keyed relation
+  node owns the same trailing trivia as its keyless twin, so their spans differ
+  only by the length of the removed clause.
 
-Decisions `D1` to `D11` in the ExecPlan record the alternatives considered. In
+Decisions `D1` to `D12` in the ExecPlan record the alternatives considered. In
 particular, `D3` notes that the ADR-001 crate split should replace the exposed
-`chumsky::error::Simple` type with a domain error type.
+`chumsky::error::Simple` type with a domain error type, and `D12` records why a
+keyed relation node owns the trailing trivia that its keyless twin absorbs.
 
 ## Consequences
 

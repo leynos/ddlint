@@ -522,6 +522,15 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     this plan must use `concat!()` for multi-line literals, as `AGENTS.md`
     already requires.
 
+- Observation (2026-11-09 ExecPlan assessment): the `INV-TERM` property named
+  the structure requirement but checked only relation names and diagnostic
+  messages. Both were equal for the failing case, so the property passed while
+  the CST structure differed. Impact: the property now compares the relation
+  span, adjusted for the removed clause, and the CST kinds and token texts
+  after the relation, across eight suffixes that include following
+  declarations. A property that restates part of an invariant can still be
+  green; the missing half has to be named and asserted explicitly.
+
 ## Decision log
 
 - D1. Decision: implement typed access over the existing tokens of
@@ -630,6 +639,18 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   statement. It only affects input where a `;` is followed by a
   declaration-shaped token sequence. Date/Author: 2026-11-08, during `EP-M1`
   implementation.
+- D12. Decision: a keyed relation node owns the same trailing trivia as its
+  keyless twin. `parse_primary_key_clause` therefore no longer advances the
+  cursor past inline trivia when no same-line expression follows; it computes
+  the index with `inline_trivia_end` and moves the cursor only when it consumes
+  an expression. Rationale: the earlier code returned the binder-list end and
+  had already stepped over the trivia, so
+  `input relation R(x: u32) primary key (x)  ;` produced `N_RELATION_DECL` text
+  ending at `)`, while `input relation R(x: u32)  ;` included the two spaces
+  before `;`. That breaks `INV-TERM`'s structure requirement even though names
+  and diagnostics agree. The named regression test in
+  `src/parser/tests/relation_terminators.rs` compares the adjusted span and the
+  CST after the relation.
 
 ## Outcomes & retrospective
 
@@ -640,6 +661,9 @@ What changed:
 - The scanner now ends a primary-key clause at a depth-zero `;`, rescans a
   declaration that follows one, and rejects binder lists that are not a
   comma-separated identifier list with `D-REL-007`.
+- A keyed relation node owns the same trailing trivia as its keyless twin, so
+  `INV-TERM` holds at the CST level and not only in relation names and
+  diagnostics (D12).
 - `Relation::primary_key()` returns
   `Result<Option<PrimaryKey>, RelationParseErrors>`. `PrimaryKey`,
   `PrimaryKeyBinder`, and `PrimaryKeyExpression` expose the binder list, the
@@ -666,6 +690,19 @@ What cost time:
 - The same `unnecessary_wraps` defect existed in both BDD bindings and was
   found one file at a time. A single focused `cargo clippy --all-targets` after
   writing the first binding would have found both at once.
+
+Tolerance deviations:
+
+- The scope tolerance is exceeded on size but not on breadth. The change
+  touches 25 counted files, inside the 28-file limit, but adds 2,077 net Rust
+  lines against the 1,100-line limit (measured on 2026-11-09 with
+  `git diff --shortstat origin/main -- '*.rs'`: 2,206 insertions and 129
+  deletions). The excess is concentrated in tests: the property generators, the
+  two differential suites, the seven-scenario BDD feature with its step
+  definitions, and the googletest tables. The product change is the scanner
+  correction plus the typed wrapper. The deviation is recorded rather than
+  retro-fitted into the tolerance, so a later reader can judge it; the file
+  count, which guards review breadth, stays within its limit.
 
 Left deliberately undone:
 
@@ -866,10 +903,10 @@ Trace links:
 ```plaintext
 SPEC-5.5-PK -> GAP-SEMI -> EP-M1 -> relation_terminators::keyed_semicolon_matches_keyless
 SPEC-5.5-PK -> GAP-BINDER -> EP-M1 -> relation_terminators::non_identifier_binders_are_rejected
-RM-2.6.6.1 -> REQ-PK-EXPR -> EP-M2 -> relation::primary_key::tests::spec_form_expression_is_typed
-RM-2.6.6.1 -> REQ-PK-BIND -> EP-M2, EP-M3 -> relation_primary_key_props::binders_independent_of_expression
-ADR1-TYPED -> REQ-PK-SPAN -> EP-M2, EP-M3 -> relation_primary_key_props::parse_errors_lie_within_expression
-SPEC-5.5-PK -> REQ-PK-AGREE -> EP-M1, EP-M3 -> relation_primary_key_props::accessor_matches_generated_clause
+RM-2.6.6.1 -> REQ-PK-EXPR -> EP-M2 -> relation::primary_key::tests::exposes_binders_and_clause_span
+RM-2.6.6.1 -> REQ-PK-BIND -> EP-M2, EP-M3 -> relation_primary_key_props::binders_are_independent_of_expression
+ADR1-TYPED -> REQ-PK-SPAN -> EP-M2, EP-M3 -> relation_primary_key_props::error_spans_are_shifted
+SPEC-5.5-PK -> REQ-PK-AGREE -> EP-M1, EP-M3 -> relation_primary_key_props::accessor_agrees_with_generated_clause
 SPEC-5.5-PK -> REQ-PK-LOSSLESS -> EP-M2 -> existing round-trip tests plus relation_primary_key_props
 RM-2.6.6.1 -> EP-M3 -> tests/features/relation_primary_key.feature
 ADR2-DRV, ADR2-PK, ADR2-NG, ADR2-OD1, PCR-13, SPEC-10-REL -> REQ-PK-DOC -> EP-M4 -> docs diff and make markdownlint
@@ -1459,10 +1496,11 @@ Run everything from the worktree root,
 Focused red-green loops:
 
 ```sh
-cargo test --lib relation_terminators 2>&1 | tee /tmp/test-focused-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-cargo test --lib relation::primary_key 2>&1 | tee /tmp/test-focused-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-cargo test --lib relation_primary_key_props 2>&1 | tee /tmp/test-focused-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-cargo test --test relation_primary_key_bdd 2>&1 | tee /tmp/test-focused-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
+base=/tmp/test-focused-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs
+cargo test --lib relation_terminators 2>&1 | tee "$base-terminators.out"
+cargo test --lib relation::primary_key 2>&1 | tee "$base-primary-key.out"
+cargo test --lib relation_primary_key_props 2>&1 | tee "$base-props.out"
+cargo test --test relation_primary_key_bdd 2>&1 | tee "$base-bdd.out"
 ```
 
 Expected results:
@@ -1474,13 +1512,14 @@ Expected results:
 At each milestone boundary, run the gates sequentially:
 
 ```sh
-make fmt 2>&1 | tee /tmp/fmt-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-make check-fmt 2>&1 | tee /tmp/check-fmt-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-make typecheck 2>&1 | tee /tmp/typecheck-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-make lint 2>&1 | tee /tmp/lint-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-make test 2>&1 | tee /tmp/test-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-make markdownlint 2>&1 | tee /tmp/markdownlint-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
-make nixie 2>&1 | tee /tmp/nixie-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs.out
+base=/tmp/ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs
+make fmt 2>&1 | tee "$base-fmt.out"
+make check-fmt 2>&1 | tee "$base-check-fmt.out"
+make typecheck 2>&1 | tee "$base-typecheck.out"
+make lint 2>&1 | tee "$base-lint.out"
+make test 2>&1 | tee "$base-test.out"
+make markdownlint 2>&1 | tee "$base-markdownlint.out"
+make nixie 2>&1 | tee "$base-nixie.out"
 ```
 
 Prefer delegating the gate sequence to the `scrutineer` agent, then read the
@@ -1777,3 +1816,11 @@ New dev-dependencies, all with caret requirements:
     `googletest` 0.14.4 (D10).
 
   API, invariants, and verification strategy are unchanged.
+- 2026-11-09: acted on the `ddlint-409-execplan-20261109-a` assessment.
+  - Fixed the `INV-TERM` CST counterexample: a keyed relation now owns the
+    trailing inline trivia that its keyless twin owns (D12), with a regression
+    test comparing the adjusted span and the following structure.
+  - Strengthened the `INV-TERM` property to compare the adjusted relation span
+    and the CST after the relation, over eight `;`-prefixed suffixes.
+  - Corrected four stale trace-link test names and recorded the net-Rust-line
+    tolerance deviation in "Outcomes & retrospective".
