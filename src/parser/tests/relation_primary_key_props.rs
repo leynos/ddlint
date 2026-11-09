@@ -123,11 +123,15 @@ fn check_shift(generated: &GeneratedKey) -> Result<(), TestCaseError> {
     let expression = key
         .expression()
         .ok_or_else(|| TestCaseError::fail("invalid mutation has no expression"))?;
+    // A panic inside a proptest closure bypasses shrinking, so an unexpected
+    // success is reported as a `TestCaseError` instead.
     let absolute = expression
         .parse()
-        .expect_err("invalid mutation must fail to parse");
+        .err()
+        .ok_or_else(|| TestCaseError::fail("invalid mutation must fail to parse"))?;
     let relative = parse_expression(expression.text())
-        .expect_err("invalid mutation must fail to parse directly");
+        .err()
+        .ok_or_else(|| TestCaseError::fail("invalid mutation must fail to parse directly"))?;
     prop_assert_eq!(absolute.len(), relative.len());
     let offset = expression.span().start;
     prop_assert!(
@@ -151,11 +155,14 @@ fn check_fidelity(generated: &GeneratedKey) -> Result<(), TestCaseError> {
     let Some(expression) = key.expression() else {
         return Ok(());
     };
-    let parsed_expression = expression
-        .parse()
-        .expect("generated valid expression must parse");
-    let direct =
-        parse_expression(expression.text()).expect("generated valid expression must parse");
+    let parsed_expression = expression.parse().map_err(|errors| {
+        TestCaseError::fail(format!("generated valid expression must parse: {errors:?}"))
+    })?;
+    let direct = parse_expression(expression.text()).map_err(|errors| {
+        TestCaseError::fail(format!(
+            "generated expression must parse directly: {errors:?}"
+        ))
+    })?;
     prop_assert_eq!(parsed_expression, direct);
     Ok(())
 }
@@ -174,7 +181,9 @@ fn check_terminator(generated: &GeneratedKey) -> Result<(), TestCaseError> {
 ///
 /// `TestRunner::run` accepts only a shared-reference closure, so the class set
 /// lives behind a `RefCell` rather than being captured mutably.
-fn draw_classes(strategy: impl Strategy<Value = GeneratedKey>) -> HashSet<KeyClass> {
+fn draw_classes(
+    strategy: impl Strategy<Value = GeneratedKey>,
+) -> Result<HashSet<KeyClass>, TestCaseError> {
     let mut runner = TestRunner::deterministic();
     let classes = RefCell::new(HashSet::new());
     runner
@@ -182,28 +191,29 @@ fn draw_classes(strategy: impl Strategy<Value = GeneratedKey>) -> HashSet<KeyCla
             classes.borrow_mut().insert(generated.class);
             Ok(())
         })
-        .expect("class coverage run");
-    classes.into_inner()
+        .map_err(|error| TestCaseError::fail(format!("class coverage run failed: {error:?}")))?;
+    Ok(classes.into_inner())
 }
 
 /// Every strategy must reach every class it promises.
 #[test]
-fn strategies_cover_every_class() {
-    let valid = draw_classes(valid_key_strategy());
+fn strategies_cover_every_class() -> Result<(), TestCaseError> {
+    let valid = draw_classes(valid_key_strategy())?;
     for class in VALID_CLASSES {
         assert!(
             valid.contains(&class),
             "valid strategy missed {class:?}: {valid:?}"
         );
     }
-    let invalid = draw_classes(invalid_key_strategy());
+    let invalid = draw_classes(invalid_key_strategy())?;
     assert_eq!(invalid, HashSet::from([KeyClass::InvalidMutation]));
-    let combined = draw_classes(generated_key_strategy());
+    let combined = draw_classes(generated_key_strategy())?;
     assert_eq!(
         combined.len(),
         VALID_CLASSES.len() + 1,
         "combined strategy classes: {combined:?}"
     );
+    Ok(())
 }
 
 proptest! {
