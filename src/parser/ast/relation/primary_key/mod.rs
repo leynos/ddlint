@@ -19,7 +19,7 @@ use crate::{
 
 /// A spec-form primary-key clause on a relation declaration.
 ///
-/// The binders are the names written inside the parenthesised list. The
+/// The binders are the names written inside the parenthesized list. The
 /// optional expression is the source text that follows the list, such as
 /// `(row.author, row.title)`.
 ///
@@ -50,7 +50,7 @@ pub struct PrimaryKey {
 }
 
 impl PrimaryKey {
-    /// Binders named in the clause's parenthesised list.
+    /// Binders named in the clause's parenthesized list.
     ///
     /// # Examples
     ///

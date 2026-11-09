@@ -183,7 +183,7 @@ fn next_token_is_same_line_expression(
     )
 }
 
-/// Return whether `tokens[list_start..list_end]` is a parenthesised,
+/// Return whether `tokens[list_start..list_end]` is a parenthesized,
 /// comma-separated, non-empty list of identifiers.
 ///
 /// `list_start` points at the opening `(` and `list_end` just past the matching

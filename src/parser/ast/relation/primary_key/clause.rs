@@ -1,7 +1,7 @@
 //! CST readers behind typed primary-key access.
 //!
 //! A spec-form key is stored in the relation CST as plain tokens: `primary`,
-//! `key`, a parenthesised binder list, and an optional trailing expression.
+//! `key`, a parenthesized binder list, and an optional trailing expression.
 //! These helpers locate those tokens and slice the source text that the public
 //! [`super::PrimaryKey`] view exposes. They stay private so the parser keeps a
 //! single, small public surface.
@@ -105,13 +105,13 @@ fn interpret_suffix(
 
 /// Skip over the column declaration list and stop on the closing `)`.
 ///
-/// Returns an error when the parenthesised column list is absent or unclosed,
+/// Returns an error when the parenthesized column list is absent or unclosed,
 /// so the primary-key suffix cannot be located.
 fn skip_to_end_of_columns<I>(iter: &mut std::iter::Peekable<I>) -> Result<(), RelationParseErrors>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    // Consume the first parenthesised list and discard content.
+    // Consume the first parenthesized list and discard content.
     skip_whitespace_and_comments(iter);
     extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
         .map(|_| ())
@@ -135,7 +135,7 @@ fn parse_binder_list(rest: &str) -> Result<Vec<(String, Span)>, RelationParseErr
 
 /// Locate the binder list's closing `)` and return its index and span.
 ///
-/// The first balanced parenthesised group in the suffix is the binder list,
+/// The first balanced parenthesized group in the suffix is the binder list,
 /// because the clause must begin with `primary key (`.
 fn binder_group_close(elements: &[SyntaxElement<DdlogLanguage>]) -> Option<(usize, Span)> {
     let mut depth = 0usize;

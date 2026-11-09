@@ -391,6 +391,13 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   - The heading is now
     `## Amendment, 2026-11-09: primary-key expression access (2.6.6.1)` and
     the `Date` field reads `2026-11-09`.
+- [x] (2026-11-09) Fifth-round CodeRabbit findings resolved.
+  - The review on `b555789` raised three spelling findings, all the same
+    defect: the `-ise` spelling in comments and rustdoc, which conflicts with
+    the required en-GB-oxendict `-ize` convention.
+  - All seven occurrences in `primary_key/clause.rs`, `primary_key/mod.rs`,
+    and `span_scanners/relations/suffix.rs` now read `parenthesized`, matching
+    the `parenthesized` naming already used across `src/`.
 - [x] (2026-11-09) `EP-M4` documentation, ADR amendment, changelog, and
   roadmap closure.
   - `docs/adr-002-relation-role-kind-modelling.md` gains an "Amendment:
