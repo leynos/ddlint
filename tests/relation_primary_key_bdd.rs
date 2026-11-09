@@ -122,24 +122,29 @@ fn list_relations(world: &PrimaryKeyWorld) {
     record_inspection(world, &parsed, None);
 }
 
+/// Compare a rendered observation with the text the feature step expected.
+///
+/// `noun` names the observation in the failure message, so each step keeps a
+/// precise diagnostic while sharing one comparison.
+fn expect_text(noun: &str, expected: &str, actual: &str) -> StepResult<(), String> {
+    if actual == expected {
+        return Ok(());
+    }
+    Err(format!("expected {noun} {expected:?}, got {actual:?}"))
+}
+
 #[then("the primary-key binders are {expected:string}")]
 fn primary_key_binders(world: &PrimaryKeyWorld, expected: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
     let actual = exposed_key(&inspection)?.binder_names().join(", ");
-    if actual != expected {
-        return Err(format!("expected binders {expected:?}, got {actual:?}"));
-    }
-    Ok(())
+    expect_text("binders", expected, &actual)
 }
 
 #[then("the primary-key expression text is {expected:string}")]
 fn primary_key_expression_text(world: &PrimaryKeyWorld, expected: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
     let actual = exposed_expression(&inspection)?.text();
-    if actual != expected {
-        return Err(format!("expected expression {expected:?}, got {actual:?}"));
-    }
-    Ok(())
+    expect_text("expression", expected, actual)
 }
 
 #[then("the primary key has no expression")]
@@ -207,12 +212,7 @@ fn parse_has_no_errors(world: &PrimaryKeyWorld) -> StepResult<(), String> {
 fn accepted_relation_names(world: &PrimaryKeyWorld, expected: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
     let actual = inspection.relation_names.join(", ");
-    if actual != expected {
-        return Err(format!(
-            "expected relation names {expected:?}, got {actual:?}"
-        ));
-    }
-    Ok(())
+    expect_text("relation names", expected, &actual)
 }
 
 #[then("the relation has no primary-key clause")]
