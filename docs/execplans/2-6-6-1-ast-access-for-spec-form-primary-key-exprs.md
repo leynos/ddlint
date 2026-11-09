@@ -35,7 +35,7 @@ references only its binder, must re-tokenize CST text by hand.
 
 After this change a caller of the public parser API can write:
 
-```rust
+```rust,no_run
 let key = relation.primary_key().expect("well-formed clause").expect("clause present");
 assert_eq!(key.binder_names(), vec!["row"]);
 let expression = key.expression().expect("spec-form expression");
@@ -351,6 +351,26 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     (`/tmp/clippy-propsfix2-ddlint-2-6-6-1.out`), the focused property suite
     passes 6 tests, and `cargo fmt --all -- --check` is clean
     (`/tmp/test-propsfix-ddlint-2-6-6-1.out`).
+- [x] (2026-11-09) Full gate set and second milestone CodeRabbit review on
+  `1350258`.
+  - All six deterministic gates passed sequentially: `make check-fmt`,
+    `make lint`, `make typecheck`, `make test` (workspace targets and
+    doctests), `make markdownlint`, `make nixie`, all exit 0. Logs use the
+    `-final2` suffix under `/tmp`; the run's progress log is
+    `/tmp/gates-final2-progress.log`.
+  - The prior `clippy::panic_in_result_fn` finding is gone from `make lint`.
+  - CodeRabbit `review --agent --base origin/main` completed against 35 changed
+    files with two minor documentation findings: bare `rust` fences in this
+    plan, and a stale `Option<PrimaryKey>` return type in the parser
+    implementation notes.
+- [x] (2026-11-09) Second-round CodeRabbit findings resolved.
+  - Both `rust` fences in this plan are now `rust,no_run`, matching
+    `concordat.RustNoRun` in `.vale.ini` and the repository convention.
+  - `docs/parser-implementation-notes.md` states
+    `Result<Option<PrimaryKey>, RelationParseErrors>` and keeps the
+    `PrimaryKey` accessors attributed to the contained value.
+  - Re-verified with `make fmt`, `make check-fmt`, `make markdownlint`, and
+    `make nixie`.
 - [x] (2026-11-09) `EP-M4` documentation, ADR amendment, changelog, and
   roadmap closure.
   - `docs/adr-002-relation-role-kind-modelling.md` gains an "Amendment:
@@ -1607,7 +1627,7 @@ Log: `/tmp/fault3-ddlint-2-6-6-1-seeded.out`.
 Define these items in `src/parser/ast/relation/primary_key/mod.rs` and
 re-export them from `src/parser/ast/mod.rs`:
 
-```rust
+```rust,no_run
 /// A `primary key (binders) expr?` clause on an input relation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrimaryKey { /* binders: Vec<PrimaryKeyBinder>, span: Span, expression: Option<PrimaryKeyExpression> */ }

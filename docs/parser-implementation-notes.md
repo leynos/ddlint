@@ -324,7 +324,8 @@ Important invariants:
   compatibility conveniences.
 - Relation declarations preserve spec-form primary-key clauses such as
   `primary key (row) (row.id)` as CST text after the binder list.
-  `Relation::primary_key()` returns `Option<PrimaryKey>`, which exposes
+  `Relation::primary_key()` returns
+  `Result<Option<PrimaryKey>, RelationParseErrors>`, and `PrimaryKey` exposes
   `binders()`, `binder_names()`, `span()`, and `expression()`.
   `PrimaryKeyExpression` bounds the non-trivia hull after the binder list and
   parses it lazily, shifting chumsky errors by the expression start so they
