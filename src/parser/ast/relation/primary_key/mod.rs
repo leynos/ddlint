@@ -26,19 +26,19 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use ddlint::parse;
-///
-/// let parsed = parse("input relation Book(row: BookRow) primary key (row)");
-/// let relation = parsed
-///     .root()
-///     .relations()
-///     .into_iter()
-///     .next()
-///     .expect("relation");
-/// let key = relation
-///     .primary_key()
-///     .expect("valid key")
-///     .expect("key present");
+/// # use ddlint::parse;
+/// #
+/// # let parsed = parse("input relation Book(row: BookRow) primary key (row)");
+/// # let relation = parsed
+/// #     .root()
+/// #     .relations()
+/// #     .into_iter()
+/// #     .next()
+/// #     .expect("relation");
+/// # let key = relation
+/// #     .primary_key()
+/// #     .expect("valid key")
+/// #     .expect("key present");
 /// assert_eq!(key.binder_names(), ["row"]);
 /// assert!(key.expression().is_none());
 /// ```
@@ -55,19 +55,19 @@ impl PrimaryKey {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let parsed = parse("input relation R(x: u32, y: u32) primary key (x, y)");
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
+    /// # use ddlint::parse;
+    /// #
+    /// # let parsed = parse("input relation R(x: u32, y: u32) primary key (x, y)");
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
     /// assert_eq!(key.binders().len(), 2);
     /// ```
     #[must_use]
@@ -78,19 +78,19 @@ impl PrimaryKey {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let parsed = parse("input relation R(x: u32) primary key (x) x.id");
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
+    /// # use ddlint::parse;
+    /// #
+    /// # let parsed = parse("input relation R(x: u32) primary key (x) x.id");
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
     /// assert_eq!(key.binder_names(), ["x"]);
     /// ```
     #[must_use]
@@ -106,20 +106,20 @@ impl PrimaryKey {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let src = "input relation R(x: u32) primary key (x)";
-    /// let parsed = parse(src);
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
+    /// # use ddlint::parse;
+    /// #
+    /// # let src = "input relation R(x: u32) primary key (x)";
+    /// # let parsed = parse(src);
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
     /// assert_eq!(&src[key.span()], "primary key (x)");
     /// ```
     #[must_use]
@@ -130,19 +130,19 @@ impl PrimaryKey {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let parsed = parse("input relation R(row: Row) primary key (row) row.id");
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
+    /// # use ddlint::parse;
+    /// #
+    /// # let parsed = parse("input relation R(row: Row) primary key (row) row.id");
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
     /// assert_eq!(key.expression().map(|expr| expr.text()), Some("row.id"));
     /// ```
     #[must_use]
@@ -154,21 +154,21 @@ impl PrimaryKey {
 /// # Examples
 ///
 /// ```
-/// use ddlint::parse;
-///
-/// let src = "input relation R(row: Row) primary key (row)";
-/// let parsed = parse(src);
-/// let relation = parsed
-///     .root()
-///     .relations()
-///     .into_iter()
-///     .next()
-///     .expect("relation");
-/// let key = relation
-///     .primary_key()
-///     .expect("valid key")
-///     .expect("key present");
-/// let binder = key.binders().first().expect("binder");
+/// # use ddlint::parse;
+/// #
+/// # let src = "input relation R(row: Row) primary key (row)";
+/// # let parsed = parse(src);
+/// # let relation = parsed
+/// #     .root()
+/// #     .relations()
+/// #     .into_iter()
+/// #     .next()
+/// #     .expect("relation");
+/// # let key = relation
+/// #     .primary_key()
+/// #     .expect("valid key")
+/// #     .expect("key present");
+/// # let binder = key.binders().first().expect("binder");
 /// assert_eq!(binder.name(), "row");
 /// assert_eq!(&src[binder.span()], "row");
 /// ```
@@ -188,21 +188,21 @@ impl PrimaryKeyBinder {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let src = "input relation R(x: u32) primary key (x)";
-    /// let parsed = parse(src);
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
-    /// let binder = key.binders().first().expect("binder");
+    /// # use ddlint::parse;
+    /// #
+    /// # let src = "input relation R(x: u32) primary key (x)";
+    /// # let parsed = parse(src);
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
+    /// # let binder = key.binders().first().expect("binder");
     /// assert_eq!(&src[binder.span()], "x");
     /// ```
     #[must_use]
@@ -217,20 +217,20 @@ impl PrimaryKeyBinder {
 /// # Examples
 ///
 /// ```
-/// use ddlint::parse;
-///
-/// let parsed = parse("input relation R(row: Row) primary key (row) (row.a, row.b)");
-/// let relation = parsed
-///     .root()
-///     .relations()
-///     .into_iter()
-///     .next()
-///     .expect("relation");
-/// let key = relation
-///     .primary_key()
-///     .expect("valid key")
-///     .expect("key present");
-/// let expression = key.expression().expect("expression");
+/// # use ddlint::parse;
+/// #
+/// # let parsed = parse("input relation R(row: Row) primary key (row) (row.a, row.b)");
+/// # let relation = parsed
+/// #     .root()
+/// #     .relations()
+/// #     .into_iter()
+/// #     .next()
+/// #     .expect("relation");
+/// # let key = relation
+/// #     .primary_key()
+/// #     .expect("valid key")
+/// #     .expect("key present");
+/// # let expression = key.expression().expect("expression");
 /// assert_eq!(expression.text(), "(row.a, row.b)");
 /// ```
 #[derive(Debug, Clone, PartialEq)]
@@ -249,21 +249,21 @@ impl PrimaryKeyExpression {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let src = "input relation R(row: Row) primary key (row) row.id";
-    /// let parsed = parse(src);
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
-    /// let expression = key.expression().expect("expression");
+    /// # use ddlint::parse;
+    /// #
+    /// # let src = "input relation R(row: Row) primary key (row) row.id";
+    /// # let parsed = parse(src);
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
+    /// # let expression = key.expression().expect("expression");
     /// assert_eq!(&src[expression.span()], expression.text());
     /// ```
     #[must_use]
@@ -281,20 +281,20 @@ impl PrimaryKeyExpression {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let parsed = parse("input relation R(row: Row) primary key (row) (row.a, row.b)");
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
-    /// let key = relation
-    ///     .primary_key()
-    ///     .expect("valid key")
-    ///     .expect("key present");
-    /// let expression = key.expression().expect("expression");
+    /// # use ddlint::parse;
+    /// #
+    /// # let parsed = parse("input relation R(row: Row) primary key (row) (row.a, row.b)");
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
+    /// # let key = relation
+    /// #     .primary_key()
+    /// #     .expect("valid key")
+    /// #     .expect("key present");
+    /// # let expression = key.expression().expect("expression");
     /// let sexpr = expression.parse().expect("valid expression").to_sexpr();
     /// assert_eq!(sexpr, "(tuple (field row a) (field row b))");
     /// ```
@@ -320,16 +320,16 @@ impl Relation {
     /// # Examples
     ///
     /// ```
-    /// use ddlint::parse;
-    ///
-    /// let parsed =
-    ///     parse("input relation Book(row: BookRow) primary key (row) (row.author, row.title)");
-    /// let relation = parsed
-    ///     .root()
-    ///     .relations()
-    ///     .into_iter()
-    ///     .next()
-    ///     .expect("relation");
+    /// # use ddlint::parse;
+    /// #
+    /// # let parsed =
+    /// #     parse("input relation Book(row: BookRow) primary key (row) (row.author, row.title)");
+    /// # let relation = parsed
+    /// #     .root()
+    /// #     .relations()
+    /// #     .into_iter()
+    /// #     .next()
+    /// #     .expect("relation");
     /// let key = relation
     ///     .primary_key()
     ///     .expect("valid key")

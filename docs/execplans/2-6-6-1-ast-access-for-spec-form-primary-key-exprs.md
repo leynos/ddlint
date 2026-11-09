@@ -371,6 +371,16 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     `PrimaryKey` accessors attributed to the contained value.
   - Re-verified with `make fmt`, `make check-fmt`, `make markdownlint`, and
     `make nixie`.
+- [x] (2026-11-09) Third-round CodeRabbit finding resolved.
+  - The re-review completed on `ed98b61` with one trivial finding: the eleven
+    doctests in `primary_key/mod.rs` repeat the same parse-and-lookup setup,
+    which the repository's doctest guide says to hide.
+  - Every setup line (`use`, `let parsed`, `let relation`, and the `let key`
+    lookup except in the `Relation::primary_key` example, where that call is
+    the item under test) is now prefixed with `#`; the assertion lines remain
+    visible.
+  - Re-verified with `cargo test --doc primary_key` (11 doctests pass) and
+    focused `cargo clippy --lib --all-features` (exit 0).
 - [x] (2026-11-09) `EP-M4` documentation, ADR amendment, changelog, and
   roadmap closure.
   - `docs/adr-002-relation-role-kind-modelling.md` gains an "Amendment:
