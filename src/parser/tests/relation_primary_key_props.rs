@@ -200,18 +200,19 @@ fn draw_classes(
 fn strategies_cover_every_class() -> Result<(), TestCaseError> {
     let valid = draw_classes(valid_key_strategy())?;
     for class in VALID_CLASSES {
-        assert!(
+        prop_assert!(
             valid.contains(&class),
             "valid strategy missed {class:?}: {valid:?}"
         );
     }
     let invalid = draw_classes(invalid_key_strategy())?;
-    assert_eq!(invalid, HashSet::from([KeyClass::InvalidMutation]));
+    prop_assert_eq!(invalid, HashSet::from([KeyClass::InvalidMutation]));
     let combined = draw_classes(generated_key_strategy())?;
-    assert_eq!(
+    prop_assert_eq!(
         combined.len(),
         VALID_CLASSES.len() + 1,
-        "combined strategy classes: {combined:?}"
+        "combined strategy classes: {:?}",
+        combined
     );
     Ok(())
 }
