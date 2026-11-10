@@ -41,7 +41,7 @@ strings become comparisons against borrowed names.
 
 Before:
 
-```rust
+```rust,no_run
 let names: Option<Vec<String>> = relation.primary_key()?;
 if let Some(names) = names {
     assert_eq!(names, vec!["row".to_owned()]);
@@ -50,7 +50,7 @@ if let Some(names) = names {
 
 After:
 
-```rust
+```rust,no_run
 if let Some(key) = relation.primary_key()? {
     assert_eq!(key.binder_names(), ["row"]);
 }
@@ -59,7 +59,7 @@ if let Some(key) = relation.primary_key()? {
 Callers that need owned names, such as a value stored in a struct, bind the
 `PrimaryKey` and map the borrowed names themselves:
 
-```rust
+```rust,no_run
 let key = relation.primary_key()?.expect("primary key clause");
 let owned: Vec<String> = key
     .binder_names()
@@ -73,7 +73,7 @@ let owned: Vec<String> = key
 Previously a caller had to search the source for each name. With a `PrimaryKey`
 in hand, every binder and the clause itself carry source-absolute spans:
 
-```rust
+```rust,no_run
 for binder in key.binders() {
     assert_eq!(src.get(binder.span()), Some(binder.name()));
 }
@@ -86,7 +86,7 @@ A clause may carry an expression after the binder list, as in
 `primary key (row) (row.author, row.title)`. The scanner preserves it as CST
 text, so no caller needs to re-scan for it.
 
-```rust
+```rust,no_run
 let key = relation.primary_key()?.expect("clause");
 assert_eq!(key.binder_names(), ["row"]);
 let expression = key.expression().expect("spec-form expression");
@@ -98,7 +98,7 @@ Parsing the expression is a separate, lazy step. `parse()` reports errors at
 source-absolute spans and never hides the binders, so a caller can report a
 malformed expression while still using the binder list:
 
-```rust
+```rust,no_run
 match expression.parse() {
     Ok(expr) => println!("{expr:?}"),
     Err(errors) => {
