@@ -1,13 +1,9 @@
 //! Assertion builders for parser tests.
 
-use crate::ast::{
-    Function, Index, PrimaryKey, Relation, RelationBody, RelationKind, RelationRole, Transformer,
+use crate::{
+    ast::{Function, Index, Relation, RelationBody, RelationKind, RelationRole, Transformer},
+    parser::tests::helpers::owned_binder_names,
 };
-
-/// Binder names of a primary-key clause as owned strings.
-pub(crate) fn owned_binder_names(key: PrimaryKey) -> Vec<String> {
-    key.binder_names().into_iter().map(str::to_owned).collect()
-}
 
 fn pair_vec(items: &[(&str, &str)]) -> Vec<(String, String)> {
     items
@@ -16,6 +12,7 @@ fn pair_vec(items: &[(&str, &str)]) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Copy string slices into owned strings for expected-value comparisons.
 pub(crate) fn str_vec(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| (*s).to_string()).collect()
 }
@@ -97,7 +94,7 @@ impl<'a> RelationSpec<'a> {
             r.is_output() => self.role == RelationRole::Output,
             self.body.as_ref().map(|_| r.body()) => self.body.clone().map(Ok),
             r.columns() => Ok(pair_vec(&self.columns)),
-            r.primary_key().map(|key| key.map(owned_binder_names)) => Ok(self.pk.map(|names| str_vec(&names)))
+            r.primary_key().map(|key| key.map(|key| owned_binder_names(&key))) => Ok(self.pk.map(|names| str_vec(&names)))
         );
     }
 }

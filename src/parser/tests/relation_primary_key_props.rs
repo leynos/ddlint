@@ -264,26 +264,38 @@ fn strategies_cover_every_class() -> Result<(), TestCaseError> {
 }
 
 proptest! {
+    /// Pins `INV-AGREE`: whatever the generator wrote, the typed accessor
+    /// reports the same binders and expression, with spans that index the
+    /// generated source.
     #[test]
     fn accessor_agrees_with_generated_clause(generated in generated_key_strategy()) {
         check_agreement(&generated)?;
     }
 
+    /// Pins `INV-INDEP`: a malformed expression must not disturb the binders,
+    /// so both arms expose the same names while only the valid arm parses.
     #[test]
     fn binders_are_independent_of_expression(pair in independence_pair_strategy()) {
         check_independence(&pair)?;
     }
 
+    /// Pins `INV-SHIFT`: errors from the embedded expression use absolute
+    /// offsets, so each lies exactly the expression start beyond its
+    /// direct-parse twin.
     #[test]
     fn error_spans_are_shifted(generated in invalid_key_strategy()) {
         check_shift(&generated)?;
     }
 
+    /// Pins `INV-FIDELITY`: parsing through the accessor yields the same
+    /// expression tree as parsing the extracted text directly.
     #[test]
     fn lazy_parse_matches_direct_parse(generated in valid_key_strategy()) {
         check_fidelity(&generated)?;
     }
 
+    /// Pins `INV-TERM`: a `;` and its surrounding trivia recover identically
+    /// whether or not the relation carries a key.
     #[test]
     fn semicolon_preserves_structure(generated in terminator_key_strategy()) {
         check_terminator(&generated)?;

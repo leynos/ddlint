@@ -179,6 +179,17 @@ This register tracks parser behaviour against the syntax specification.
   trailing expression is implemented by `PrimaryKeyExpression`: binder names
   are independent of expression validity, and `parse()` reports source-absolute
   error spans.
+- Known limitation: the binder list accepts any identifier token, so
+  `primary key (Foo)` is accepted even though section 5.5 spells a binder as
+  `LcName`. Transformer names already enforce the lowercase class, so this is
+  an open conformance gap rather than an intended superset. The equivalent
+  import-alias gap recorded in section 5.2 is the same class of gap. Both are
+  tracked as roadmap item `2.6.9`.
+- Known limitation: `PrimaryKeyExpression::parse()` returns
+  `chumsky::error::Simple` values, so an internal parser type appears in the
+  public API. Replacing it with a domain-owned error type is assigned to the
+  ADR-001 crate split, as recorded in the ADR-002 amendment and plan decision
+  `D3`.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` items `2.6.6` and `2.6.6.1`.
 

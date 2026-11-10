@@ -306,6 +306,10 @@ is still scanned. A binder list that is not a comma-separated list of
 identifiers, such as `(x.y)` or `(x,)`, reports `D-REL-007` instead of being
 accepted.
 
+The [v0.2.0 migration guide](./v0-2-0-migration-guide.md) shows the
+before-and-after call shapes for code that used the retired `Vec<String>`
+binder list.
+
 ## Relation diagnostics
 
 The parser emits deterministic diagnostics for invalid relation forms:

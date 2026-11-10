@@ -236,6 +236,11 @@ split parser library surfaces defined in
 - [ ] 2.6.8. Decide brace-group extension policy (`{ expr }`): codify or
   remove with migration diagnostics. See docs/parser-conformance-register.md
   item 15.
+- [ ] 2.6.9. Enforce the `LcName` case restriction on primary-key binders, and
+  decide the same question for import aliases, so `primary key (Foo)` reports
+  `D-REL-007` the way transformer names already do, or record an intentional
+  superset in the syntax specification. See docs/parser-conformance-register.md
+  item 13 and the section 5.2 import-alias note.
 
 ### 2.7. Split parser crate foundation
 

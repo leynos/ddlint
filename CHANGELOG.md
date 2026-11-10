@@ -17,6 +17,9 @@
   declaration on the same line is scanned again. Binder lists that are not a
   comma-separated list of identifiers, such as `(x.y)` or `(x,)`, now report
   D-REL-007 instead of being accepted by the scanner.
+
+  The [v0.2.0 migration guide](docs/v0-2-0-migration-guide.md) shows the
+  before-and-after call shapes.
 - Reject legacy DDlog tokens that previously had inconsistent parser treatment:
   `typedef`, `bigint`, `bit`, `double`, `float`, `signed`, bare `#`, and `<=>`.
   Use `type`, sized integer types such as `u32`/`i64`, `f32`/`f64`, and

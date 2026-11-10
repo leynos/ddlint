@@ -145,8 +145,14 @@ CST node.
 
 The API is shaped by three invariants:
 
-- `INV-INDEP`: a malformed or unparsable expression never hides the binders.
-  `expression()` and `parse()` are separate observations.
+- `INV-INDEP`: for every clause the scanner accepts, a malformed or unparsable
+  expression never hides the binders. `expression()` and `parse()` are separate
+  observations. The guarantee is scoped to accepted clauses because a clause
+  the scanner rejects is not attached to a relation at all: an unbalanced
+  delimiter, as in `primary key (x) (`, reports `D-REL-007`, recovery skips the
+  line, and no relation span is recorded, so `primary_key()` has nothing to
+  read. Extending the guarantee to rejected clauses would change scanner
+  recovery, which is outside this amendment.
 - `INV-SHIFT`: errors returned by `parse()` are shifted to source-absolute
   spans, so a diagnostic can point into the original file.
 - `INV-AGREE`: the scanner and the accessor agree on clause well-formedness. A

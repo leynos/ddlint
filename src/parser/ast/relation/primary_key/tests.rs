@@ -1,12 +1,14 @@
 //! Unit tests for typed primary-key clause access.
 
+use std::ops::Range;
+
 use googletest::{Result, prelude::*};
 use pretty_assertions::assert_eq;
 use rowan::{GreenNodeBuilder, Language, SyntaxNode};
 use rstest::rstest;
 
 use super::{PrimaryKey, PrimaryKeyExpression, Relation};
-use crate::{DdlogLanguage, SyntaxKind, parse, parser::expression::parse_expression};
+use crate::{DdlogLanguage, Span, SyntaxKind, parse, parser::expression::parse_expression};
 
 /// Return the first relation parsed from `src`.
 fn relation(src: &str) -> Option<Relation> { parse(src).root().relations().into_iter().next() }
@@ -25,6 +27,7 @@ fn relation_node(tokens: &[(SyntaxKind, &str)]) -> SyntaxNode<DdlogLanguage> {
     SyntaxNode::new_root(builder.finish())
 }
 
+/// A keyed relation exposes its binders, clause span, and optional expression.
 #[gtest]
 #[rstest]
 #[case::single(
@@ -62,17 +65,46 @@ fn exposes_binders_and_clause_span(
     Ok(())
 }
 
+/// Binder spans bound each name exactly and exclude surrounding trivia.
+///
+/// Every case repeats a binder name in the column list, and the repeated case
+/// writes one binder twice, so a span taken from the wrong occurrence cannot
+/// satisfy the comparison.
 #[rstest]
-#[case::space_before_comma("input relation R(a: u32, b: u32) primary key (a , b)")]
-#[case::comment_between_name_and_comma(
-    "input relation R(a: u32, b: u32) primary key (a /* first */, b)"
+#[case::space_before_comma(
+    "input relation R(a: u32, b: u32) primary key (a , b)",
+    &[("a", 46..47), ("b", 50..51)],
 )]
-fn binder_names_and_spans_exclude_surrounding_trivia(#[case] src: &str) {
+#[case::comment_between_name_and_comma(
+    "input relation R(a: u32, b: u32) primary key (a /* first */, b)",
+    &[("a", 46..47), ("b", 61..62)],
+)]
+#[case::name_also_in_column_list(
+    "input relation R(a: u32, b: u32) primary key (b)",
+    &[("b", 46..47)],
+)]
+#[case::repeated_binder_name(
+    "input relation R(a: u32, b: u32) primary key (a, b, a)",
+    &[("a", 46..47), ("b", 49..50), ("a", 52..53)],
+)]
+fn binder_spans_are_exact_and_exclude_surrounding_trivia(
+    #[case] src: &str,
+    #[case] expected: &[(&str, Range<usize>)],
+) {
     let key = primary_key_of(src).expect("primary key");
+    let actual: Vec<(&str, Span)> = key
+        .binders()
+        .iter()
+        .map(|binder| (binder.name(), binder.span()))
+        .collect();
+    let wanted: Vec<(&str, Span)> = expected
+        .iter()
+        .map(|(name, span)| (*name, span.clone()))
+        .collect();
 
-    assert_eq!(key.binder_names(), ["a", "b"]);
-    for binder in key.binders() {
-        assert_eq!(src.get(binder.span()), Some(binder.name()));
+    assert_eq!(actual, wanted);
+    for (name, span) in expected {
+        assert_eq!(src.get(span.clone()), Some(*name));
     }
 }
 
@@ -91,25 +123,49 @@ fn primary_key_is_absent(#[case] src: &str) {
     ));
 }
 
-#[test]
-fn trailing_line_comment_is_not_part_of_the_expression() {
-    let src = "input relation R(x: R) primary key (x) x.id // note";
+/// A captured expression keeps its text, its span, and its source extent.
+///
+/// The cases cover the boundaries that each previously had a dedicated test: a
+/// trailing line comment, an interior block comment, a multiline expression
+/// inside delimiters, and an expression at end of file without a newline. Each
+/// captured text also parses directly, so the lazy parse agrees with the
+/// captured extent.
+#[rstest]
+#[case::trailing_line_comment(
+    "input relation R(x: R) primary key (x) x.id // note",
+    "x.id",
+    39..43,
+)]
+#[case::interior_block_comment(
+    "input relation R(x: R) primary key (x) (x.a, /* keep */ x.b)",
+    "(x.a, /* keep */ x.b)",
+    39..60,
+)]
+#[case::multiline_inside_delimiters(
+    "input relation R(x: R) primary key (x) (x.a,\n x.b)",
+    "(x.a,\n x.b)",
+    39..50,
+)]
+#[case::end_of_file_without_newline(
+    "input relation R(x: R) primary key (x) x.id",
+    "x.id",
+    39..43,
+)]
+fn captures_expression_text_and_span(
+    #[case] src: &str,
+    #[case] expected_text: &str,
+    #[case] expected_span: Range<usize>,
+) {
     let key = primary_key_of(src).expect("primary key");
     let expression = key.expression().expect("expression");
 
-    assert_eq!(expression.text(), "x.id");
-    assert_eq!(src.get(expression.span()), Some("x.id"));
+    assert_eq!(expression.text(), expected_text);
+    assert_eq!(expression.span(), expected_span);
+    assert_eq!(src.get(expression.span()), Some(expected_text));
+    assert!(parse_expression(expression.text()).is_ok());
 }
 
-#[test]
-fn interior_block_comment_is_kept_in_the_expression() {
-    let src = "input relation R(x: R) primary key (x) (x.a, /* keep */ x.b)";
-    let key = primary_key_of(src).expect("primary key");
-    let expression = key.expression().expect("expression");
-
-    assert_eq!(expression.text(), "(x.a, /* keep */ x.b)");
-}
-
+/// A block comment before the expression stays outside the expression span.
 #[test]
 fn leading_comment_does_not_enter_the_expression_span() {
     let src = "input relation R(x: R) primary key (x) /* c */ x + * 1";
@@ -120,6 +176,7 @@ fn leading_comment_does_not_enter_the_expression_span() {
     assert_eq!(expression.text(), "x + * 1");
 }
 
+/// Lazy expression errors are reported at source-absolute spans.
 #[test]
 fn expression_errors_are_shifted_into_the_clause() {
     let src = "input relation R(x: R) primary key (x) /* c */ x + * 1";
@@ -137,26 +194,7 @@ fn expression_errors_are_shifted_into_the_clause() {
     }
 }
 
-#[test]
-fn multiline_expression_inside_delimiters_is_captured() {
-    let src = "input relation R(x: R) primary key (x) (x.a,\n x.b)";
-    let key = primary_key_of(src).expect("primary key");
-    let expression = key.expression().expect("expression");
-
-    assert_eq!(expression.text(), "(x.a,\n x.b)");
-    assert_eq!(src.get(expression.span()), Some(expression.text()));
-}
-
-#[test]
-fn expression_at_end_of_file_without_newline_is_captured() {
-    let src = "input relation R(x: R) primary key (x) x.id";
-    let key = primary_key_of(src).expect("primary key");
-    let expression = key.expression().expect("expression");
-
-    assert_eq!(expression.text(), "x.id");
-    assert!(parse_expression(expression.text()).is_ok());
-}
-
+/// A binder list without its closing delimiter is a clause error.
 #[test]
 fn unclosed_binder_list_is_error() {
     let node = relation_node(&[
@@ -179,6 +217,7 @@ fn unclosed_binder_list_is_error() {
     assert!(relation.primary_key().is_err());
 }
 
+/// A clause missing the `key` keyword reports which word was expected.
 #[test]
 fn missing_key_keyword_is_error() {
     let node = relation_node(&[
@@ -209,6 +248,7 @@ fn missing_key_keyword_is_error() {
     );
 }
 
+/// The probe corpus renders binders, expression text, span, and s-expression.
 #[test]
 fn renders_probe_corpus_as_binders_text_span_and_sexpr() {
     let corpus = [

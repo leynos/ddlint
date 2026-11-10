@@ -7,6 +7,8 @@
 
 - [Changelog](../CHANGELOG.md): User-facing release notes and migration
   highlights.
+- [v0.2.0 migration guide](./v0-2-0-migration-guide.md): Replacing the
+  `Vec<String>` primary-key binder list with the typed `PrimaryKey` API.
 - [Repository layout](./repository-layout.md): Map of the repository tree,
   path responsibilities, and placement rules for contributors.
 - [Users' guide](./users-guide.md): User-visible syntax support and parser

@@ -45,6 +45,8 @@ struct GeneratedRelation {
 }
 
 impl GeneratedRelation {
+    /// Renders the declaration in the order the grammar expects: role, kind,
+    /// ref marker, body, then the optional key clause.
     fn source(&self) -> String {
         let mut parts = Vec::new();
         if let Some(role) = self.role.keyword() {
@@ -70,6 +72,8 @@ impl GeneratedRelation {
 }
 
 impl GeneratedPrimaryKey {
+    /// The clause text, including its leading space so it appends directly to
+    /// the rendered body.
     fn source(self) -> &'static str {
         match self {
             Self::Single => " primary key (id)",
@@ -77,6 +81,7 @@ impl GeneratedPrimaryKey {
         }
     }
 
+    /// The binder names the accessor should report for this key form.
     fn expected(self) -> Vec<&'static str> {
         match self {
             Self::Single => vec!["id"],
@@ -86,6 +91,7 @@ impl GeneratedPrimaryKey {
 }
 
 impl GeneratedRole {
+    /// The `RelationRole` the AST should report for this generated role.
     fn expected(self) -> RelationRole {
         match self {
             Self::Absent => RelationRole::Internal,
@@ -94,6 +100,7 @@ impl GeneratedRole {
         }
     }
 
+    /// The source keyword for this role, or `None` when the role is implicit.
     fn keyword(self) -> Option<&'static str> {
         match self {
             Self::Absent => None,
@@ -104,6 +111,8 @@ impl GeneratedRole {
 }
 
 impl GeneratedKind {
+    /// The `RelationKind` the AST should report; an absent keyword defaults to
+    /// `relation`.
     fn expected(self) -> RelationKind {
         match self {
             Self::Absent | Self::Relation => RelationKind::Relation,
@@ -112,6 +121,7 @@ impl GeneratedKind {
         }
     }
 
+    /// The source keyword for this kind, or `None` when the kind is implicit.
     fn keyword(self) -> Option<&'static str> {
         match self {
             Self::Absent => None,
@@ -122,6 +132,8 @@ impl GeneratedKind {
     }
 }
 
+/// Builds a source-accurate declaration; a primary key is retained only on an
+/// `input` record relation, the sole form that accepts one.
 fn generated_relation_strategy() -> impl Strategy<Value = GeneratedRelation> {
     (
         prop_oneof![
@@ -157,6 +169,9 @@ fn generated_relation_strategy() -> impl Strategy<Value = GeneratedRelation> {
 }
 
 proptest! {
+    /// Pins that every generated declaration round-trips: the CST text matches
+    /// the source, and each typed accessor returns the role, kind, body, ref
+    /// flag, and key the generator intended.
     #[test]
     fn relation_forms_preserve_ast_accessors(generated in generated_relation_strategy()) {
         let source = generated.source();

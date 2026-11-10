@@ -306,8 +306,10 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     -D warnings` passes after making the infallible `When` step return unit
     rather than `StepResult` (`unnecessary_wraps`)
     (`/tmp/clippy-bdd2-ddlint-2-6-6-1.out`).
-  - The one-scenario smoke binding is retained as a guard on the BDD harness
-    wiring.
+  - The one-scenario smoke binding is retained at this point as a guard on the
+    BDD harness wiring. It is removed on 2026-11-10 once the full feature ships,
+    because it then duplicates the first scenario and adds a separate
+    integration-test crate.
 - [x] (2026-11-09) Smoke binding lint fix committed as `2f291e6`.
   - The first full-gate run on `a973cee` failed `make lint-clippy` with
     `unnecessary_wraps` on the smoke `When` step, the same defect already fixed
@@ -417,6 +419,43 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     corrections; `docs/ddlint-design.md` §2 points at the amendment; the
     CHANGELOG entry is in place; `docs/contents.md` already listed this plan;
     and `docs/roadmap.md` marks `2.6.6.1` done.
+- [x] (2026-11-10) Hosted formal review round repaired.
+  - The first hosted review on `c88e694` returned `CHANGES_REQUESTED` with six
+    inline findings and four failed pre-merge rows. Every finding was verified
+    against the source before repair or disposition.
+  - `INV-INDEP` in the ADR-002 amendment is scoped to clauses the scanner
+    accepts, and records why a rejected clause exposes no binder: unbalanced
+    delimiters report `D-REL-007`, recovery skips the line, and no relation
+    span is recorded.
+  - The binder `LcName` case gap is recorded in §5.5 of the syntax
+    specification, in the conformance register as a known limitation, and as
+    roadmap item `2.6.9`; the scanner still accepts `primary key (Foo)`.
+  - The `chumsky::error::Simple` leak from `PrimaryKeyExpression::parse()` is
+    recorded in the conformance register as a known limitation assigned to the
+    ADR-001 crate split, which is the deferral decision `D3` already records.
+  - The gate command block now starts with `set -euo pipefail`, so a pipeline
+    reports the gate's status rather than `tee`'s and stops at the first
+    failure.
+  - The four expression-text tests became one `#[rstest]` table asserting the
+    captured text, the exact span, the source slice, and a direct parse of the
+    captured text. The binder-span test became a table asserting exact
+    offsets, with a case whose binder name also appears in the column list and
+    a case that repeats a binder name.
+  - `src/parser/tests/specs.rs` reuses the shared `owned_binder_names` helper
+    instead of defining a second copy.
+  - `tests/relation_primary_key_smoke.rs` and its feature file are deleted:
+    once the full feature ships they duplicate its first scenario and add a
+    separate integration-test crate.
+  - `docs/v0-2-0-migration-guide.md` is added and indexed from
+    `docs/contents.md`, the CHANGELOG and the users' guide. It shows the
+    before-and-after call shapes, binder and clause spans, the lazily parsed
+    expression, and the three scanner boundary changes.
+  - Test functions, property cases, and BDD steps added by this work carry
+    rustdoc comments, so the review's docstring-coverage row measures the
+    documented share of the new functions.
+  - Evidence: focused suite `cargo test --lib relation::primary_key` passes 19
+    tests (`/tmp/test-pk-repair-ddlint-2-6-6-1.out`); the full gate set runs
+    with the `-bs4` log suffix.
 
 ## Surprises & discoveries
 
@@ -538,6 +577,29 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   stale as soon as a useful cross-reference is added. State the property the
   matches must satisfy — each remaining reference is a live cross-reference,
   not deferred work — and name only examples.
+
+- Observation (2026-11-10 hosted review): the docstring-coverage row measures
+  every added function, including `#[test]`, `#[case]`, property cases, and BDD
+  step functions, not only the public API. The new public types were already
+  documented, so the row moved only once the test and step functions carried
+  rustdoc comments. Impact: name-driven test functions still read well, but a
+  one-line comment stating why the case exists both satisfies the row and helps
+  the next reader.
+
+- Observation (2026-11-10 hosted review): a pre-merge architectural row asked
+  for a domain-owned expression error at the `primary_key()` boundary, which is
+  the change decision `D3` assigns to the ADR-001 crate split. Neither the row
+  nor the inline findings showed awareness of that deferral. Impact: a
+  documented deferral has to be visible where reviewers look — the conformance
+  register now states it — and a review row can restate an approved decision
+  rather than contradict it.
+
+- Observation (2026-11-10 hosted review): `INV-INDEP` was stated without its
+  precondition. "A malformed or unparsable expression never hides the binders"
+  is false for `primary key (x) (`, where the scanner rejects the clause,
+  recovery skips the line, and no relation span exists. Impact: scope each
+  invariant to the inputs its implementation actually receives, and name the
+  recovery path that falls outside it.
 
 ## Decision log
 
@@ -1520,6 +1582,7 @@ Run everything from the worktree root,
 Focused red-green loops:
 
 ```sh
+set -euo pipefail
 base=/tmp/test-focused-ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs
 cargo test --lib relation_terminators 2>&1 | tee "$base-terminators.out"
 cargo test --lib relation::primary_key 2>&1 | tee "$base-primary-key.out"
@@ -1536,6 +1599,7 @@ Expected results:
 At each milestone boundary, run the gates sequentially:
 
 ```sh
+set -euo pipefail
 base=/tmp/ddlint-2-6-6-1-ast-access-for-spec-form-primary-key-exprs
 make fmt 2>&1 | tee "$base-fmt.out"
 make check-fmt 2>&1 | tee "$base-check-fmt.out"
@@ -1545,6 +1609,10 @@ make test 2>&1 | tee "$base-test.out"
 make markdownlint 2>&1 | tee "$base-markdownlint.out"
 make nixie 2>&1 | tee "$base-nixie.out"
 ```
+
+`set -euo pipefail` makes each pipeline report the gate's status rather than
+`tee`'s, and stops the sequence at the first failing gate, so a red gate cannot
+be hidden by a successful `tee`.
 
 Prefer delegating the gate sequence to the `scrutineer` agent, then read the
 cited logs on failure. Commit after each green milestone, following the

@@ -33,6 +33,9 @@ fn custom_error_messages(src: &str) -> Vec<String> {
         .collect()
 }
 
+/// Pins that a trailing `;` ends the declaration whether the key is a binder
+/// list or a spec expression, and that both forms scan like their keyless twin.
+/// A `;` after a key clause terminates the relation like a keyless `;`.
 #[rstest]
 #[case(
     "input relation R(x: u32) primary key (x);",
@@ -51,6 +54,8 @@ fn keyed_semicolon_matches_keyless(#[case] keyed: &str, #[case] keyless: &str) {
     assert_eq!(relation_names(keyed), vec!["R".to_owned()]);
 }
 
+/// Guards against the scanner swallowing a same-line successor: the keyed
+/// source must yield both `R` and `S`, just as its keyless twin does.
 #[test]
 fn statement_terminator_does_not_hide_next_declaration() {
     let keyed = "input relation R(x: u32) primary key (x); output relation S(x: u32)";
@@ -105,6 +110,9 @@ fn keyed_relation_owns_the_same_trivia_as_its_keyless_twin(
     );
 }
 
+/// Checks that binder content other than comma-separated identifiers (paths,
+/// literals, empty entries, space separation) reports exactly one D-REL-007
+/// diagnostic and exposes no relation.
 #[rstest]
 #[case("input relation R(x: u32) primary key (x.y)")]
 #[case("input relation R(x: u32) primary key (1)")]

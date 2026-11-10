@@ -293,7 +293,10 @@ Notes:
 - The `PrimaryKey` binder list accepts one or more comma-separated `LcName`
   binders. Upstream DDlog accepts a single lambda-style binder; this grammar
   additionally accepts compound binders. Any other form is rejected with
-  `D-REL-007`.
+  `D-REL-007`. The current parser accepts the generic identifier token here and
+  does not enforce that case restriction, so `primary key (Foo)` is accepted;
+  the gap is recorded in the conformance register and tracked as roadmap item
+  `2.6.9`.
 - The trailing `PrimaryKey` expression is optional. When present, the parser
   preserves it as CST text; `PrimaryKeyExpression` bounds the non-trivia hull
   after the binder list and parses it lazily with source-absolute error spans.

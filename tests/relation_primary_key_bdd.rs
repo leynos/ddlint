@@ -47,6 +47,8 @@ impl PrimaryKeyWorld {
     }
 }
 
+/// Provides the empty world each scenario fills, letting steps share state
+/// without globals.
 #[allow_fixture_expansion_lints]
 #[fixture]
 fn world() -> PrimaryKeyWorld { PrimaryKeyWorld::default() }
@@ -95,11 +97,14 @@ fn record_inspection(world: &PrimaryKeyWorld, parsed: &Parsed, key: Option<Prima
     *world.inspection.borrow_mut() = Some(inspection);
 }
 
+/// Records the source under test for the inspection step that follows.
 #[given("the DDlog source {source:string}")]
 fn given_source(world: &PrimaryKeyWorld, source: &str) {
     source.clone_into(&mut world.source.borrow_mut());
 }
 
+/// Drives the public accessor for the first relation and records what it
+/// exposed, failing when the source has no relation or the query errors.
 #[when("the first relation's primary key is inspected")]
 fn inspect_primary_key(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     let parsed = parse(&world.source.borrow());
@@ -116,6 +121,8 @@ fn inspect_primary_key(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     Ok(())
 }
 
+/// Records only the scanner's view, so scenarios can assert on relation names
+/// and diagnostics without touching a key.
 #[when("the relations are listed")]
 fn list_relations(world: &PrimaryKeyWorld) {
     let parsed = parse(&world.source.borrow());
@@ -133,6 +140,7 @@ fn expect_text(noun: &str, expected: &str, actual: &str) -> StepResult<(), Strin
     Err(format!("expected {noun} {expected:?}, got {actual:?}"))
 }
 
+/// Asserts the accessor's comma-joined binders match the feature text.
 #[then("the primary-key binders are {expected:string}")]
 fn primary_key_binders(world: &PrimaryKeyWorld, expected: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -140,6 +148,8 @@ fn primary_key_binders(world: &PrimaryKeyWorld, expected: &str) -> StepResult<()
     expect_text("binders", expected, &actual)
 }
 
+/// Asserts the exact expression slice matches the feature text, pinning that
+/// surrounding trivia is excluded.
 #[then("the primary-key expression text is {expected:string}")]
 fn primary_key_expression_text(world: &PrimaryKeyWorld, expected: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -147,6 +157,7 @@ fn primary_key_expression_text(world: &PrimaryKeyWorld, expected: &str) -> StepR
     expect_text("expression", expected, actual)
 }
 
+/// Pins that a list-form key exposes binders but no spec-form expression.
 #[then("the primary key has no expression")]
 fn primary_key_without_expression(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -156,6 +167,8 @@ fn primary_key_without_expression(world: &PrimaryKeyWorld) -> StepResult<(), Str
     Ok(())
 }
 
+/// Parses the exposed expression and compares its s-expression, proving the
+/// slice is a complete, valid expression.
 #[then("the primary-key expression renders as {expected:string}")]
 fn primary_key_expression_renders(
     world: &PrimaryKeyWorld,
@@ -174,6 +187,8 @@ fn primary_key_expression_renders(
     Ok(())
 }
 
+/// Pins that every error from a malformed expression lies inside the
+/// expression's own span, keeping diagnostics located.
 #[then("parsing the primary-key expression fails within its span")]
 fn expression_parse_fails_within_span(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -196,6 +211,8 @@ fn expression_parse_fails_within_span(world: &PrimaryKeyWorld) -> StepResult<(),
     Ok(())
 }
 
+/// Asserts the scanner reported nothing, separating accessor behaviour from
+/// recovery noise.
 #[then("the parse has no parser-level errors")]
 fn parse_has_no_errors(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -208,6 +225,8 @@ fn parse_has_no_errors(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     Ok(())
 }
 
+/// Asserts the relations the scanner accepted, which also reveals whether a
+/// malformed declaration was dropped.
 #[then("the relation names are {expected:string}")]
 fn accepted_relation_names(world: &PrimaryKeyWorld, expected: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -215,6 +234,8 @@ fn accepted_relation_names(world: &PrimaryKeyWorld, expected: &str) -> StepResul
     expect_text("relation names", expected, &actual)
 }
 
+/// Pins the keyless baseline: the relation is accepted and exposes no clause
+/// at all.
 #[then("the relation has no primary-key clause")]
 fn relation_has_no_clause(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -224,6 +245,8 @@ fn relation_has_no_clause(world: &PrimaryKeyWorld) -> StepResult<(), String> {
     Ok(())
 }
 
+/// Asserts a reported diagnostic contains the expected code, so a rejected
+/// form fails for the intended reason.
 #[then("the parse reports the diagnostic {code:string}")]
 fn parse_reports_diagnostic(world: &PrimaryKeyWorld, code: &str) -> StepResult<(), String> {
     let inspection = world.inspection()?;
@@ -252,6 +275,8 @@ fn assert_inspection_recorded(world: PrimaryKeyWorld) {
     );
 }
 
+/// Covers the spec-form key scenario: the accessor exposes a typed tuple
+/// expression as well as its binders.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "Spec-form key exposes a typed tuple expression"
@@ -260,6 +285,8 @@ fn spec_form_key_exposes_typed_tuple_expression(world: PrimaryKeyWorld) {
     assert_inspection_recorded(world);
 }
 
+/// Covers the list-form key scenario: binders are exposed while the expression
+/// accessor stays `None`.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "List-form key has binders but no expression"
@@ -268,6 +295,8 @@ fn list_form_key_has_binders_but_no_expression(world: PrimaryKeyWorld) {
     assert_inspection_recorded(world);
 }
 
+/// Pins that a trailing comment after the key is excluded from the exposed
+/// expression slice.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "Trailing comment is not part of the key expression"
@@ -276,12 +305,16 @@ fn trailing_comment_is_not_part_of_the_expression(world: PrimaryKeyWorld) {
     assert_inspection_recorded(world);
 }
 
+/// Pins that an unparsable expression still exposes the binders and reports a
+/// located error.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "Malformed key expression keeps binders and reports a located error"
 )]
 fn malformed_expression_keeps_binders(world: PrimaryKeyWorld) { assert_inspection_recorded(world); }
 
+/// Pins that a `;` after the key does not swallow the declaration that
+/// follows.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "Statement terminator after a key does not hide the next declaration"
@@ -290,12 +323,16 @@ fn terminator_does_not_hide_next_declaration(world: PrimaryKeyWorld) {
     assert_inspection_recorded(world);
 }
 
+/// Pins that a key on an `output` relation is rejected and no clause is
+/// exposed.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "Key on an output relation is rejected and not exposed"
 )]
 fn output_relation_key_is_rejected(world: PrimaryKeyWorld) { assert_inspection_recorded(world); }
 
+/// Covers the keyless scenario: the relation parses and exposes no
+/// primary-key clause.
 #[scenario(
     path = "tests/features/relation_primary_key.feature",
     name = "Relation without a key has no primary-key clause"
