@@ -11,8 +11,13 @@ described here are the breaking changes recorded under `Unreleased` in the
 ## Who should read this
 
 Read this guide before upgrading code that calls `Relation::primary_key()`, or
-that slices the source text following a `primary key (...)` clause. Sources
-that only use the linter or the command line need no change.
+that slices the source text following a `primary key (...)` clause. The
+primary-key change described here needs no action from code that only uses the
+linter or the command line, but 0.2.0 carries other breaking changes that do
+apply to those users. In particular, the legacy `DDlog` tokens that 0.2.0
+rejects — `typedef`, `bigint`, `bit`, `double`, `float`, `signed`, bare `#`, and
+`<=>` — must be migrated before `Runner::run` returns lint diagnostics again.
+Read the [changelog](../CHANGELOG.md) for the full list before upgrading.
 
 ## What changed
 
@@ -24,8 +29,10 @@ that only use the linter or the command line need no change.
 - `PrimaryKeyBinder` exposes `name()` and a source-absolute `span()`.
 - `PrimaryKeyExpression` exposes `text()`, `span()`, and a lazy `parse()`.
 
-The typed clause borrows the relation node, so it lives no longer than the
-parsed tree. Copy the names when they must outlive it.
+`PrimaryKey` owns its binders, the expression text, and every span. It does not
+borrow the relation node, so it may outlive the parsed tree. The names returned
+by `binder_names()` borrow from the `PrimaryKey`, not from the relation node;
+copy them when the `PrimaryKey` itself is dropped.
 
 ## Replace the binder list
 
@@ -44,16 +51,16 @@ if let Some(names) = names {
 After:
 
 ```rust
-let key = relation.primary_key()?;
-if let Some(key) = key {
+if let Some(key) = relation.primary_key()? {
     assert_eq!(key.binder_names(), ["row"]);
 }
 ```
 
-Callers that need owned names, such as a value stored in a struct, map the
-borrowed names themselves:
+Callers that need owned names, such as a value stored in a struct, bind the
+`PrimaryKey` and map the borrowed names themselves:
 
 ```rust
+let key = relation.primary_key()?.expect("primary key clause");
 let owned: Vec<String> = key
     .binder_names()
     .into_iter()
@@ -63,8 +70,8 @@ let owned: Vec<String> = key
 
 ## Read binder and clause spans
 
-Previously a caller had to search the source for each name. Every binder and
-the clause itself now carry source-absolute spans:
+Previously a caller had to search the source for each name. With a `PrimaryKey`
+in hand, every binder and the clause itself carry source-absolute spans:
 
 ```rust
 for binder in key.binders() {
@@ -104,18 +111,23 @@ match expression.parse() {
 
 ## Scanner behaviour changes
 
-Three scanner boundaries changed alongside the API:
+Two scanner boundaries changed alongside the API:
 
-- A `;` now terminates a primary-key clause instead of being absorbed into its
-  expression, so a declaration that follows on the same line is still scanned.
+- A `;` at depth zero now terminates a primary-key clause instead of being
+  absorbed into its expression, so a declaration that follows on the same line
+  is still scanned. A semicolon inside nested delimiters is not a statement
+  boundary and stays part of the expression.
 - A binder list that is not a comma-separated list of identifiers, such as
   `(x.y)` or `(x,)`, reports `D-REL-007` instead of being accepted.
-- A clause with unbalanced delimiters, such as `primary key (x) (`, reports
-  `D-REL-007`, and recovery skips the line. No relation is recorded for that
-  source, so `primary_key()` has no clause to return.
 
-The diagnostics themselves are unchanged; see the
-[users' guide](./users-guide.md#relation-diagnostics) for the full table.
+Recovery from unbalanced delimiters has not changed. A clause such as
+`primary key (x) (` reports `D-REL-007`, and recovery skips the line. No
+relation is recorded for that source, so `primary_key()` has no clause to
+return. That behaviour predates 0.2.0.
+
+No diagnostic code or message changed; only the inputs that reach `D-REL-007`
+did. See the [users' guide](./users-guide.md#relation-diagnostics) for the full
+table.
 
 ## What has not changed
 

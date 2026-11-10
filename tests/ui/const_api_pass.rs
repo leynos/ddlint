@@ -18,14 +18,15 @@
 //! - `RuleCtx::cst_root`;
 //! - `RuleCtx::config`;
 //! - `Parsed::green`;
-//! - `Parsed::root`.
+//! - `Parsed::root`;
+//! - `PrimaryKey::expression`.
 
 use ddlint::{
     DiagnosticCategory,
     ParseAttemptContext,
     Parsed,
     linter::{LintDiagnostic, RuleConfigValue, RuleCtx},
-    parser::ast::{StringKind, StringLiteral},
+    parser::ast::{PrimaryKey, StringKind, StringLiteral},
     sema::{SymbolOrigin, UseOrigin},
 };
 
@@ -89,8 +90,18 @@ const fn check_parsed(parsed: &Parsed) {
     let _ = parsed.root();
 }
 
+/// Primary-key accessors are callable from a `const fn`.
+const fn check_primary_key(key: &PrimaryKey) {
+    let _ = key.expression();
+}
+
 fn main() {
     // Reference the helpers so they are not dead code. Their `const fn` bodies
     // are what prove the accessors above remain `const`.
-    let _ = (check_diagnostic, check_rule_ctx, check_parsed);
+    let _ = (
+        check_diagnostic,
+        check_rule_ctx,
+        check_parsed,
+        check_primary_key,
+    );
 }

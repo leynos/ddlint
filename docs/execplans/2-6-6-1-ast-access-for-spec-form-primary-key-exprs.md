@@ -154,10 +154,11 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
 - Risk: `rstest-bdd` 0.6.0 brings in a large transitive graph (`tokio`,
   `gherkin`, `fluent`, `i18n-embed`, `rust-embed`, `ctor`, `inventory`, and
   `thiserror` 2), and every new crate queues through shared compile admission.
-  Severity: low. Likelihood: certain. Mitigation: add the dependency in its own
-  commit with a one-scenario smoke test. Its macros emit `#[rstest::rstest]`,
-  which resolves against the repository's `rstest` 0.28; `rstest-bdd` itself
-  depends on `rstest` only as a development dependency of its own.
+  Severity: low. Likelihood: certain. Mitigation: the dependency was added in
+  its own commit with a one-scenario smoke test, which was removed once the
+  full feature shipped. Its macros emit `#[rstest::rstest]`, which resolves
+  against the repository's `rstest` 0.28; `rstest-bdd` itself depends on
+  `rstest` only as a development dependency of its own.
 - Risk: googletest's `#[gtest]` wraps the test body in a closure, and the
   repository's Clippy expect-policy specimens (`tests/clippy_expect_policy.rs`)
   do not cover that shape. Severity: low. Likelihood: medium. Mitigation:
@@ -306,10 +307,11 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     -D warnings` passes after making the infallible `When` step return unit
     rather than `StepResult` (`unnecessary_wraps`)
     (`/tmp/clippy-bdd2-ddlint-2-6-6-1.out`).
-  - The one-scenario smoke binding is retained at this point as a guard on the
-    BDD harness wiring. It is removed on 2026-11-10 once the full feature ships,
-    because it then duplicates the first scenario and adds a separate
-    integration-test crate.
+  - The one-scenario smoke binding stayed at this point only as a guard on the
+    BDD harness wiring. It has since been removed (see the 2026-11-10 entry
+    below) because, once the full feature shipped, it duplicated the first
+    scenario and added a separate integration-test crate. No smoke binding
+    remains.
 - [x] (2026-11-09) Smoke binding lint fix committed as `2f291e6`.
   - The first full-gate run on `a973cee` failed `make lint-clippy` with
     `unnecessary_wraps` on the smoke `When` step, the same defect already fixed
@@ -449,7 +451,8 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   - `docs/v0-2-0-migration-guide.md` is added and indexed from
     `docs/contents.md`, the CHANGELOG and the users' guide. It shows the
     before-and-after call shapes, binder and clause spans, the lazily parsed
-    expression, and the three scanner boundary changes.
+    expression, the two scanner changes, and the unchanged unbalanced-delimiter
+    recovery.
   - Test functions, property cases, and BDD steps added by this work carry
     rustdoc comments, so the review's docstring-coverage row measures the
     documented share of the new functions.
@@ -771,10 +774,32 @@ What changed:
   `PrimaryKeyBinder`, and `PrimaryKeyExpression` expose the binder list, the
   clause span, and the optional spec-form expression, which is parsed lazily
   with source-absolute error spans. No CST node was added.
-- Verification is layered: `rstest` unit tables, oracle-based `proptest`
-  properties with coverage classes and retained regression seeds, a seven-
-  scenario `rstest-bdd` feature plus a harness smoke binding, and an inline
-  `insta` snapshot.
+- Verification is layered, and this is the inventory that ships:
+  - `rstest` unit tables and named tests in
+    `src/parser/ast/relation/primary_key/tests.rs`, covering the typed
+    accessor, exact binder and expression spans, absent clauses, malformed
+    clauses, lazy error shifting, and an inline `insta` snapshot of the
+    binder/text/span/s-expression rendering.
+  - Oracle-based `proptest` properties in
+    `src/parser/tests/relation_primary_key_props.rs`, with generators in
+    `relation_primary_key_strategies.rs`, pinning `INV-AGREE`, `INV-INDEP`,
+    `INV-SHIFT`, `INV-FIDELITY`, and `INV-TERM` plus a class-coverage test;
+    regression seeds are retained in
+    `proptest-regressions/parser/tests/relation_primary_key_props.txt`.
+  - A differential `rstest` suite in
+    `src/parser/tests/relation_terminators.rs` pairing keyed sources with
+    keyless twins for the `;` terminator, trailing trivia, and
+    non-identifier binder rejection.
+  - A seven-scenario `rstest-bdd` feature,
+    `tests/features/relation_primary_key.feature`, bound by
+    `tests/relation_primary_key_bdd.rs`.
+  - A `trybuild` const-API fixture, `tests/ui/const_api_pass.rs`, which binds
+    `PrimaryKey::expression()` in a `const fn` so the public `const` surface is
+    checked from outside the crate.
+
+  The one-scenario `rstest-bdd` smoke binding described in the Progress entries
+  was a harness guard during `EP-M3` and was removed before delivery; it is not
+  part of the shipped inventory.
 
 What went well:
 
@@ -1275,6 +1300,15 @@ set-up.
 
 ## Plan of work
 
+> **Historical.** This section and the plan-execution sections that follow it
+> (`Milestones and plateaus`, `Concrete steps`, `Validation and acceptance`,
+> `Idempotence and recovery`, `Interfaces and dependencies`) record the plan as
+> it was approved before implementation. They are retained for traceability and
+> are not a description of the shipped tree. `Outcomes & retrospective` above,
+> and the `Progress` entries, describe the current implementation and the test
+> inventory that ships. In particular, the one-scenario `rstest-bdd` smoke
+> binding named under `EP-M3` was a temporary harness guard and is gone.
+
 Stage A (understand; no production code) is `EP-M0`. Stages B (red), C (green),
 and D (refactor and documentation) repeat inside each implementation milestone.
 
@@ -1406,7 +1440,9 @@ arguments, complexity 9, nesting 4). Check line counts for `relation/mod.rs` and
    and delete any seed files they wrote.
 3. In a separate commit, add `rstest-bdd = "0.6.0"` and
    `rstest-bdd-macros = "0.6.0"` to `[dev-dependencies]`, with a one-scenario
-   smoke binding. The dependency tolerance applies here.
+   smoke binding. The dependency tolerance applies here. (The smoke binding was
+   a temporary harness guard and was removed before delivery; the dependency
+   remains.)
 4. Write `tests/features/relation_primary_key.feature` (text below) and
    `tests/relation_primary_key_bdd.rs`, with a `//!` doc, step definitions, and
    one `#[scenario]` binding per scenario.

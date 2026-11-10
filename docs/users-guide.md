@@ -300,11 +300,12 @@ lists the identifiers, each binder and the whole clause carry spans, and
 expression is lazy: `PrimaryKeyExpression::parse()` reports errors at
 source-absolute spans, and a failed parse never hides the binders.
 
-Two scanner corrections accompany this. A `;` now ends a primary-key clause
-instead of being absorbed into it, so a following declaration on the same line
-is still scanned. A binder list that is not a comma-separated list of
-identifiers, such as `(x.y)` or `(x,)`, reports `D-REL-007` instead of being
-accepted.
+Two scanner corrections accompany this. A `;` at depth zero now ends a
+primary-key clause instead of being absorbed into it, so a following
+declaration on the same line is still scanned; a semicolon inside nested
+delimiters stays part of the expression. A binder list that is not a
+comma-separated list of identifiers, such as `(x.y)` or `(x,)`, reports
+`D-REL-007` instead of being accepted.
 
 The [v0.2.0 migration guide](./v0-2-0-migration-guide.md) shows the
 before-and-after call shapes for code that used the retired `Vec<String>`
