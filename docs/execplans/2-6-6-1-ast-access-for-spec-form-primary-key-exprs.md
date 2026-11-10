@@ -473,6 +473,30 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   - Evidence: `cs review src/parser/ast/relation/primary_key/tests.rs` reports
     score 10.0 with no review entries, and the six gates are green on this
     tree with the `-bs5` log suffix (`/tmp/gates-bs5-progress.log`).
+- [x] (2026-11-10) Second hosted review round repaired as `f568fca`.
+  - Review `5840845087` raised four migration-guide findings and four
+    pre-merge rows on `41ff284`.
+  - Guide repairs: `PrimaryKey` is described as owning its data and outliving
+    the parsed tree; the examples bind a `PrimaryKey` instead of moving the
+    `Option`, so the span example still has `key`; only a depth-zero `;`
+    terminates the clause and inner semicolons stay in the expression;
+    recovery from unbalanced delimiters is labelled pre-existing; linter and
+    command-line users are pointed at the legacy-token migration instead of
+    being exempted outright.
+  - Developer-documentation repair: the Outcomes section now lists the shipped
+    test inventory, the plan-execution sections carry a historical banner, and
+    every claim that the `rstest-bdd` smoke binding remains is removed.
+  - Testing repair: `tests/ui/const_api_pass.rs` binds
+    `PrimaryKey::expression()` in a `const fn`, so the `trybuild` pass fixture
+    covers the public `const` surface.
+  - Evidence: focused `cargo test --test const_api_compile --all-features`
+    passes (`/tmp/test-const-api-ddlint-2-6-6-1-r5.out`), and all seven gates
+    are green with the `-bs6` log suffix
+    (`/tmp/gates-bs6-progress.log`).
+  - The domain-architecture row repeats the `chumsky::error::Simple` deferral
+    already answered by plan decision `D3`, ADR-001, and conformance-register
+    item 13; it is answered again with that evidence rather than re-deferred
+    silently.
 
 ## Surprises & discoveries
 
