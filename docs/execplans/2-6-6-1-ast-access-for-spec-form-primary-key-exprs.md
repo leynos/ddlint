@@ -456,6 +456,20 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   - Evidence: focused suite `cargo test --lib relation::primary_key` passes 19
     tests (`/tmp/test-pk-repair-ddlint-2-6-6-1.out`); the full gate set runs
     with the `-bs4` log suffix.
+- [x] (2026-11-10) Hosted CodeScene advisory rule cleared.
+  - The check run for `901587c` failed "Enforce advisory code health rules"
+    with one `String Heavy Function Arguments` entry for
+    `src/parser/ast/relation/primary_key/tests.rs`.
+  - Cause: the rule measures a function's plain string parameters. The new
+    expression table took two `&str` arguments out of three and the binder
+    table one out of two, which crossed the threshold for the module.
+  - Repair (`6fba402`): each table now passes one named case struct,
+    `ExpressionCaptureCase` and `BinderSpansCase`, so the row data is grouped
+    and the test functions take no string parameters. Case contents and
+    assertions are unchanged.
+  - Evidence: `cs review src/parser/ast/relation/primary_key/tests.rs` reports
+    score 10.0 with no review entries, and the six gates are green on this
+    tree with the `-bs5` log suffix (`/tmp/gates-bs5-progress.log`).
 
 ## Surprises & discoveries
 
@@ -540,6 +554,13 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   owned-name helper used by compiled tests lives in
   `src/parser/tests/helpers.rs`. Impact: future plans must not treat
   `parser.rs`/`specs.rs` edits as gate-verified.
+- Observation (2026-11-10 hosted CodeScene): the advisory rule "String Heavy
+  Function Arguments" measures plain string parameters of individual functions;
+  the percentage its finding text quotes describes the module, not the trigger.
+  A three-argument `rstest` helper with two `&str` parameters was enough to
+  fail the gate for `primary_key/tests.rs`. Impact: table tests pass one named
+  case struct, so the test function takes no string parameter.
+  `cs review <path>` reproduces the local verdict without a push.
 
 - Observation (2026-11-08 rebase validation): on this host, `make lint` fails
   in `lint-whitaker` on code from `main` that this branch does not touch.
