@@ -5,8 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: APPROVED (design review applied; rebased onto `21f306d`; approved by
-the user on 2026-11-08)
+Status: COMPLETE
 
 Branch: `2-6-6-1-ast-access-for-spec-form-primary-key-exprs`
 
@@ -1856,3 +1855,7 @@ New dev-dependencies, all with caret requirements:
   - Reconciled the `EP-M4` documentation criterion with the live
     cross-references in the conformance register and `docs/contents.md`.
   - Refreshed the recorded tolerance measurement to the current diff.
+- 2026-11-10: set `Status` to the bare `COMPLETE` the ExecPlan template
+  prescribes. Approval provenance stays in `Progress` (approved by the user on
+  2026-11-08) and the rebase provenance in the dated entries above, so the
+  header no longer carries parenthetical qualifiers.
