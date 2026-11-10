@@ -497,6 +497,26 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     already answered by plan decision `D3`, ADR-001, and conformance-register
     item 13; it is answered again with that evidence rather than re-deferred
     silently.
+- [x] (2026-11-10) Third hosted review round repaired.
+  - Review of `a4f1faa` cleared the user-facing documentation,
+    developer-documentation, and compile-time/UI rows, and raised one error and
+    two warnings.
+  - Testing (Overall) error: no test pinned a `;` inside nested delimiters.
+    `relation_terminators::nested_semicolon_stays_in_the_key_expression` now
+    asserts the full expression text `(x.a; x.b)` and that the following
+    `output relation S` is scanned, so a scanner that stopped at every `;`
+    fails.
+  - Testing (Property / Proof) warning: the plan's axioms are now justified
+    individually, and the two repository-owned ones are pinned by tests.
+    `tokenizer::tests` checks that a line-comment token excludes its newline
+    and that `\r\n` is one whitespace token; `span_utils::tests` checks that
+    shifting moves both the outer span and the inner `Unclosed` span. `D5`
+    still records why Verus and Kani are not proportionate.
+  - Domain Architecture warning: unchanged from the previous round, with no new
+    evidence. The deferral in `D3`, ADR-001 phase 2, and conformance-register
+    item 13 stands.
+  - Evidence: focused `cargo test --lib` runs for the three new test groups all
+    pass.
 
 ## Surprises & discoveries
 
@@ -813,7 +833,14 @@ What changed:
   - A differential `rstest` suite in
     `src/parser/tests/relation_terminators.rs` pairing keyed sources with
     keyless twins for the `;` terminator, trailing trivia, and
-    non-identifier binder rejection.
+    non-identifier binder rejection, plus a named case pinning that a `;`
+    inside nested delimiters stays in the key expression while the depth-zero
+    `;` ends the declaration.
+  - Axiom-pinning tests for the two repository-owned assumptions in the
+    verification plan: `tokenizer::tests` checks that a line-comment token
+    excludes its newline and that `\r\n` is one whitespace token, and
+    `span_utils::tests` checks that shifting moves both the outer span and the
+    inner `Unclosed` span of a `chumsky` error.
   - A seven-scenario `rstest-bdd` feature,
     `tests/features/relation_primary_key.feature`, bound by
     `tests/relation_primary_key_bdd.rs`.
@@ -1195,6 +1222,33 @@ decomposition.
 - `AXIOM-TOKENIZER`: line-comment tokens exclude the newline, and `\r\n` is a
   single whitespace token.
 
+Each axiom is either an external crate invariant or a property of repository
+code that a named test pins. None is an unexamined assumption:
+
+- `AXIOM-ROWAN` is an external invariant of the `rowan` crate, relied on by
+  every existing AST wrapper. This change adds no new dependency on it beyond
+  reading `text_range()` and token text, which the wrappers already do.
+- `AXIOM-CHUMSKY` has two halves. The relative-span half is `chumsky`'s
+  documented contract for `Simple`. The shifting half is repository code:
+  `shift_errors` matches all three `SimpleReason` variants explicitly and
+  shifts the inner `Unclosed` span as well as the outer one
+  (`src/parser/span_utils.rs`). `span_utils::tests` pins both the
+  unclosed-delimiter and custom-message shifts, so a shift that moved only the
+  outer span fails a test rather than passing silently.
+- `AXIOM-TOKENIZER` is repository code, not an external assumption. The two
+  `logos` patterns at `src/tokenizer.rs:18` and `src/tokenizer.rs:22` are
+  `[ \t\r\n]+` and `//[^\n]*`; the first cannot split `\r\n`, and the second
+  cannot include a newline. `tokenizer::tests` pins both properties, so a
+  pattern change that broke either one fails a test.
+
+The lemmas `L-UNIQUE` and `L-TRIVIA` are discharged by the named cases and
+properties rather than by a proof: `L-UNIQUE` by the binder-list and
+malformed-list cases, which fail if the first balanced group is not the one
+used, and `L-TRIVIA` by the trailing-comment, interior-comment, and
+leading-comment cases, which fail if trivia enters the hull or the shift
+assumes trimmed text. `D5` records why a Verus or Kani proof is not
+proportionate here.
+
 ### Methods per obligation
 
 `INV-PART`, `INV-HULL`, `INV-ABSENT`, and named `INV-SHIFT` cases:
@@ -1292,6 +1346,9 @@ decomposition.
     keyless form;
   - `input relation R(x: u32) primary key (x); output relation S(x: u32)`,
     which must keep `S` in `Root::relations()`;
+  - `input relation R(x: R) primary key (x) (x.a; x.b);` followed by
+    `output relation S(y: u32)`, which must keep the inner `;` in the
+    expression text and still scan `S`;
   - binder lists `(x.y)`, `(1)`, `(,)`, `(x,)`, and `(x y)`, each of which
     must yield exactly one D-REL-007 diagnostic.
 - Property: for generated well-formed keyed relations, appending `;` gives

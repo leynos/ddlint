@@ -69,6 +69,31 @@ fn statement_terminator_does_not_hide_next_declaration() {
     assert_eq!(relation_names(keyed), vec!["R".to_owned(), "S".to_owned()]);
 }
 
+/// A `;` inside nested delimiters stays in the key expression, so only the
+/// depth-zero `;` ends the declaration and the following relation is scanned.
+///
+/// This is the boundary test the scanner's `stack.is_empty()` guard needs: a
+/// scanner that stopped at every `;` would truncate the expression at `x.a` and
+/// still pass the flat-expression cases.
+#[test]
+fn nested_semicolon_stays_in_the_key_expression() {
+    let src = "input relation R(x: R) primary key (x) (x.a; x.b);\noutput relation S(y: u32)";
+    let parsed = parse(src);
+    assert_no_parse_errors(parsed.errors());
+
+    let key = parsed
+        .root()
+        .relations()
+        .into_iter()
+        .next()
+        .and_then(|relation| relation.primary_key().ok().flatten())
+        .expect("primary key");
+    let expression = key.expression().expect("expression");
+
+    assert_eq!(expression.text(), "(x.a; x.b)");
+    assert_eq!(relation_names(src), vec!["R".to_owned(), "S".to_owned()]);
+}
+
 /// A keyed declaration must own the same trailing trivia as its keyless twin.
 ///
 /// `INV-TERM` adjusts spans for the removed clause: the relation span must

@@ -94,3 +94,7 @@ pub(crate) fn parse_u32_decimal(text: &str) -> Result<u32, &'static str> {
         .map_err(|_| "delay must be an unsigned 32-bit integer")?;
     u32::try_from(value).map_err(|_| "delay must fit u32")
 }
+
+#[cfg(test)]
+#[path = "span_utils_tests.rs"]
+mod tests;
