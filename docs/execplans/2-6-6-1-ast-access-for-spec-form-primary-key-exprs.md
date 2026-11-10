@@ -867,6 +867,13 @@ Left deliberately undone:
 
 ## Context and orientation
 
+> **Partly historical.** This section was written before implementation as
+> orientation. The pipeline description and the signposts still hold, but the
+> statements about the scanner, the accessor, and the test tooling described
+> the tree as it was on `main` at `21f306d`. Those statements are corrected
+> inline below; where a paragraph is left as written, it is background, not a
+> claim about the shipped tree.
+
 The parser pipeline runs in four stages:
 
 1. The tokenizer (`src/tokenizer.rs`) produces `(SyntaxKind, Span)` pairs.
@@ -895,23 +902,31 @@ lines), `cursor.rs` (token cursor helpers, including `skip_trivia_end`),
   `next_token_is_same_line_expression` holds, it calls
   `consume_opaque_primary_key_expr`.
 - `consume_opaque_primary_key_expr` consumes tokens while tracking delimiter
-  depth, until the first newline-containing token at depth zero. That stop
-  token can be whitespace, a block comment, or a string literal. If delimiters
-  are still open, it returns D-REL-007.
+  depth, until the first depth-zero `;` or the first newline-containing token
+  at depth zero. That stop token can be a semicolon, whitespace, a block
+  comment, or a string literal. A `;` inside delimiters stays in the
+  expression. If delimiters are still open, it returns D-REL-007.
 - After the clause, `skip_trivia_end` extends the node over trailing trivia.
 - The CST node `N_RELATION_DECL` holds all of these tokens as flat children.
   `primary` and `key` are `T_IDENT` tokens, not keywords.
 
 The AST wrapper is `Relation` in `src/parser/ast/relation/mod.rs`:
 
-- `Relation::primary_key()` (around lines 189 to 230) first checks the body
-  with `inspect::inspect_body`.
-- It skips the column list with `skip_to_end_of_columns`, which uses
-  `extract_delimited` from `src/parser/ast/parse_utils/delimiter.rs`.
-- It concatenates the remaining child texts into `rest` and re-tokenizes them.
-- It runs `primary_key_clause` from `src/parser/ast/parse_utils/relation.rs`.
-  That chumsky parser returns the binder names (it already uses `map_with_span`
-  per identifier) and ignores everything after the closing `)`.
+- `Relation::primary_key()` returns
+  `Result<Option<PrimaryKey>, RelationParseErrors>` and delegates to
+  `clause::clause_of` in `src/parser/ast/relation/primary_key/clause.rs`.
+- `clause_of` first checks the body with `inspect::inspect_body`, then skips
+  the column list with `skip_to_end_of_columns`, which uses `extract_delimited`
+  from `src/parser/ast/parse_utils/delimiter.rs`.
+- `interpret_suffix` concatenates the remaining child texts into `rest`,
+  re-tokenizes them, and runs `primary_key_clause` from
+  `src/parser/ast/parse_utils/relation.rs`. That chumsky parser returns each
+  binder name with its span; the expression after the closing `)` is captured
+  separately as the non-trivia hull of the remaining tokens.
+- The result is a `PrimaryKey` that owns its `Vec<PrimaryKeyBinder>`, its
+  clause `Span`, and an optional `PrimaryKeyExpression` that owns the
+  expression text and span. Nothing borrows the CST, so the value may outlive
+  the parsed tree.
 - `RelationParseErrors` is `Vec<String>`.
 - Inspection helpers live in `src/parser/ast/relation/inspect.rs`, and unit
   tests in `src/parser/ast/relation/tests.rs`.
@@ -950,17 +965,24 @@ The current callers of `Relation::primary_key()` are all tests or doctests:
 These line numbers are as of `main` at `21f306d`; re-locate them with
 `rg -n 'primary_key\(\)' src tests` before editing.
 
-Existing test tooling:
+Test tooling, as it stands after this change:
 
 - `Cargo.toml` `[dev-dependencies]` holds `fixture-lints` (path dependency),
-  `rstest` 0.28, `proptest` 1.6, and `insta` 1.47. `googletest`,
-  `pretty_assertions`, and `rstest-bdd` are not yet present.
-- The repository has no BDD feature files, Kani harnesses, or Verus proofs.
-  Kani is installed on the host but has no `Makefile` target. Verus is not
-  installed.
-- Proptest regression seeds are committed under `proptest-regressions/`.
+  `rstest` 0.28, `proptest`, `insta`, `googletest`, `pretty_assertions`, and
+  `rstest-bdd` with `rstest-bdd-macros`. The last three were added by this
+  work; the pre-implementation note that they were absent is historical.
+- The repository now has one BDD feature file,
+  `tests/features/relation_primary_key.feature`, bound by
+  `tests/relation_primary_key_bdd.rs`. It still has no Kani harnesses or Verus
+  proofs. Kani is installed on the host but has no `Makefile` target. Verus is
+  not installed.
+- Proptest regression seeds are committed under `proptest-regressions/`,
+  including `parser/tests/relation_primary_key_props.txt`.
 - `src/parser/tests/` is compiled only under `#[cfg(test)]`, so
   `cargo test --lib <filter>` selects those tests.
+- `tests/ui/const_api_pass.rs` is a `trybuild` pass fixture driven by
+  `tests/const_api_compile.rs`; it now also binds `PrimaryKey::expression()` in
+  a `const fn`.
 
 The gate commands come from `AGENTS.md` and the `Makefile`: `make fmt`,
 `make check-fmt`, `make typecheck`, `make lint`, `make test`,
