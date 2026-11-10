@@ -65,32 +65,37 @@ fn exposes_binders_and_clause_span(
     Ok(())
 }
 
+/// One row of the binder-span table: the source and each binder's exact slice.
+#[derive(Debug)]
+struct BinderSpansCase {
+    src: &'static str,
+    expected: &'static [(&'static str, Range<usize>)],
+}
+
 /// Binder spans bound each name exactly and exclude surrounding trivia.
 ///
 /// Every case repeats a binder name in the column list, and the repeated case
 /// writes one binder twice, so a span taken from the wrong occurrence cannot
 /// satisfy the comparison.
 #[rstest]
-#[case::space_before_comma(
-    "input relation R(a: u32, b: u32) primary key (a , b)",
-    &[("a", 46..47), ("b", 50..51)],
-)]
-#[case::comment_between_name_and_comma(
-    "input relation R(a: u32, b: u32) primary key (a /* first */, b)",
-    &[("a", 46..47), ("b", 61..62)],
-)]
-#[case::name_also_in_column_list(
-    "input relation R(a: u32, b: u32) primary key (b)",
-    &[("b", 46..47)],
-)]
-#[case::repeated_binder_name(
-    "input relation R(a: u32, b: u32) primary key (a, b, a)",
-    &[("a", 46..47), ("b", 49..50), ("a", 52..53)],
-)]
-fn binder_spans_are_exact_and_exclude_surrounding_trivia(
-    #[case] src: &str,
-    #[case] expected: &[(&str, Range<usize>)],
-) {
+#[case::space_before_comma(BinderSpansCase {
+    src: "input relation R(a: u32, b: u32) primary key (a , b)",
+    expected: &[("a", 46..47), ("b", 50..51)],
+})]
+#[case::comment_between_name_and_comma(BinderSpansCase {
+    src: "input relation R(a: u32, b: u32) primary key (a /* first */, b)",
+    expected: &[("a", 46..47), ("b", 61..62)],
+})]
+#[case::name_also_in_column_list(BinderSpansCase {
+    src: "input relation R(a: u32, b: u32) primary key (b)",
+    expected: &[("b", 46..47)],
+})]
+#[case::repeated_binder_name(BinderSpansCase {
+    src: "input relation R(a: u32, b: u32) primary key (a, b, a)",
+    expected: &[("a", 46..47), ("b", 49..50), ("a", 52..53)],
+})]
+fn binder_spans_are_exact_and_exclude_surrounding_trivia(#[case] case: BinderSpansCase) {
+    let BinderSpansCase { src, expected } = case;
     let key = primary_key_of(src).expect("primary key");
     let actual: Vec<(&str, Span)> = key
         .binders()
@@ -123,6 +128,14 @@ fn primary_key_is_absent(#[case] src: &str) {
     ));
 }
 
+/// One row of the expression table: the source, the captured text, and span.
+#[derive(Debug)]
+struct ExpressionCaptureCase {
+    src: &'static str,
+    text: &'static str,
+    span: Range<usize>,
+}
+
 /// A captured expression keeps its text, its span, and its source extent.
 ///
 /// The cases cover the boundaries that each previously had a dedicated test: a
@@ -131,37 +144,34 @@ fn primary_key_is_absent(#[case] src: &str) {
 /// captured text also parses directly, so the lazy parse agrees with the
 /// captured extent.
 #[rstest]
-#[case::trailing_line_comment(
-    "input relation R(x: R) primary key (x) x.id // note",
-    "x.id",
-    39..43,
-)]
-#[case::interior_block_comment(
-    "input relation R(x: R) primary key (x) (x.a, /* keep */ x.b)",
-    "(x.a, /* keep */ x.b)",
-    39..60,
-)]
-#[case::multiline_inside_delimiters(
-    "input relation R(x: R) primary key (x) (x.a,\n x.b)",
-    "(x.a,\n x.b)",
-    39..50,
-)]
-#[case::end_of_file_without_newline(
-    "input relation R(x: R) primary key (x) x.id",
-    "x.id",
-    39..43,
-)]
-fn captures_expression_text_and_span(
-    #[case] src: &str,
-    #[case] expected_text: &str,
-    #[case] expected_span: Range<usize>,
-) {
+#[case::trailing_line_comment(ExpressionCaptureCase {
+    src: "input relation R(x: R) primary key (x) x.id // note",
+    text: "x.id",
+    span: 39..43,
+})]
+#[case::interior_block_comment(ExpressionCaptureCase {
+    src: "input relation R(x: R) primary key (x) (x.a, /* keep */ x.b)",
+    text: "(x.a, /* keep */ x.b)",
+    span: 39..60,
+})]
+#[case::multiline_inside_delimiters(ExpressionCaptureCase {
+    src: "input relation R(x: R) primary key (x) (x.a,\n x.b)",
+    text: "(x.a,\n x.b)",
+    span: 39..50,
+})]
+#[case::end_of_file_without_newline(ExpressionCaptureCase {
+    src: "input relation R(x: R) primary key (x) x.id",
+    text: "x.id",
+    span: 39..43,
+})]
+fn captures_expression_text_and_span(#[case] case: ExpressionCaptureCase) {
+    let ExpressionCaptureCase { src, text, span } = case;
     let key = primary_key_of(src).expect("primary key");
     let expression = key.expression().expect("expression");
 
-    assert_eq!(expression.text(), expected_text);
-    assert_eq!(expression.span(), expected_span);
-    assert_eq!(src.get(expression.span()), Some(expected_text));
+    assert_eq!(expression.text(), text);
+    assert_eq!(expression.span(), span);
+    assert_eq!(src.get(expression.span()), Some(text));
     assert!(parse_expression(expression.text()).is_ok());
 }
 
