@@ -563,6 +563,20 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     and conformance-register item 13 now cite that issue, and no duplicate was
     created.
 
+- [x] (2026-11-11) Sixth hosted review round repaired.
+  - CodeRabbit accepted the CRLF wording and the domain deferral, and asked
+    for one remaining check: that every error span `parse_expression` produces
+    lies within the expression text, including nested and inner `Unclosed`
+    spans.
+  - The verification plan now records that bound. Every error is a
+    `SimpleReason::Custom` value carrying a token span from
+    `tokenize_without_trivia` or the empty end-of-input span; the reserved
+    completion adds only token spans from `tokenize_with_trivia`; `logos`
+    reports spans within its input and `tokenize_impl` substitutes an error
+    token rather than panicking on an invalid span. The Pratt parser never
+    constructs an `Unclosed` error, so that case is vacuous here, and
+    `shift_errors` still shifts it if a future producer emits one.
+
 ## Surprises & discoveries
 
 - Observation (`EP-M3`): the binder parser captured trailing trivia.
@@ -1338,6 +1352,22 @@ span, with `saturating_add`. For any representable in-source offset,
 exact. The argument covers every finite admitted expression and every
 representable source offset. It assumes only the two external contracts already
 listed as axioms and the scanner precondition.
+
+`L-TRIVIA`'s span bound. `parse_expression` is the only producer of the errors
+that `PrimaryKeyExpression::parse` shifts. Every error it returns is a
+`SimpleReason::Custom` value whose span is either a token span from
+`tokenize_without_trivia(text(E))` or the empty end-of-input span
+`text(E).len()..text(E).len()`. The producers are `TokenStream::expect`,
+`push_error`, `push_reserved_error`, the depth check, the chained type-operator
+check, and the delay, postfix, and diff diagnostics; each passes a token span or
+`eof_span()`. `complete_reserved_token_errors` adds only token spans from
+`tokenize_with_trivia(text(E))`. `logos` reports byte spans within its input,
+and `tokenize_impl` checks `src.get(span)` and substitutes an error token
+rather than panicking, so every relative span lies within `0..text(E).len()`.
+The Pratt parser never constructs an `Unclosed` error, so the inner-span case
+is vacuous for this path; `shift_errors` still shifts it correctly if a future
+producer emits one. After shifting, every span lies within `start(E)..end(E)`,
+which is `range(E)`.
 
 `D5` records why a Verus or Kani proof is not proportionate here.
 
