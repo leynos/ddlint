@@ -517,6 +517,12 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     item 13 stands.
   - Evidence: focused `cargo test --lib` runs for the three new test groups all
     pass.
+  - CodeScene rejected the first commit of this round (`24e891f`) with an
+    advisory Code Duplication gate on `src/tokenizer_tests.rs` (10.00 → 9.39):
+    two near-identical token-boundary tests read as duplicated blocks. The two
+    are now one `rstest` table, `trivia_boundaries_are_single_tokens`, with a
+    case for each boundary. `cs check` reports 10.00 for the file and
+    `cs delta` reports the duplication fixed.
 
 ## Surprises & discoveries
 

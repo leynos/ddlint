@@ -72,31 +72,31 @@ fn tokenize_recognises_caret_tokens() {
     );
 }
 
-/// A line-comment token stops before its newline.
+/// Trivia-bearing token boundaries that scanner code depends on.
 ///
-/// Scanner boundaries treat a newline-bearing token as a statement break, so
-/// the comment must leave the newline in a separate token for
-/// `starts_statement_boundary` to see it.
-#[test]
-fn line_comment_token_excludes_its_newline() {
-    let tokens = tokenize_with_trivia("// note\nx");
-    assert_eq!(tokens.first(), Some(&(SyntaxKind::T_COMMENT, 0..7)));
-    assert_eq!(tokens.get(1), Some(&(SyntaxKind::T_WHITESPACE, 7..8)));
-    assert_eq!(
-        tokens.get(2).map(|(kind, _)| *kind),
-        Some(SyntaxKind::T_IDENT)
-    );
-}
-
-/// `\r\n` is a single whitespace token rather than two.
-#[test]
-fn crlf_is_one_whitespace_token() {
-    assert_eq!(
-        tokenize_with_trivia("a\r\nb"),
-        vec![
-            (SyntaxKind::T_IDENT, 0..1),
-            (SyntaxKind::T_WHITESPACE, 1..3),
-            (SyntaxKind::T_IDENT, 3..4),
-        ]
-    );
+/// A line-comment token must stop before its newline so the newline stays in a
+/// separate token and a statement break remains visible. `\r\n` must stay one
+/// whitespace token so a carriage-return pair is never split.
+#[rstest]
+#[case::line_comment_excludes_its_newline(
+    "// note\nx",
+    vec![
+        (SyntaxKind::T_COMMENT, 0..7),
+        (SyntaxKind::T_WHITESPACE, 7..8),
+        (SyntaxKind::T_IDENT, 8..9),
+    ]
+)]
+#[case::crlf_is_one_whitespace_token(
+    "a\r\nb",
+    vec![
+        (SyntaxKind::T_IDENT, 0..1),
+        (SyntaxKind::T_WHITESPACE, 1..3),
+        (SyntaxKind::T_IDENT, 3..4),
+    ]
+)]
+fn trivia_boundaries_are_single_tokens(
+    #[case] src: &str,
+    #[case] expected: Vec<(SyntaxKind, Span)>,
+) {
+    assert_eq!(tokenize_with_trivia(src), expected);
 }
