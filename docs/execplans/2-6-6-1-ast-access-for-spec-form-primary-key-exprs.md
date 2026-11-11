@@ -544,6 +544,25 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     ExecPlan, which exceeds its per-file size limit. The implementation files
     were all reviewed.
 
+- [x] (2026-11-11) Fifth hosted review round repaired.
+  - CodeRabbit's reply to the reconciliation comment accepted the CRLF
+    regression case but corrected the wording: `[ \t\r\n]+` is greedy, so the
+    `\n` begins the following whitespace token and that token can also absorb
+    indentation. The axiom, its explanation, and the test documentation now
+    say so, and `tokenizer::tests` gained
+    `crlf_whitespace_absorbs_following_indentation`.
+  - Testing (Property / Proof): CodeRabbit asked for source-based arguments
+    rather than Verus or Kani. The verification plan now argues `L-UNIQUE`
+    from `binder_group_close`'s first-zero-depth return and its checked
+    arithmetic, and `L-TRIVIA` from the non-trivia hull, the trivia-filtering
+    tokenizer, and the exact `saturating_add` shift. The argument is labelled
+    as an argument, not a machine-checked proof, and the tests are labelled as
+    regression evidence for its premises.
+  - Domain Architecture: CodeRabbit confirmed the deferral and pointed at
+    issue #267, which already tracks public `chumsky` diagnostic exposure. `D3`
+    and conformance-register item 13 now cite that issue, and no duplicate was
+    created.
+
 ## Surprises & discoveries
 
 - Observation (`EP-M3`): the binder parser captured trailing trivia.
@@ -730,8 +749,9 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   method is named `parse()`, not `expr()`, because it does work and can fail,
   unlike the neighbouring `expression()` getter. The ADR-002 amendment records
   that the ADR-001 crate split should replace the exposed `Simple` type with a
-  domain error type. Date/Author: 2026-10-18; renamed 2026-10-23 after design
-  review.
+  domain error type. Issue #267 tracks the public `chumsky` diagnostic
+  exposure, including this API and its source-absolute spans. Date/Author:
+  2026-10-18; renamed 2026-10-23 after design review.
 - D4. Decision: the syntax layer exposes binders and the expression without
   interpreting them. It does not decide whether a binder names a column or the
   whole row. Rationale: upstream binds the whole row, while the `ddlint` list
@@ -865,9 +885,10 @@ What changed:
   - Axiom-pinning tests for the two repository-owned assumptions in the
     verification plan: `tokenizer::tests` checks that a line-comment token
     excludes its `\n`, that a comment before a CRLF ending keeps the `\r` while
-    the `\n` becomes its own whitespace token, and that `\r\n` is one
-    whitespace token elsewhere; `span_utils::tests` checks that shifting moves
-    both the outer span and the inner `Unclosed` span of a `chumsky` error.
+    the `\n` begins the next whitespace token (with and without following
+    indentation), and that `\r\n` is one whitespace token elsewhere;
+    `span_utils::tests` checks that shifting moves both the outer span and the
+    inner `Unclosed` span of a `chumsky` error.
   - A seven-scenario `rstest-bdd` feature,
     `tests/features/relation_primary_key.feature`, bound by
     `tests/relation_primary_key_bdd.rs`.
@@ -1248,8 +1269,8 @@ decomposition.
   including the inner `Unclosed` span, using saturating arithmetic.
 - `AXIOM-TOKENIZER`: a line-comment token never contains `\n`, and `\r\n` is a
   single whitespace token. A CRLF line ending is split rather than excluded:
-  the comment token ends with the `\r`, and the `\n` forms its own whitespace
-  token.
+  the comment token ends with the `\r`, and the `\n` begins the next whitespace
+  token, which may also absorb following spaces or tabs.
 
 Each axiom is either an external crate invariant or a property of repository
 code that a named test pins. None is an unexamined assumption:
@@ -1268,20 +1289,57 @@ code that a named test pins. None is an unexamined assumption:
   `logos` patterns at `src/tokenizer.rs:18` and `src/tokenizer.rs:22` are
   `[ \t\r\n]+` and `//[^\n]*`; the first cannot split `\r\n`, and the second
   cannot include `\n`. The second pattern does match a trailing `\r`, so a CRLF
-  line ending leaves `\r` in the comment token and the `\n` in the next
-  whitespace token. That still keeps the statement break visible, because the
-  scanner tests each token for `\n` rather than treating a comment as a whole
-  line. `tokenizer::tests` pins each property alone and the combined
-  comment-then-CRLF boundary, so a pattern change that broke any of them fails
-  a test.
+  line ending leaves `\r` in the comment token and the `\n` at the start of the
+  next whitespace token; because `[ \t\r\n]+` is greedy, that token can also
+  absorb indentation on the following line. That still keeps the statement
+  break visible, because the scanner tests each token for `\n` rather than
+  treating a comment as a whole line. `tokenizer::tests` pins each property
+  alone and the combined comment-then-CRLF boundaries, with and without
+  following indentation, so a pattern change that broke any of them fails a
+  test.
 
-The lemmas `L-UNIQUE` and `L-TRIVIA` are discharged by the named cases and
-properties rather than by a proof: `L-UNIQUE` by the binder-list and
-malformed-list cases, which fail if the first balanced group is not the one
-used, and `L-TRIVIA` by the trailing-comment, interior-comment, and
-leading-comment cases, which fail if trivia enters the hull or the shift
-assumes trimmed text. `D5` records why a Verus or Kani proof is not
-proportionate here.
+The lemmas `L-UNIQUE` and `L-TRIVIA` are established by source-based argument
+over the admitted inputs. The argument is not a machine-checked proof, and the
+named cases and properties are regression evidence for its premises rather than
+the argument itself.
+
+`L-UNIQUE`. `binder_group_close`
+(`src/parser/ast/relation/primary_key/clause.rs`) walks the suffix elements in
+order with `depth: usize` starting at zero. It increments on `T_LPAREN` with
+`checked_add(1)`, decrements on `T_RPAREN` with `checked_sub(1)`, and returns
+the first index at which a `)` brings the depth back to zero after some `(` was
+seen. Let `D_i` be the running depth after element `i`. The function returns at
+the first `i` with `d_i = )` and `D_i = 0`; because it returns at the first
+such index, at most one index can be returned, which is uniqueness. Existence
+follows from the scanner precondition: an accepted relation has a balanced,
+well-formed binder list, so the first `(` in the suffix is the binder list's
+open and some later `)` returns the depth to zero. The checked arithmetic
+cannot fail on admitted input. `checked_add` fails only on `usize` overflow,
+which needs more than `usize::MAX` nested opens and therefore more than
+`usize::MAX` source bytes. `checked_sub` fails only on a `)` with depth zero,
+which the scanner precondition excludes. The first `(` is the binder list's
+open because the clause must begin with `primary key (`; the scanner rejects
+any other shape before the accessor runs.
+
+`L-TRIVIA`. `expression_after` selects the tail after the binder list's close,
+takes the first and last non-trivia elements with `position` and `rposition`,
+and slices the inclusive hull. The hull's first and last elements are therefore
+non-trivia by construction, so `start(E)` is the start of a non-trivia token
+and no leading trivia is skipped between `start(E)` and the first token
+`parse_expression` sees. Interior trivia stays in the hull, so `text(E)` is
+exactly the source slice `[start(E), end(E))`. `tokenize_without_trivia` drops
+trivia tokens but preserves the order and text of the remaining tokens, so
+`parse_expression(text(E))` sees the same non-trivia sequence the hull contains.
+`chumsky` reports `Simple` spans relative to its input (`AXIOM-CHUMSKY`), and
+`shift_errors` adds `start(E)` to every span, including the inner `Unclosed`
+span, with `saturating_add`. For any representable in-source offset,
+`start(E) + relative` is at most the source length, which is below
+`usize::MAX`, so `saturating_add` equals ordinary addition and the shift is
+exact. The argument covers every finite admitted expression and every
+representable source offset. It assumes only the two external contracts already
+listed as axioms and the scanner precondition.
+
+`D5` records why a Verus or Kani proof is not proportionate here.
 
 ### Methods per obligation
 

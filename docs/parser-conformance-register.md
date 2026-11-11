@@ -189,7 +189,8 @@ This register tracks parser behaviour against the syntax specification.
   `chumsky::error::Simple` values, so an internal parser type appears in the
   public API. Replacing it with a domain-owned error type is assigned to the
   ADR-001 crate split, as recorded in the ADR-002 amendment and plan decision
-  `D3`.
+  `D3`. Issue #267 tracks the public `chumsky` diagnostic exposure, including
+  this API and its source-absolute spans.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` items `2.6.6` and `2.6.6.1`.
 
