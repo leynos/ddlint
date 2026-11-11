@@ -524,6 +524,26 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     case for each boundary. `cs check` reports 10.00 for the file and
     `cs delta` reports the duplication fixed.
 
+- [x] (2026-11-11) Fourth hosted review round repaired.
+  - Review of `ae74b2a` cleared Testing (Overall) and raised one outside-diff
+    finding plus the two standing warnings.
+  - CRLF tokenizer invariant: the finding is correct. `//[^\n]*` matches a
+    trailing `\r`, so `// note\r\n` tokenizes as a comment ending in `\r`
+    followed by a whitespace token holding `\n`. The axiom and its explanation
+    now say so, and `tokenizer::tests` gained
+    `comment_before_crlf_keeps_the_carriage_return` to pin the combined
+    boundary. The statement break stays visible because the scanner tests each
+    token for `\n`, not because the comment excludes the whole line ending.
+  - Testing (Property / Proof) warning: unchanged in substance. The per-axiom
+    justification and the pinning tests from the previous round stand, and `D5`
+    still records why Verus and Kani are not proportionate. No new evidence
+    supports a proof milestone.
+  - Domain Architecture warning: unchanged, with no new evidence. The deferral
+    in `D3`, ADR-001 phase 2, and conformance-register item 13 stands.
+  - Review coverage: the one file CodeRabbit could not fully review is this
+    ExecPlan, which exceeds its per-file size limit. The implementation files
+    were all reviewed.
+
 ## Surprises & discoveries
 
 - Observation (`EP-M3`): the binder parser captured trailing trivia.
@@ -844,9 +864,10 @@ What changed:
     `;` ends the declaration.
   - Axiom-pinning tests for the two repository-owned assumptions in the
     verification plan: `tokenizer::tests` checks that a line-comment token
-    excludes its newline and that `\r\n` is one whitespace token, and
-    `span_utils::tests` checks that shifting moves both the outer span and the
-    inner `Unclosed` span of a `chumsky` error.
+    excludes its `\n`, that a comment before a CRLF ending keeps the `\r` while
+    the `\n` becomes its own whitespace token, and that `\r\n` is one
+    whitespace token elsewhere; `span_utils::tests` checks that shifting moves
+    both the outer span and the inner `Unclosed` span of a `chumsky` error.
   - A seven-scenario `rstest-bdd` feature,
     `tests/features/relation_primary_key.feature`, bound by
     `tests/relation_primary_key_bdd.rs`.
@@ -1225,8 +1246,10 @@ decomposition.
 - `AXIOM-CHUMSKY`: `parse_expression` reports error spans relative to its input
   string. `shift_errors` adds the offset to every span in each `Simple`,
   including the inner `Unclosed` span, using saturating arithmetic.
-- `AXIOM-TOKENIZER`: line-comment tokens exclude the newline, and `\r\n` is a
-  single whitespace token.
+- `AXIOM-TOKENIZER`: a line-comment token never contains `\n`, and `\r\n` is a
+  single whitespace token. A CRLF line ending is split rather than excluded:
+  the comment token ends with the `\r`, and the `\n` forms its own whitespace
+  token.
 
 Each axiom is either an external crate invariant or a property of repository
 code that a named test pins. None is an unexamined assumption:
@@ -1244,8 +1267,13 @@ code that a named test pins. None is an unexamined assumption:
 - `AXIOM-TOKENIZER` is repository code, not an external assumption. The two
   `logos` patterns at `src/tokenizer.rs:18` and `src/tokenizer.rs:22` are
   `[ \t\r\n]+` and `//[^\n]*`; the first cannot split `\r\n`, and the second
-  cannot include a newline. `tokenizer::tests` pins both properties, so a
-  pattern change that broke either one fails a test.
+  cannot include `\n`. The second pattern does match a trailing `\r`, so a CRLF
+  line ending leaves `\r` in the comment token and the `\n` in the next
+  whitespace token. That still keeps the statement break visible, because the
+  scanner tests each token for `\n` rather than treating a comment as a whole
+  line. `tokenizer::tests` pins each property alone and the combined
+  comment-then-CRLF boundary, so a pattern change that broke any of them fails
+  a test.
 
 The lemmas `L-UNIQUE` and `L-TRIVIA` are discharged by the named cases and
 properties rather than by a proof: `L-UNIQUE` by the binder-list and

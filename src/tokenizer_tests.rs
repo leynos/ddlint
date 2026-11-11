@@ -74,8 +74,10 @@ fn tokenize_recognises_caret_tokens() {
 
 /// Trivia-bearing token boundaries that scanner code depends on.
 ///
-/// A line-comment token must stop before its newline so the newline stays in a
-/// separate token and a statement break remains visible. `\r\n` must stay one
+/// A line-comment token must stop before its `\n` so the newline stays in a
+/// separate token and a statement break remains visible. A CRLF line ending is
+/// split rather than excluded: the comment token keeps the `\r` and the `\n`
+/// forms its own whitespace token. Away from comments, `\r\n` stays one
 /// whitespace token so a carriage-return pair is never split.
 #[rstest]
 #[case::line_comment_excludes_its_newline(
@@ -84,6 +86,14 @@ fn tokenize_recognises_caret_tokens() {
         (SyntaxKind::T_COMMENT, 0..7),
         (SyntaxKind::T_WHITESPACE, 7..8),
         (SyntaxKind::T_IDENT, 8..9),
+    ]
+)]
+#[case::comment_before_crlf_keeps_the_carriage_return(
+    "// note\r\nx",
+    vec![
+        (SyntaxKind::T_COMMENT, 0..8),
+        (SyntaxKind::T_WHITESPACE, 8..9),
+        (SyntaxKind::T_IDENT, 9..10),
     ]
 )]
 #[case::crlf_is_one_whitespace_token(
