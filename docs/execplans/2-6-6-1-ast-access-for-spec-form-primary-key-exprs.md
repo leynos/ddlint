@@ -571,11 +571,14 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   - The verification plan now records that bound. Every error is a
     `SimpleReason::Custom` value carrying a token span from
     `tokenize_without_trivia` or the empty end-of-input span; the reserved
-    completion adds only token spans from `tokenize_with_trivia`; `logos`
-    reports spans within its input and `tokenize_impl` substitutes an error
-    token rather than panicking on an invalid span. The Pratt parser never
-    constructs an `Unclosed` error, so that case is vacuous here, and
-    `shift_errors` still shifts it if a future producer emits one.
+    completion adds only token spans from `tokenize_with_trivia`; match and
+    `for` patterns add a nested path through
+    `parse_collected_pattern_tokens` and `TokenStream::extend_errors`. The
+    in-range property is attributed to the `logos` span contract, not to
+    `tokenize_impl`'s `src.get` fallback, which keeps an invalid span in
+    release builds. Neither the Pratt parser nor the pattern parser constructs
+    an `Unclosed` error, so that case is vacuous here, and `shift_errors` still
+    shifts it if a future producer emits one.
 
 ## Surprises & discoveries
 
@@ -1360,14 +1363,26 @@ that `PrimaryKeyExpression::parse` shifts. Every error it returns is a
 `text(E).len()..text(E).len()`. The producers are `TokenStream::expect`,
 `push_error`, `push_reserved_error`, the depth check, the chained type-operator
 check, and the delay, postfix, and diff diagnostics; each passes a token span or
-`eof_span()`. `complete_reserved_token_errors` adds only token spans from
-`tokenize_with_trivia(text(E))`. `logos` reports byte spans within its input,
-and `tokenize_impl` checks `src.get(span)` and substitutes an error token
-rather than panicking, so every relative span lies within `0..text(E).len()`.
-The Pratt parser never constructs an `Unclosed` error, so the inner-span case
-is vacuous for this path; `shift_errors` still shifts it correctly if a future
-producer emits one. After shifting, every span lies within `start(E)..end(E)`,
-which is `range(E)`.
+`eof_span()`. Match and `for` patterns add a nested path:
+`parse_collected_pattern_tokens`
+(`src/parser/expression/pattern_collection.rs`) forwards `parse_pattern_tokens`
+errors through `TokenStream::extend_errors`, and the pattern parser also uses
+expression-relative token spans or the expression's `eof_span()` for its
+`SimpleReason::Custom` diagnostics. `complete_reserved_token_errors` adds only
+token spans from `tokenize_with_trivia(text(E))`.
+
+The in-range property of token spans rests on the `logos` contract that
+`Lexer::span()` returns a byte range within its input. `tokenize_impl` checks
+`src.get(span)` and substitutes an `N_ERROR` token, but that check does not
+enforce the bound: in release builds the fallback keeps the invalid span, and
+in debug builds it trips a `debug_assert!`. The bound is therefore attributed
+to the lexer contract, not to the fallback. With that contract, every relative
+span lies within `0..text(E).len()`.
+
+The Pratt parser and the pattern parser never construct an `Unclosed` error, so
+the inner-span case is vacuous on this path; `shift_errors` still shifts it
+correctly if a future producer emits one. After shifting, every span lies within
+`start(E)..end(E)`, which is `range(E)`.
 
 `D5` records why a Verus or Kani proof is not proportionate here.
 
