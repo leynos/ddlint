@@ -204,6 +204,62 @@ fn expression_errors_are_shifted_into_the_clause() {
     }
 }
 
+/// A keyed relation after a preceding declaration reports absolute spans.
+///
+/// Every offset here is non-zero, so a span computed relative to the relation
+/// or to the clause cannot satisfy the assertions.
+#[test]
+fn spans_stay_source_absolute_after_a_preceding_declaration() {
+    let src = "input relation A(x: u32)\ninput relation Book(row: BookRow) primary key (row) \
+               (row.author, row.title)";
+    // The second declaration starts after the first, so the first relation is
+    // not the one under test.
+    let relations = parse(src).root().relations();
+    let key = relations
+        .get(1)
+        .expect("second relation")
+        .primary_key()
+        .expect("primary key query")
+        .expect("clause present");
+
+    assert_eq!(key.binder_names(), vec!["row"]);
+    assert_eq!(key.binders().first().expect("binder").span(), 72..75);
+    assert_eq!(key.span(), 59..100);
+    let expression = key.expression().expect("expression");
+    assert_eq!(expression.span(), 77..100);
+    assert_eq!(src.get(expression.span()), Some("(row.author, row.title)"));
+}
+
+/// Expression errors keep absolute spans after a preceding declaration.
+#[test]
+fn expression_errors_stay_source_absolute_after_a_preceding_declaration() {
+    let src = "input relation A(x: u32)\ninput relation R(x: R) primary key (x) x + * 1";
+    let relations = parse(src).root().relations();
+    let key = relations
+        .get(1)
+        .expect("second relation")
+        .primary_key()
+        .expect("primary key query")
+        .expect("clause present");
+    let expression = key.expression().expect("expression");
+    let relative = parse_expression("x + * 1").expect_err("expression should be invalid");
+    let absolute = expression
+        .parse()
+        .expect_err("expression should be invalid");
+
+    assert_eq!(expression.span().start, 64);
+    assert_eq!(absolute.len(), relative.len());
+    // Reading the first pair keeps the loop below from passing vacuously when
+    // both error lists are empty.
+    let shifted = absolute.first().expect("absolute errors");
+    let unshifted = relative.first().expect("relative errors");
+    assert_eq!(shifted.span().start, unshifted.span().start + 64);
+    for (actual, expected) in absolute.iter().zip(&relative) {
+        assert_eq!(actual.span().start, expected.span().start + 64);
+        assert_eq!(actual.span().end, expected.span().end + 64);
+    }
+}
+
 /// A binder list without its closing delimiter is a clause error.
 #[test]
 fn unclosed_binder_list_is_error() {

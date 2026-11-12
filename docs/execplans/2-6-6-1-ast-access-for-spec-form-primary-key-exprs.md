@@ -27,12 +27,15 @@ input relation Book(row: BookRow) primary key (row) (row.author, row.title)
 ```
 
 Here `row` is the binder and `(row.author, row.title)` is the key expression.
-Today `ddlint` keeps that trailing expression only as opaque CST text.
-`Relation::primary_key()` returns only the binder names (`Some(vec!["row"])`).
-A lint rule that wants to inspect the key, for example to check that it
-references only its binder, must re-tokenize CST text by hand.
 
-After this change a caller of the public parser API can write:
+Baseline before implementation: `ddlint` kept that trailing expression only as
+opaque CST text. `Relation::primary_key()` returned only the binder names
+(`Some(vec!["row"])`), so a lint rule that wanted to inspect the key, for
+example to check that it references only its binder, had to re-tokenize CST
+text by hand. Milestone `EP-M1` replaced that baseline with the behaviour
+described below.
+
+A caller of the public parser API can now write:
 
 ```rust,no_run
 let key = relation.primary_key().expect("well-formed clause").expect("clause present");
@@ -48,17 +51,25 @@ the key expression carry source-absolute spans that point inside the
 expression, and they never hide the binder names.
 
 Lossless CST round-tripping is unchanged. The parse-time diagnostics
-(`Parsed::errors()`) are unchanged for every input that is well formed today.
-They change for two classes of malformed input that the scanner currently
-mishandles, both fixed in milestone `EP-M1`:
+(`Parsed::errors()`) are unchanged for every input that was well formed before
+this work. Two classes of malformed input that the scanner previously
+mishandled now behave differently; milestone `EP-M1` implemented both:
 
-- a statement terminator `;` after a key clause is swallowed into the key
-  expression, together with any declaration that follows on the same line;
-- a binder list that is not a comma-separated list of identifiers, such as
-  `primary key (x.y)`, is accepted by the scanner even though no binder names
-  can be read from it.
+- a statement terminator `;` after a key clause was swallowed into the key
+  expression, together with any declaration that followed on the same line; a
+  depth-zero `;` now ends the clause, and a semicolon inside nested delimiters
+  still stays part of the expression;
+- a binder list that was not a comma-separated list of identifiers, such as
+  `primary key (x.y)`, was accepted by the scanner even though no binder names
+  could be read from it; such a list now reports `D-REL-007`.
 
-The work also closes the outstanding decision recorded in
+Milestone `EP-M1` also removed a third defect found while implementing the span
+invariants: a keyed relation node did not own the trailing trivia that its
+keyless twin owns, so the two relation spans differed by more than the removed
+clause. The clause reader now computes the end of inline trivia without
+advancing its cursor and moves it only when it consumes an expression.
+
+The work also closed the outstanding decision recorded in
 `docs/adr-002-relation-role-kind-modelling.md`: "Roadmap item `2.6.6.1` must
 decide the typed shape for primary-key expression access."
 
@@ -579,6 +590,33 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
     release builds. Neither the Pratt parser nor the pattern parser constructs
     an `Unclosed` error, so that case is vacuous here, and `shift_errors` still
     shifts it if a future producer emits one.
+
+- [x] (2026-11-12) Seventh hosted review round repaired.
+  - Testing (Overall) error: the new source-absolute span API had no test for a
+    relation that starts after byte zero, because every existing span test
+    began the first relation at offset 0. `tests.rs` gained
+    `spans_stay_source_absolute_after_a_preceding_declaration` and
+    `expression_errors_stay_source_absolute_after_a_preceding_declaration`.
+    Both select the second relation and assert exact binder, clause,
+    expression, and shifted-error offsets that no relation-relative or
+    clause-relative computation can satisfy.
+  - User-Facing Documentation warning: the users' guide and the migration guide
+    now record that same-line scanning after a depth-zero `;` covers keyless
+    declarations, and that a keyed relation owns the same trailing trivia as
+    its keyless twin, so `Relation::span()` slices the same trailing text. The
+    migration guide now lists three observable changes.
+  - Developer Documentation warning: the Purpose section separates the
+    pre-implementation baseline from the implemented behaviour, and records the
+    trailing-trivia correction as a third `EP-M1` change alongside the two
+    scanner corrections.
+  - Testing (Property / Proof) warning: the axioms now cover only external
+    contracts (`AXIOM-ROWAN`, `AXIOM-CHUMSKY`, `AXIOM-LOGOS`). The
+    repository-owned premises moved to a "Repository lemmas" subsection with
+    source-based arguments: `L-SHIFT` for `shift_errors`' exhaustive match and
+    saturating shift, and `L-TOKENIZER` for the two `logos` patterns and the
+    comment-boundary CRLF split. The contradictory CRLF bullet is removed.
+  - Domain Architecture warning: unchanged, with no new evidence. The `D3`,
+    ADR-001 phase 2, and issue #267 deferral stands.
 
 ## Surprises & discoveries
 
@@ -1276,49 +1314,58 @@ decomposition.
   (`INV-HULL`), relative error offsets map to absolute ones by adding
   `start(E)` alone.
 
-### Axioms (trusted, not verified here)
+### Axioms (external contracts, trusted)
+
+Only contracts owned outside this repository remain axioms; every property of
+repository code is argued below from its source.
 
 - `AXIOM-ROWAN`: `rowan` preserves token text losslessly, and
   `SyntaxElement::text_range()` is source-absolute for trees built from the
-  full source.
+  full source. This is an external invariant relied on by every existing AST
+  wrapper. This change adds no new dependency on it beyond reading
+  `text_range()` and token text, which the wrappers already do.
 - `AXIOM-CHUMSKY`: `parse_expression` reports error spans relative to its input
-  string. `shift_errors` adds the offset to every span in each `Simple`,
-  including the inner `Unclosed` span, using saturating arithmetic.
-- `AXIOM-TOKENIZER`: a line-comment token never contains `\n`, and `\r\n` is a
-  single whitespace token. A CRLF line ending is split rather than excluded:
-  the comment token ends with the `\r`, and the `\n` begins the next whitespace
-  token, which may also absorb following spaces or tabs.
+  string. This is `chumsky`'s documented contract for `Simple`.
+- `AXIOM-LOGOS`: `Lexer::span()` returns a byte range within the lexer's input,
+  so every token span `tokenize_impl` produces lies within `0..len`. The
+  `src.get(span)` check in `tokenize_impl` substitutes an `N_ERROR` token on a
+  failed lookup but does not by itself enforce the bound: release builds keep
+  the invalid span, and debug builds trip a `debug_assert!`. The bound is
+  therefore attributed to the lexer contract, not to the fallback.
 
-Each axiom is either an external crate invariant or a property of repository
-code that a named test pins. None is an unexamined assumption:
+### Repository lemmas
 
-- `AXIOM-ROWAN` is an external invariant of the `rowan` crate, relied on by
-  every existing AST wrapper. This change adds no new dependency on it beyond
-  reading `text_range()` and token text, which the wrappers already do.
-- `AXIOM-CHUMSKY` has two halves. The relative-span half is `chumsky`'s
-  documented contract for `Simple`. The shifting half is repository code:
-  `shift_errors` matches all three `SimpleReason` variants explicitly and
-  shifts the inner `Unclosed` span as well as the outer one
-  (`src/parser/span_utils.rs`). `span_utils::tests` pins both the
-  unclosed-delimiter and custom-message shifts, so a shift that moved only the
-  outer span fails a test rather than passing silently.
-- `AXIOM-TOKENIZER` is repository code, not an external assumption. The two
-  `logos` patterns at `src/tokenizer.rs:18` and `src/tokenizer.rs:22` are
-  `[ \t\r\n]+` and `//[^\n]*`; the first cannot split `\r\n`, and the second
-  cannot include `\n`. The second pattern does match a trailing `\r`, so a CRLF
-  line ending leaves `\r` in the comment token and the `\n` at the start of the
-  next whitespace token; because `[ \t\r\n]+` is greedy, that token can also
-  absorb indentation on the following line. That still keeps the statement
-  break visible, because the scanner tests each token for `\n` rather than
-  treating a comment as a whole line. `tokenizer::tests` pins each property
-  alone and the combined comment-then-CRLF boundaries, with and without
-  following indentation, so a pattern change that broke any of them fails a
-  test.
+The remaining premises are properties of repository code, established by
+source-based argument over the admitted inputs. The argument is not a
+machine-checked proof, and the named cases and properties are regression
+evidence for its premises rather than the argument itself.
 
-The lemmas `L-UNIQUE` and `L-TRIVIA` are established by source-based argument
-over the admitted inputs. The argument is not a machine-checked proof, and the
-named cases and properties are regression evidence for its premises rather than
-the argument itself.
+`L-SHIFT`. `shift_errors` (`src/parser/span_utils.rs`) matches `SimpleReason`
+exhaustively. `Unexpected` carries no span; `Custom(msg)` rewrites the outer
+span; and `Unclosed { span, delimiter }` rewrites both the outer span and the
+inner `span` field with the same offset, using `saturating_add`. The match has
+no wildcard arm, so a new `SimpleReason` variant fails to compile until its
+spans are handled. For any representable in-source offset, the shifted sum is
+at most the source length, which is below `usize::MAX`, so `saturating_add`
+equals ordinary addition and the shift is exact. `span_utils::tests` pins both
+the unclosed-delimiter and custom-message shifts, so a shift that moved only
+the outer span fails a test rather than passing silently.
+
+`L-TOKENIZER`. The two `logos` patterns at `src/tokenizer.rs:18` and
+`src/tokenizer.rs:22` are `[ \t\r\n]+` and `//[^\n]*`. The line-comment class
+excludes `\n`, so a line-comment token never contains a newline and no comment
+can swallow a statement break. Away from comments, `\r\n` is a single
+whitespace token, because `[ \t\r\n]+` cannot split it. The split, and its
+scope, begins at the comment boundary: `//[^\n]*` does match a trailing `\r`,
+so a CRLF line ending leaves `\r` in the comment token and the `\n` at the
+start of the next whitespace token; because `[ \t\r\n]+` is greedy, that token
+can also absorb indentation on the following line. Either way the break stays
+visible, because the scanner tests each token with `text.contains('\n')` rather
+than treating a comment as a whole line. `tokenizer::tests` pins each property
+alone and the combined comment-then-CRLF boundaries, with and without following
+indentation, so a pattern change that broke any of them fails a test.
+
+The same method establishes `L-UNIQUE` and `L-TRIVIA` from the premises above.
 
 `L-UNIQUE`. `binder_group_close`
 (`src/parser/ast/relation/primary_key/clause.rs`) walks the suffix elements in
@@ -1348,13 +1395,13 @@ exactly the source slice `[start(E), end(E))`. `tokenize_without_trivia` drops
 trivia tokens but preserves the order and text of the remaining tokens, so
 `parse_expression(text(E))` sees the same non-trivia sequence the hull contains.
 `chumsky` reports `Simple` spans relative to its input (`AXIOM-CHUMSKY`), and
-`shift_errors` adds `start(E)` to every span, including the inner `Unclosed`
-span, with `saturating_add`. For any representable in-source offset,
-`start(E) + relative` is at most the source length, which is below
-`usize::MAX`, so `saturating_add` equals ordinary addition and the shift is
-exact. The argument covers every finite admitted expression and every
-representable source offset. It assumes only the two external contracts already
-listed as axioms and the scanner precondition.
+`shift_errors` adds `start(E)` to every span (`L-SHIFT`), including the inner
+`Unclosed` span. For any representable in-source offset, `start(E) + relative`
+is at most the source length, which is below `usize::MAX`, so `saturating_add`
+equals ordinary addition and the shift is exact. The argument covers every
+finite admitted expression and every representable source offset. It assumes
+only the external contracts listed as axioms, `L-SHIFT`, and the scanner
+precondition.
 
 `L-TRIVIA`'s span bound. `parse_expression` is the only producer of the errors
 that `PrimaryKeyExpression::parse` shifts. Every error it returns is a
@@ -1371,13 +1418,8 @@ expression-relative token spans or the expression's `eof_span()` for its
 `SimpleReason::Custom` diagnostics. `complete_reserved_token_errors` adds only
 token spans from `tokenize_with_trivia(text(E))`.
 
-The in-range property of token spans rests on the `logos` contract that
-`Lexer::span()` returns a byte range within its input. `tokenize_impl` checks
-`src.get(span)` and substitutes an `N_ERROR` token, but that check does not
-enforce the bound: in release builds the fallback keeps the invalid span, and
-in debug builds it trips a `debug_assert!`. The bound is therefore attributed
-to the lexer contract, not to the fallback. With that contract, every relative
-span lies within `0..text(E).len()`.
+The in-range property of token spans rests on `AXIOM-LOGOS`. With that
+contract, every relative span lies within `0..text(E).len()`.
 
 The Pratt parser and the pattern parser never construct an `Unclosed` error, so
 the inner-span case is vacuous on this path; `shift_errors` still shifts it
@@ -1513,9 +1555,10 @@ Verus is not warranted for this item, and Kani is not used.
 
 The obligations concern agreement between the scanner, `rowan`'s token ranges,
 and `chumsky`'s error spans. Each external piece is trusted as an axiom
-(`AXIOM-ROWAN`, `AXIOM-CHUMSKY`, `AXIOM-TOKENIZER`). A Verus proof would need
-models of those interfaces, so it would prove a model of the integration rather
-than the integration itself.
+(`AXIOM-ROWAN`, `AXIOM-CHUMSKY`, `AXIOM-LOGOS`), and the repository-owned
+premises are argued as `L-SHIFT`, `L-TOKENIZER`, `L-UNIQUE`, and `L-TRIVIA`. A
+Verus proof would need models of those interfaces, so it would prove a model of
+the integration rather than the integration itself.
 
 The only pure kernel is the non-trivia hull of the tokens after the first
 balanced group: about fifteen lines of straight-line iteration with a single

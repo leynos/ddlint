@@ -111,14 +111,20 @@ match expression.parse() {
 
 ## Scanner behaviour changes
 
-Two scanner boundaries changed alongside the API:
+Three observable changes accompany the API:
 
 - A `;` at depth zero now terminates a primary-key clause instead of being
   absorbed into its expression, so a declaration that follows on the same line
-  is still scanned. A semicolon inside nested delimiters is not a statement
-  boundary and stays part of the expression.
+  is still scanned, whether or not that declaration declares a primary key of
+  its own. A semicolon inside nested delimiters is not a statement boundary and
+  stays part of the expression.
 - A binder list that is not a comma-separated list of identifiers, such as
   `(x.y)` or `(x,)`, reports `D-REL-007` instead of being accepted.
+- A keyed relation node now owns the same trailing trivia as its keyless twin,
+  so the two relation spans differ only by the length of the removed clause.
+  Slicing the source with `Relation::span()` therefore returns the same
+  trailing text for both forms. Code that measured a relation span from the end
+  of the key expression must use the relation span instead.
 
 Recovery from unbalanced delimiters has not changed. A clause such as
 `primary key (x) (` reports `D-REL-007`, and recovery skips the line. No

@@ -302,10 +302,16 @@ source-absolute spans, and a failed parse never hides the binders.
 
 Two scanner corrections accompany this. A `;` at depth zero now ends a
 primary-key clause instead of being absorbed into it, so a following
-declaration on the same line is still scanned; a semicolon inside nested
-delimiters stays part of the expression. A binder list that is not a
-comma-separated list of identifiers, such as `(x.y)` or `(x,)`, reports
-`D-REL-007` instead of being accepted.
+declaration on the same line is still scanned, whether or not that declaration
+declares a primary key of its own; a semicolon inside nested delimiters stays
+part of the expression. A binder list that is not a comma-separated list of
+identifiers, such as `(x.y)` or `(x,)`, reports `D-REL-007` instead of being
+accepted.
+
+Relation spans are unaffected by a key clause. A keyed relation node owns the
+same trailing trivia as its keyless twin, so the two relation spans differ only
+by the length of the removed clause, and slicing the source with
+`Relation::span()` returns the same trailing text in both cases.
 
 The [v0.2.0 migration guide](./v0-2-0-migration-guide.md) shows the
 before-and-after call shapes for code that used the retired `Vec<String>`
