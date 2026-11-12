@@ -7,6 +7,7 @@ CV-005 remains the strict workflow reader and canonical policy owner.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,10 +17,16 @@ from cv005_contracts.loading import read_workflows
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIRECTORY = ROOT / ".github" / "workflows"
-# Keep this in step with the single full-SHA pin the workflows use. Dependabot
-# moves that pin as one group, so a stale copy here fails these cases loudly
-# instead of silently accepting a mixed set of revisions.
-APPROVED_SHARED_ACTIONS_REF = "872f59f53717b5bebe8e24b2f4a7496b089a939a"
+# The single full-SHA pin the workflows use, read from CI's own setup-rust
+# reference rather than restated here. Every other reference is compared with
+# it, so a mixed set of revisions still fails these cases loudly.
+_LIVE_PIN = re.search(
+    r"leynos/shared-actions/\.github/actions/setup-rust@([0-9a-f]{40})\b",
+    (WORKFLOWS_DIRECTORY / "ci.yml").read_text(encoding="utf-8"),
+)
+if _LIVE_PIN is None:
+    raise AssertionError("ci.yml must pin setup-rust to a full commit SHA")
+APPROVED_SHARED_ACTIONS_REF = _LIVE_PIN.group(1)
 SHARED_ACTION_PREFIX = "leynos/shared-actions/.github"
 SETUP_RUST = f"{SHARED_ACTION_PREFIX}/actions/setup-rust@{APPROVED_SHARED_ACTIONS_REF}"
 MUTATION_CARGO = f"{SHARED_ACTION_PREFIX}/workflows/mutation-cargo.yml@{APPROVED_SHARED_ACTIONS_REF}"
