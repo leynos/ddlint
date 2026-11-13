@@ -144,15 +144,24 @@ def test_the_gate_target_keeps_the_literal_policy_and_packages(
 ) -> None:
     """The gate must clear inherited flags and select the whole workspace."""
     recipe = _recipe(makefile_text, "lint-whitaker")
+    invocation = "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features"
     for required in (
         "unset CARGO_ENCODED_RUSTFLAGS",
         'RUSTFLAGS="-D warnings"',
         "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm",
-        "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features",
+        invocation,
     ):
         assert required in recipe, (
             f"lint-whitaker must keep the literal warning policy, the LLVM "
             f"override and the package selection: missing {required}"
+        )
+    assert recipe.index("unset CARGO_ENCODED_RUSTFLAGS") < recipe.index(invocation), (
+        "lint-whitaker must clear inherited flags before it runs Whitaker"
+    )
+    environment = recipe.split(invocation)[0]
+    for setting in ('RUSTFLAGS="-D warnings"', "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm"):
+        assert setting in environment, (
+            f"{setting} must be set in the environment of the Whitaker command"
         )
 
 

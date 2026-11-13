@@ -41,6 +41,31 @@ fn the_command_reader_tells_a_bare_tool_from_an_exempt_command(
     }
 }
 
+/// Scenario: commands that carry the isolated Whitaker settings but do not run Whitaker with them
+/// as environment assignments.
+///
+/// Invariant: only a leading assignment counts, and only the executable decides the exemption, so
+/// neither a Cargo command naming `whitaker` nor Whitaker with the settings as arguments is read as
+/// unassigned.
+#[rstest]
+#[case::cargo_names_whitaker(
+    "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm RUSTFLAGS=\"-D warnings\" cargo test --target-dir \
+     whitaker\n"
+)]
+#[case::settings_as_arguments(
+    "whitaker RUSTFLAGS=\"-D warnings\" CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm\n"
+)]
+fn a_command_that_only_resembles_isolated_whitaker_is_not_exempt(
+    #[case] stdout: &str,
+) -> Result<(), String> {
+    let read = commands_from(stdout)?;
+    if read == [Assignment::Unassigned] {
+        Err(format!("`{stdout}` was exempted as Whitaker"))
+    } else {
+        Ok(())
+    }
+}
+
 /// Counts the assigned and the bare commands the reader finds in `make -n` output.
 fn tally(stdout: &str) -> Result<(usize, usize), String> {
     let read = commands_from(stdout)?;

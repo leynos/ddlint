@@ -134,15 +134,11 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
 
 /// Returns whether a command is Whitaker under the literal warning-only `RUSTFLAGS` boundary, with
 /// an explicit LLVM backend so it does not inherit the repository's Cranelift default.
+///
+/// Both settings must be leading `NAME=value` assignments, so they are environment settings and
+/// not arguments, and the first word after them must be the `whitaker` executable. Each quoted
+/// span is dropped first, because a quoted value may hold spaces.
 fn is_isolated_whitaker(command: &str) -> bool {
-    command.contains("RUSTFLAGS=\"-D warnings\"")
-        && command.contains("CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm")
-        && executable(command).is_some_and(|word| word.rsplit('/').next() == Some("whitaker"))
-}
-
-/// Returns the executable of a command: the first word that is not a leading `NAME=value`
-/// assignment, after dropping each quoted span (a quoted value may hold spaces).
-fn executable(command: &str) -> Option<String> {
     let mut unquoted = String::new();
     let mut quote = false;
     for c in command.chars() {
@@ -152,14 +148,20 @@ fn executable(command: &str) -> Option<String> {
             (true, _) => {}
         }
     }
-    unquoted
-        .split_whitespace()
-        .find(|word| {
-            word.split_once('=').is_none_or(|(name, _)| {
-                name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-            })
-        })
-        .map(str::to_owned)
+    let mut assigned = Vec::new();
+    for word in unquoted.split_whitespace() {
+        let is_assignment = word.split_once('=').is_some_and(|(name, _)| {
+            !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        });
+        if !is_assignment {
+            return word.rsplit('/').next() == Some("whitaker")
+                && command.contains("RUSTFLAGS=\"-D warnings\"")
+                && assigned.contains(&"RUSTFLAGS=")
+                && assigned.contains(&"CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm");
+        }
+        assigned.push(word);
+    }
+    false
 }
 
 /// A Makefile target name, typed so a runner takes a target and not just any text.
