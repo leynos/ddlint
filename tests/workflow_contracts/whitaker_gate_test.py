@@ -15,6 +15,7 @@ Run via ``make test-workflow-contracts``.
 from __future__ import annotations
 
 import re
+import shlex
 
 import pytest
 import yaml
@@ -145,22 +146,18 @@ def test_the_gate_target_keeps_the_literal_policy_and_packages(
     """The gate must clear inherited flags and select the whole workspace."""
     recipe = _recipe(makefile_text, "lint-whitaker")
     invocation = "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features"
-    for required in (
-        "unset CARGO_ENCODED_RUSTFLAGS",
-        'RUSTFLAGS="-D warnings"',
-        "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm",
-        invocation,
-    ):
-        assert required in recipe, (
-            f"lint-whitaker must keep the literal warning policy, the LLVM "
-            f"override and the package selection: missing {required}"
-        )
-    assert recipe.index("unset CARGO_ENCODED_RUSTFLAGS") < recipe.index(invocation), (
-        "lint-whitaker must clear inherited flags before it runs Whitaker"
+    lines = [line for line in recipe.splitlines() if invocation in line]
+    assert len(lines) == 1, "lint-whitaker must run Whitaker on exactly one recipe line"
+    # One recipe line is one shell, so the clearing, the environment settings and
+    # the invocation must all sit on that line, in that order.
+    clearing, separator, command = lines[0].partition("&&")
+    assert separator and clearing.strip() == "unset CARGO_ENCODED_RUSTFLAGS", (
+        "lint-whitaker must clear inherited flags before it runs Whitaker, in the same shell"
     )
-    environment = recipe.split(invocation)[0]
-    for setting in ('RUSTFLAGS="-D warnings"', "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm"):
-        assert setting in environment, (
+    environment, _, _ = command.partition(invocation)
+    words = shlex.split(environment)
+    for setting in ("RUSTFLAGS=-D warnings", "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm"):
+        assert setting in words, (
             f"{setting} must be set in the environment of the Whitaker command"
         )
 

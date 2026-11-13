@@ -139,21 +139,46 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
 /// not arguments, and the first word after them must be the `whitaker` executable. Each quoted
 /// span is dropped first, because a quoted value may hold spaces.
 fn is_isolated_whitaker(command: &str) -> bool {
-    // The even-numbered pieces of a split on `"` lie outside every quoted span.
-    let unquoted: String = command.split('"').step_by(2).collect();
-    let words: Vec<&str> = unquoted.split_whitespace().collect();
+    let words = ShellLine(command).words();
     let leading = words.iter().take_while(|word| {
         word.split_once('=').is_some_and(|(name, _)| {
             !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
         })
     });
     let (assigned, rest) = words.split_at(leading.count());
+    let rustflags: Vec<&&str> = assigned
+        .iter()
+        .filter(|word| word.starts_with("RUSTFLAGS="))
+        .collect();
     rest.first()
         .is_some_and(|word| word.rsplit('/').next() == Some("whitaker"))
-        && command.contains("RUSTFLAGS=\"-D warnings\"")
-        && ["RUSTFLAGS=", "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm"]
-            .iter()
-            .all(|setting| assigned.contains(setting))
+        && rustflags == [&"RUSTFLAGS=\"-D warnings\""]
+        && assigned.contains(&"CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm")
+}
+
+/// A shell command line, read word by word with each double-quoted span kept whole.
+struct ShellLine<'a>(&'a str);
+
+impl<'a> ShellLine<'a> {
+    /// Returns the words of the line, split on whitespace outside double quotes.
+    fn words(&self) -> Vec<&'a str> {
+        let mut words = Vec::new();
+        let mut start = None;
+        let mut quoted = false;
+        for (index, c) in self.0.char_indices() {
+            quoted ^= c == '"';
+            match (c.is_whitespace() && !quoted, start) {
+                (true, Some(begin)) => {
+                    words.extend(self.0.get(begin..index));
+                    start = None;
+                }
+                (false, None) => start = Some(index),
+                _ => {}
+            }
+        }
+        words.extend(start.and_then(|begin| self.0.get(begin..)));
+        words
+    }
 }
 
 /// A Makefile target name, typed so a runner takes a target and not just any text.
