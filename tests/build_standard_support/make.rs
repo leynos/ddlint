@@ -139,29 +139,21 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
 /// not arguments, and the first word after them must be the `whitaker` executable. Each quoted
 /// span is dropped first, because a quoted value may hold spaces.
 fn is_isolated_whitaker(command: &str) -> bool {
-    let mut unquoted = String::new();
-    let mut quote = false;
-    for c in command.chars() {
-        match (quote, c) {
-            (_, '"') => quote = !quote,
-            (false, _) => unquoted.push(c),
-            (true, _) => {}
-        }
-    }
-    let mut assigned = Vec::new();
-    for word in unquoted.split_whitespace() {
-        let is_assignment = word.split_once('=').is_some_and(|(name, _)| {
+    // The even-numbered pieces of a split on `"` lie outside every quoted span.
+    let unquoted: String = command.split('"').step_by(2).collect();
+    let words: Vec<&str> = unquoted.split_whitespace().collect();
+    let leading = words.iter().take_while(|word| {
+        word.split_once('=').is_some_and(|(name, _)| {
             !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-        });
-        if !is_assignment {
-            return word.rsplit('/').next() == Some("whitaker")
-                && command.contains("RUSTFLAGS=\"-D warnings\"")
-                && assigned.contains(&"RUSTFLAGS=")
-                && assigned.contains(&"CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm");
-        }
-        assigned.push(word);
-    }
-    false
+        })
+    });
+    let (assigned, rest) = words.split_at(leading.count());
+    rest.first()
+        .is_some_and(|word| word.rsplit('/').next() == Some("whitaker"))
+        && command.contains("RUSTFLAGS=\"-D warnings\"")
+        && ["RUSTFLAGS=", "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm"]
+            .iter()
+            .all(|setting| assigned.contains(setting))
 }
 
 /// A Makefile target name, typed so a runner takes a target and not just any text.
