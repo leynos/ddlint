@@ -53,6 +53,8 @@ jobs:
           globs: '**/*.md'
       - name: Install the Whitaker Dylint suite
         uses: leynos/shared-actions/.github/actions/install-whitaker@fc0e10220207b951bf693aba2ce4f9dafc1a0206
+        with:
+          cranelift: true
       - name: Lint
         run: make lint
       # The full-feature suite is independent of the coverage feature selection.

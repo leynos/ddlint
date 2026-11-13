@@ -806,25 +806,25 @@ parsing the repository's own configuration. It starts no Cargo process.
 under the toolchain its installer manages, so it takes none of the development
 standard (no parallel frontend, no `mold` linker flag and no inherited
 `RUSTFLAGS`). The build-standard contract reads that isolated command as exempt
-from the restatement clauses, and ADR 003 records the exception.
-`tests/whitaker_isolation_contract.rs` reads the real `make -n lint` output and
-fails unless Whitaker clears the encoded flags and assigns the literal
-`RUSTFLAGS="-D warnings"`. `tests/whitaker_gate_contract.rs` runs the gate and
-the aggregate with a controlled failing Whitaker, so neither can succeed while
-the suite fails. `tests/workflow_contracts/whitaker_gate_test.py` holds the
-splitting, ordering, packages variable and CI installer pin.
+from the restatement clauses, and ADR 003 records the exception. The command
+also selects the LLVM backend (`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`),
+because the installer-managed toolchain does not take the repository's
+Cranelift default, and puts `~/.local/bin` first on `PATH`.
+`tests/whitaker_gate_contract.rs` runs the gate and the aggregate with a
+controlled failing Whitaker, so neither can succeed while the suite fails.
+`tests/workflow_contracts/whitaker_gate_test.py` holds the splitting, ordering,
+packages variable and CI installer pin.
 
 ### Cranelift
 
-Exception: Cranelift is not the development-profile backend. The repository pins
-`nightly-2026-10-30` (no Cranelift measurement was taken on it, and the
-exception has no deferral date: it holds while the release workflow builds on
-stable), but the release workflow (`cross +stable build --release`) builds on a
-stable toolchain against `.cargo/config.toml`, and stable Cargo refuses a
-`[profile.dev] codegen-backend` key ("config profile `dev` is not valid"), so
-selecting the backend would break that build (recorded 2026-09-29). That build
-assigns `RUSTFLAGS`, so the nightly-only `-Zthreads` flag never reaches it.
-Revisit if that build moves to the pinned nightly.
+Cranelift is the default backend for development builds, set in
+`.cargo/config.toml` (`[profile.dev] codegen-backend = "cranelift"`) on the
+nightly pinned in `rust-toolchain.toml`. The release workflow builds on the
+same pinned nightly with LLVM, because the dev profile does not reach the
+release profile. Coverage and Whitaker select LLVM explicitly, since Cranelift
+cannot instrument coverage and Whitaker's installer-managed toolchain does not
+take the Cranelift default. The full suite (1452 tests, doc tests included)
+passes under Cranelift on `nightly-2026-11-09`.
 
 The Rust build contract in `tests/build_standard_contract.rs` checks target
 routing, preflight ordering and installation behaviour. Its Makefile-target
@@ -839,18 +839,13 @@ build flags and their rationale are recorded in
 
 ### Code-generation backend evidence
 
-The repository retains LLVM and the `nightly-2026-10-30` toolchain pin, and the
-Cranelift exception recorded above states why the development profile does not
-select that backend. The measurement below was taken on the former
-`nightly-2025-09-16` pin, before the toolchain moved, and has not been repeated
-on the current pin. The earlier `[profile.dev] codegen-backend` observation
-explains a Cargo configuration constraint, but it does not by itself establish
-the backend's panic behaviour.
+The development profile selects Cranelift, as recorded above. The measurement
+below was taken on the former `nightly-2025-09-16` pin, before the toolchain
+moved, and the full-suite result above supersedes it for the current pin.
 
 In a bounded Linux x86-64 GNU scratch comparison using `nightly-2025-09-16`,
 Cranelift passed the unwind `should_panic` case, failed the `catch_unwind`
 case, and aborted on the spawned-thread panic case. The matched LLVM run passed
 all three while retaining the development thread and linker flags. These
 results cover neither the full repository nor instrumented coverage or other
-hosts, and they are not the basis of the Cranelift exception recorded above,
-which rests on the release workflow's stable-toolchain constraint.
+hosts.

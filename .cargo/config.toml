@@ -26,3 +26,11 @@ rustflags = ["-Zthreads=8", "-Clink-arg=-fuse-ld=mold"]
 # Never use raw rustc metadata flags; they broke build scripts.
 [unstable]
 embed-metadata = false
+codegen-backend = true
+
+# Cranelift trades runtime performance for compile speed, so it applies to the
+# dev profile only. Release builds keep LLVM, and coverage selects LLVM
+# explicitly. Stable Cargo refuses both keys, so only the pinned nightly may
+# read this file.
+[profile.dev]
+codegen-backend = "cranelift"

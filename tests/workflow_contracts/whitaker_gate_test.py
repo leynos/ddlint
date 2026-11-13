@@ -144,12 +144,16 @@ def test_the_gate_target_keeps_the_literal_policy_and_packages(
 ) -> None:
     """The gate must clear inherited flags and select the whole workspace."""
     recipe = _recipe(makefile_text, "lint-whitaker")
-    assert (
-        'unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" '
-        "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features"
-    ) in recipe, (
-        "lint-whitaker must keep the literal warning policy and package selection"
-    )
+    for required in (
+        "unset CARGO_ENCODED_RUSTFLAGS",
+        'RUSTFLAGS="-D warnings"',
+        "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm",
+        "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features",
+    ):
+        assert required in recipe, (
+            f"lint-whitaker must keep the literal warning policy, the LLVM "
+            f"override and the package selection: missing {required}"
+        )
 
 
 def test_the_packages_variable_defaults_to_the_workspace(makefile_text: str) -> None:
