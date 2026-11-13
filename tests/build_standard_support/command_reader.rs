@@ -17,7 +17,10 @@ use super::make::{Assignment, commands_from};
 #[case::clippy("cargo clippy --all-targets\n", Assignment::Bare("cargo clippy --all-targets".to_owned()))]
 #[case::typecheck("cargo check --workspace\n", Assignment::Bare("cargo check --workspace".to_owned()))]
 #[case::whitaker("whitaker --all\n", Assignment::Bare("whitaker --all".to_owned()))]
-#[case::isolated_whitaker("RUSTFLAGS=\"-D warnings\" whitaker --all\n", Assignment::Unassigned)]
+#[case::isolated_whitaker(
+    "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm RUSTFLAGS=\"-D warnings\" whitaker --all\n",
+    Assignment::Unassigned
+)]
 #[case::llvm_cov("cargo llvm-cov nextest\n", Assignment::Bare("cargo llvm-cov nextest".to_owned()))]
 #[case::version_probe("cargo nextest --version\n", Assignment::Unassigned)]
 #[case::formatter("cargo fmt --all --check\n", Assignment::Unassigned)]
@@ -35,6 +38,39 @@ fn the_command_reader_tells_a_bare_tool_from_an_exempt_command(
         Ok(())
     } else {
         Err(format!("`{stdout}` was read as {read:?}"))
+    }
+}
+
+/// Scenario: commands that carry the isolated Whitaker settings but do not run Whitaker with them
+/// as environment assignments.
+///
+/// Invariant: only a leading assignment counts, and only the executable decides the exemption, so
+/// neither a Cargo command naming `whitaker` nor Whitaker with the settings as arguments is read as
+/// unassigned.
+#[rstest]
+#[case::cargo_names_whitaker(
+    "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm RUSTFLAGS=\"-D warnings\" cargo test --target-dir \
+     whitaker\n"
+)]
+#[case::settings_as_arguments(
+    "whitaker RUSTFLAGS=\"-D warnings\" CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm\n"
+)]
+#[case::wrong_leading_value_with_the_right_one_as_an_argument(
+    "RUSTFLAGS=\"wrong\" CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm whitaker RUSTFLAGS=\"-D \
+     warnings\"\n"
+)]
+#[case::the_flags_assigned_twice(
+    "RUSTFLAGS=\"-D warnings\" RUSTFLAGS=\"-Zthreads=8\" CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm \
+     whitaker --all\n"
+)]
+fn a_command_that_only_resembles_isolated_whitaker_is_not_exempt(
+    #[case] stdout: &str,
+) -> Result<(), String> {
+    let read = commands_from(stdout)?;
+    if read == [Assignment::Unassigned] {
+        Err(format!("`{stdout}` was exempted as Whitaker"))
+    } else {
+        Ok(())
     }
 }
 

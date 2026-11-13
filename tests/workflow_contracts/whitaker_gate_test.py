@@ -15,6 +15,7 @@ Run via ``make test-workflow-contracts``.
 from __future__ import annotations
 
 import re
+import shlex
 
 import pytest
 import yaml
@@ -144,12 +145,21 @@ def test_the_gate_target_keeps_the_literal_policy_and_packages(
 ) -> None:
     """The gate must clear inherited flags and select the whole workspace."""
     recipe = _recipe(makefile_text, "lint-whitaker")
-    assert (
-        'unset CARGO_ENCODED_RUSTFLAGS && RUSTFLAGS="-D warnings" '
-        "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features"
-    ) in recipe, (
-        "lint-whitaker must keep the literal warning policy and package selection"
+    invocation = "$(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features"
+    lines = [line for line in recipe.splitlines() if invocation in line]
+    assert len(lines) == 1, "lint-whitaker must run Whitaker on exactly one recipe line"
+    # One recipe line is one shell, so the clearing, the environment settings and
+    # the invocation must all sit on that line, in that order.
+    clearing, separator, command = lines[0].partition("&&")
+    assert separator and clearing.strip() == "unset CARGO_ENCODED_RUSTFLAGS", (
+        "lint-whitaker must clear inherited flags before it runs Whitaker, in the same shell"
     )
+    environment, _, _ = command.partition(invocation)
+    words = shlex.split(environment)
+    for setting in ("RUSTFLAGS=-D warnings", "CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm"):
+        assert setting in words, (
+            f"{setting} must be set in the environment of the Whitaker command"
+        )
 
 
 def test_the_packages_variable_defaults_to_the_workspace(makefile_text: str) -> None:

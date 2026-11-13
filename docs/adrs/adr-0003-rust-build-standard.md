@@ -33,8 +33,8 @@ artefacts also need a baseline that the fast flags would disturb.
   and CI step that assigns `RUSTFLAGS` without them.
 - Restate the flags in each recipe and step, held by a contract test. This is
   the option taken.
-- Adopt Cranelift for development builds. The developers' guide records why
-  this repository does not.
+- Adopt Cranelift for development builds. The repository did not at first and
+  does since 2026-11-13; see the backend evidence below.
 
 ## Decision outcome
 
@@ -44,8 +44,8 @@ flags into each development recipe, keeping the caller's own `RUSTFLAGS`.
 Coverage assigns its own flags and ignores the caller's. The release recipe
 keeps the caller's flags and names neither fast flag, so it ships from the
 platform linker; a direct `cargo build --release` takes the configuration's
-flags unless `RUSTFLAGS` is assigned. Cranelift is not adopted; the developers'
-guide records the measurement and the reason.
+flags unless `RUSTFLAGS` is assigned. Cranelift was not adopted at first; the
+backend evidence below records the 2026-11-13 change.
 
 `tests/build_standard_contract.rs` reads the Cargo configuration sources and
 the commands `make -n` prints for each target, and the `setup-rust` steps of
@@ -53,13 +53,12 @@ the workflows, so a flag lost through a recipe or workflow edit fails there.
 
 ## Backend qualification evidence
 
-The accepted routing decision above remains in force. LLVM remains the
-repository's development backend, and `nightly-2026-10-30` is its compiler pin.
-The developers' guide records the Cranelift exception — it holds while the
-release workflow builds on stable — and the bounded unwind measurement behind
-it, taken on the former `nightly-2025-09-16` pin. That measurement covers
-neither the full repository nor instrumented coverage or other hosts, and it is
-not the basis of the exception.
+The accepted routing decision above remains in force. Since 2026-11-13 the
+development backend is Cranelift, selected in `.cargo/config.toml`, because the
+release workflow builds on the pinned nightly instead of stable. The
+developers' guide records the full suite's result under Cranelift and the
+earlier bounded unwind measurement, taken on the former `nightly-2025-09-16`
+pin.
 
 ## Consequences
 
@@ -67,7 +66,9 @@ not the basis of the exception.
   must be GCC 12.1 or newer, or clang.
 - A change to a recipe or workflow step that assigns `RUSTFLAGS` must restate
   the flags, and the contract says which clause fails when it does not.
-- Revisit Cranelift when the toolchain or the failing tests change.
+- Cranelift is the development default from 2026-11-13; coverage and Whitaker
+  select LLVM explicitly, and release builds keep LLVM because `[profile.dev]`
+  does not reach them.
 
 ## Addendum, 2026-10-31: Whitaker is isolated from the standard
 
@@ -86,8 +87,7 @@ the development standard.
 - Consequence: Whitaker links with the platform linker, and a caller's
   `RUSTFLAGS` no longer reaches it.
 - `tests/build_standard_support/make.rs` reads an isolated Whitaker command as
-  exempt from the restatement clauses; `tests/whitaker_isolation_contract.rs`
-  proves the literal assignment against the real `make -n lint` output.
+  exempt from the restatement clauses when it also selects the LLVM backend.
 - The development profile now sets `incremental = false` and `debug = 0`, and
   `.cargo/config.toml` the native `[unstable] embed-metadata = false` key for
   the dated nightly (the `rust-dev-build-footprint` rule), described in the
