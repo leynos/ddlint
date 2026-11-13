@@ -429,7 +429,7 @@ is correct whether or not `fn_single_line` is enabled. Multi-statement bodies
 and items that do not parse as functions pass through unchanged, `#[expect]` is
 unusable for the reason above, and the helper neither inspects nor enforces the
 repository's formatter settings. The 2026-11-06 addendum in
-[ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
+[ADR 005](adrs/adr-0005-fixture-expansion-lint-helper.md) records the scope and
 limitations.
 
 `tests/fixture_expansion_compile.rs` is the compile-test contract. Its pass
@@ -469,7 +469,7 @@ rule changes: a newly suppressed shape needs a matching pass case, and a newly
 rejected shape needs a compile-fail case with its `.stderr` baseline.
 
 The proc-macro boundary and its rationale are recorded in
-[ADR 005](adr-005-fixture-expansion-lint-helper.md).
+[ADR 005](adrs/adr-0005-fixture-expansion-lint-helper.md).
 
 ## Spelling policy
 
@@ -805,7 +805,7 @@ keeps each module within the size budget. The workflow consumer contract in the
 `tests/workflow_contracts/build_provisioning*_test.py` modules verifies that CI
 suites are reached only after their required provisioning step. The development
 build flags and their rationale are recorded in
-[ADR 003](adr-003-rust-build-standard.md).
+[ADR 003](adrs/adr-0003-rust-build-standard.md).
 
 ### Code-generation backend evidence
 
