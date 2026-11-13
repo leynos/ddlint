@@ -618,6 +618,20 @@ minus deleted). Count files with `git diff --name-only origin/main`, excluding
   - Domain Architecture warning: unchanged, with no new evidence. The `D3`,
     ADR-001 phase 2, and issue #267 deferral stands.
 
+- [x] (2026-11-13) Eighth hosted review round reconciled.
+  - Testing (Property / Proof) warning: `Repository lemmas` now records a
+    disposition for `L-SHIFT`, `L-TOKENIZER`, `L-UNIQUE`, and `L-TRIVIA` one by
+    one, each with its justification for having no proof artefact and its
+    residual risk. The
+    `Formal verification decision` states that the decision covers each lemma,
+    so no lemma depends on a general rationale, and the conditional "if the
+    user disagrees" proof path is replaced by the explicit reopen procedure.
+    The CRLF wording in `L-TOKENIZER` is unchanged and still matches
+    `src/tokenizer_tests.rs`.
+  - Domain Architecture warning: confirmed unchanged on the reviewed head. The
+    `D3` deferral, ADR-001 phase 2, and issue #267 still record the owned
+    follow-up; no new evidence contradicts them.
+
 ## Surprises & discoveries
 
 - Observation (`EP-M3`): the binder parser captured trailing trivia.
@@ -1340,6 +1354,38 @@ source-based argument over the admitted inputs. The argument is not a
 machine-checked proof, and the named cases and properties are regression
 evidence for its premises rather than the argument itself.
 
+Each lemma is dispositioned individually below, so no lemma rests on a general
+decision about proofs. None has a machine-checked proof artefact, so each names
+its justification for having none and the residual risk that justification
+leaves.
+
+- `L-SHIFT` — no proof artefact. Justification: the lemma is a structural
+  property of an exhaustive `SimpleReason` match over a dependency enum; a
+  Verus model of `Simple` and `SimpleReason` would prove the model, not
+  `chumsky`. Residual risk: a future `SimpleReason` variant whose span field
+  the shift does not rewrite. The wildcard-free match turns that into a compile
+  error rather than a silent misreport, and `span_utils::tests` pins both the
+  outer and inner `Unclosed` shifts.
+- `L-TOKENIZER` — no proof artefact. Justification: the lemma reads two `logos`
+  patterns and one scanner predicate; a proof would formalize `logos`' class
+  semantics rather than this repository's use of them. Residual risk: a pattern
+  edit that moves a comment or whitespace boundary without a matching test.
+  `src/tokenizer_tests.rs` pins the four boundary cases, including the CRLF
+  split, and the scanner's per-token newline test keeps a statement break
+  visible.
+- `L-UNIQUE` — no proof artefact. Justification: the lemma is determinism of a
+  first-match depth scan whose arithmetic is checked, so the kernel carries no
+  contractual rule to prove. Residual risk: an admitted input that overflows
+  the depth counter or closes a group at depth zero. Both need the scanner
+  precondition to fail, which the proptest domain excludes; the scanner reports
+  D-REL-007 for the malformed binder lists, and the synthetic malformed-node
+  cases assert `Err` rather than panicking.
+- `L-TRIVIA` — no proof artefact. Justification: the lemma composes
+  `expression_after` hull selection with `shift_errors`, whose correctness is
+  `L-SHIFT`, over `AXIOM-CHUMSKY`'s relative-span contract. Residual risk: a
+  future `parse_expression` producer that reports a span outside its input; the
+  span-bound argument below enumerates every current producer.
+
 `L-SHIFT`. `shift_errors` (`src/parser/span_utils.rs`) matches `SimpleReason`
 exhaustively. `Unexpected` carries no span; `Custom(msg)` rewrites the outer
 span; and `Unclosed { span, delimiter }` rewrites both the outer span and the
@@ -1575,11 +1621,14 @@ Each has a seeded-fault control. A Kani bounded check over token-class
 sequences would duplicate that coverage without reaching the `rowan` and
 `chumsky` boundary, where the real risk lies.
 
-If the user disagrees, the abstract model above becomes the Verus specification
-of a pure `key_expression_hull` function over token-kind slices. A proof
-milestone would then run `verus` on that kernel as an explicit acceptance
-criterion. That requires a Decision log entry and a new tolerance for toolchain
-set-up.
+The decision covers each repository lemma separately rather than the plan as a
+whole. `L-SHIFT`, `L-TOKENIZER`, `L-UNIQUE`, and `L-TRIVIA` therefore have no
+proof artefact, and `Repository lemmas` records for each one its source-based
+argument and its residual risk, while `Methods per obligation` names the
+evidence that pins it. Reopening the decision means adding the Verus
+specification of a pure `key_expression_hull` over token-kind slices, a `verus`
+target, a continuous integration (CI) job, and a Decision log entry with a
+toolchain tolerance; it is not left open as a contingent path.
 
 ## Plan of work
 
