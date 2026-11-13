@@ -1250,7 +1250,7 @@ single expression statement with a trailing semicolon does not qualify, so
 genuine findings in those shapes remain visible. The helper's trigger is the
 item's syntactic shape, independent of formatter configuration, and it does not
 inspect or enforce formatter settings. The 2026-11-06 addendum in
-[ADR 005](adr-005-fixture-expansion-lint-helper.md) records the scope and
+[ADR 005](adrs/adr-0005-fixture-expansion-lint-helper.md) records the scope and
 limitations, alongside the qualification rule and compile-test contract.
 
 ## 7. Phased implementation roadmap and future work

@@ -135,7 +135,7 @@ spans for diagnostics and provenance.
 
 ## Related documents
 
-- [ADR-001: parser crate split for multi-consumer use](./adr-001-parser-crate-split.md)
-- [Differential Datalog parser syntax specification updated](./differential-datalog-parser-syntax-spec-updated.md)
-- [Parser conformance register](./parser-conformance-register.md)
-- [Parser implementation notes](./parser-implementation-notes.md)
+- [ADR-001: parser crate split for multi-consumer use](./adr-0001-parser-crate-split.md)
+- [Differential Datalog parser syntax specification updated](../differential-datalog-parser-syntax-spec-updated.md)
+- [Parser conformance register](../parser-conformance-register.md)
+- [Parser implementation notes](../parser-implementation-notes.md)

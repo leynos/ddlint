@@ -112,8 +112,9 @@ The following invariants must hold throughout the crate split:
 - Compatibility shims must live only in `ddlog-parser`, and each shim needs a
   deprecation target release plus a tracked removal issue.
 - Phase exits must use the validation scopes defined in
-  `docs/adr-001-parser-crate-split.md`: parser unit scope, integration scope,
-  and the `tests/fixtures/phase3/` corpus introduced for semantic extraction.
+  `docs/adrs/adr-0001-parser-crate-split.md`: parser unit scope, integration
+  scope, and the `tests/fixtures/phase3/` corpus introduced for semantic
+  extraction.
 
 ## Expression parser invariants
 

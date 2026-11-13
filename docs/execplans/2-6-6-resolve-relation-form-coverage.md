@@ -474,7 +474,7 @@ slice does not bounce the rest.
 
 #### Commit 5b — ADR-002
 
-- new `docs/adr-002-relation-role-kind-modelling.md`, explicitly
+- new `docs/adrs/adr-0002-relation-role-kind-modelling.md`, explicitly
   cross-referencing ADR-001 so the freeze handshake is documented;
 - `docs/ddlint-design.md` — short subsection on the typed AST surface
   pointing at ADR-002.
@@ -559,7 +559,7 @@ documentation completeness, and ADR-002.
       updated with deltas D1–D5;
       `docs/parser-implementation-notes.md`, `docs/ddlint-design.md`,
       `docs/users-guide.md`, and `docs/developers-guide.md` updated.
-- [x] `docs/adr-002-relation-role-kind-modelling.md` added.
+- [x] `docs/adrs/adr-0002-relation-role-kind-modelling.md` added.
 - [x] Roadmap follow-up `2.6.6.1` recorded for typed primary-key
       expression access.
 - [x] `make fmt`, `make markdownlint`, `make nixie`, `make check-fmt`,
@@ -668,7 +668,7 @@ flipped, and the roadmap item can be closed.
       `make check-fmt`, `make markdownlint`, and `make nixie`), then
       CodeRabbit completed with zero findings.
 - [x] (2026-06-16) Landed Milestone 5b (ADR-002). Added
-      `docs/adr-002-relation-role-kind-modelling.md` documenting the
+      `docs/adrs/adr-0002-relation-role-kind-modelling.md` documenting the
       enum-plus-predicate role/kind choice, `RelationBody`, the compatibility
       role predicates, the primary-key expression deferral, and the ADR-001
       syntax-layer boundary. Linked ADR-002 from `docs/ddlint-design.md` and
@@ -922,7 +922,7 @@ Local documentation:
 - `docs/rust-parser-testing-comprehensive-guide.md`
 - `docs/rust-testing-with-rstest-fixtures.md`
 - `docs/building-an-error-recovering-parser-with-chumsky.md`
-- `docs/adr-001-parser-crate-split.md`
+- `docs/adrs/adr-0001-parser-crate-split.md`
 
 Prior art:
 

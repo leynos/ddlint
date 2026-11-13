@@ -123,7 +123,7 @@ route alerts to the team that owns its input pipeline.
 ## Stable diagnostic contract
 
 The diagnostic-code list is a compatibility surface under
-[Architectural Decision Record (ADR) 001, Phase 2](./adr-001-parser-crate-split.md).
+[Architectural Decision Record (ADR) 001, Phase 2](./adrs/adr-0001-parser-crate-split.md).
 Existing code meanings do not change; new codes may be added. Human-facing
 message wording may become clearer, so automation must match `DiagnosticCode` or
 `DiagnosticCategory`, not message text.
@@ -150,4 +150,4 @@ Uncoded diagnostics retain a stable category. Current categories are `parser`,
 
 - [Parser implementation notes](./parser-implementation-notes.md)
 - [Parser conformance register](./parser-conformance-register.md)
-- [ADR-001: parser crate split](./adr-001-parser-crate-split.md)
+- [ADR-001: parser crate split](./adrs/adr-0001-parser-crate-split.md)

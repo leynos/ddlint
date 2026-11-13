@@ -83,7 +83,8 @@ navigable CST and typed AST.
 
 The parser now identifies top-level statements, but this phase completes
 expression parsing, resolves remaining syntax-spec deltas, and prepares the
-split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
+split parser library surfaces defined in
+`docs/adrs/adr-0001-parser-crate-split.md`.
 
 ### 2.1. Detailed expression parsing
 
@@ -243,9 +244,9 @@ that shape public contracts are closed or explicitly bounded.
 - [ ] 2.7.1. Create workspace crates `ddlog-syntax`, `ddlog-sema`, and
   `ddlog-parser` with explicit acyclic dependencies, crate READMEs, and
   `CODEOWNERS` coverage for each public surface. See
-  docs/adr-001-parser-crate-split.md §Decision outcome / proposed direction,
-  docs/adr-001-parser-crate-split.md §Ownership and cross-crate coordination,
-  and docs/ddlint-design.md §2.4.
+  docs/adrs/adr-0001-parser-crate-split.md §Decision outcome / proposed
+  direction, docs/adrs/adr-0001-parser-crate-split.md §Ownership and
+  cross-crate coordination, and docs/ddlint-design.md §2.4.
   - [ ] Move tokenizer, `SyntaxKind`, token-stream helpers, CST construction,
     and span-scanning modules into `ddlog-syntax`.
   - [ ] Document each crate's owning maintainers, supported consumers, and
@@ -253,7 +254,7 @@ that shape public contracts are closed or explicitly bounded.
 - [ ] 2.7.2. Introduce a `ddlog-parser` compatibility facade that preserves
   current top-level parse entrypoints and keeps parser unit and integration
   suites green with no skipped tests. Requires 2.7.1. See
-  docs/adr-001-parser-crate-split.md §Migration plan / Phase 1 and
+  docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 1 and
   docs/parser-implementation-notes.md §ADR-001 split-crate migration mapping.
   - [ ] Route existing `parse()` and `Parsed`-style entrypoints through
     `ddlog-parser`.
@@ -263,15 +264,15 @@ that shape public contracts are closed or explicitly bounded.
 
 - [ ] 2.8.1. Define stable public diagnostic types covering `code`, `message`,
   `span`, `severity`, and `stage`, and document the compatibility policy for
-  those fields. Requires 2.7.1. See docs/adr-001-parser-crate-split.md
-  §Requirements, docs/adr-001-parser-crate-split.md §Migration plan / Phase 2,
-  and docs/ddlint-design.md §2.5.
+  those fields. Requires 2.7.1. See docs/adrs/adr-0001-parser-crate-split.md
+  §Requirements, docs/adrs/adr-0001-parser-crate-split.md §Migration plan /
+  Phase 2, and docs/ddlint-design.md §2.5.
   - [ ] Distinguish parse-stage and semantic-stage diagnostics without leaking
     internal error enums into the public contract.
   - [ ] Freeze diagnostic code naming, deprecation, and approval rules.
 - [ ] 2.8.2. Add parser contract tests that assert diagnostic stage, span, and
   severity behaviour across parser unit and integration scopes. Requires 2.8.1.
-  See docs/adr-001-parser-crate-split.md §Migration plan / Phase 2 and
+  See docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 2 and
   docs/parser-implementation-notes.md §Migration invariants.
   - [ ] Cover both parse-stage and semantic-stage diagnostics.
   - [ ] Assert span provenance for at least one rule-head, one body-term, and
@@ -282,15 +283,15 @@ that shape public contracts are closed or explicitly bounded.
 - [ ] 2.9.1. Introduce an owned `ddlog-sema` program model covering rules, head
   adornments, body terms, aggregations, attributes, and provenance needed by
   compiler consumers. Requires 2.7.1 and 2.8.1. See
-  docs/adr-001-parser-crate-split.md §Requirements,
-  docs/adr-001-parser-crate-split.md §Migration plan / Phase 3, and
+  docs/adrs/adr-0001-parser-crate-split.md §Requirements,
+  docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 3, and
   docs/ddlint-design.md §2.5.
   - [ ] Expose typed semantic fields instead of CST-string reparsing.
   - [ ] Preserve deterministic traversal order for planner-relevant
     collections.
 - [ ] 2.9.2. Add semantic validation and dependency extraction entrypoints that
   replace compiler-facing reparsing paths with typed reads. Requires 2.9.1. See
-  docs/adr-001-parser-crate-split.md §Migration plan / Phase 3 and
+  docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 3 and
   docs/parser-implementation-notes.md §Migration invariants.
   - [ ] Add at least 12 categorized fixture programs under
     `tests/fixtures/phase3/`: 4 non-recursive, 4 single-strongly connected
@@ -299,28 +300,29 @@ that shape public contracts are closed or explicitly bounded.
     stability.
 - [ ] 2.9.3. Publish the planner-handoff interface note with invariants,
   provenance rules, ordering guarantees, and at least one worked rule-lowering
-  example. Requires 2.9.1. See docs/adr-001-parser-crate-split.md §Forward
-  compatibility for pliron and egg adoption and docs/ddlint-design.md §2.5.
+  example. Requires 2.9.1. See docs/adrs/adr-0001-parser-crate-split.md
+  §Forward compatibility for pliron and egg adoption and docs/ddlint-design.md
+  §2.5.
 
 ### 2.10. Consumer migration and cleanup
 
 - [ ] 2.10.1. Migrate `ddlint` to `ddlog-syntax` and `ddlog-parser`, removing
   direct imports from legacy in-crate parser modules. Requires 2.7.2 and 2.8.2.
-  See docs/adr-001-parser-crate-split.md §Migration plan / Phase 4 and
+  See docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 4 and
   docs/ddlint-design.md §2.4.
   - [ ] Keep CST-facing lint and autofix flows on lossless syntax APIs.
 - [ ] 2.10.2. Migrate `telephone` to `ddlog-sema` and `ddlog-parser`,
   eliminating compiler dependence on CST-string reparsing. Requires 2.9.2 and
-  2.9.3. See docs/adr-001-parser-crate-split.md §Migration plan / Phase 4 and
-  docs/ddlint-design.md §2.5.
+  2.9.3. See docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 4
+  and docs/ddlint-design.md §2.5.
   - [ ] Limit compatibility shims to `ddlog-parser`, each with a deprecation
     target release and tracked removal issue.
 - [ ] 2.10.3. Remove or formally mark deprecated shims as exceptions, finalize
   versioning and change-management policy, and update crate READMEs plus
   architecture documentation with long-term ownership expectations. Requires
-  2.10.1 and 2.10.2. See docs/adr-001-parser-crate-split.md §Migration plan /
-  Phase 5, docs/adr-001-parser-crate-split.md §Outstanding decisions, and
-  docs/ddlint-design.md §2.5.
+  2.10.1 and 2.10.2. See docs/adrs/adr-0001-parser-crate-split.md §Migration
+  plan / Phase 5, docs/adrs/adr-0001-parser-crate-split.md §Outstanding
+  decisions, and docs/ddlint-design.md §2.5.
 
 ## 3. Linter engine and semantic analysis
 
@@ -416,7 +418,7 @@ This phase delivers the end-user command-line interface and diagnostic output.
   source-aware `ddlint.toml` loader in the application-owned `ddlint-cli`
   package. Keep command parsing and execution in 5.1.1–5.1.4. See
   docs/ddlint-design.md §4.1–4.3 and
-  [ADR 004](adr-004-ortho-config-cli-boundary.md).
+  [ADR 004](adrs/adr-0004-ortho-config-cli-boundary.md).
 
 ### 5.2. Rich diagnostics
 

@@ -71,17 +71,18 @@
 
 ## Decision records
 
-- [Architectural decision record 001: parser crate split for multi-consumer use](./adr-001-parser-crate-split.md):
+- [Architectural decision record 001: parser crate split for multi-consumer use](./adrs/adr-0001-parser-crate-split.md):
   Proposed decision record for parser crate boundaries and implementation
   structure.
-- [Architectural decision record 002: relation role and kind modelling](./adr-002-relation-role-kind-modelling.md):
+- [Architectural decision record 002: relation role and kind modelling](./adrs/adr-0002-relation-role-kind-modelling.md):
   Decision record for typed relation role, kind, ref, and body accessors.
 - [Architectural decision record 004: OrthoConfig CLI
   boundary][ortho-config-cli-adr]: Decision record for the application-owned
   configuration layer and library boundary.
 - [Architectural decision record 005: fixture expansion lint
-  helper](./adr-005-fixture-expansion-lint-helper.md): Decision record for the
-  `fixture-lints` proc-macro boundary and its `unused_braces` suppression.
+  helper](./adrs/adr-0005-fixture-expansion-lint-helper.md): Decision record
+  for the `fixture-lints` proc-macro boundary and its `unused_braces`
+  suppression.
 
 ## Execution plans
 
@@ -147,6 +148,6 @@
   Historical analysis of parser documentation structure.
 
 [ortho-config-migration-guide]: ./v0-10-0-migration-guide.md
-[ortho-config-cli-adr]: ./adr-004-ortho-config-cli-boundary.md
+[ortho-config-cli-adr]: ./adrs/adr-0004-ortho-config-cli-boundary.md
 [issue-411-ortho-config-plan]:
   ./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md
