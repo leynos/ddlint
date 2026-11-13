@@ -245,9 +245,12 @@ defaulted `Internal`), `RelationKind` (`Relation`, `Stream`, or `Multiset`), and
 are the canonical typed accessors; `role_keyword_present()` and
 `kind_keyword_present()` preserve explicit role and kind keyword presence.
 Existing `is_input()` and `is_output()` helpers remain as derived ergonomics
-for lint rules that only need role predicates. ADR-002 records this syntax-
-layer modelling decision and its boundary with the semantic layer expected by
-ADR-001.
+for lint rules that only need role predicates. `Relation::primary_key()` adds
+typed access to the binder list and the optional spec-form expression through
+`PrimaryKey`, `PrimaryKeyBinder`, and `PrimaryKeyExpression`, without adding a
+CST node. ADR-002 records this syntax-layer modelling decision, its amendment
+for primary-key expression access, and its boundary with the semantic layer
+expected by ADR-001.
 
 ### 2.1. Defining the DDlog `SyntaxKind`
 

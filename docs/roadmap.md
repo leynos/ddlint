@@ -226,15 +226,21 @@ split parser library surfaces defined in
 - [x] 2.6.6. Resolve relation form coverage (role/kind/bracket variants) and
   document supported forms explicitly. See docs/parser-conformance-register.md
   item 13.
-- [ ] 2.6.6.1. Add typed AST access for spec-form relation primary-key
-  expressions. The parser currently preserves the expression as opaque CST text
-  and `Relation::primary_key()` exposes only the binder/list names.
+- [x] 2.6.6.1. Add typed AST access for spec-form relation primary-key
+  expressions through `PrimaryKey`, `PrimaryKeyBinder`, and
+  `PrimaryKeyExpression`, including lazy expression parsing with
+  source-absolute error spans. See docs/parser-conformance-register.md item 13.
 - [x] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
   legacy type names, `#`, `<=>`) with deterministic diagnostics. See
   docs/parser-conformance-register.md item 14.
 - [ ] 2.6.8. Decide brace-group extension policy (`{ expr }`): codify or
   remove with migration diagnostics. See docs/parser-conformance-register.md
   item 15.
+- [ ] 2.6.9. Enforce the `LcName` case restriction on primary-key binders, and
+  decide the same question for import aliases, so `primary key (Foo)` reports
+  `D-REL-007` the way transformer names already do, or record an intentional
+  superset in the syntax specification. See docs/parser-conformance-register.md
+  item 13 and the section 5.2 import-alias note.
 
 ### 2.7. Split parser crate foundation
 

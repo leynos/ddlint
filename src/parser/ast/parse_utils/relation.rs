@@ -5,11 +5,7 @@
 
 use chumsky::prelude::*;
 
-use crate::{
-    Span,
-    SyntaxKind,
-    parser::lexer_helpers::{ident, inline_ws},
-};
+use crate::{Span, SyntaxKind, parser::lexer_helpers::inline_ws};
 
 #[expect(
     clippy::result_large_err,
@@ -32,7 +28,11 @@ fn keyword<'a>(
     .then_ignore(ws)
 }
 
-/// Parse a `primary key` clause and return the column names.
+/// Parse a `primary key` clause and return its binder names with spans.
+///
+/// Each span is relative to `src`, the clause text passed in. Callers that
+/// slice the clause out of a larger source add the clause's start offset to
+/// obtain source-absolute spans.
 ///
 /// # Examples
 ///
@@ -41,10 +41,11 @@ fn keyword<'a>(
 /// let src = "primary key(id, other)";
 /// let tokens = crate::tokenize_with_trivia(src);
 /// let stream = chumsky::Stream::from_iter(0..src.len(), tokens.into_iter());
-/// let keys = primary_key_clause(src)
+/// let binders = primary_key_clause(src)
 ///     .parse(stream)
-///     .expect("expected column list");
-/// assert_eq!(keys, vec!["id", "other"]);
+///     .expect("expected binder list");
+/// let names: Vec<&str> = binders.iter().map(|(name, _)| name.as_str()).collect();
+/// assert_eq!(names, vec!["id", "other"]);
 /// ```
 ///
 /// ```rust,ignore
@@ -56,10 +57,12 @@ fn keyword<'a>(
 /// ```
 pub(crate) fn primary_key_clause(
     src: &str,
-) -> impl Parser<SyntaxKind, Vec<String>, Error = Simple<SyntaxKind>> + '_ {
+) -> impl Parser<SyntaxKind, Vec<(String, Span)>, Error = Simple<SyntaxKind>> + '_ {
     let ws = inline_ws().repeated();
-    let ident_text =
-        ident().map_with_span(move |(), sp: Span| src.get(sp.clone()).unwrap_or("").to_owned());
+    // Bind the span to the identifier token alone. `ident()` pads itself with
+    // whitespace, which would leak trailing trivia into the name and the span.
+    let binder = just(SyntaxKind::T_IDENT)
+        .map_with_span(move |_, sp: Span| (src.get(sp.clone()).unwrap_or("").to_owned(), sp));
 
     inline_ws()
         .repeated()
@@ -68,8 +71,7 @@ pub(crate) fn primary_key_clause(
         .ignore_then(
             just(SyntaxKind::T_LPAREN)
                 .ignore_then(
-                    ident_text
-                        .clone()
+                    binder
                         .padded_by(ws.clone())
                         .separated_by(just(SyntaxKind::T_COMMA).padded_by(ws.clone()))
                         .at_least(1),

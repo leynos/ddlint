@@ -158,21 +158,41 @@ This register tracks parser behaviour against the syntax specification.
 
 - Topic: relation declaration variants.
 - Current behaviour (code): scanner accepts optional role, optional kind,
-  optional `&`, record bodies, bracket element-type bodies, and opaque
-  primary-key suffixes (`src/parser/span_scanners/relations/mod.rs`). The typed
-  AST exposes `RelationRole`, `RelationKind`, `RelationBody`, keyword-presence
-  flags, `is_ref()`, and compatibility `primary_key()` binder/list access
-  (`src/parser/ast/relation/mod.rs`). Regression coverage includes the relation
-  form matrix and property tests (`src/parser/tests/relations/mod.rs`,
-  `src/parser/tests/relation_proptest.rs`).
+  optional `&`, record bodies, bracket element-type bodies, and primary-key
+  suffixes (`src/parser/span_scanners/relations/mod.rs`). The typed AST exposes
+  `RelationRole`, `RelationKind`, `RelationBody`, keyword-presence flags,
+  `is_ref()`, and typed primary-key access through `PrimaryKey`,
+  `PrimaryKeyBinder`, and `PrimaryKeyExpression`
+  (`src/parser/ast/relation/mod.rs`,
+  `src/parser/ast/relation/primary_key/mod.rs`). Regression coverage includes
+  the relation form matrix and property tests
+  (`src/parser/tests/relations/mod.rs`,
+  `src/parser/tests/relation_proptest.rs`), the primary-key unit tests
+  (`src/parser/ast/relation/primary_key/tests.rs`), the primary-key properties
+  and strategies (`src/parser/tests/relation_primary_key_props.rs`,
+  `src/parser/tests/relation_primary_key_strategies.rs`), and the behavioural
+  feature (`tests/relation_primary_key_bdd.rs`).
 - Spec/target behaviour: matches section 5.5. Absence of a role means internal;
   `internal` is not reserved. Absence of a kind means `relation`. Primary keys
   are accepted only on `input` record relations; bracket-wrapped primary-key
   clauses are rejected with a deterministic diagnostic. Typed access to the
-  trailing primary-key expression is deferred to roadmap item `2.6.6.1`, while
-  the CST preserves the text.
+  trailing expression is implemented by `PrimaryKeyExpression`: binder names
+  are independent of expression validity, and `parse()` reports source-absolute
+  error spans.
+- Known limitation: the binder list accepts any identifier token, so
+  `primary key (Foo)` is accepted even though section 5.5 spells a binder as
+  `LcName`. Transformer names already enforce the lowercase class, so this is
+  an open conformance gap rather than an intended superset. The equivalent
+  import-alias gap recorded in section 5.2 is the same class of gap. Both are
+  tracked as roadmap item `2.6.9`.
+- Known limitation: `PrimaryKeyExpression::parse()` returns
+  `chumsky::error::Simple` values, so an internal parser type appears in the
+  public API. Replacing it with a domain-owned error type is assigned to the
+  ADR-001 crate split, as recorded in the ADR-002 amendment and plan decision
+  `D3`. Issue #267 tracks the public `chumsky` diagnostic exposure, including
+  this API and its source-absolute spans.
 - Decision status: `implemented`.
-- Roadmap item: `docs/roadmap.md` item `2.6.6`.
+- Roadmap item: `docs/roadmap.md` items `2.6.6` and `2.6.6.1`.
 
 ### 14. Legacy token compatibility policy
 

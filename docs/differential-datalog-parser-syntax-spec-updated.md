@@ -292,10 +292,17 @@ Notes:
 - `PrimaryKey` is valid only on `input` relations with record bodies.
 - The `PrimaryKey` binder list accepts one or more comma-separated `LcName`
   binders. Upstream DDlog accepts a single lambda-style binder; this grammar
-  additionally accepts compound binders.
+  additionally accepts compound binders. Any other form is rejected with
+  `D-REL-007`. The current parser accepts the generic identifier token here and
+  does not enforce that case restriction, so `primary key (Foo)` is accepted;
+  the gap is recorded in the conformance register and tracked as roadmap item
+  `2.6.9`.
 - The trailing `PrimaryKey` expression is optional. When present, the parser
-  preserves it as CST text; typed access is deferred, and AST helpers currently
-  expose the binder/list names from the parenthesized portion.
+  preserves it as CST text; `PrimaryKeyExpression` bounds the non-trivia hull
+  after the binder list and parses it lazily with source-absolute error spans.
+  Binder names never depend on whether the expression parses.
+- A `;` at the declaring nesting level ends the primary-key clause, so text
+  after it is scanned as a new statement.
 - Bracket-wrapped primary-key clauses (`[primary key ...]`) are rejected.
 - `&UcName` in declarations marks a reference relation. `&UcName` in rule
   **heads** triggers special semantics (see §7.3).
@@ -664,6 +671,9 @@ copy/paste. -->
 - **Apply:** `Apply { transformer, inputs, outputs }`.
 - **RelationDecl:**
   `Relation { role, kind, ref?, name, body: Fields | ElementType, primaryKey? }`.
+- **PrimaryKey:** `PrimaryKey { binders: [PrimaryKeyBinder], span, expr? }`,
+  where `PrimaryKeyBinder { name, span }` and `expr` carries the preserved
+  source text and a source-absolute span.
 - **IndexDecl:** `Index { name, fields: [(name, type)], on: Atom }`.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.

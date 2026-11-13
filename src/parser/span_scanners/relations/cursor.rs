@@ -138,16 +138,26 @@ pub(super) fn skip_trivia_end(
     end
 }
 
-/// Advance past whitespace and comments until a newline or non-trivia token.
+/// Return the cursor index just past inline whitespace and comments.
 ///
-/// Unlike [`skip_trivia`], this keeps newline-separated declarations distinct.
-pub(super) fn skip_inline_trivia(tokens: &[(SyntaxKind, Span)], src: &str, cursor: &mut usize) {
-    while let Some((kind, span)) = tokens.get(*cursor) {
+/// Unlike [`skip_trivia_end`], this stops at a newline-bearing token so a
+/// following declaration stays distinguishable. The index is returned instead
+/// of advancing a cursor because callers that find no following expression
+/// must leave the trivia for the relation span to own; advancing here would
+/// drop inline trivia from a keyed relation and make its span differ from the
+/// equivalent keyless relation.
+pub(super) fn inline_trivia_end(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    mut cursor: usize,
+) -> usize {
+    while let Some((kind, span)) = tokens.get(cursor) {
         if !is_trivia(*kind) || token_text(src, span).is_some_and(|text| text.contains('\n')) {
             break;
         }
-        *cursor += 1;
+        cursor += 1;
     }
+    cursor
 }
 
 /// Return whether a token kind is trivia for relation-scanner cursor movement.

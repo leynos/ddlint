@@ -40,10 +40,13 @@ parsing pipeline.
   with `columns()` as `Ok(Vec::new())`. Malformed or missing bodies return
   `Err(..)` rather than an empty `Fields` vector, so direct AST querying stays
   reliable for malformed or synthetic nodes.
-- Keeps `primary_key()` focused on the binder/list names (`Ok(None)` when
-  absent). Spec-form trailing primary-key expressions are preserved in the CST
-  until roadmap follow-up `2.6.6.1` introduces typed access. `Parsed::errors()`
-  remains the parser-level diagnostic channel.
+- Exposes `primary_key()` as the only supported way to read a key clause; it
+  returns `PrimaryKey`, whose `binders()`, `binder_names()`, `span()`, and
+  `expression()` cover the binder list, the clause span, and the optional
+  spec-form expression. `PrimaryKeyExpression::parse()` parses the preserved
+  text lazily with source-absolute error spans. Lint rules must not re-tokenize
+  relation declaration text themselves; extend this surface instead.
+  `Parsed::errors()` remains the parser-level diagnostic channel.
 
 ### `src/parser/span_scanners/relations/mod.rs`
 
@@ -381,6 +384,33 @@ expected outputs; each case supplies its source separately through the existing
 fixture. Parsing and comparisons remain in the test. The record has no
 constructor or parser API and is not shared with `RelationFormCase` or other
 test families; wider reuse requires a separate ownership decision.
+
+### Property-test ownership
+
+Primary-key property generators live in
+`src/parser/tests/relation_primary_key_strategies.rs` and the properties that
+consume them in `src/parser/tests/relation_primary_key_props.rs`. Generated
+cases carry a coverage class, so the fixed-seed test can assert that every
+class each strategy promises was actually produced. Property helpers return
+`Result<_, TestCaseError>` and propagate with `?`: a panic inside a proptest
+closure bypasses shrinking and hides which generated case failed.
+
+### googletest and rstest attributes
+
+Where a test uses both frameworks, `#[gtest]` sits above `#[rstest]` and the
+body returns `googletest::Result<()>`. The googletest matchers then report the
+observed values in the failure message, while `rstest` still supplies the table
+rows.
+
+### Behaviour-driven scenarios
+
+Feature files live in `tests/features/` and are bound by an integration test
+under `tests/` through
+`#[scenario(path = "tests/features/<name>.feature", name = "<scenario>")]`.
+Steps return `rstest_bdd::StepResult` and use `?`; a step that cannot fail
+returns `()`. String placeholders use the `:string` hint so the step takes
+`&str`, which matches quoted Gherkin values and leaves ownership with the
+feature text. Every `rstest` fixture carries `#[allow_fixture_expansion_lints]`.
 
 ## Fixture expansion lint policy
 

@@ -13,8 +13,8 @@ use super::{
         adjust_stack,
         consume_text,
         current_span,
+        inline_trivia_end,
         parse_balanced_block,
-        skip_inline_trivia,
         skip_trivia,
         skip_trivia_end,
         token_text,
@@ -90,8 +90,10 @@ fn parse_primary_key_clause(
     consume_text(tokens, src, cursor, "key")?;
     skip_trivia(tokens, cursor);
     // Capture the clause span before `parse_balanced_block` advances the cursor
-    // so an empty-clause D-REL-007 anchors at the `()`, not the next token.
-    let empty_key_span = current_span(tokens, src, *cursor);
+    // so a malformed-clause D-REL-007 anchors at the binder list, not the next
+    // token.
+    let binder_list_span = current_span(tokens, src, *cursor);
+    let list_start = *cursor;
     let mut has_column = false;
     let mut end = parse_balanced_block(
         &TokenStream::new(tokens, src),
@@ -99,11 +101,12 @@ fn parse_primary_key_clause(
         SyntaxKind::T_RPAREN,
         &mut has_column,
     )?;
-    if !has_column {
-        return Err(Box::new(custom_error(&empty_key_span, D_REL_007)));
+    if !has_column || !is_binder_identifier_list(tokens, list_start, *cursor) {
+        return Err(Box::new(custom_error(&binder_list_span, D_REL_007)));
     }
-    skip_inline_trivia(tokens, src, cursor);
-    if next_token_is_same_line_expression(tokens, src, *cursor) {
+    let expression_start = inline_trivia_end(tokens, src, *cursor);
+    if next_token_is_same_line_expression(tokens, src, expression_start) {
+        *cursor = expression_start;
         end = consume_opaque_primary_key_expr(tokens, src, cursor)?;
     }
     Ok(end)
@@ -118,7 +121,7 @@ fn consume_opaque_primary_key_expr(
     let mut end = current_span(tokens, src, *cursor).start;
 
     while let Some((kind, span)) = tokens.get(*cursor) {
-        if stack.is_empty() && token_text(src, span).is_some_and(|text| text.contains('\n')) {
+        if stack.is_empty() && starts_statement_boundary(*kind, src, span) {
             break;
         }
         adjust_stack(*kind, &mut stack);
@@ -134,6 +137,16 @@ fn consume_opaque_primary_key_expr(
             D_REL_007,
         )))
     }
+}
+
+/// Whether a depth-zero token starts a new statement rather than continuing
+/// the key expression.
+///
+/// A `;` terminator or a newline-bearing token ends the declaration. Keeping
+/// the test in a helper also keeps the scan loop's condition within Whitaker's
+/// branch limit.
+fn starts_statement_boundary(kind: SyntaxKind, src: &str, span: &Span) -> bool {
+    kind == SyntaxKind::T_SEMI || token_text(src, span).is_some_and(|text| text.contains('\n'))
 }
 
 pub(super) fn starts_primary_key(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> bool {
@@ -158,12 +171,57 @@ fn next_token_is_same_line_expression(
     src: &str,
     cursor: usize,
 ) -> bool {
+    // `T_IMPLIES`, `T_DOT`, and `T_SEMI` terminate the enclosing statement, so
+    // none of them can start a key expression.
     matches!(
         tokens.get(cursor),
         Some((kind, span))
-            if !matches!(kind, SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT)
+            if !matches!(
+                kind,
+                SyntaxKind::T_IMPLIES | SyntaxKind::T_DOT | SyntaxKind::T_SEMI
+            )
                 && token_text(src, span).is_some_and(|text| !text.contains('\n'))
     )
+}
+
+/// Return whether `tokens[list_start..list_end]` is a parenthesized,
+/// comma-separated, non-empty list of identifiers.
+///
+/// `list_start` points at the opening `(` and `list_end` just past the matching
+/// `)`. Trivia, including comments, is ignored. Anything else, including a
+/// trailing comma, is malformed.
+fn is_binder_identifier_list(
+    tokens: &[(SyntaxKind, Span)],
+    list_start: usize,
+    list_end: usize,
+) -> bool {
+    let Some(inner_start) = list_start.checked_add(1) else {
+        return false;
+    };
+    let Some(inner_end) = list_end.checked_sub(1) else {
+        return false;
+    };
+    let Some(inner) = tokens.get(inner_start..inner_end) else {
+        return false;
+    };
+
+    let mut expect_identifier = true;
+    let mut saw_identifier = false;
+    for (kind, _) in inner {
+        if super::cursor::is_trivia(*kind) {
+            continue;
+        }
+        match (expect_identifier, *kind) {
+            (true, SyntaxKind::T_IDENT) => {
+                expect_identifier = false;
+                saw_identifier = true;
+            }
+            (false, SyntaxKind::T_COMMA) => expect_identifier = true,
+            _ => return false,
+        }
+    }
+
+    saw_identifier && !expect_identifier
 }
 
 fn recoverable_relation(

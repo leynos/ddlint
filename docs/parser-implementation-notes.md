@@ -323,13 +323,15 @@ Important invariants:
   Existing `is_input()` and `is_output()` helpers are retained as derived
   compatibility conveniences.
 - Relation declarations preserve spec-form primary-key clauses such as
-  `primary key (row) (row.id)` as opaque CST text after the binder list.
-
-  `Relation::primary_key()` intentionally exposes only the names inside the
-  parenthesized binder/list for compatibility with existing callers.
-
-  Typed access to the trailing expression is deferred to roadmap follow-up
-  `2.6.6.1`.
+  `primary key (row) (row.id)` as CST text after the binder list.
+  `Relation::primary_key()` returns
+  `Result<Option<PrimaryKey>, RelationParseErrors>`, and `PrimaryKey` exposes
+  `binders()`, `binder_names()`, `span()`, and `expression()`.
+  `PrimaryKeyExpression` bounds the non-trivia hull after the binder list and
+  parses it lazily, shifting chumsky errors by the expression start so they
+  address source-absolute spans. The binder parser binds the identifier token
+  alone, so surrounding trivia never enters a name or a span, and a depth-zero
+  `;` ends the clause.
 - Transformer declarations require
   `extern transformer <lowercase-name>(params...): output(, output)*`.
   Transformer identifiers must be lowercase (start with a lowercase letter or

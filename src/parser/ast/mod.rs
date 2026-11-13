@@ -236,7 +236,16 @@ pub use index::Index;
 pub use number::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 pub use pattern::{Pattern, PatternLiteral};
 pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
-pub use relation::{Relation, RelationBody, RelationKind, RelationParseErrors, RelationRole};
+pub use relation::{
+    PrimaryKey,
+    PrimaryKeyBinder,
+    PrimaryKeyExpression,
+    Relation,
+    RelationBody,
+    RelationKind,
+    RelationParseErrors,
+    RelationRole,
+};
 pub use root::Root;
 pub use rule::{
     AggregationSource,

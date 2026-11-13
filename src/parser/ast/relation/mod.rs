@@ -31,10 +31,14 @@
 //!         ("y".into(), "string".into()),
 //!     ])
 //! );
-//! assert_eq!(rel.primary_key(), Ok(Some(vec!["x".into()])));
+//! let key = rel.primary_key().expect("valid key").expect("key present");
+//! assert_eq!(key.binder_names(), ["x"]);
 //! ```
 
 mod inspect;
+mod primary_key;
+
+pub use primary_key::{PrimaryKey, PrimaryKeyBinder, PrimaryKeyExpression};
 
 use super::AstNode;
 use crate::{DdlogLanguage, SyntaxKind};
@@ -173,86 +177,6 @@ impl Relation {
     }
 
     fn preamble(&self) -> inspect::RelationPreamble { inspect::inspect_preamble(&self.syntax) }
-
-    /// Primary key binder or column names if specified.
-    ///
-    /// `Ok(None)` means no primary-key clause is present. Spec-form primary keys
-    /// may include an opaque expression after the binder list. Typed expression
-    /// access is deferred to roadmap follow-up `2.6.6.1`; this helper returns
-    /// the names from the parenthesized binder/list.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`RelationParseErrors`] when a `primary key` clause is present
-    /// but its binder list cannot be interpreted, or when the relation body is
-    /// malformed or missing so the columns cannot be skipped.
-    pub fn primary_key(&self) -> Result<Option<Vec<String>>, RelationParseErrors> {
-        use chumsky::Parser as _;
-
-        use super::parse_utils::primary_key_clause;
-        use crate::tokenize_with_trivia;
-
-        let inspection = inspect::inspect_body(&self.syntax);
-        body_inspection_error(&inspection)?;
-        if matches!(inspection, inspect::BodyInspection::Bracket(_)) {
-            // A bracket body cannot carry a primary key; report no clause.
-            return Ok(None);
-        }
-
-        // `Record` body from here.
-        let mut iter = self.syntax.children_with_tokens().peekable();
-        Self::skip_to_end_of_columns(&mut iter)?;
-        let rest = iter
-            .map(|e| match e {
-                rowan::NodeOrToken::Token(t) => t.text().to_owned(),
-                rowan::NodeOrToken::Node(n) => n.text().to_string(),
-            })
-            .collect::<String>();
-        let tokens = tokenize_with_trivia(&rest);
-        // No `primary` keyword after the columns means there is no clause; a
-        // trailing newline or comment must not be misread as a malformed one.
-        if first_non_trivia_text(&tokens, &rest) != Some("primary") {
-            return Ok(None);
-        }
-        let stream = chumsky::Stream::from_iter(0..rest.len(), tokens.into_iter());
-        let parser = primary_key_clause(&rest);
-        let (res, errs) = parser.parse_recovery(stream);
-        if errs.is_empty() {
-            Ok(res)
-        } else {
-            Err(errs.iter().map(render_parse_error).collect())
-        }
-    }
-
-    /// Skip over the column declaration list and stop on the closing `)`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`RelationParseErrors`] when the parenthesized column list is
-    /// absent or unclosed, so the primary-key suffix cannot be located.
-    fn skip_to_end_of_columns<I>(
-        iter: &mut std::iter::Peekable<I>,
-    ) -> Result<(), RelationParseErrors>
-    where
-        I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
-    {
-        // Consume the first parenthesised list and discard content.
-        super::skip_whitespace_and_comments(iter);
-        super::parse_utils::extract_delimited(iter, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
-            .map(|_| ())
-            .map_err(|err| vec![err.to_string()])
-    }
-}
-
-/// Return the source text of the first non-trivia token, if any.
-fn first_non_trivia_text<'a>(
-    tokens: &[(SyntaxKind, crate::Span)],
-    src: &'a str,
-) -> Option<&'a str> {
-    tokens
-        .iter()
-        .find(|(kind, _)| !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT))
-        .and_then(|(_, span)| src.get(span.clone()))
 }
 
 /// Map the error-carrying body inspections to their diagnostics.
