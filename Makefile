@@ -236,7 +236,7 @@ lint-clippy: | check-build-tools ## Run Clippy, Rustdoc and the Clippy policy co
 # the development standard: its literal `RUSTFLAGS` displaces the `rustflags`
 # tables (no frontend flag, no `mold`) and inherits nothing from the caller. An
 # inherited `CARGO_ENCODED_RUSTFLAGS` outranks `RUSTFLAGS`, so it is cleared first.
-# The LLVM override keeps it off the repository's Cranelift default, and the
+# The LLVM override keeps it off any Cranelift opt-in, and the
 # installer's directory leads `PATH` so the installed `whitaker` is the one that runs.
 lint-whitaker: | check-build-tools ## Run the Whitaker Dylint suite with warnings denied
 	unset CARGO_ENCODED_RUSTFLAGS && PATH="$${XDG_BIN_HOME:-$(HOME)/.local/bin}:$(PATH)" CARGO_UNSTABLE_CODEGEN_BACKEND=true CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm RUSTFLAGS="-D warnings" $(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features

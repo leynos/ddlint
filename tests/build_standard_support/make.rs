@@ -133,7 +133,7 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
 }
 
 /// Returns whether a command is Whitaker under the literal warning-only `RUSTFLAGS` boundary, with
-/// an explicit LLVM backend so it does not inherit the repository's Cranelift default.
+/// an explicit LLVM backend so it does not inherit a Cranelift opt-in.
 ///
 /// Both settings must be leading `NAME=value` assignments, so they are environment settings and
 /// not arguments, and the first word after them must be the `whitaker` executable. Each quoted
