@@ -54,11 +54,12 @@ the workflows, so a flag lost through a recipe or workflow edit fails there.
 ## Backend qualification evidence
 
 The accepted routing decision above remains in force. Since 2026-11-13 the
-development backend is Cranelift, selected in `.cargo/config.toml`, because the
-release workflow builds on the pinned nightly instead of stable. The
-developers' guide records the full suite's result under Cranelift and the
-earlier bounded unwind measurement, taken on the former `nightly-2025-09-16`
-pin.
+development backend was Cranelift, selected in `.cargo/config.toml`, because
+the release workflow builds on the pinned nightly instead of stable. On
+2026-11-14 the selection was commented out and LLVM became the estate standard
+again, with review due 14 May 2027; the component and the opt-in stay. The
+developers' guide records the earlier bounded unwind measurement, taken on the
+former `nightly-2025-09-16` pin.
 
 ## Consequences
 
@@ -66,9 +67,9 @@ pin.
   must be GCC 12.1 or newer, or clang.
 - A change to a recipe or workflow step that assigns `RUSTFLAGS` must restate
   the flags, and the contract says which clause fails when it does not.
-- Cranelift is the development default from 2026-11-13; coverage and Whitaker
-  select LLVM explicitly, and release builds keep LLVM because `[profile.dev]`
-  does not reach them.
+- Cranelift was the development default from 2026-11-13 to 2026-11-14; LLVM is
+  the default again, and coverage, Whitaker and release builds select or keep
+  LLVM.
 
 ## Addendum, 2026-10-31: Whitaker is isolated from the standard
 
