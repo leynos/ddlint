@@ -33,8 +33,9 @@ artefacts also need a baseline that the fast flags would disturb.
   and CI step that assigns `RUSTFLAGS` without them.
 - Restate the flags in each recipe and step, held by a contract test. This is
   the option taken.
-- Adopt Cranelift for development builds. The repository did not at first and
-  does since 2026-11-13; see the backend evidence below.
+- Adopt Cranelift for development builds. The repository did not at first,
+  did from 2026-11-13 to 2026-11-14, and no longer does; see the backend
+  evidence below.
 
 ## Decision outcome
 
