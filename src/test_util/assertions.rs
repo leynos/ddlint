@@ -7,40 +7,6 @@ use chumsky::error::{Simple, SimpleReason};
 use super::{ErrorPattern, normalise_tokens};
 use crate::SyntaxKind;
 
-/// Assert that `f` panics and return its panic message.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// # #[cfg(feature = "test-support")]
-/// # {
-/// use ddlint::test_util::assert_panic_with_message;
-/// let message = assert_panic_with_message(|| panic!("boom"));
-/// assert!(message.contains("boom"));
-/// # }
-/// ```
-///
-/// # Panics
-/// Panics if `f` does not panic.
-#[track_caller]
-pub fn assert_panic_with_message<F>(f: F) -> String
-where
-    F: FnOnce() + std::panic::UnwindSafe,
-{
-    let result = std::panic::catch_unwind(f);
-    let Err(err) = result else {
-        panic!("expected panic");
-    };
-    let Some(message) = err
-        .downcast_ref::<String>()
-        .cloned()
-        .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_owned()))
-    else {
-        panic!("expected panic payload to be String or &str, got unknown type");
-    };
-    message
-}
-
 /// Assert that a parser produced no errors.
 ///
 /// # Examples
