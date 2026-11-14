@@ -825,11 +825,12 @@ with review due 14 May 2027. An inherited `CARGO_PROFILE_*_CODEGEN_BACKEND`
 variable can still select Cranelift, and Cranelift does not run destructors
 while unwinding, so under an opt-in no test may rely on a caught panic
 releasing a guard. The release workflow builds on the pinned nightly. The
-pinned coverage action clears inherited backend variables and keeps LLVM,
-selecting it explicitly when it detects an active Cranelift configuration,
-since Cranelift cannot instrument coverage. `make lint-whitaker` selects LLVM
-explicitly, because Whitaker's installer-managed toolchain does not take a
-Cranelift opt-in.
+pinned coverage action clears the inherited dev and test backend variables
+(`CARGO_PROFILE_DEV_CODEGEN_BACKEND` and `CARGO_PROFILE_TEST_CODEGEN_BACKEND`)
+and keeps LLVM, selecting it explicitly when it detects an active Cranelift
+configuration, since Cranelift cannot instrument coverage. `make lint-whitaker`
+selects LLVM explicitly, because Whitaker's installer-managed toolchain does
+not take a Cranelift opt-in.
 
 The Rust build contract in `tests/build_standard_contract.rs` checks target
 routing, preflight ordering and installation behaviour. Its Makefile-target
