@@ -261,14 +261,15 @@ then applies only explicit CLI values. The root `ddlint` library remains free
 of OrthoConfig and CLI dependencies, and does not print or terminate on
 configuration errors.
 
-The app package targets Rust 1.89 for OrthoConfig v0.10.0. Keep the Clap
-`--format` value optional with no parser default; the configuration model
-supplies `rich`, so a file or environment value is not masked. Tests use
-injected `_with_sources` loaders, `MapEnv`, and explicit file sources without
-mutating the process environment. Validate settings before passing domain
-values such as `ddlint::linter::RuleLevel` into library operations. Keep the
-placeholder binary's current output and exit status until the command-line
-roadmap items replace it.
+OrthoConfig v0.10.0 has a Rust 1.89 floor, which the pinned nightly exceeds; no
+package declares a `rust-version`. Keep the Clap `--format` value optional with
+no parser default; the configuration model supplies `rich`, so a file or
+environment value is not masked. Tests use injected `_with_sources` loaders,
+`MapEnv`, and explicit file sources without mutating the process environment.
+Validate settings before passing domain values such as
+`ddlint::linter::RuleLevel` into library operations. Keep the placeholder
+binary's current output and exit status until the command-line roadmap items
+replace it.
 
 Environment values for `ignore_patterns` use a JSON string array because
 process environment variables carry scalar strings. The generated `config_path`
@@ -480,13 +481,12 @@ helper from crates.io, so the publishable root crate stays packageable. The
 crate sets `publish = false` because it exists only for this repository's tests
 and has no external contract to maintain.
 
-The crate declares `rust-version = "1.89"` and edition 2024, and a contributor
-adding a syntax form must keep both honest rather than relying on the
-workspace's own toolchain. It denies `missing_docs`, `allow_attributes`,
-`allow_attributes_without_reason`, `unwrap_used` and `expect_used`, and enables
-the `pedantic` Clippy group at warning level, matching the repository lint
-baseline. Every public item carries Rustdoc covering its purpose, parameters,
-return value and an example.
+The crate declares edition 2024 and no `rust-version`; the reference compiler
+for new syntax is the nightly pinned in `rust-toolchain.toml`. It denies
+`missing_docs`, `allow_attributes`, `allow_attributes_without_reason`,
+`unwrap_used` and `expect_used`, and enables the `pedantic` Clippy group at
+warning level, matching the repository lint baseline. Every public item carries
+Rustdoc covering its purpose, parameters, return value and an example.
 
 ### Maintaining fixtures
 
