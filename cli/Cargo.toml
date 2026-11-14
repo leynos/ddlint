@@ -2,7 +2,6 @@
 name = "ddlint-cli"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.89"
 publish = false
 
 # The bin shares its name with the root `ddlint` library target, so documenting

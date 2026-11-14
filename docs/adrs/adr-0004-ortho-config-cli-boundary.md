@@ -56,10 +56,11 @@ point. The current placeholder moves into that package without a change to its
 observable behaviour. The root package remains the reusable `ddlint` library
 and does not depend on OrthoConfig or Clap.
 
-The app package declares `rust-version = "1.89"` and `ortho_config = "0.10.0"`,
-with default features enabled. The existing dated nightly is retained if its
-compiler is at least Rust 1.89. No direct `ortho_l10n` dependency is needed
-because the CLI is not localized.
+The app package declares `ortho_config = "0.10.0"`, with default features
+enabled, and no `rust-version` (amended 2026-11-13: the repository is an
+application and builds on its pinned nightly). The pinned dated nightly must
+stay at least Rust 1.89. No direct `ortho_l10n` dependency is needed because
+the CLI is not localized.
 
 The application-owned `AppConfig` derives `OrthoConfig` and loads the complete
 configuration document, including its nested `cmds.lint` table. A separate Clap

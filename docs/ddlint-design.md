@@ -905,8 +905,9 @@ a TOML file named `ddlint.toml`. The application package uses the published
 `ortho_config` v0.10.0 facade with its default features enabled.[^11] TOML is
 the only file format enabled. JavaScript Object Notation 5 (JSON5) and YAML
 remain optional features and are not enabled by the application. The root
-library does not depend on OrthoConfig and does not inherit the application
-package's Rust 1.89 minimum supported Rust version (MSRV).
+library does not depend on OrthoConfig. The repository is an application that
+builds on a pinned nightly, so no package declares a minimum supported Rust
+version (MSRV); OrthoConfig's own floor is Rust 1.89.
 
 The precedence order is defaults < files < environment < command line. The
 application-owned `AppConfig` derives `OrthoConfig` and loads the nested
