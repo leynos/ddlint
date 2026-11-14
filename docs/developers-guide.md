@@ -481,13 +481,12 @@ helper from crates.io, so the publishable root crate stays packageable. The
 crate sets `publish = false` because it exists only for this repository's tests
 and has no external contract to maintain.
 
-The crate declares edition 2024 and no `rust-version`, and a contributor adding
-a syntax form must keep that honest rather than relying on the workspace's own
-toolchain. It denies `missing_docs`, `allow_attributes`,
-`allow_attributes_without_reason`, `unwrap_used` and `expect_used`, and enables
-the `pedantic` Clippy group at warning level, matching the repository lint
-baseline. Every public item carries Rustdoc covering its purpose, parameters,
-return value and an example.
+The crate declares edition 2024 and no `rust-version`; the reference compiler
+for new syntax is the nightly pinned in `rust-toolchain.toml`. It denies
+`missing_docs`, `allow_attributes`, `allow_attributes_without_reason`,
+`unwrap_used` and `expect_used`, and enables the `pedantic` Clippy group at
+warning level, matching the repository lint baseline. Every public item carries
+Rustdoc covering its purpose, parameters, return value and an example.
 
 ### Maintaining fixtures
 
