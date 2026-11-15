@@ -177,15 +177,33 @@ impl Sandbox {
     /// Creates fake commands and environment state for a named case.
     pub(super) fn new(scenario: ToolScenario) -> io::Result<Self> {
         let directory = ScratchDirectory::new()?;
+        Self::create_layout(&directory)?;
+        let trace_path = directory.path("trace.log");
+        let analyzer_marker = directory.path("rust-analyzer-installed");
+        let toolchain_marker = directory.path("rustup-toolchain-installed");
+        Self::stage_fake_tools(&directory, scenario)?;
+        Ok(Self {
+            directory,
+            trace_path,
+            analyzer_marker,
+            toolchain_marker,
+            scenario,
+        })
+    }
+
+    /// Creates the empty fake-command, HOME, TMP and rustup directories.
+    fn create_layout(directory: &ScratchDirectory) -> io::Result<()> {
         directory.root.create_dir("bin")?;
         directory
             .root
             .create_dir_all("home/.local/share/ddlint/build-tools")?;
         directory.root.create_dir("tmp")?;
-        directory.root.create_dir("rustup")?;
-        let trace_path = directory.path("trace.log");
-        let analyzer_marker = directory.path("rust-analyzer-installed");
-        let toolchain_marker = directory.path("rustup-toolchain-installed");
+        directory.root.create_dir("rustup")
+    }
+
+    /// Writes the inert fake commands, plus a fake `mold` when the scenario
+    /// provides one, into the sandbox's `bin` directory.
+    fn stage_fake_tools(directory: &ScratchDirectory, scenario: ToolScenario) -> io::Result<()> {
         for (name, contents) in [
             ("curl", CURL_SCRIPT),
             ("wget", WGET_SCRIPT),
@@ -205,13 +223,7 @@ impl Sandbox {
             let mold_script = format!("#!/bin/sh\nprintf 'mold {version}\\n'\n");
             directory.write("bin/mold", &mold_script, true)?;
         }
-        Ok(Self {
-            directory,
-            trace_path,
-            analyzer_marker,
-            toolchain_marker,
-            scenario,
-        })
+        Ok(())
     }
 
     /// Returns the fake-command directory used by the child PATH.

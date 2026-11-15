@@ -286,22 +286,43 @@ where
             return Some(items);
         }
         loop {
-            let (kind, span) = self.ts.next_tok()?;
-            if kind != SyntaxKind::T_IDENT {
-                self.ts.push_error(span, options.err_msg);
-                return None;
-            }
-            let name = self.ts.slice(&span);
+            let name = self.take_list_identifier(options.err_msg)?;
             items.push(process_item(self, name)?);
-            if self.ts.peek_kind() != Some(SyntaxKind::T_COMMA) {
-                break;
-            }
-            self.ts.next_tok();
-            if options.allow_trailing_comma && self.ts.peek_kind() == Some(options.terminator) {
+            if !self.consume_list_separator(options) {
                 break;
             }
         }
         Some(items)
+    }
+
+    /// Take the next token as a list item name.
+    ///
+    /// Returns the identifier text. A missing or non-identifier token records
+    /// `err_msg` against the offending span and returns `None`. Scope: the
+    /// identifier-list parser only; other lists report their own diagnostics.
+    fn take_list_identifier(&mut self, err_msg: &'static str) -> Option<String> {
+        let (kind, span) = self.ts.next_tok()?;
+        if kind != SyntaxKind::T_IDENT {
+            self.ts.push_error(span, err_msg);
+            return None;
+        }
+        Some(self.ts.slice(&span))
+    }
+
+    /// Consume the comma after a list item, if there is one.
+    ///
+    /// Returns `true` when another item should follow, and `false` at the end
+    /// of the list: no comma, or a trailing comma before the terminator when
+    /// `options.allow_trailing_comma` is set. Scope: the identifier-list parser
+    /// only.
+    fn consume_list_separator(&mut self, options: IdentifierListOptions) -> bool {
+        if self.ts.peek_kind() != Some(SyntaxKind::T_COMMA) {
+            return false;
+        }
+        self.ts.next_tok();
+        let trailing =
+            options.allow_trailing_comma && self.ts.peek_kind() == Some(options.terminator);
+        !trailing
     }
 
     fn parse_scoped_identifier(&mut self, first_span: &Span) -> Option<(String, Span)> {
