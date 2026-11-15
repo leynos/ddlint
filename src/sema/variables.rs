@@ -102,19 +102,25 @@ impl SemanticModelBuilder {
     fn walk_variable_uses_call_like(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
         match expr {
             Expr::Apply { args, .. } | Expr::Call { args, .. } => {
-                for arg in args {
-                    self.walk_variable_uses(arg, context);
-                }
+                self.walk_variable_uses_all(args, context);
             }
             Expr::MethodCall { recv, args, .. } => {
                 self.walk_variable_uses(recv, context);
-                for arg in args {
-                    self.walk_variable_uses(arg, context);
-                }
+                self.walk_variable_uses_all(args, context);
             }
             // The dispatcher routes only call-like expressions here; anything
             // else has no bindings to walk.
             _ => {}
+        }
+    }
+
+    /// Walks each expression in `exprs` in order with the same `context`.
+    ///
+    /// Scope: the call-like walker only; it keeps the per-argument loop out of
+    /// the `match` arms.
+    fn walk_variable_uses_all(&mut self, exprs: &[Expr], context: VariableUseContext<'_>) {
+        for expr in exprs {
+            self.walk_variable_uses(expr, context);
         }
     }
 
