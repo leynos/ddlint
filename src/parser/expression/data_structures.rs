@@ -297,9 +297,10 @@ where
 
     /// Take the next token as a list item name.
     ///
-    /// Returns the identifier text. A missing or non-identifier token records
-    /// `err_msg` against the offending span and returns `None`. Scope: the
-    /// identifier-list parser only; other lists report their own diagnostics.
+    /// Returns the identifier text. A non-identifier token records `err_msg`
+    /// against its span and returns `None`; at end of input it returns `None`
+    /// without recording a diagnostic. Scope: the identifier-list parser only;
+    /// other lists report their own diagnostics.
     fn take_list_identifier(&mut self, err_msg: &'static str) -> Option<String> {
         let (kind, span) = self.ts.next_tok()?;
         if kind != SyntaxKind::T_IDENT {
