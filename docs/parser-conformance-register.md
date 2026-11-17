@@ -93,6 +93,11 @@ This register tracks parser behaviour against the syntax specification.
 - Spec/target behaviour: section 6.5 documents top-level `for` desugaring
   into semantic rules with deterministic term ordering and targeted diagnostics
   for unsupported terminal statement forms.
+- Known divergence: upstream parses a top-level `for` header as an atom with an
+  optional `v in` binder, rejecting `for (a in A(a))`, and treats a rule-body
+  `for` as an expression loop over a collection. ddlint's header, rule-body
+  splitting at `=`, and term-only `if`/`for` branches differ; item 16 records
+  the differences and schedules the alignment.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` items `2.5.4` and `2.6.1`.
 
@@ -120,7 +125,10 @@ This register tracks parser behaviour against the syntax specification.
   does not lower collection literals.
 - Spec/target behaviour: section 6.4 describes collection literal lowering as
   scheduled work owned by later lowering stages rather than the parser or
-  current rule-analysis helpers.
+  current rule-analysis helpers. The literal surface itself is aligned with
+  upstream under roadmap item `2.6.8`: the brace map literal is withdrawn, the
+  empty vector literal `[]` is withdrawn, and `[k -> v, …]` becomes the map
+  literal form.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.3`.
 
@@ -207,12 +215,19 @@ This register tracks parser behaviour against the syntax specification.
 - Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.7`.
 
-### 15. Brace-group extension `{ expr }`
+### 15. Braces as block expressions
 
-- Topic: extension policy.
-- Current behaviour (code): `{ expr }` parses as a brace-group expression
+- Topic: policy for braced expression forms.
+- Current behaviour (code): `{ expr }` parses as a ddlint brace-group
+  expression, `{k: v}` as a brace map literal, and `{}` as an empty map
   (`src/parser/expression/data_structures.rs`).
-- Spec/target behaviour: this extension needs explicit support or rejection.
+- Spec/target behaviour: braces are always upstream block expressions, `{ … }`
+  with `;` as the item separator and an optional final value, so `{}` is the
+  empty block and `{ e }` is a block whose value is `e`. There are no brace
+  group or brace map forms, and the colon-terminating map-key mode is deleted.
+  The block is represented as `Expr::Block(BlockExpr)` and the `;` separator is
+  kept from escaping a block item by a scoped parser state. Decision record:
+  [ADR 006](./adrs/adr-0006-block-expressions-and-collection-syntax.md).
 - Decision status: `scheduled`.
 - Roadmap item: `docs/roadmap.md` item `2.6.8`.
 

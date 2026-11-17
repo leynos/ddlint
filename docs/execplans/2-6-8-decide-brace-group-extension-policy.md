@@ -5,11 +5,11 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: DRAFT (fifth revision)
+Status: APPROVED (fifth revision), approved 2026-11-17
 
-This plan must be approved before implementation begins. Silence is not
-approval. Decisions marked "requires user approval" in `Decision log` are
-approved together with the plan unless the approver says otherwise.
+This plan is approved for implementation. Decisions marked "requires user
+approval" in `Decision log` are approved together with the plan unless the
+approver says otherwise.
 
 ## Purpose / big picture
 
@@ -254,8 +254,13 @@ lines unless stated.
   specification section 8.1 created ahead of EP-M1 at the user's request.
 - [x] (2026-11-17T22:00Z) User confirmed that rule-level `for` alignment is
   deferred to roadmap 2.6.10, being out of scope for this item.
-- [ ] Plan approved by the user for implementation.
-- [ ] EP-M1: decisions, specification targets, register, and roadmap.
+- [x] (2026-11-17) Plan approved by the user for implementation.
+- [x] (2026-11-17) EP-M1: ADR-0006 written and indexed; design section 2
+  summarizes it and section 3.2.1 names roadmap 3.3.5 and specification section
+  8.1 as the planned change; register items 8, 10 and 15 rewritten.
+  Documentation gates pass (`check-fmt`, `markdownlint` with `spelling`,
+  `nixie`). Roadmap entries and register items 16 to 22 were completed earlier
+  on 2026-11-17.
 - [ ] EP-M2: bracket map literals, with brace-map tests rewritten.
 - [ ] EP-M3: block expressions replace brace parsing.
 - [ ] EP-M4: close-out.
@@ -372,7 +377,19 @@ lines unless stated.
 
 ## Outcomes & retrospective
 
-Not started. Complete at each milestone boundary and at completion.
+### EP-M1 outcome
+
+Complete. `docs/adrs/adr-0006-block-expressions-and-collection-syntax.md`
+records decisions `BG-D1` to `BG-D6`, `BG-D11`, `BG-D12` and `BG-D14` with the
+upstream evidence, the representation comparison, the rejected options, the
+scheduled non-goals, and the consequences for the ADR-001 split. Design section
+2 states the block and collection contract and links the record; section 3.2.1
+names roadmap 3.3.5 and specification section 8.1 as the planned scope
+alignment. Register item 15 now states the block-expression target, item 10
+withdraws brace maps and `[]` in favour of `[k -> v]`, and item 8 records the
+upstream `for` differences with a pointer to item 16. Documentation gates
+passed: `make check-fmt`, `make markdownlint` (which runs `make spelling`), and
+`make nixie`.
 
 ## Context and orientation
 

@@ -238,6 +238,24 @@ parser-contract rule: `src/parser/reserved_tokens.rs` single-sources
 diagnostics for tokens that stay lexed for span precision but have no supported
 grammar semantics.
 
+Block and collection syntax follow the same source-of-truth rule. Upstream
+Differential Datalog (DDlog) has no brace map literal and no brace group: a
+braced form is a block expression, `[k -> v, …]` is a map literal, and `[e, …]`
+is a vector literal, both requiring at least one element. ddlint therefore
+retires its earlier brace-group extension rather than codifying it. A block
+becomes the distinct node `Expr::Block(BlockExpr)`, whose `statements` and
+optional `value` describe every braced form without an exposed invariant;
+`Expr::Group` stays reserved for parentheses. Inside braces `;` is a block
+separator handled by the block parser, and a scoped parser state keeps it from
+escaping into a control-flow or closure tail. `[]` is rejected in favour of the
+upstream library constructors `vec_empty()` and `map_empty()`, and the
+specification's brace and bracket type syntax is replaced by the library types
+`Map<K, V>` and `Vec<T>`.
+[ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md) records
+these decisions, the representation alternatives, and the divergences that
+remain scheduled. This is pre-release syntax work: the specification records
+the change and no migration guidance is provided.
+
 Relation declarations use the same CST-backed boundary. The `Relation` wrapper
 models the declaration preamble with `RelationRole` (`Input`, `Output`, or
 defaulted `Internal`), `RelationKind` (`Relation`, `Stream`, or `Multiset`), and
@@ -795,6 +813,20 @@ from top-level `for` desugaring, so the semantic view matches the parser's
 existing rule surface. Provenance is retained through coarse source spans on
 declarations and on the enclosing literal or rule site for rule-local facts,
 with precise identifier-token spans captured additively when CST access exists.
+
+#### Planned change: upstream lexical scopes
+
+The model above treats rule-head bindings as visible from the start of the rule
+scope, so a head occurrence counts as a declaration and a body assignment to
+the same name resolves to that declaration. Upstream DDlog instead declares
+variables in body clauses and treats head occurrences as uses, which is why
+`Out(x) :- In(z), var x = 1, Sink(x).` declares `x` in the second clause.
+Aligning the model is scheduled as roadmap items 3.3.5 and 3.3.6, with the
+upstream scoping rules recorded as a target in
+[specification section 8.1](./differential-datalog-parser-syntax-spec-updated.md#81-variable-scoping-target),
+and will be recorded in a separate decision record after the ADR-001 crate
+split. Until then, rules must not rely on head-variable visibility as a settled
+contract.
 
 ### 3.3. Initial lint rule catalogue
 
