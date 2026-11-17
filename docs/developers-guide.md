@@ -874,12 +874,12 @@ the `Makefile`, and that literal is the only `rust-prover-tools` revision the
 repository names. Proof files are selected by `VERUS_FLAGS`, which names
 `verus/smoke/main.rs` until the scope-resolution kernel's proof lands.
 
-Verus needs its own Z3 solver. `make install-verus` installs the prover only,
-matching the reference setup in `leynos/netsuke`; run `prover-tools z3 install`
-once and export `VERUS_Z3_PATH` (see the tool's README) before the first local
-proof run. Continuous integration installs Verus and Z3 through the pinned
-`install-prover-tools` action and passes its `z3-path` output as
-`VERUS_Z3_PATH`.
+Verus needs an SMT solver. The pinned Verus release carries a matching Z3
+beside the `verus` binary, and `prover-tools verus run` invokes that installed
+prover, so a local `make verus` needs no further setup and no `prover-tools`
+command on `PATH`. Continuous integration installs Z3 separately through the
+pinned `install-prover-tools` action and passes its `z3-path` output as
+`VERUS_Z3_PATH`, which points Verus at that solver instead of the bundled one.
 
 The version and archive-digest pins live in `tools/verus/VERSION` and
 `tools/verus/SHA256SUMS`; bump them together after confirming that the existing
