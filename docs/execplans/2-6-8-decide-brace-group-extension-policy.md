@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: DRAFT (fourth revision)
+Status: DRAFT (fifth revision)
 
 This plan must be approved before implementation begins. Silence is not
 approval. Decisions marked "requires user approval" in `Decision log` are
@@ -103,8 +103,11 @@ the `for` iterable. Without it `{ if c { a } else { b }; d }` would parse as one
 `Expr::MapLit`, with at least one entry and an optional trailing comma. `->` is
 neither an infix nor a postfix operator, so the first element's parse stops at
 it, which reproduces upstream's `[ expr ->` lookahead without backtracking. A
-literal mixing elements and entries is rejected. `[]` remains the empty vector,
-a recorded ddlint extension (upstream requires one element; register item 10).
+literal mixing elements and entries is rejected. Upstream vector literals also
+need at least one element, so `[]` is rejected with `EMPTY_VECTOR_LITERAL_ERROR`
+(`empty vector literals are not DDlog syntax; use vec_empty() instead`);
+upstream's standard library provides `vec_empty()` and `map_empty()` (approved
+2026-11-17).
 
 `BG-D14` (types): the specification's `MapType ::= '{' Type ':' Type '}'` and
 `VecType ::= '[' Type ']'` are replaced by upstream's library types `Map<K, V>`
@@ -139,6 +142,9 @@ roadmap entry under the specification's source-of-truth policy):
   `x @ pat` bindings, `v in R(…)` atom binders, the `?` operator, `e[h:l]`
   slices (ddlint uses `e[h, l]`), and adjacent string-literal concatenation.
   Roadmap 2.6.14, register item 20.
+- `BG-D19`: upstream type syntax (`typedef`, `bit<N>`, `signed<N>`,
+  `bigint`, `double`, `float`) versus the 2.6.7 policy of `type`, sized
+  integers, and `f32`/`f64`. Roadmap 2.6.15, register item 22.
 - `LS-D0`: the upstream lexical-scope model in `sema` (roadmap 3.3.5,
   ADR-0007, register item 21) and its Verus-proved resolution kernel with a
   `make verus` proof lane (roadmap 3.3.6), following `Appendix A`.
@@ -240,7 +246,13 @@ lines unless stated.
   Stage A code facts established.
 - [x] (2026-11-17T20:00Z) Fourth draft: scope narrowed to outcomes 1 and 2,
   outcome 3 scheduled with `Appendix A`.
-- [ ] Plan approved by the user.
+- [x] (2026-11-17T21:00Z) User approved the split, bounded fidelity,
+  identifier spans, and the new roadmap and register items; directed that `[]`
+  follow upstream (rejected).
+- [x] (2026-11-17T21:30Z) Roadmap items 2.6.8 (reworded), 2.6.10 to 2.6.15,
+  3.3.5, 3.3.6, 4.1.3 (re-scoped), and 4.1.5, register items 16 to 22, and
+  specification section 8.1 created ahead of EP-M1 at the user's request.
+- [ ] Plan approved by the user for implementation.
 - [ ] EP-M1: decisions, specification targets, register, and roadmap.
 - [ ] EP-M2: bracket map literals, with brace-map tests rewritten.
 - [ ] EP-M3: block expressions replace brace parsing.
@@ -315,21 +327,26 @@ lines unless stated.
   programme (about 100 files) too large for one item and pull request, found
   that it placed semantic and proof work ahead of the 2.7 crate split, and
   found further prerequisites (identifier spans, a type grammar, scanner
-  fixes). Date/Author: 2026-11-17, planning agent. Requires user approval; the
-  alternative is one plan delivered as stacked pull requests.
+  fixes). Date/Author: 2026-11-17, planning agent. Approved by the user on
+  2026-11-17.
 - Decision: bound upstream fidelity to braces, maps, and scoping; record and
-  schedule every other divergence without reopening 2.6.7. Date/Author:
-  2026-11-17, planning agent. Requires user approval.
+  schedule every other divergence without reopening 2.6.7, each with a register
+  entry and a roadmap item (2.6.11, 2.6.14, and 2.6.15 for type syntax).
+  Date/Author: 2026-11-17, planning agent. Approved by the user on 2026-11-17.
 - Decision: model scope for ddlint's current rule-level `for` forms until
   roadmap 2.6.10 aligns them with upstream. Date/Author: 2026-11-17, planning
-  agent. Requires user approval.
+  agent. Not separately confirmed; consistent with the approved roadmap item
+  2.6.10, which owns the alignment decision.
 - Decision: add source-absolute spans to identifier-bearing AST nodes in
   roadmap 2.6.12, because scope tests and unused-variable diagnostics must
   identify individual occurrences. Date/Author: 2026-11-17, planning agent.
-  Requires user approval.
-- Decision: add roadmap items 2.6.10 to 2.6.14, 3.3.5, 3.3.6, and 4.1.5,
-  register items 16 to 21, and re-scope 4.1.3. Date/Author: 2026-11-17,
-  planning agent. Requires user approval.
+  Approved by the user on 2026-11-17.
+- Decision: add roadmap items 2.6.10 to 2.6.15, 3.3.5, 3.3.6, and 4.1.5,
+  register items 16 to 22, and re-scope 4.1.3. Approved by the user on
+  2026-11-17 and created the same day, ahead of the rest of EP-M1, at the
+  user's request; specification section 8.1 was added with them so every
+  reference resolves. `mapsplice` could not parse the roadmap (the un-nested
+  `2.6.6.1` task), so the entries were added by exact-anchor edits.
 - Decision: write the upstream scoping rules into the specification now, as
   a new section 8.1 marked as a scheduled target (register item 21), so the
   normative contract exists before the implementation items begin. Date/Author:
@@ -339,11 +356,8 @@ lines unless stated.
   state that it replaces design section 3.2.1's "head bindings are visible from
   the start of a rule scope". Rationale: different owners after the ADR-0001
   split and different lifecycles. Date/Author: 2026-11-17, planning agent.
-- Decision: `[]` stays the empty vector as a recorded extension (register
-  item 10) rather than being rejected. Rationale: rejecting it would need a
-  replacement form (`vec_empty()`) and is a separate syntax decision.
-  Date/Author: 2026-11-17, planning agent. The user may instead direct
-  rejection.
+- Decision: reject `[]`, as upstream does, naming `vec_empty()` in the
+  diagnostic. Directed by the user on 2026-11-17 ("Adhere to upstream").
 - Decision: messages are constants, not diagnostic codes (`BG-D7`).
   Rationale: register stable-surface rules; 2.6.7 precedent. Date/Author:
   2026-10-23, planning agent.
@@ -404,10 +418,10 @@ that a check can fail.
 
 ## Conformance basis
 
-- `docs/roadmap.md` item 2.6.8 (`RM-2.6.8`); new items 2.6.10 to 2.6.14,
+- `docs/roadmap.md` item 2.6.8 (`RM-2.6.8`); new items 2.6.10 to 2.6.15,
   3.3.5, 3.3.6, and 4.1.5; re-scoped 4.1.3.
 - `docs/parser-conformance-register.md` items 8, 10, and 15 (`REG-15`); new
-  items 16 to 21; maintenance rules; stable diagnostic surface.
+  items 16 to 22; maintenance rules; stable diagnostic surface.
 - `docs/differential-datalog-parser-syntax-spec-updated.md`: source-of-truth
   policy (`SPEC-POLICY`), sections 3.3, 4, 5.2, 5.3, 5.10, 6.4, 9, 10, 11.6,
   12, 13's compatibility-policy bullet (`SPEC-13-COMPAT`), and 14; new sections
@@ -431,7 +445,7 @@ Trace links:
 SPEC-13-COMPAT + UP-ESEQ -> RM-2.6.8 -> REG-15 -> BG-D1..BG-D6, BG-D11 -> EP-M3 -> V-B1..V-B8
 user direction (maps) -> BG-D5, BG-D12, BG-D14 -> EP-M2, EP-M3 -> V-M1, V-M2, V-M4 -> REG-10
 user direction (scope) + UP-SCOPE -> Appendix A -> EP-M1 -> spec 8.1 + REG-21 + RM-3.3.5, RM-3.3.6
-SPEC-POLICY -> BG-D8, BG-D9, BG-D15..BG-D18 -> EP-M1 -> REG-16..REG-20, RM-2.6.10..RM-2.6.14
+SPEC-POLICY -> BG-D8, BG-D9, BG-D15..BG-D19 -> EP-M1 -> REG-16..REG-20, REG-22, RM-2.6.10..RM-2.6.15
 LS-D0 lint consequences -> EP-M1 -> RM-4.1.3 (re-scoped), RM-4.1.5
 all -> EP-M4 -> developers' guide, contents, RM-2.6.8 done
 ```
@@ -481,8 +495,8 @@ unit. The representation relation `R` maps it to
 - `V-B8` (panic freedom): any token sequence beginning with `{` parses to
   `Ok` or `Err` without panicking, with error spans `start <= end <= src.len()`.
 - `V-M1` (bracket maps): `[k1 -> v1, …, kn -> vn]` (`n ≥ 1`, optional
-  trailing comma) yields `Expr::MapLit` with entries in order; `[]` yields
-  `VecLit([])`; `[a, b]` yields `VecLit`.
+  trailing comma) yields `Expr::MapLit` with entries in order; `[a, b]` yields
+  `VecLit`; `[]` is rejected with `EMPTY_VECTOR_LITERAL_ERROR`.
 - `V-M2` (no mixing): a bracket literal containing both an element and an
   entry is rejected with `MIXED_COLLECTION_ENTRY_ERROR` at the first offending
   item.
@@ -569,18 +583,14 @@ Documentation only.
 - Summarize ADR-0006 in `docs/ddlint-design.md` section 2, after the 2.6.7
   paragraph. Add to section 3.2.1 a short "Planned change" paragraph naming
   roadmap 3.3.5 and specification section 8.1.
-- Specification: add section 8.1, "Variable scoping (target)", containing
-  the rules in `Appendix A`, "Upstream scoping rules", each cited to its
-  upstream function, with a sentence that the semantic layer does not yet
-  implement it (register item 21).
+- Specification section 8.1, "Variable scoping (target)": done on
+  2026-11-17 with the roadmap entries.
 - Register: rewrite item 15's target text (status stays `scheduled`); note
-  in item 10 that brace maps are withdrawn and `[k -> v]` is the target; note
-  in item 8 the upstream `for` differences; add items 16 to 21 with the scope of
-  `BG-D9` with `BG-D8`, `BG-D15`, `BG-D16` (including the `if ready { x: T }`
-  false positive under item 17 and the lax ascription under item 18), `BG-D17`,
-  `BG-D18`, and `LS-D0`.
-- Roadmap, using the `mapsplice` skill: insert the items drafted in
-  `Appendix B`; reword open item 4.1.3.
+  in item 10 that brace maps and `[]` are withdrawn and `[k -> v]` is the
+  target; note in item 8 the upstream `for` differences and a pointer to item
+  16.
+- Roadmap entries and register items 16 to 22: done on 2026-11-17
+  (`Appendix B`).
 
 ### EP-M2: bracket map literals
 
@@ -681,7 +691,8 @@ compatibility with earlier ddlint behaviour; callers are updated in place.
 ### EP-M1
 
 - Outcome: ADR-0006, specification section 8.1 (target), register items 8,
-  10, 15 to 21, and roadmap items in place.
+  10, 15 to 22, and roadmap items in place (roadmap, register items 16 to 22,
+  and section 8.1 created on 2026-11-17).
 - Requirements and gaps: `RM-2.6.8` (decision part), `SPEC-POLICY`, user
   direction on scope (recorded and scheduled).
 - Acceptance evidence: gates pass; the ADR has the template's required
@@ -723,7 +734,7 @@ compatibility with earlier ddlint behaviour; callers are updated in place.
 - Acceptance evidence: all gates pass.
 - Milestone-specific check: no unrecorded deviation.
 - Recovery: documentation only.
-- Remaining gaps: roadmap 2.6.10 to 2.6.14, 3.3.5, 3.3.6, 4.1.5 by design.
+- Remaining gaps: roadmap 2.6.10 to 2.6.15, 3.3.5, 3.3.6, 4.1.5 by design.
 
 ## Concrete steps
 
@@ -830,7 +841,6 @@ Feature: Block expressions and collection literals
     Examples:
       | source           | form                |
       | [a, b]           | vector literal      |
-      | []               | vector literal      |
       | [a -> 1, b -> 2] | map literal         |
       | { x }            | block               |
       | ( x )            | parenthesized group |
@@ -846,6 +856,7 @@ Feature: Block expressions and collection literals
       | source       | message                                                   |
       | {a: 1, b: 2} | expected ';' or '}' after a block item                    |
       | [a, b -> c]  | cannot mix vector elements and map entries in one literal |
+      | []           | empty vector literals are not DDlog syntax; use vec_empty() instead |
       | { a, b }     | expected ';' or '}' after a block item                    |
       | { a;; b }    | empty statement in block: remove the extra ';'            |
 
@@ -880,19 +891,23 @@ Feature: Block expressions and collection literals
   heuristic).
 - Maps (`src/parser/tests/collections.rs`, rewritten): `[a -> 1]`,
   `[a -> 1,]`, `[a -> 1, b -> 2]`, `[a -> [b -> 2]]`, `[[k -> v] -> 1]`,
-  `[(a, b) -> c]`, `[f(x) -> y]`, `[a -> |x| x, b -> 1]`, `[a, b]`, `[]`;
-  rejected `[a, b -> c]`, `[a -> 1, b]`, `[a ->]`, `[-> a]`.
+  `[(a, b) -> c]`, `[f(x) -> y]`, `[a -> |x| x, b -> 1]`, `[a, b]`; rejected
+  `[]`, `[a, b -> c]`, `[a -> 1, b]`, `[a ->]`, `[-> a]`.
 
 Existing tests whose expectations change, and only these:
 
 - `src/parser/tests/collections.rs`: every brace-map case (rewritten to
   bracket form in EP-M2), `parses_brace_groups` (now `Block`), the `{}` cases
-  at lines 59 and 242, and `{{}: 1}`.
+  at lines 59 and 242, `{{}: 1}`, and the `[]` cases (`empty`, `nested_empty`,
+  `empty_vec`), which move to the rejected table in EP-M2.
 - `src/parser/tests/expression/fixtures/valid/collections.rs`: brace-map
-  cases and `"{}"`.
-- `tests/expression_prefix.rs`: `{1}`, `{}`, `{ x }`, `{ return }`.
-- `tests/expression_to_sexpr.rs`: `map_literals_format` rows (bracket form)
-  and `{}` rendering `(block)`.
+  cases, `"{}"`, and `"[]"` (moved to the rejected fixtures).
+- `tests/expression_prefix.rs`: `{1}`, `{}`, `{ x }`, `{ return }`, and
+  `[]` (now rejected).
+- `tests/expression_to_sexpr.rs`: `map_literals_format` rows (bracket form),
+  `{}` rendering `(block)`, and the `[]` row (removed; the `(vec)` rendering of
+  a directly built empty `VecLit` stays covered by
+  `src/parser/tests/collections.rs` case `vector_empty`).
 - `tests/collection_literal_boundary.rs`: three brace-map programs
   (bracket form).
 - `src/parser/tests/control_flow.rs`: `{ break }`, `{ continue }`,
@@ -994,7 +1009,8 @@ expression `( e )`."; `MapLit`'s documents `[k -> v, …]`.
 
 Message constants in `src/parser/error_messages.rs`, re-exported through
 `src/test_util/mod.rs`: `BLOCK_ITEM_SEPARATOR_ERROR`, `EMPTY_BLOCK_ITEM_ERROR`,
-`UNCLOSED_BLOCK_ERROR`, and `MIXED_COLLECTION_ENTRY_ERROR`.
+`UNCLOSED_BLOCK_ERROR`, `MIXED_COLLECTION_ENTRY_ERROR`, and
+`EMPTY_VECTOR_LITERAL_ERROR`.
 
 No dependency is added.
 
@@ -1142,38 +1158,13 @@ tie-break, barrier-hidden, barrier-kept, sibling, absent) is counted. The
 bridge test is excluded from mutation runs, because it kills every kernel
 mutant by construction.
 
-## Appendix B: roadmap entries to add in EP-M1
+## Appendix B: roadmap entries (created)
 
-```plaintext
-- [ ] 2.6.10. Align sequencing and rule-level `for` with upstream: restrict `;` to block
-  expressions, model top-level `for` headers as atoms with optional `v in` binders, and
-  treat rule-body `for` as an expression loop. See docs/parser-conformance-register.md
-  items 8 and 16.
-- [ ] 2.6.11. Adopt upstream struct-literal and struct-pattern syntax (`C{.f = e}`,
-  positional `C{e}`). See docs/parser-conformance-register.md item 17.
-- [ ] 2.6.12. Parse the expression forms that upstream scoping depends on: `var`
-  expressions, `function(…)` closures, `${…}` interpolation segments, a type grammar for
-  ascriptions and parameters, and source-absolute identifier spans. Requires 2.6.8. See
-  docs/parser-conformance-register.md item 18.
-- [ ] 2.6.13. Parse function bodies through a lazy typed accessor, gated by a vendored
-  upstream conformance corpus normalized to the specification's dialect. Requires 2.6.12.
-  See docs/parser-conformance-register.md item 19.
-- [ ] 2.6.14. Decide the remaining upstream expression forms: `x @ pat` bindings, `v in
-  R(…)` atom binders, `?`, `e[h:l]` slices, and adjacent string concatenation. See
-  docs/parser-conformance-register.md item 20.
-- [ ] 3.3.5. Model upstream lexical scope in the semantic layer (bodies declare, heads use;
-  sequence, match, `for`, closure, and function scopes; `group_by` barriers) and re-base
-  `unused-variable` on body declarations. Requires 2.6.12 and 2.6.13. See
-  docs/differential-datalog-parser-syntax-spec-updated.md section 8.1.
-- [ ] 3.3.6. Prove the scope-resolution kernel in Verus and add the `make verus` proof
-  lane. Requires 3.3.5.
-- [ ] 4.1.5. Report upstream scope errors: unknown variables, rejected redeclarations, and
-  variables declared and used in one atom. Requires 3.3.5.
-```
-
-Open item 4.1.3 is reworded to "Implement `shadowed-variable` diagnostics for
-nested-scope shadowing (match arms, `for` loops, closures, sequences). Requires
-3.3.5."
+The roadmap entries were created on 2026-11-17: `docs/roadmap.md` items 2.6.8
+(reworded), 2.6.10 to 2.6.15, 3.3.5, 3.3.6, 4.1.3 (re-scoped), and 4.1.5, with
+register items 16 to 22 in `docs/parser-conformance-register.md` and the
+scoping target in section 8.1 of
+`docs/differential-datalog-parser-syntax-spec-updated.md`.
 
 ## Revision note
 
@@ -1192,5 +1183,12 @@ map parsing; the scope programme is scheduled as roadmap 2.6.10 to 2.6.14,
 3.3.5, 3.3.6, and 4.1.5, with the corrected upstream rules, declarative kernel
 specification, and bridge design kept in `Appendix A`; `BG-D11` names the exact
 tails and delimiters; tolerances gain a counting base and categories; milestone
-records are complete. Effect: four milestones; the structural decisions marked
-"requires user approval" must be confirmed before implementation.
+records are complete. Effect: four milestones.
+
+2026-11-17: fifth revision after user decisions. What changed: the split,
+bounded fidelity, identifier spans, and new roadmap and register items are
+approved; `[]` is rejected as upstream does (`BG-D12`, `V-M1`, tests); type
+syntax gains roadmap 2.6.15 and register item 22 (`BG-D19`); the roadmap,
+register, and specification section 8.1 entries were created ahead of EP-M1,
+which now covers the ADR, design document, and register items 8, 10, and 15.
+Effect: implementation awaits approval of the plan itself.
