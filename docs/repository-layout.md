@@ -29,6 +29,10 @@ the project.
 │   ├── parser/
 │   ├── sema/
 │   └── test_util/
+├── tools/
+│   └── verus/
+├── verus/
+│   └── smoke/
 └── tests/
     ├── linter_runner/
     ├── rule_behaviour/
@@ -74,6 +78,11 @@ _Figure 1: Compact repository tree for contributor orientation._
 - `tools/`: Pinned data for local build-tool provisioning. `tools/mold/VERSION`
   names the `mold` release and `tools/mold/SHA256SUMS` holds the archive
   digests that `make install-build-tools` verifies before extraction.
+  `tools/verus/VERSION` and `tools/verus/SHA256SUMS` pin the Verus release that
+  the `install-verus` and `verus` targets read.
+- `verus/`: Verus proof sources, outside the Cargo workspace. `make verus` runs
+  them through the pinned `rust-prover-tools` CLI; see
+  [the developer's guide](developers-guide.md#formal-verification).
 
 ## Source layout
 

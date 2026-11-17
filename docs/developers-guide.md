@@ -855,3 +855,44 @@ case, and aborted on the spawned-thread panic case. The matched LLVM run passed
 all three while retaining the development thread and linker flags. These
 results cover neither the full repository nor instrumented coverage or other
 hosts.
+
+## Formal verification
+
+Verus proofs live under `verus/` and stay outside the Cargo workspace: Verus
+compiles its own files, so a proof file cannot `use` a production module
+directly. Run the proofs with:
+
+```sh
+make install-verus   # once per machine: installs the pinned Verus release
+make verus
+```
+
+`make verus` invokes `prover-tools verus run` from
+[`leynos/rust-prover-tools`](https://github.com/leynos/rust-prover-tools)
+through `uv tool run`. The revision is pinned once, in `PROVER_TOOLS_SOURCE` in
+the `Makefile`, and that literal is the only `rust-prover-tools` revision the
+repository names. Proof files are selected by `VERUS_FLAGS`, which names
+`verus/smoke/main.rs` until the scope-resolution kernel's proof lands.
+
+Verus needs its own Z3 solver. `make install-verus` installs the prover only,
+matching the reference setup in `leynos/netsuke`; run `prover-tools z3 install`
+once and export `VERUS_Z3_PATH` (see the tool's README) before the first local
+proof run. Continuous integration installs Verus and Z3 through the pinned
+`install-prover-tools` action and passes its `z3-path` output as
+`VERUS_Z3_PATH`.
+
+The version and archive-digest pins live in `tools/verus/VERSION` and
+`tools/verus/SHA256SUMS`; bump them together after confirming that the existing
+proofs verify under the new release. Installation, download and checksum logic
+belong to `rust-prover-tools` and the shared action. This repository therefore
+carries no installer script and no test of prover installation: concordat's
+`rust-prover-tooling` rule (PT-001 to PT-006) audits the pins and the workflow
+wiring, and a test that pinned their text would break on a reformat instead of
+proving behaviour.
+
+`make verus` is deliberately outside `make test`, `make lint` and the
+pull-request build gate. `.github/workflows/proofs.yml` runs it on a change to
+`verus/`, `tools/verus/`, the `Makefile` or the workflow, on a weekly schedule,
+and on demand. When the scope-resolution kernel's proof lands, the workflow's
+path filters must also name the kernel's source so a change to it triggers the
+proof.
