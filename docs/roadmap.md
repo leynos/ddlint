@@ -233,14 +233,45 @@ split parser library surfaces defined in
 - [x] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
   legacy type names, `#`, `<=>`) with deterministic diagnostics. See
   docs/parser-conformance-register.md item 14.
-- [ ] 2.6.8. Decide brace-group extension policy (`{ expr }`): codify or
-  remove with migration diagnostics. See docs/parser-conformance-register.md
-  item 15.
+- [ ] 2.6.8. Codify `{ … }` as upstream block expressions and replace brace map
+  literals with upstream `[k -> v, …]` map literals, rejecting `[]` in favour of
+  `vec_empty()`. See docs/parser-conformance-register.md items 10 and 15 and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md.
 - [ ] 2.6.9. Enforce the `LcName` case restriction on primary-key binders, and
   decide the same question for import aliases, so `primary key (Foo)` reports
   `D-REL-007` the way transformer names already do, or record an intentional
   superset in the syntax specification. See docs/parser-conformance-register.md
   item 13 and the section 5.2 import-alias note.
+- [ ] 2.6.10. Decide how `;` sequencing and rule-level `for` align with
+  upstream: `;` appears only inside block expressions upstream, a top-level
+  `for` header is an atom with an optional `v in` binder (so `for (a in A(a))`
+  is rejected upstream), and a rule-body `for` is an expression loop over a
+  collection. See docs/parser-conformance-register.md items 8 and 16 and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
+- [ ] 2.6.11. Decide whether to adopt upstream struct-literal and struct-pattern
+  syntax (`C{.f = e}` and positional `C{e}`) in place of `C { f: e }`,
+  including the struct-literal guard's `{ ident :` heuristic. See
+  docs/parser-conformance-register.md item 17.
+- [ ] 2.6.12. Parse the expression forms that upstream scoping depends on:
+  `var` expressions, `function(…)` closures with typed and `mut` parameters and
+  optional return types, `${…}` interpolation segments on a dedicated
+  expression node, a type grammar for ascriptions and parameters, and
+  source-absolute spans on identifier-bearing nodes. Requires 2.6.8. See
+  docs/parser-conformance-register.md item 18 and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
+- [ ] 2.6.13. Parse function bodies (`{ … }` and `= expr`) through a lazy typed
+  accessor with source-absolute spans, fixing the function scanner for
+  `function(…)` closures and `= expr` bodies, gated by a vendored upstream
+  conformance corpus normalized to the specification's dialect. Requires
+  2.6.12. See docs/parser-conformance-register.md item 19.
+- [ ] 2.6.14. Decide the remaining upstream expression forms: `x @ pat`
+  bindings, `v in R(…)` atom binders, the `?` operator, `e[h:l]` bit slices
+  (ddlint uses `e[h, l]`), and adjacent string-literal concatenation. See
+  docs/parser-conformance-register.md item 20.
+- [ ] 2.6.15. Decide whether to align type syntax with upstream (`typedef`,
+  `bit<N>`, `signed<N>`, `bigint`, `double`, `float`), which the 2.6.7 policy
+  rejects in favour of `type`, sized integers, and `f32`/`f64`. See
+  docs/parser-conformance-register.md items 14 and 22.
 
 ### 2.7. Split parser crate foundation
 
@@ -367,6 +398,19 @@ implementations.
 - [x] 3.3.4. Record usage sites for variables and relations.
   Done: relation and variable uses are recorded for AST rules and parse-time
   semantic rules, ready for phase 4 lint queries.
+- [ ] 3.3.5. Model upstream DDlog lexical scope in the semantic layer: body
+  clauses declare and heads use; implicit declaration in positive atoms;
+  `var`-only declaration in assignments; `group_by` barriers; sequence, match,
+  `for`, closure, and function scopes; implicit `Inspect`, primary-key, and
+  index variables. Re-base `unused-variable` on body declarations. Requires
+  2.6.12 and 2.6.13. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §8.1,
+  docs/parser-conformance-register.md item 21, and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
+- [ ] 3.3.6. Prove the scope-resolution kernel in Verus against a declarative
+  specification, add the pinned Verus toolchain and the `make verus` proof
+  lane, and bridge the proved and production kernel texts. Requires 3.3.5. See
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
 
 ## 4. Lint rule implementation
 
@@ -381,11 +425,16 @@ catalogue.
 - [x] 4.1.2. Implement `unused-variable` diagnostics for variables defined but
   not used within a rule, treating `_` as explicit ignore. Requires 3.3.3 and
   3.3.4. See docs/ddlint-design.md §3.3.
-- [ ] 4.1.3. Implement `shadowed-variable` diagnostics for same-scope rebinding
-  in later literals. Requires 3.3.3. See docs/ddlint-design.md §3.3.
+- [ ] 4.1.3. Implement `shadowed-variable` diagnostics for nested-scope
+  shadowing (match arms, `for` loops, closures, and block sequences shadowing
+  an outer binding). Requires 3.3.5. See docs/ddlint-design.md §3.3.
 - [ ] 4.1.4. Implement `recursive-negation` detection via relation dependency
   graphs that track negated edges and reject cycles containing negation. See
   docs/ddlint-design.md §3.3.
+- [ ] 4.1.5. Report upstream scope errors: unknown variables, redeclarations the
+  upstream compiler rejects (rule conditions, FlatMap patterns, `@` bindings),
+  and variables declared and used in one atom. Requires 3.3.5. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §8.1.
 
 ### 4.2. Performance rules
 

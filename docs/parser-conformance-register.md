@@ -216,6 +216,107 @@ This register tracks parser behaviour against the syntax specification.
 - Decision status: `scheduled`.
 - Roadmap item: `docs/roadmap.md` item `2.6.8`.
 
+### 16. Sequencing and rule-level `for`
+
+- Topic: the `;` operator outside braces and rule-level `for` forms.
+- Current behaviour (code): `;` is the infix `BinaryOp::Seq`, accepted in any
+  expression position, including `( a; b )`, call arguments, vector items,
+  struct fields, match-arm bodies, and unbraced `for` bodies
+  (`src/parser/ast/precedence.rs`). Top-level `for (a in A(a)) …` lowers to
+  semantic rules, and rule-body `for` loops over relations are classified as
+  `RuleBodyTerm::ForLoop` (`src/parser/top_level_for/`,
+  `src/parser/ast/rule/classification.rs`). A rule-body
+  `for (x in xs) y = f(x)` is split at the `=` and fails pattern parsing.
+- Spec/target behaviour: upstream DDlog has `;` only inside block expressions,
+  parses a top-level `for` header as an atom with an optional `v in` binder
+  (rejecting `for (a in A(a))`), and treats a rule-body `for` as an expression
+  loop over a collection. Upstream `if`/`for` branches are terms, so
+  `{ if c { a } else { b } ++ x }` also differs.
+- Decision status: `decision needed`.
+- Roadmap item: `docs/roadmap.md` item `2.6.10`.
+
+### 17. Struct-literal and struct-pattern syntax
+
+- Topic: constructor syntax.
+- Current behaviour (code): struct literals and patterns use `C { f: e }`
+  (`src/parser/expression/data_structures.rs`, `src/parser/pattern/`). The
+  struct-literal guard's `{ ident :` heuristic rejects the valid upstream
+  `if ready { x: T }`.
+- Spec/target behaviour: upstream uses `C{.f = e}` for named fields and
+  `C{e}` for positional fields, in both expressions and patterns.
+- Decision status: `decision needed`.
+- Roadmap item: `docs/roadmap.md` item `2.6.11`.
+
+### 18. Expression forms for variable scoping
+
+- Topic: parser support that upstream scoping depends on.
+- Current behaviour (code): `var x` is rejected as an expression
+  (`unexpected token: K_VAR`); `function(…)` closures are unsupported; pipe
+  closures take untyped parameters; `${…}` interpolation segments are not parsed
+  (`src/parser/ast/string_literal.rs` records only a flag); ascription types
+  are parsed as expressions (`parse_type`), so `x: Vec<u32>` misparses and
+  `{a: 1}` parses as a block containing a nonsensical ascription; `Expr` nodes
+  carry no source spans.
+- Spec/target behaviour: upstream `evardcl`, `eclosure`, interpolated
+  strings, and `typeSpecSimple`; identifier-bearing nodes carry source-absolute
+  spans so semantic analysis can identify each occurrence.
+- Decision status: `scheduled`.
+- Roadmap item: `docs/roadmap.md` item `2.6.12`.
+
+### 19. Function bodies
+
+- Topic: parsing function bodies.
+- Current behaviour (code): the function scanner records bodies as balanced
+  brace spans that are never parsed (`src/parser/span_scanners/functions.rs`,
+  `src/parser/ast/function.rs`); `function f(): T = expr` bodies are absorbed
+  into the return-type scan; the scanner treats `function(…)` closures as
+  malformed declarations.
+- Spec/target behaviour: upstream bodies are `{ eseq }` or `= expr`, parsed as
+  expressions, with no terminator after a declaration.
+- Decision status: `scheduled`.
+- Roadmap item: `docs/roadmap.md` item `2.6.13`.
+
+### 20. Remaining upstream expression forms
+
+- Topic: upstream forms missing from the specification.
+- Current behaviour (code): `x @ pat` bindings, `v in R(…)` atom binders
+  outside top-level `for`, and the `?` operator are not parsed; bit slices use
+  `e[h, l]` (`src/parser/expression/pratt/postfix.rs`); adjacent string
+  literals are not concatenated.
+- Spec/target behaviour: upstream `ebinding`, atom binders, `ETry`,
+  `e[h:l]` slices, and `many1 stringLit` concatenation.
+- Decision status: `decision needed`.
+- Roadmap item: `docs/roadmap.md` item `2.6.14`.
+
+### 21. Variable scoping in the semantic model
+
+- Topic: lexical scope semantics.
+- Current behaviour (code): `src/sema/` declares rule-head variables and
+  treats body occurrences as uses; it opens no scope for blocks, match arms, or
+  functions, ignores match and expression-level `for` patterns, and cannot see
+  `var` declarations inside expressions.
+- Spec/target behaviour: section 8.1 of
+  `docs/differential-datalog-parser-syntax-spec-updated.md` records upstream
+  DDlog's scoping rules: body clauses declare and heads use, positive atoms
+  declare implicitly, assignments declare only through `var`, `group_by` hides
+  ungrouped variables, and sequence, match, `for`, closure, and function scopes
+  nest.
+- Decision status: `scheduled`.
+- Roadmap item: `docs/roadmap.md` items `3.3.5` and `3.3.6`.
+
+### 22. Type syntax versus upstream
+
+- Topic: type keywords and primitive type names.
+- Current behaviour (code): `typedef`, `bit<N>`, `signed<N>`, `bigint`,
+  `double`, and `float` are rejected with deterministic diagnostics in favour of
+  `type`, sized integers such as `u32`, and `f32`/`f64`
+  (`src/parser/reserved_tokens.rs`; item 14).
+- Spec/target behaviour: upstream DDlog's grammar uses `typedef` and the
+  `bit`, `signed`, `bigint`, `double`, and `float` types. Whether ddlint's
+  specification keeps its policy or aligns with upstream is undecided.
+- Decision status: `decision needed`.
+- Roadmap item: `docs/roadmap.md` item `2.6.15`.
+
 ## Stable diagnostic compatibility surface
 
 Issue `#304` establishes a backend-neutral observability precursor to Phase 2 of

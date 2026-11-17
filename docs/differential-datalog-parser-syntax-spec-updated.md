@@ -544,6 +544,57 @@ ______________________________________________________________________
   emit an error.
 - **Keywords:** identifiers cannot be any reserved keyword or operator token.
 
+### 8.1 Variable scoping (target)
+
+This section is the normative target for variable scoping. The semantic layer
+does not implement it yet; the gap is tracked as
+`docs/parser-conformance-register.md` item 21 and scheduled as
+`docs/roadmap.md` items `3.3.5` and `3.3.6`. The rules follow the upstream
+DDlog compiler (`vmware-archive/differential-datalog`: `ctxVars'` in `NS.hs`,
+`ruleRHSVars'` in `Rule.hs`, `exprVarDecls` in `Expr.hs`, and the pattern
+grammars in `Parse.hs`). Where the upstream language reference and compiler
+disagree, the compiler is followed.
+
+**Rules.**
+
+- **Clause order:** rule-body clauses are ordered. A clause sees the
+  declarations of earlier clauses only. The head and its `@` location see every
+  body declaration, after any `group_by` barrier. Heads declare nothing.
+- **Positive atoms:** a positive atom declares every pattern-position
+  occurrence of a name that is not visible before the clause. Pattern positions
+  are the atom's value and, recursively, struct fields, tuple components, typed
+  operands, `@` bindings, and `&` operands; parentheses are transparent.
+  Occurrences in one atom do not see each other, so in `R(x, x)` with `x` fresh
+  both occurrences declare (an error upstream), and in `R(x, x + 1)` the second
+  `x` is unknown. A clause wrapped in parentheses, `(R(x))`, is a condition
+  rather than an atom.
+- **Other clauses:** negated atoms, conditions, and `Inspect` declare nothing.
+  `Inspect` additionally sees `ddlog_weight` and `ddlog_timestamp`; primary-key
+  and index expressions see their key and index variables.
+- **Assignments:** an assignment clause declares only the `var` names on its
+  left-hand side; a bare name there is a use. A FlatMap pattern declares only
+  `var` names. Redeclaring a visible name in a rule condition, FlatMap pattern,
+  or `@` binding is an error.
+- **`group_by`:** a clause containing `group_by` (method or function form) or
+  `Aggregate` splits into a group-by clause, whose project and key see earlier
+  variables and which binds a hidden group variable, and the remainder. After
+  the split, only the key's variables, the group variable, and later
+  declarations are visible; hidden names may be declared again.
+- **Sequences:** inside an expression, a declaration made by one `;`-separated
+  item of a block is visible to the later items of that block only, and shadows
+  outer names. Declarations propagate out of a sub-expression only through
+  struct fields, tuple components, an assignment's left-hand side, `@`
+  bindings, typed operands, and `&` operands. A single-item block `{ e }` and a
+  group `( e )` behave as `e`. In rule bodies, only a top-level assignment's
+  left-hand side declares for later clauses.
+- **Nested scopes:** an `if` condition does not declare into its branches.
+  Match patterns declare bare and `var` names, which shadow outer names in the
+  arm. A `for` pattern declares into the loop body and shadows outer names; the
+  iterable is evaluated outside the loop scope. Closure parameters shadow
+  captured variables. A function body sees only its parameters.
+- **Shadowing:** shadowing by a `var` declaration is permitted inside
+  expressions and never inside rule clauses.
+
 ______________________________________________________________________
 
 ## 9. Errors and diagnostics (normative samples)
@@ -857,6 +908,8 @@ ______________________________________________________________________
   parsing.
 - Added validation/error section with concrete examples.
 - Added AST crosswalk to guide ports and test fixture authorship.
+- Added the upstream variable-scoping rules as a scheduled target (section
+  8.1).
 
 ______________________________________________________________________
 
