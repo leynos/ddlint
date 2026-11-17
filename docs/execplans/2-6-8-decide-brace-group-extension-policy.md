@@ -252,6 +252,8 @@ lines unless stated.
 - [x] (2026-11-17T21:30Z) Roadmap items 2.6.8 (reworded), 2.6.10 to 2.6.15,
   3.3.5, 3.3.6, 4.1.3 (re-scoped), and 4.1.5, register items 16 to 22, and
   specification section 8.1 created ahead of EP-M1 at the user's request.
+- [x] (2026-11-17T22:00Z) User confirmed that rule-level `for` alignment is
+  deferred to roadmap 2.6.10, being out of scope for this item.
 - [ ] Plan approved by the user for implementation.
 - [ ] EP-M1: decisions, specification targets, register, and roadmap.
 - [ ] EP-M2: bracket map literals, with brace-map tests rewritten.
@@ -333,10 +335,12 @@ lines unless stated.
   schedule every other divergence without reopening 2.6.7, each with a register
   entry and a roadmap item (2.6.11, 2.6.14, and 2.6.15 for type syntax).
   Date/Author: 2026-11-17, planning agent. Approved by the user on 2026-11-17.
-- Decision: model scope for ddlint's current rule-level `for` forms until
-  roadmap 2.6.10 aligns them with upstream. Date/Author: 2026-11-17, planning
-  agent. Not separately confirmed; consistent with the approved roadmap item
-  2.6.10, which owns the alignment decision.
+- Decision: defer rule-level `for` alignment to roadmap 2.6.10. This item
+  changes neither top-level `for` lowering nor rule-body `for` classification;
+  braced `for` bodies simply parse as blocks, and the interim `sema` handling
+  keeps today's flattening. Directed by the user on 2026-11-17 ("If it is in
+  scope for this task, keep it aligned with upstream. Otherwise, defer."); it
+  is not in scope.
 - Decision: add source-absolute spans to identifier-bearing AST nodes in
   roadmap 2.6.12, because scope tests and unused-variable diagnostics must
   identify individual occurrences. Date/Author: 2026-11-17, planning agent.
