@@ -867,6 +867,12 @@ make install-verus   # once per machine: installs the pinned Verus release
 make verus
 ```
 
+These commands target Linux x86-64. The pins name only the `x86-linux` Verus
+archive, and Z3 is resolved for the same target, so on another host or
+architecture `make install-verus` downloads a binary that cannot run and the Z3
+installer refuses outright. Supporting another host means adding target
+selection and matching checksums upstream, in `rust-prover-tools`, not here.
+
 `make verus` invokes `prover-tools verus run` from
 [`leynos/rust-prover-tools`](https://github.com/leynos/rust-prover-tools)
 through `uv tool run`. The revision is pinned once, in `PROVER_TOOLS_SOURCE` in
