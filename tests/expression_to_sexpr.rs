@@ -74,7 +74,6 @@ fn closures_format(#[case] src: &str, #[case] expected: &str) {
 }
 
 #[rstest]
-#[case("[]", "(vec)")]
 #[case("[1]", "(vec 1)")]
 #[case("[1, 2, 3]", "(vec 1 2 3)")]
 #[case("[1,]", "(vec 1)")]
@@ -86,17 +85,19 @@ fn vector_literals_format(#[case] src: &str, #[case] expected: &str) {
 }
 
 #[rstest]
-#[case("{}", "(map)")]
-#[case("{a: 1}", "(map (entry a 1))")]
-#[case("{a: 1, b: 2}", "(map (entry a 1) (entry b 2))")]
-#[case("{a: 1,}", "(map (entry a 1))")]
-#[case("{x: y, z: w}", "(map (entry x y) (entry z w))")]
-#[case("{1 + 2: 3 * 4}", "(map (entry (+ 1 2) (* 3 4)))")]
-// Low-precedence operators in values (regression tests for BP_ABOVE_COLON bug).
-#[case("{k: a == b}", "(map (entry k (== a b)))")]
-#[case("{k: x and y}", "(map (entry k (and x y)))")]
-#[case("{k: x or y}", "(map (entry k (or x y)))")]
-#[case("{k: a != b, m: c < d}", "(map (entry k (!= a b)) (entry m (< c d)))")]
+#[case("[a -> 1]", "(map (entry a 1))")]
+#[case("[a -> 1, b -> 2]", "(map (entry a 1) (entry b 2))")]
+#[case("[a -> 1,]", "(map (entry a 1))")]
+#[case("[x -> y, z -> w]", "(map (entry x y) (entry z w))")]
+#[case("[1 + 2 -> 3 * 4]", "(map (entry (+ 1 2) (* 3 4)))")]
+// Low-precedence operators in values stay inside the entry, not the literal.
+#[case("[k -> a == b]", "(map (entry k (== a b)))")]
+#[case("[k -> x and y]", "(map (entry k (and x y)))")]
+#[case("[k -> x or y]", "(map (entry k (or x y)))")]
+#[case(
+    "[k -> a != b, m -> c < d]",
+    "(map (entry k (!= a b)) (entry m (< c d)))"
+)]
 fn map_literals_format(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).expect("map literal should parse");
     assert_eq!(expr.to_sexpr(), expected);

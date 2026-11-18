@@ -23,6 +23,10 @@ pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
     crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
 pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
     crate::parser::error_messages::CAPITALIZED_TRANSFORMER_NAME_ERROR;
+pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
+    crate::parser::error_messages::MIXED_COLLECTION_ENTRY_ERROR;
+pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
+    crate::parser::error_messages::EMPTY_VECTOR_LITERAL_ERROR;
 pub use expressions::{
     atom_delay,
     atom_diff,

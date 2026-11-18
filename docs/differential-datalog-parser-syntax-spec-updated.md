@@ -151,14 +151,28 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
 
 ### 3.3 Collections
 
-- **Vector literals:** `[e1, e2, …]` are parsed as collection literals today.
-  Builder-sequence lowering such as `vec_with_capacity(n); push(e)…` is
-  scheduled work; see `docs/parser-conformance-register.md` item 10 and
-  `docs/roadmap.md` item `2.6.3`.
-- **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
-  literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
-  likewise scheduled work; see `docs/parser-conformance-register.md` item 10 and
-  `docs/roadmap.md` item `2.6.3`.
+Upstream Differential Datalog (DDlog) has exactly two collection literal forms,
+both bracket-delimited and both non-empty. Braces are never collection syntax;
+they introduce a block expression (section 3.4).
+
+- **Vector literals:** `[e1, e2, …]` with at least one element and an optional
+  trailing comma. The empty spelling `[]` is not DDlog syntax; `vec_empty()`
+  from the standard library is the upstream way to build an empty vector. The
+  parser reports a deterministic diagnostic for `[]`. Vector literals are
+  preserved as `Expr::VecLit` today; builder-sequence lowering such as
+  `vec_with_capacity(n); push(e)…` is scheduled work. See
+  `docs/parser-conformance-register.md` item 10 and `docs/roadmap.md` item
+  `2.6.3`.
+- **Map literals:** `[k1 -> v1, k2 -> v2, …]` with at least one entry and an
+  optional trailing comma. `->` is not an operator, so it separates an entry's
+  key from its value only. A literal that mixes vector elements and map entries
+  is rejected. Map literals are preserved as `Expr::MapLit` today; lowering to
+  forms such as `map_empty(); insert(k, v)…` is likewise scheduled work. See
+  `docs/parser-conformance-register.md` item 10 and `docs/roadmap.md` item
+  `2.6.3`.
+- **No brace map literals:** the earlier ddlint extension `{k: v, …}` is
+  withdrawn with no compatibility path. See
+  [ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md).
 
 ______________________________________________________________________
 
@@ -224,8 +238,8 @@ Typedef  ::= 'type' UcName TypeParams? '=' Type ';'
 Type     ::= UcName TypeArgs? | TupleType | MapType | VecType | Primitive
 
 TupleType ::= '(' (Type (',' Type)*)? ')'
-MapType   ::= '{' Type ':' Type '}'
-VecType   ::= '[' Type ']'
+MapType   ::= 'Map' '<' Type ',' Type '>'
+VecType   ::= 'Vec' '<' Type '>'
 Primitive ::= 'bool' | 'i8' | 'u8' | 'i16' | … | 'u128'
             | 'f32' | 'f64' | 'string' | 'interned'
 ```
@@ -233,6 +247,12 @@ Primitive ::= 'bool' | 'i8' | 'u8' | 'i16' | … | 'u128'
 The import alias uses the documented `LcName` category. The current parser
 accepts the generic identifier token here and does not enforce that case
 restriction.
+
+`Map<K, V>` and `Vec<T>` are the upstream standard-library type constructors;
+the brace and bracket type syntaxes of earlier ddlint drafts are withdrawn (see
+[ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md)).
+ddlint stores type text without analysing it, so this decision changes the
+specification rather than parser behaviour.
 
 ### 5.3 Functions and closures
 
@@ -459,8 +479,9 @@ ______________________________________________________________________
 
 ### 6.4 Collection literal lowering ownership
 
-- Vector and map literals `[e1, e2, ...]` and `{k: v, ...}` are preserved as
+- Vector and map literals `[e1, e2, ...]` and `[k -> v, ...]` are preserved as
   raw `Expr::VecLit` and `Expr::MapLit` nodes in the current parser generation.
+  Braces are block expressions, not collection literals.
 - `parse()` and `parse_expression()` do not lower collection literals into
   builder-call sequences.
 - `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
@@ -802,8 +823,8 @@ let f  = 3.14159'f64; // permitted widths: 32 or 64
 ### 11.6 Collections
 
 ```ddlog
-let v = [a, b, c];   // parsed today; lowering is scheduled
-let m = {k1: v1, k2: v2}; // parsed today; lowering is scheduled
+let v = [a, b, c];        // parsed today; lowering is scheduled
+let m = [k1 -> v1, k2 -> v2]; // parsed today; lowering is scheduled
 ```
 
 ### 11.7 Index

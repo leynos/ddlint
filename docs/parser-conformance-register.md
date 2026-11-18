@@ -121,6 +121,10 @@ This register tracks parser behaviour against the syntax specification.
 - Current behaviour (code): `parse()` and `parse_expression()` preserve vector
   and map literals as raw `Expr::VecLit` and `Expr::MapLit` nodes in the CST
   (`src/parser/expression/data_structures.rs`, `src/parser/ast/expr/mod.rs`).
+  Bracket map literals `[k -> v, …]` are `implemented`; the empty vector literal
+  `[]` is rejected; mixed element/entry literals are rejected. The brace map
+  literal `{k: v, …}` still parses and is removed by roadmap item `2.6.8`
+  milestone EP-M3, when braces become block expressions.
   `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
   does not lower collection literals.
 - Spec/target behaviour: section 6.4 describes collection literal lowering as

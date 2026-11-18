@@ -14,17 +14,12 @@ use crate::{
 
 /// Returns collection literal cases as [`Vec<ExpressionCase>`].
 ///
-/// Covers empty and numeric vectors (`[]`, `[1]`, `[1, 2]`, `[1, 2, 3]`),
-/// trailing-comma vector variants (`[1,]`, `[1, 2,]`), nested element forms
-/// (`[x, y + 1]`), and map literals (`{}`, `{a: 1}`, `{a: 1,}`, `{x: y, z: w}`).
-/// Tests consume the returned vector to populate parameterized parser fixture
-/// cases.
+/// Covers numeric vectors (`[1]`, `[1, 2]`, `[1, 2, 3]`), trailing-comma
+/// vector variants (`[1,]`, `[1, 2,]`), nested element forms (`[x, y + 1]`),
+/// and map literals (`[a -> 1]`, `[a -> 1,]`, `[x -> y, z -> w]`). Tests
+/// consume the returned vector to populate parameterized parser fixture cases.
 pub(super) fn collection_expression_cases() -> Vec<ExpressionCase> {
     vec![
-        ExpressionCase {
-            src: "[]",
-            expected: vec_lit(vec![]),
-        },
         ExpressionCase {
             src: "[1]",
             expected: vec_lit(vec![lit_num("1")]),
@@ -61,22 +56,22 @@ pub(super) fn collection_expression_cases() -> Vec<ExpressionCase> {
             expected: map_lit(vec![]),
         },
         ExpressionCase {
-            src: "{a: 1}",
+            src: "[a -> 1]",
             expected: map_lit(vec![map_entry(var("a"), lit_num("1"))]),
         },
         ExpressionCase {
-            src: "{a: 1, b: 2}",
+            src: "[a -> 1, b -> 2]",
             expected: map_lit(vec![
                 map_entry(var("a"), lit_num("1")),
                 map_entry(var("b"), lit_num("2")),
             ]),
         },
         ExpressionCase {
-            src: "{a: 1,}",
+            src: "[a -> 1,]",
             expected: map_lit(vec![map_entry(var("a"), lit_num("1"))]),
         },
         ExpressionCase {
-            src: "{x: y, z: w}",
+            src: "[x -> y, z -> w]",
             expected: map_lit(vec![
                 map_entry(var("x"), var("y")),
                 map_entry(var("z"), var("w")),

@@ -3,6 +3,21 @@
 //! Centralizing parser-facing message text keeps scanner code and test helpers
 //! aligned when diagnostics are intentionally part of the parser contract.
 
+/// Diagnostic emitted for a literal that mixes vector elements and map
+/// entries.
+///
+/// Upstream `DDlog` decides between `evec_literal` and `emap_literal` from the
+/// first item, so a literal cannot be both.
+pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
+    "cannot mix vector elements and map entries in one literal";
+
+/// Diagnostic emitted for the empty vector literal `[]`.
+///
+/// Upstream `evec_literal` uses `commaSepEnd1`, so the empty form is not
+/// syntax; the standard library provides the constructors instead.
+pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
+    "empty vector literals are not DDlog syntax; use vec_empty() instead";
+
 /// Diagnostic emitted when a transformer declaration omits `:` or its first
 /// output identifier.
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =

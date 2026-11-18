@@ -261,7 +261,13 @@ lines unless stated.
   Documentation gates pass (`check-fmt`, `markdownlint` with `spelling`,
   `nixie`). Roadmap entries and register items 16 to 22 were completed earlier
   on 2026-11-17.
-- [ ] EP-M2: bracket map literals, with brace-map tests rewritten.
+- [x] (2026-11-17) EP-M2: bracket map literals implemented in
+  `parse_vector_literal`; `[]` and mixed element/entry literals rejected with
+  the new message constants; `V-M1`, `V-M2`, `V-M4` tables written and green
+  (`60` collection tests); `V-B7` characterization snapshots recorded over
+  every non-brace fixture; brace-map test cases rewritten to bracket form in
+  the unit and integration suites. Specification sections 3.3, 5.2, 6.4, and
+  11.6 and register item 10 updated. Gates pass.
 - [ ] EP-M3: block expressions replace brace parsing.
 - [ ] EP-M4: close-out.
 
@@ -390,6 +396,21 @@ withdraws brace maps and `[]` in favour of `[k -> v]`, and item 8 records the
 upstream `for` differences with a pointer to item 16. Documentation gates
 passed: `make check-fmt`, `make markdownlint` (which runs `make spelling`), and
 `make nixie`.
+
+### EP-M2 outcome
+
+Complete. `parse_vector_literal` parses the first element and branches on
+`T_ARROW` into bracket map entries, so `[k -> v]` produces `Expr::MapLit`
+without backtracking; a mixed literal reports `MIXED_COLLECTION_ENTRY_ERROR` at
+the first offending item, and `[]` reports `EMPTY_VECTOR_LITERAL_ERROR`. `V-M1`,
+`V-M2`, and `V-M4` are covered by the rewritten
+`src/parser/tests/collections.rs` (60 passing cases, including exact rejection
+spans), and the integration suites `tests/collection_literal_boundary.rs`,
+`tests/expression_prefix.rs`, and `tests/expression_to_sexpr.rs` use the
+bracket form and pass. The `V-B7` characterization in
+`src/parser/tests/expression/characterization.rs` records the rendering and
+first diagnostic of every non-brace fixture in two inline snapshots, giving
+EP-M3 a regression fence. Brace maps still parse; nothing new depends on them.
 
 ## Context and orientation
 

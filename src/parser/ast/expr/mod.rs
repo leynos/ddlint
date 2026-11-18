@@ -299,16 +299,18 @@ pub enum Expr {
     },
     /// Vector literal expression.
     ///
-    /// Syntactically `[e1, e2, ...]`, preserved as a raw AST node during
-    /// parsing. Builder-sequence desugaring (for example to
+    /// Syntactically `[e1, e2, ...]` with at least one element, preserved as a
+    /// raw AST node during parsing. The empty source form `[]` is not `DDlog`
+    /// syntax; `vec_empty()` is the upstream spelling. Builder-sequence
+    /// desugaring (for example to
     /// `vec_with_capacity(n); push(e1); push(e2); ...`) is scheduled work for
     /// later lowering stages, not current parser behaviour.
     VecLit(Vec<Self>),
     /// Map literal expression.
     ///
-    /// Syntactically `{k1: v1, k2: v2, ...}`, preserved as a raw AST node
-    /// during parsing. Builder-sequence desugaring (for example to
-    /// `map_empty(); insert(k1, v1); insert(k2, v2); ...`) is scheduled work
-    /// for later lowering stages, not current parser behaviour.
+    /// Syntactically `[k1 -> v1, k2 -> v2, ...]` with at least one entry,
+    /// preserved as a raw AST node during parsing. Builder-sequence desugaring
+    /// (for example to `map_empty(); insert(k1, v1); insert(k2, v2); ...`) is
+    /// scheduled work for later lowering stages, not current parser behaviour.
     MapLit(Vec<(Self, Self)>),
 }

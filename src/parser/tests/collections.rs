@@ -1,8 +1,9 @@
 //! Tests for vector and map literal parsing.
 //!
-//! Covers parsing of `[e1, e2, ...]` vector literals and `{k: v, ...}` map
-//! literals, including edge cases like empty collections, trailing commas,
-//! nested structures, and disambiguation from brace groups.
+//! Covers parsing of `[e1, e2, ...]` vector literals and `[k -> v, ...]` map
+//! literals, including edge cases like trailing commas, nesting, and the
+//! rejection of empty and mixed literals. Brace forms are covered separately
+//! while the block-expression work is staged.
 
 use rstest::rstest;
 
@@ -12,7 +13,11 @@ use crate::{
         expression::parse_expression,
     },
     test_util::{
+        EMPTY_VECTOR_LITERAL_ERROR,
+        MIXED_COLLECTION_ENTRY_ERROR,
+        assert_parse_error,
         call,
+        closure,
         field,
         lit_bool,
         lit_num,
@@ -31,7 +36,6 @@ use crate::{
 // ============================================================================
 
 #[rstest]
-#[case::empty("[]", vec_lit(vec![]))]
 #[case::single_num("[1]", vec_lit(vec![lit_num("1")]))]
 #[case::multiple_nums("[1, 2, 3]", vec_lit(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
 #[case::trailing_comma("[1,]", vec_lit(vec![lit_num("1")]))]
@@ -47,7 +51,6 @@ fn parses_vector_literals(#[case] src: &str, #[case] expected: Expr) {
 }
 
 #[rstest]
-#[case::nested_empty("[[]]", vec_lit(vec![vec_lit(vec![])]))]
 #[case::nested_single("[[1]]", vec_lit(vec![vec_lit(vec![lit_num("1")])]))]
 #[case::nested_multiple(
     "[[1], [2, 3]]",
@@ -71,58 +74,75 @@ fn parses_nested_vectors(#[case] src: &str, #[case] expected: Expr) {
 // ============================================================================
 
 #[rstest]
-#[case::empty("{}", map_lit(vec![]))]
-#[case::single_entry("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case::single_entry("[a -> 1]", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case::single_entry_trailing_comma("[a -> 1,]", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
 #[case::multiple_entries(
-    "{a: 1, b: 2}",
+    "[a -> 1, b -> 2]",
     map_lit(vec![
         map_entry(var("a"), lit_num("1")),
         map_entry(var("b"), lit_num("2")),
     ])
 )]
-#[case::trailing_comma("{a: 1,}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
-#[case::trailing_comma_multi(
-    "{a: 1, b: 2,}",
+#[case::multiple_entries_trailing_comma(
+    "[a -> 1, b -> 2,]",
     map_lit(vec![
         map_entry(var("a"), lit_num("1")),
         map_entry(var("b"), lit_num("2")),
     ])
 )]
-#[case::numeric_keys("{1: x, 2: y}", map_lit(vec![
+#[case::numeric_keys("[1 -> x, 2 -> y]", map_lit(vec![
     map_entry(lit_num("1"), var("x")),
     map_entry(lit_num("2"), var("y")),
 ]))]
 #[case::string_keys(
-    "{\"key\": value}",
+    "[\"key\" -> value]",
     map_lit(vec![map_entry(lit_str("key"), var("value"))])
 )]
 #[case::boolean_values(
-    "{a: true, b: false}",
+    "[a -> true, b -> false]",
     map_lit(vec![
         map_entry(var("a"), lit_bool(true)),
         map_entry(var("b"), lit_bool(false)),
     ])
 )]
 #[case::complex_key_and(
-    "{a and b: 1}",
+    "[a and b -> 1]",
     map_lit(vec![map_entry(
         Expr::Binary { op: BinaryOp::And, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
         lit_num("1"),
     )])
 )]
 #[case::complex_key_or(
-    "{x or y: 2}",
+    "[x or y -> 2]",
     map_lit(vec![map_entry(
         Expr::Binary { op: BinaryOp::Or, lhs: Box::new(var("x")), rhs: Box::new(var("y")) },
         lit_num("2"),
     )])
 )]
 #[case::complex_key_comparison(
-    "{a < b: true}",
+    "[a < b -> true]",
     map_lit(vec![map_entry(
         Expr::Binary { op: BinaryOp::Lt, lhs: Box::new(var("a")), rhs: Box::new(var("b")) },
         lit_bool(true),
     )])
+)]
+#[case::tuple_key(
+    "[(a, b) -> c]",
+    map_lit(vec![map_entry(
+        tuple(vec![var("a"), var("b")]),
+        var("c"),
+    )])
+)]
+#[case::call_key(
+    "[f(x) -> y]",
+    map_lit(vec![map_entry(call("f", vec![var("x")]), var("y"))])
+)]
+#[case::closure_value_stops_at_comma(
+    "[a -> |x| x, b -> 1]",
+    map_lit(vec![
+        map_entry(var("a"), closure(["x"], var("x"))),
+        map_entry(var("b"), lit_num("1")),
+    ])
 )]
 fn parses_map_literals(#[case] src: &str, #[case] expected: Expr) {
     let expr =
@@ -131,19 +151,22 @@ fn parses_map_literals(#[case] src: &str, #[case] expected: Expr) {
 }
 
 #[rstest]
-#[case::empty_key(
-    "{{}: 1}",
-    map_lit(vec![map_entry(map_lit(vec![]), lit_num("1"))])
-)]
 #[case::nested_value(
-    "{a: {b: 2}}",
+    "[a -> [b -> 2]]",
     map_lit(vec![map_entry(
         var("a"),
         map_lit(vec![map_entry(var("b"), lit_num("2"))]),
     )])
 )]
+#[case::nested_key(
+    "[[k -> v] -> 1]",
+    map_lit(vec![map_entry(
+        map_lit(vec![map_entry(var("k"), var("v"))]),
+        lit_num("1"),
+    )])
+)]
 #[case::nested_key_and_value(
-    "{{x: 1}: {y: 2}}",
+    "[[x -> 1] -> [y -> 2]]",
     map_lit(vec![map_entry(
         map_lit(vec![map_entry(var("x"), lit_num("1"))]),
         map_lit(vec![map_entry(var("y"), lit_num("2"))]),
@@ -156,7 +179,7 @@ fn parses_nested_maps(#[case] src: &str, #[case] expected: Expr) {
 }
 
 // ============================================================================
-// Brace group backward compatibility
+// Brace forms still parse while block-expression work is staged
 // ============================================================================
 
 #[rstest]
@@ -186,28 +209,40 @@ fn parses_brace_groups(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+#[rstest]
+#[case::empty("{}", map_lit(vec![]))]
+#[case::single_entry("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+fn parses_brace_maps_until_removed(#[case] src: &str, #[case] expected: Expr) {
+    let expr =
+        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
+    assert_eq!(expr, expected);
+}
+
 // ============================================================================
 // Mixed collection contexts
 // ============================================================================
 
 #[rstest]
 #[case::vector_in_map(
-    "{items: [1, 2]}",
+    "[items -> [1, 2]]",
     map_lit(vec![map_entry(
         var("items"),
         vec_lit(vec![lit_num("1"), lit_num("2")]),
     )])
 )]
 #[case::map_in_vector(
-    "[{a: 1}]",
-    vec_lit(vec![map_lit(vec![map_entry(var("a"), lit_num("1"))])])
+    "[[a -> 1], [b -> 2]]",
+    vec_lit(vec![
+        map_lit(vec![map_entry(var("a"), lit_num("1"))]),
+        map_lit(vec![map_entry(var("b"), lit_num("2"))]),
+    ])
 )]
 #[case::struct_with_vector(
     "Point { items: [1, 2] }",
     struct_expr("Point", vec![field("items", vec_lit(vec![lit_num("1"), lit_num("2")]))])
 )]
 #[case::struct_with_map(
-    "Config { data: {a: 1} }",
+    "Config { data: [a -> 1] }",
     struct_expr("Config", vec![field("data", map_lit(vec![map_entry(var("a"), lit_num("1"))]))])
 )]
 fn parses_mixed_collections(#[case] src: &str, #[case] expected: Expr) {
@@ -241,7 +276,6 @@ fn collection_to_sexpr(#[case] expr: Expr, #[case] expected: &str) {
 /// Verify that vector literals are preserved as `Expr::VecLit` rather than
 /// lowered to builder-call sequences.
 #[rstest]
-#[case::empty_vec("[]", vec_lit(vec![]))]
 #[case::single_item("[1]", vec_lit(vec![lit_num("1")]))]
 #[case::multiple_items("[1, 2, 3]", vec_lit(vec![lit_num("1"), lit_num("2"), lit_num("3")]))]
 #[case::nested_vec("[[1, 2], [3]]", vec_lit(vec![vec_lit(vec![lit_num("1"), lit_num("2")]), vec_lit(vec![lit_num("3")])]))]
@@ -254,11 +288,10 @@ fn preserves_raw_vector_literal_nodes(#[case] src: &str, #[case] expected: Expr)
 /// Verify that map literals are preserved as `Expr::MapLit` rather than
 /// lowered to builder-call sequences.
 #[rstest]
-#[case::empty_map("{}", map_lit(vec![]))]
-#[case::single_entry("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
-#[case::multiple_entries("{a: 1, b: 2}", map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]))]
-#[case::nested_map("{a: {b: 1}}", map_lit(vec![map_entry(var("a"), map_lit(vec![map_entry(var("b"), lit_num("1"))]))]))]
-#[case::nested_key("{{x: 1}: {y: 2}}", map_lit(vec![map_entry(map_lit(vec![map_entry(var("x"), lit_num("1"))]), map_lit(vec![map_entry(var("y"), lit_num("2"))]))]))]
+#[case::single_entry("[a -> 1]", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
+#[case::multiple_entries("[a -> 1, b -> 2]", map_lit(vec![map_entry(var("a"), lit_num("1")), map_entry(var("b"), lit_num("2"))]))]
+#[case::nested_map("[a -> [b -> 1]]", map_lit(vec![map_entry(var("a"), map_lit(vec![map_entry(var("b"), lit_num("1"))]))]))]
+#[case::nested_key("[[x -> 1] -> [y -> 2]]", map_lit(vec![map_entry(map_lit(vec![map_entry(var("x"), lit_num("1"))]), map_lit(vec![map_entry(var("y"), lit_num("2"))]))]))]
 fn preserves_raw_map_literal_nodes(#[case] src: &str, #[case] expected: Expr) {
     let expr =
         parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
@@ -270,10 +303,27 @@ fn preserves_raw_map_literal_nodes(#[case] src: &str, #[case] expected: Expr) {
 // ============================================================================
 
 #[rstest]
+#[case::empty_vector("[]", EMPTY_VECTOR_LITERAL_ERROR, 1, 2)]
+#[case::nested_empty_vector("[[]]", EMPTY_VECTOR_LITERAL_ERROR, 2, 3)]
+#[case::mixed_element_then_entry("[a, b -> c]", MIXED_COLLECTION_ENTRY_ERROR, 4, 5)]
+#[case::mixed_entry_then_element("[a -> 1, b]", MIXED_COLLECTION_ENTRY_ERROR, 9, 10)]
+fn rejects_empty_and_mixed_literals(
+    #[case] src: &str,
+    #[case] expected_message: &str,
+    #[case] start: usize,
+    #[case] end: usize,
+) {
+    let Err(errors) = parse_expression(src) else {
+        panic!("expected parse failure for {src}");
+    };
+    assert_parse_error(&errors, expected_message, start, end);
+}
+
+#[rstest]
 #[case::vector_unclosed("[1, 2", "expected t_rbracket")]
-#[case::map_unclosed("{a: 1", "expected t_rbrace")]
-#[case::map_comma_without_colon("{a, b}", "expected ':'")]
-#[case::map_missing_value("{a:}", "unexpected token")]
+#[case::map_unclosed("[a -> 1", "expected t_rbracket")]
+#[case::map_missing_value("[a ->]", "unexpected token")]
+#[case::map_missing_key("[-> a]", "unexpected token")]
 fn reports_collection_errors(#[case] src: &str, #[case] expected_pattern: &str) {
     let Err(errors) = parse_expression(src) else {
         panic!("expected parse failure for {src}");

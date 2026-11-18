@@ -186,13 +186,20 @@ pub const fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
 
 /// Construct a map literal [`Expr::MapLit`].
 ///
+/// The source form is `[k -> v, …]`, and the parsed form of that spelling is
+/// exactly this node.
+///
 /// # Examples
 ///
 /// ```
-/// use ddlint::test_util::{lit_num, map_entry, map_lit, var};
+/// use ddlint::{
+///     parser::expression::parse_expression,
+///     test_util::{lit_num, map_entry, map_lit, var},
+/// };
 ///
 /// let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
 /// assert_eq!(m.to_sexpr(), "(map (entry a 1))");
+/// assert_eq!(parse_expression("[a -> 1]").ok(), Some(m));
 /// ```
 #[must_use]
 pub const fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }

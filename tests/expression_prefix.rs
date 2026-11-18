@@ -24,7 +24,6 @@ use ddlint::{
         struct_expr,
         tuple,
         var,
-        vec_lit,
     },
 };
 use rstest::rstest;
@@ -33,7 +32,6 @@ use rstest::rstest;
 #[case("{}", map_lit(vec![]))]
 #[case("{1}", Expr::Group(Box::new(lit_num("1"))))]
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
-#[case("[]", vec_lit(vec![]))]
 #[case("(1,)", tuple(vec![lit_num("1")]))]
 #[case("|x| x", closure(vec!["x"], var("x")))]
 #[case("|a,b| a", closure(vec!["a", "b"], var("a")))]

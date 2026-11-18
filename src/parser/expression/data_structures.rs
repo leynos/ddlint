@@ -2,7 +2,14 @@
 //! collection literals.
 
 use super::pratt::Pratt;
-use crate::{Span, SyntaxKind, parser::ast::Expr};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::Expr,
+        error_messages::{EMPTY_VECTOR_LITERAL_ERROR, MIXED_COLLECTION_ENTRY_ERROR},
+    },
+};
 
 /// Shape of a comma-separated identifier list.
 ///
@@ -92,23 +99,84 @@ where
         Some((items, is_tuple))
     }
 
-    /// Parse a vector literal `[e1, e2, ...]`.
+    /// Parse a bracket literal: a vector `[e1, …]` or a map `[k1 -> v1, …]`.
     ///
-    /// Supports trailing commas and empty vectors. The opening bracket has
-    /// already been consumed by the prefix dispatcher.
+    /// Both forms require at least one item and allow a trailing comma,
+    /// mirroring upstream `evec_literal` and `emap_literal`. The form is chosen
+    /// by whether the first item is followed by `->`; a literal that mixes the
+    /// two forms is rejected at the first offending item. The opening bracket
+    /// has already been consumed by the prefix dispatcher.
     pub(super) fn parse_vector_literal(&mut self) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
-            self.ts.next_tok();
-            return Some(Expr::VecLit(Vec::new()));
+            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, EMPTY_VECTOR_LITERAL_ERROR);
+            return None;
         }
 
         self.with_struct_literals_suspended(|this| {
-            let items = this.parse_comma_separated_expressions(SyntaxKind::T_RBRACKET)?;
-            if !this.ts.expect(SyntaxKind::T_RBRACKET) {
+            let first = this.parse_expr(0)?;
+            if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
+                this.parse_bracket_map_entries(first)
+            } else {
+                this.parse_bracket_vector_items(first)
+            }
+        })
+    }
+
+    /// Parse the remaining elements of a bracket vector after its first item.
+    ///
+    /// A later item followed by `->` would mix the two literal forms, which
+    /// upstream cannot express; report it at that item's first token.
+    fn parse_bracket_vector_items(&mut self, first: Expr) -> Option<Expr> {
+        let mut items = vec![first];
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            self.ts.next_tok();
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
+                break;
+            }
+            let item_start = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            items.push(self.parse_expr(0)?);
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
+                self.ts.push_error(item_start, MIXED_COLLECTION_ENTRY_ERROR);
                 return None;
             }
-            Some(Expr::VecLit(items))
-        })
+        }
+        if !self.ts.expect(SyntaxKind::T_RBRACKET) {
+            return None;
+        }
+        Some(Expr::VecLit(items))
+    }
+
+    /// Parse the remaining entries of a bracket map after its first key.
+    ///
+    /// The caller has just seen, but not consumed, the `->` after the first
+    /// key. An entry without `->` mixes the two literal forms and is reported
+    /// at that item's first token.
+    fn parse_bracket_map_entries(&mut self, first_key: Expr) -> Option<Expr> {
+        self.ts.next_tok(); // consume '->'
+        let first_value = self.parse_expr(0)?;
+        let mut entries = vec![(first_key, first_value)];
+
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            self.ts.next_tok();
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
+                break;
+            }
+            let item_start = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            let key = self.parse_expr(0)?;
+            if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
+                self.ts.push_error(item_start, MIXED_COLLECTION_ENTRY_ERROR);
+                return None;
+            }
+            self.ts.next_tok(); // consume '->'
+            let value = self.parse_expr(0)?;
+            entries.push((key, value));
+        }
+
+        if !self.ts.expect(SyntaxKind::T_RBRACKET) {
+            return None;
+        }
+        Some(Expr::MapLit(entries))
     }
 
     /// Parse either a map literal `{k: v, ...}` or a brace group `{ expr }`.
@@ -202,33 +270,6 @@ where
             return None;
         }
         Some(Expr::Group(Box::new(full_expr)))
-    }
-
-    /// Parse a comma-separated list of expressions up to (but not consuming)
-    /// `terminator`. Supports trailing commas.
-    fn parse_comma_separated_expressions(&mut self, terminator: SyntaxKind) -> Option<Vec<Expr>> {
-        let mut items = Vec::new();
-
-        if matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
-            return Some(items);
-        }
-
-        loop {
-            let expr = self.parse_expr(0)?;
-            items.push(expr);
-
-            if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-                break;
-            }
-            self.ts.next_tok();
-
-            // Handle trailing comma
-            if matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
-                break;
-            }
-        }
-
-        Some(items)
     }
 
     pub(super) fn parse_closure_literal(&mut self) -> Option<Expr> {

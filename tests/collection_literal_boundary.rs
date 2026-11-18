@@ -12,7 +12,7 @@ use rstest::rstest;
 /// yields exactly one rule, and the second body expression is the expected variant.
 #[rstest]
 #[case("Out(x) :- In(x), [1, 2].", "VecLit", 2)]
-#[case("Out(x) :- In(x), {a: 1}.", "MapLit", 1)]
+#[case("Out(x) :- In(x), [a -> 1].", "MapLit", 1)]
 fn parse_preserves_collection_literal_in_rule_body(
     #[case] input: &str,
     #[case] expected_variant: &str,
@@ -79,7 +79,7 @@ fn parse_does_not_synthesize_semantic_rules_for_collection_literals() {
     let parsed = parse(
         r"
         Out1(v) :- In(x), v = [1, 2, 3].
-        Out2(m) :- In(x), m = {a: 1, b: 2}.
+        Out2(m) :- In(x), m = [a -> 1, b -> 2].
         ",
     );
 
@@ -104,7 +104,7 @@ fn parse_does_not_synthesize_semantic_rules_for_collection_literals() {
 /// nested `VecLit` and `MapLit` nodes rather than being lowered.
 #[test]
 fn parse_preserves_nested_collection_literals_in_rule_body() {
-    let parsed = parse("Out(x) :- In(x), [[1], {a: {b: 2}}].");
+    let parsed = parse("Out(x) :- In(x), [[1], [a -> [b -> 2]]].");
 
     // Parse should succeed with no errors.
     assert_no_parse_errors(parsed.errors());
@@ -125,7 +125,7 @@ fn parse_preserves_nested_collection_literals_in_rule_body() {
         .body_expressions()
         .unwrap_or_else(|errs| panic!("expected body_expressions to succeed, got {errs:?}"));
 
-    // Body: In(x), [[1], {a: {b: 2}}]
+    // Body: In(x), [[1], [a -> [b -> 2]]]
     // The second body expression is the nested vector literal.
     assert_eq!(
         body_exprs.len(),
@@ -157,7 +157,7 @@ fn parse_preserves_nested_collection_literals_in_rule_body() {
             "expected nested Expr::VecLit, got {first_elem:?}"
         );
 
-        // Second element: {a: {b: 2}} should be MapLit.
+        // Second element: [a -> [b -> 2]] should be MapLit.
         let second_elem = outer_elements
             .get(1)
             .expect("expected second element in vector");
@@ -166,7 +166,7 @@ fn parse_preserves_nested_collection_literals_in_rule_body() {
             "expected nested Expr::MapLit, got {second_elem:?}"
         );
 
-        // Verify inner map nesting: {a: {b: 2}}.
+        // Verify inner map nesting: [a -> [b -> 2]].
         if let Expr::MapLit(entries) = second_elem {
             assert_eq!(entries.len(), 1, "expected one entry in outer map");
             let (_key, value) = entries.first().expect("expected first map entry");

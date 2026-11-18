@@ -130,5 +130,5 @@ fn match_error_cases() -> Vec<CountedErrorCase> {
 }
 
 fn collection_error_cases() -> Vec<CountedErrorCase> {
-    counted_error_cases(&["[1, 2", "{a: 1", "{a, b}"])
+    counted_error_cases(&["[]", "[1, 2", "[a, b -> c]", "{a: 1", "{a, b}"])
 }
