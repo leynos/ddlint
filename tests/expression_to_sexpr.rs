@@ -102,3 +102,15 @@ fn map_literals_format(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).expect("map literal should parse");
     assert_eq!(expr.to_sexpr(), expected);
 }
+
+#[rstest]
+#[case("{}", "(block)")]
+#[case("{ a }", "(block (value a))")]
+#[case("{ a; }", "(block (stmts a))")]
+#[case("{ a; b }", "(block (stmts a) (value b))")]
+#[case("{ a; b; }", "(block (stmts a b))")]
+#[case("{ { a } }", "(block (value (block (value a))))")]
+fn block_expressions_format(#[case] src: &str, #[case] expected: &str) {
+    let expr = parse_expression(src).expect("block should parse");
+    assert_eq!(expr.to_sexpr(), expected);
+}

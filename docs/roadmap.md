@@ -233,9 +233,13 @@ split parser library surfaces defined in
 - [x] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
   legacy type names, `#`, `<=>`) with deterministic diagnostics. See
   docs/parser-conformance-register.md item 14.
-- [ ] 2.6.8. Codify `{ … }` as upstream block expressions and replace brace map
+- [x] 2.6.8. Codify `{ … }` as upstream block expressions and replace brace map
   literals with upstream `[k -> v, …]` map literals, rejecting `[]` in favour of
-  `vec_empty()`. See docs/parser-conformance-register.md items 10 and 15 and
+  `vec_empty()`. Done: braces parse as `Expr::Block(BlockExpr)` with `;` item
+  separators, an optional trailing separator, and `{}` as the empty block;
+  brace groups, brace maps, and the colon-terminating map-key mode are gone;
+  bracket map literals are the only map form and `[]` is rejected. See
+  docs/parser-conformance-register.md items 10 and 15 and
   docs/execplans/2-6-8-decide-brace-group-extension-policy.md.
 - [ ] 2.6.9. Enforce the `LcName` case restriction on primary-key binders, and
   decide the same question for import aliases, so `primary key (Foo)` reports

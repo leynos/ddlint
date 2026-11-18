@@ -18,6 +18,22 @@ pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
 pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
     "empty vector literals are not DDlog syntax; use vec_empty() instead";
 
+/// Diagnostic emitted when a block item is not followed by `;` or `}`.
+///
+/// Inside braces `;` separates block items; it is not the sequencing operator,
+/// so an adjacent expression is a missing separator rather than a
+/// continuation.
+pub const BLOCK_ITEM_SEPARATOR_ERROR: &str = "expected ';' or '}' after a block item";
+
+/// Diagnostic emitted for an empty block item, as in `{ ; }` or `{ a;; b }`.
+///
+/// A separator with no item on one side would make the block's item order
+/// ambiguous, so it is rejected rather than skipped.
+pub const EMPTY_BLOCK_ITEM_ERROR: &str = "empty statement in block: remove the extra ';'";
+
+/// Diagnostic emitted when a block reaches end of input before its `}`.
+pub const UNCLOSED_BLOCK_ERROR: &str = "expected '}' to close block";
+
 /// Diagnostic emitted when a transformer declaration omits `:` or its first
 /// output identifier.
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =

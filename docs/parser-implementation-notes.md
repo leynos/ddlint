@@ -139,15 +139,42 @@ Primary implementation points:
 struct-literal guard while parsing `if` conditions and similar prefixes to
 avoid consuming branch braces as struct fields.
 
+The guard only concludes that a brace opens a struct when the token after the
+opening brace is itself `{` or when the token after the next one is `:`; for
+example `if c { x: 1 }` still reads `{ x: 1 }` as a struct literal. A block
+beginning with an identifier and a value such as `{ x }` is therefore no longer
+treated as a struct.
+
 Guard suspension points are explicit:
 
 - parenthesized sub-expressions,
-- brace groups,
+- block expressions,
 - closure bodies,
 - contexts where struct literals are expected.
 
 This behaviour is an implementation extension; policy status is tracked in the
 conformance register.
+
+### Block expressions and the `;` state
+
+- `T_LBRACE` always dispatches to `parse_block`. `parse_block_items` reads each
+  item at `BLOCK_ITEM_MIN_BP` (`BP_SEQ + 1`), so an item cannot absorb the
+  following `;` through the sequencing operator.
+- `classify_block_follow` maps the item position (`Opening`, `AfterItem`,
+  `AfterSeparator`) and the next token to the next action, which keeps the
+  empty-item and missing-separator diagnostics in one place.
+- `;`-terminating is a scoped Pratt flag set only while parsing block items.
+  `with_nested_delimiter_scope` wraps every nested delimiter context -
+  parentheses, brackets, braces, call arguments, and match arms - so a `;`
+  inside those delimiters keeps its sequencing meaning. A `for` guard uses
+  `with_guard_expression_scope`, which also re-enables struct literals. This is
+  the `BG-D11` invariant and the subject of `V-B2` to `V-B4`.
+- `BlockExpr::from_items` returns `None` exactly for an empty item list that
+  ends with `;`, which is the `{ ; }`-style empty item already rejected by
+  `classify_block_follow`.
+- `BlockExpr::items()` and `into_items()` are the only accepted traversal
+  orders; `sema` and rule-body classification use them rather than reading
+  `statements` and `value` independently.
 
 ### Recursion and delimiter safety
 
@@ -403,6 +430,14 @@ Constants currently defined:
   omits `:` or has no output identifier after it.
 - `CAPITALIZED_TRANSFORMER_NAME_ERROR` — emitted when a transformer name
   starts with an uppercase letter instead of a lowercase letter or underscore.
+- `BLOCK_ITEM_SEPARATOR_ERROR` — emitted when a block item is not followed by
+  `;` or `}`.
+- `EMPTY_BLOCK_ITEM_ERROR` — emitted for `{ ; }` and `{ a;; b }`.
+- `UNCLOSED_BLOCK_ERROR` — emitted when a block reaches end of input before
+  its closing brace.
+- `MIXED_COLLECTION_ENTRY_ERROR` — emitted when one literal mixes vector
+  elements and map entries.
+- `EMPTY_VECTOR_LITERAL_ERROR` — emitted for `[]`.
 
 Test utilities that match these messages:
 
@@ -426,6 +461,8 @@ token names or their human-readable equivalents.
 - Pratt postfix helpers:
   `src/parser/expression/pratt/{postfix,diff,delay}.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`
+- Block expression parsing: `src/parser/expression/block.rs`
+- Block AST node: `src/parser/ast/expr/block.rs`
 - Feature-specific diagnostic messages: `src/parser/error_messages.rs`
 - Reserved-token compatibility diagnostics: `src/parser/reserved_tokens.rs`
 - Rule span scanning: `src/parser/span_scanners/rules.rs`

@@ -38,9 +38,14 @@ where
 
         if !self.allows_struct_literals() {
             let next_kind = self.ts.peek_nth_kind(1);
-            let colon_kind = self.ts.peek_nth_kind(2);
-            let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
-                || matches!(colon_kind, Some(SyntaxKind::T_COLON));
+            let after_next_kind = self.ts.peek_nth_kind(2);
+            // `ident {}` is only suspicious when another `{` follows, as in
+            // `if x == Foo{} { a }`. Without that lookahead `if ready {}`
+            // must fall through to the branch block.
+            let brace_brace = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
+                && matches!(after_next_kind, Some(SyntaxKind::T_LBRACE));
+            let looks_like_struct =
+                brace_brace || matches!(after_next_kind, Some(SyntaxKind::T_COLON));
             if looks_like_struct {
                 self.ts.push_error(
                     span.clone(),
@@ -63,7 +68,7 @@ where
             self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
-        self.with_struct_literals_suspended(|this| {
+        self.with_nested_delimiter_scope(|this| {
             let (mut items, is_tuple) = this.parse_parenthesized_items()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
@@ -72,8 +77,8 @@ where
                 Some(Expr::Tuple(items))
             } else {
                 // Parser invariant: the group contains exactly one item, so
-                // `pop` always succeeds; propagate `None` rather than panic
-                // if the invariant is ever broken.
+                // `pop` always succeeds; propagate `None` rather than panic if
+                // the invariant is ever broken.
                 let item = items.pop()?;
                 Some(Expr::Group(Box::new(item)))
             }
@@ -113,7 +118,7 @@ where
             return None;
         }
 
-        self.with_struct_literals_suspended(|this| {
+        self.with_nested_delimiter_scope(|this| {
             let first = this.parse_expr(0)?;
             if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
                 this.parse_bracket_map_entries(first)
@@ -179,99 +184,6 @@ where
         Some(Expr::MapLit(entries))
     }
 
-    /// Parse either a map literal `{k: v, ...}` or a brace group `{ expr }`.
-    ///
-    /// Disambiguation:
-    /// - `{}` → empty map
-    /// - `{ expr }` → brace group (backward compatible)
-    /// - `{ expr: expr, ... }` → map literal
-    ///
-    /// The opening brace has already been consumed by the prefix dispatcher.
-    ///
-    /// Map keys are parsed in "colon-terminates" mode where `:` stops parsing
-    /// rather than being consumed as type ascription. This allows keys like
-    /// `a and b` in `{a and b: 1}` to be correctly parsed.
-    pub(super) fn parse_brace_or_map_literal(&mut self) -> Option<Expr> {
-        // Handle empty map `{}`
-        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-            self.ts.next_tok();
-            return Some(Expr::MapLit(Vec::new()));
-        }
-
-        self.with_struct_literals_suspended(|this| {
-            // Parse first key/expression in map-key mode (`:` terminates)
-            let first_key = this.parse_map_key_expr(0)?;
-
-            match this.ts.peek_kind() {
-                // Colon after expression → map literal
-                Some(SyntaxKind::T_COLON) => this.parse_map_entries(first_key),
-
-                // Single expression followed by `}` → brace group
-                Some(SyntaxKind::T_RBRACE) => {
-                    this.ts.next_tok();
-                    Some(Expr::Group(Box::new(first_key)))
-                }
-
-                // Comma without colon → error (looks like malformed map literal)
-                Some(SyntaxKind::T_COMMA) => {
-                    let sp = this.ts.peek_span().unwrap_or_else(|| this.ts.eof_span());
-                    this.ts
-                        .push_error(sp, "expected ':' for map literal or '}' for brace group");
-                    None
-                }
-
-                // Something else (unexpected token) → brace group with remaining expr
-                _ => this.parse_brace_group_continuation(first_key),
-            }
-        })
-    }
-
-    /// Parse remaining map entries after detecting a colon following the first key.
-    ///
-    /// The first key has already been parsed. The caller has peeked a colon but
-    /// not yet consumed it.
-    fn parse_map_entries(&mut self, first_key: Expr) -> Option<Expr> {
-        self.ts.next_tok(); // consume ':'
-        let first_value = self.parse_expr(0)?;
-        let mut entries = vec![(first_key, first_value)];
-
-        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-            self.ts.next_tok();
-
-            // Handle trailing comma
-            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-                break;
-            }
-
-            // Parse key in map-key mode (`:` terminates parsing)
-            let key = self.parse_map_key_expr(0)?;
-            if !self.ts.expect(SyntaxKind::T_COLON) {
-                return None;
-            }
-            let value = self.parse_expr(0)?;
-            entries.push((key, value));
-        }
-
-        if !self.ts.expect(SyntaxKind::T_RBRACE) {
-            return None;
-        }
-        Some(Expr::MapLit(entries))
-    }
-
-    /// Continue parsing a brace group after an unexpected token.
-    ///
-    /// Since we parsed the first expression in map-key mode (which stops at `:`),
-    /// if we reach here with an unexpected token, we try to continue parsing as
-    /// a brace group by consuming remaining infix operators.
-    fn parse_brace_group_continuation(&mut self, first_expr: Expr) -> Option<Expr> {
-        // Continue parsing any remaining infix operators (with `:` as ascription now)
-        let full_expr = self.parse_infix(first_expr, 0)?;
-        if !self.ts.expect(SyntaxKind::T_RBRACE) {
-            return None;
-        }
-        Some(Expr::Group(Box::new(full_expr)))
-    }
-
     pub(super) fn parse_closure_literal(&mut self) -> Option<Expr> {
         let params = self.parse_closure_params()?;
         if !self.ts.expect(SyntaxKind::T_PIPE) {
@@ -306,7 +218,7 @@ where
                 if !parser.ts.expect(SyntaxKind::T_COLON) {
                     return None;
                 }
-                let value = parser.parse_expr(0)?;
+                let value = parser.with_nested_delimiter_scope(|p| p.parse_expr(0))?;
                 Some((name, value))
             },
         )

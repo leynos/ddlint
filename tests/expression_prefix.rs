@@ -9,6 +9,7 @@ use ddlint::{
     test_util::{
         assert_delimiter_error,
         assert_parse_error,
+        block,
         closure,
         field,
         lit_bool,
@@ -17,7 +18,6 @@ use ddlint::{
         lit_raw_interpolated_str,
         lit_raw_str,
         lit_str,
-        map_lit,
         match_arm,
         match_expr,
         return_expr,
@@ -29,8 +29,8 @@ use ddlint::{
 use rstest::rstest;
 
 #[rstest]
-#[case("{}", map_lit(vec![]))]
-#[case("{1}", Expr::Group(Box::new(lit_num("1"))))]
+#[case("{}", block(vec![], None))]
+#[case("{1}", block(vec![], Some(lit_num("1"))))]
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
 #[case("(1,)", tuple(vec![lit_num("1")]))]
 #[case("|x| x", closure(vec!["x"], var("x")))]
@@ -39,7 +39,7 @@ use rstest::rstest;
     "Point { x: 1, y: 2 }",
     struct_expr("Point", vec![field("x", lit_num("1")), field("y", lit_num("2"))]),
 )]
-#[case("{ x }", Expr::Group(Box::new(var("x"))))]
+#[case("{ x }", block(vec![], Some(var("x"))))]
 #[case("\"hi\"", lit_str("hi"))]
 #[case("[|raw|]", lit_raw_str("raw"))]
 #[case("$[|raw ${x}|]", lit_raw_interpolated_str("raw ${x}"))]
@@ -103,7 +103,7 @@ fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     "return (x, y)",
     return_expr(Some(tuple(vec![var("x"), var("y")]))),
 )]
-#[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
+#[case("{ return }", block(vec![], Some(return_expr(None))))]
 #[case("(return)", Expr::Group(Box::new(return_expr(None))))]
 // Return with no explicit value before a terminator (`)`, `}`, `,`, `;`, or
 // `->`) yields unit `()` so match arms, loop bodies, and grouped expressions can

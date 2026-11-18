@@ -34,6 +34,13 @@ where
     expr_depth: usize,
     /// Records contexts where bare struct literals should be disallowed or temporarily re-enabled.
     struct_literals: StructLiteralState,
+    /// When set, the infix loop stops at `;` instead of building
+    /// [`crate::parser::ast::BinaryOp::Seq`].
+    ///
+    /// Block items own their `;` separators. The mode is set while block
+    /// items are parsed and restored at every nested delimiter, whose `;`
+    /// remains the sequencing operator.
+    semicolon_terminates: bool,
     /// Cache of parsed string literals keyed by start offset to avoid re-parsing.
     pub(super) string_literal_cache: HashMap<usize, StringLiteral>,
 }
@@ -128,6 +135,7 @@ where
             ts: TokenStream::new(tokens, src),
             expr_depth: 0,
             struct_literals: StructLiteralState::default(),
+            semicolon_terminates: false,
             string_literal_cache: HashMap::new(),
         }
     }
@@ -135,6 +143,10 @@ where
     pub(super) const fn allows_struct_literals(&self) -> bool {
         self.struct_literals.allows_struct_literal()
     }
+
+    /// Return `true` while `;` terminates infix parsing rather than forming a
+    /// sequencing expression.
+    pub(super) const fn semicolon_terminates(&self) -> bool { self.semicolon_terminates }
 
     pub(super) fn with_struct_literals_suspended<R>(
         &mut self,
@@ -193,16 +205,34 @@ where
         self.parse_infix(lhs, min_bp)
     }
 
-    /// Parse an expression in map-key mode where `:` terminates parsing.
+    /// Run `f` while parsing one block item.
     ///
-    /// This is used for map literal keys where `:` separates key from value
-    /// rather than being consumed as type ascription.
-    pub(super) fn parse_map_key_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        self.with_depth_check(|this| {
-            let prefix = this.parse_prefix()?;
-            let lhs = this.parse_postfix(prefix)?;
-            this.parse_infix_with_colon_mode(lhs, min_bp, true)
-        })
+    /// A block item needs both states at once: `;` terminates the item so a
+    /// construct tail cannot swallow the separator, and struct literals stay
+    /// suspended because `{ ident :` inside a block starts a nested item
+    /// rather than a struct value.
+    pub(super) fn with_block_item_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.with_semicolon_scope(true, |this| this.with_struct_literals_suspended(f))
+    }
+
+    /// Run `f` inside a nested delimiter, whose contents are not block items.
+    ///
+    /// `;` sequences again and struct literals are allowed, so the two pieces
+    /// of block state are restored together at the delimiter.
+    pub(super) fn with_nested_delimiter_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.with_semicolon_scope(false, |this| this.with_struct_literals_suspended(f))
+    }
+
+    /// Run `f` for a `for`-loop guard, which may contain a struct literal.
+    pub(super) fn with_guard_expression_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.with_semicolon_scope(false, |this| this.with_struct_literal_activation(f))
+    }
+
+    fn with_semicolon_scope<R>(&mut self, terminates: bool, f: impl FnOnce(&mut Self) -> R) -> R {
+        let previous = std::mem::replace(&mut self.semicolon_terminates, terminates);
+        let result = f(self);
+        self.semicolon_terminates = previous;
+        result
     }
 
     /// Parse a type expression following `:` or `as`.

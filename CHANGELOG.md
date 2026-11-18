@@ -33,3 +33,22 @@
   ```text
   `typedef` is a legacy DDlog keyword; use `type` instead
   ```
+
+### Changed
+
+- Braces now always parse as block expressions. `{ a; b }` is a block with `a`
+  as a statement and `b` as its value; a trailing `;` discards the value, and
+  `{}` is the empty block. Brace groups, brace map literals, and the
+  colon-terminating map-key mode are removed.
+- A block item that is followed by a comma or by another item without `;`
+  reports `expected ';' or '}' after a block item`; an empty item reports
+  `empty statement in block: remove the extra ';'`; an unterminated block
+  reports `expected '}' to close block`.
+- Map literals use brackets: `[k -> v]`. An empty vector literal `[]` is
+  rejected, and a literal that mixes vector elements and map entries is
+  rejected.
+
+### Added
+
+- `Expr::Block(BlockExpr)` for brace-delimited expressions. `BlockExpr` exposes
+  `statements`, `value`, `items()`, `into_items()`, and `ends_with_semicolon()`.

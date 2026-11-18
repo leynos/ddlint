@@ -9,7 +9,7 @@ use crate::{
         ast::{BinaryOp, Expr},
         tests::expression::fixtures::ExpressionCase,
     },
-    test_util::{lit_num, map_entry, map_lit, var, vec_lit},
+    test_util::{block, lit_num, map_entry, map_lit, var, vec_lit},
 };
 
 /// Returns collection literal cases as [`Vec<ExpressionCase>`].
@@ -53,7 +53,7 @@ pub(super) fn collection_expression_cases() -> Vec<ExpressionCase> {
         },
         ExpressionCase {
             src: "{}",
-            expected: map_lit(vec![]),
+            expected: block(vec![], None),
         },
         ExpressionCase {
             src: "[a -> 1]",

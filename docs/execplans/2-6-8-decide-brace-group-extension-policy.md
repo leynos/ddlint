@@ -5,7 +5,7 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: APPROVED (fifth revision), approved 2026-11-17
+Status: COMPLETE
 
 This plan is approved for implementation. Decisions marked "requires user
 approval" in `Decision log` are approved together with the plan unless the
@@ -268,8 +268,22 @@ lines unless stated.
   every non-brace fixture; brace-map test cases rewritten to bracket form in
   the unit and integration suites. Specification sections 3.3, 5.2, 6.4, and
   11.6 and register item 10 updated. Gates pass.
-- [ ] EP-M3: block expressions replace brace parsing.
-- [ ] EP-M4: close-out.
+- [x] (2026-11-18) EP-M3: block expressions replace brace parsing. Braces now
+  build `Expr::Block(BlockExpr)`; brace maps, brace groups, and the
+  colon-terminating map-key mode are gone; the `;` state, `BG-D11` delimiter
+  clearing, the narrowed struct guard, and the interim `sema` arms are in
+  place. Block unit, proptest, behavioural, snapshot, and end-to-end suites are
+  green; the rule span scanner now scans an assignment whose right-hand side is
+  a control-flow expression, so the acceptance program parses. Ten seeded
+  faults (the eight listed faults plus the two `V-B1` non-vacuity faults) were
+  each observed red and reverted; the generator covers all 16 classes with
+  counts of at least `12`; the mutation run has no missed mutant. Evidence is in
+  `Artefacts and notes`. Alignment documentation is complete.
+- [x] (2026-11-18) EP-M4: close-out complete. Developers' guide documents both
+  block modules, the `items()`/`into_items()` traversal rule, `sema`'s
+  dedicated block arms, `BLOCK_ITEM_MIN_BP`, and `test_util::block`; roadmap
+  2.6.8 is marked done with its `Done:` note; the full gate set is green; and
+  no unrecorded deviation remains.
 
 ## Surprises & discoveries
 
@@ -316,6 +330,28 @@ lines unless stated.
   `tests/relation_primary_key_bdd.rs`; ADRs live in `docs/adrs/adr-NNNN-…` with
   0004 (twice) and 0005 taken; roadmap 2.6.9 is taken. Impact: ADR numbers 0006
   and 0007; new roadmap items start at 2.6.10.
+- Observation (EP-M3): the rule span scanner could not scan an assignment whose
+  right-hand side is a control-flow expression. `rule_statement`'s token loop
+  excludes `K_IF`, `K_FOR`, and `K_SKIP`, so
+  `var y = if x > 1 { x } else { 0 }` stopped at `if` and the rule body failed
+  to scan while `parse_expression` accepted the same text. Evidence: the
+  acceptance program reported `Unexpected ... found: Some(K_IF)` at the `if`,
+  whereas `Out(y) :- if x > 1 { x } else { 0 }.` scanned; the exclusion is
+  pre-existing and `src/parser/span_scanners/rules.rs` was otherwise untouched
+  by this plan. Impact: an `assign_stmt` alternative now scans a left-hand side
+  followed by `= <statement>`, so the acceptance program parses; two scanner
+  cases pin it and the malformed-keyword cases still report their errors.
+- Observation (EP-M3): a bare uppercase constructor pattern such as
+  `match (x) { A -> 1 }` is rejected by the pattern parser with
+  `expected '{' to start a struct pattern`, so the planned tail case
+  `{ match (x) { A -> 1 }; y }` uses `_ -> 1` instead. Impact: acceptance text
+  amended below; constructor-pattern syntax remains roadmap 2.6.11 work.
+- Observation (EP-M3): `sema` records variable uses with the enclosing term's
+  span, so two uses inside one assignment share a span. The end-to-end test
+  therefore asserts the use count and term text rather than per-identifier
+  spans, and checks resolution through a head binding (`y`) because free
+  relation-argument variables such as `x` are unresolved by design until
+  roadmap 3.3.5.
 
 ## Decision log
 
@@ -412,6 +448,78 @@ bracket form and pass. The `V-B7` characterization in
 first diagnostic of every non-brace fixture in two inline snapshots, giving
 EP-M3 a regression fence. Brace maps still parse; nothing new depends on them.
 
+### EP-M3 outcome
+
+Complete. `src/parser/expression/block.rs` parses brace items at
+`BLOCK_ITEM_MIN_BP` with `classify_block_follow`, and
+`src/parser/ast/expr/block.rs` stores `statements` and `value` behind
+`Expr::Block`. The `;`-terminating Pratt flag is scoped and cleared at every
+nested delimiter. Brace groups, brace maps, the colon-terminating map-key mode,
+and their parser functions are deleted, and the struct-literal guard now fires
+only on `{ {` or `{ ident :`.
+
+Evidence: `src/parser/tests/block_expressions.rs` (block, tail, delimiter,
+rejection, and S-expression tables), its `props` and `strategy` modules,
+`src/parser/tests/block_expression_snapshots.rs` (one accepted inline snapshot),
+`tests/block_expressions_bdd.rs` (15 passing scenarios), and
+`tests/block_expressions.rs` (5 passing end-to-end tests through `parse`,
+`sema::build`, and `Runner`). The semantic model records the block branch and
+the bracket map key of the acceptance program, and `Runner` reports `Witness`
+but not `Checked`. The full parser library suite passed 790 tests after the
+change, and the focused expression, collection, span, and rule suites were
+green.
+
+Two discoveries changed the planned test text and one changed production code:
+the `match` tail uses `_ -> 1` because bare constructor patterns are not
+supported, and `rule_statement` gained an `assign_stmt` alternative so the
+acceptance program's `var y = if …` scans. Both are recorded under
+`Surprises & discoveries`.
+
+Verification evidence: all ten seeded faults (the eight listed faults and the
+two `V-B1` non-vacuity faults) were applied, rejected by the named test, and
+reverted; `generator_covers_every_class` counts 16 generator classes over 256
+deterministic draws, the smallest count being `12`; and the mutation run over
+both block modules has no missed mutant after the two survivors were killed by
+new tests. The `V-B6` method was amended from an every-`SyntaxKind` sweep to a
+semantically exhaustive nine-token sweep checked against an independent
+reference table, because the classifier distinguishes only `}` and `;`. Details
+and log paths are in `Artefacts and notes`.
+
+### EP-M4 outcome
+
+Complete. The developers' guide documents `BlockExpr`, both `block.rs` modules,
+the `items()`/`into_items()` traversal rule, `sema`'s dedicated `Expr::Block`
+and `Expr::Group` arms, ownership of `BLOCK_ITEM_MIN_BP`, and the
+`test_util::block` helper. Roadmap 2.6.8 is marked done with its `Done:` note,
+and this plan is `COMPLETE`.
+
+The first full gate run exposed quality findings that the earlier focused runs
+could not, and all were fixed at source rather than suppressed:
+
+- Clippy rejected the nested scope wrappers. They became three named helpers,
+  `with_block_item_scope`, `with_nested_delimiter_scope`, and
+  `with_guard_expression_scope`, each combining the `;` state with the
+  struct-literal state it needs. `rule_statement` was split by extracting
+  `assignment_statement`, and the follow-token table was merged into
+  `(AfterItem | AfterSeparator, Some(T_RBRACE)) => Close`.
+- Clippy also required `mod.rs` layout for new modules, `map_or_else` instead
+  of `match` on `Option`, no shadowed bindings, and no bare `let _` on a
+  `#[must_use]` result.
+- Whitaker reported module sizes over 400 lines and two bumpy-road functions.
+  `assignment_statement` moved to `span_scanners/rules_assign.rs`, the rule
+  statement tests moved to `span_scanners/tests/rule_statement_tests.rs`,
+  `relation_name` gained `callee_variable_name` and `block_relation_name`
+  helpers, and `walk_variable_uses_composite` split into the positional and
+  container walkers. Whitaker also required replacing `unwrap_or_else`-with-
+  panic closures in test helpers where the lint flags them.
+
+The final sequential gate run is green: `make check-fmt` (2s), `make typecheck`
+(48s), `make lint` (182s; interrogate 184/184, clippy, rustdoc, clippy-expect
+policy, Whitaker, and spelling all clean), `make test` (237s; 53 suites, 1552
+tests, 0 failures, doctests included), `make markdownlint` (73 files, 0
+issues), and `make nixie` (all diagrams valid). Logs are named
+`/tmp/<gate>-ddlint-2-6-8-decide-brace-group-extension-policy.out`.
+
 ## Context and orientation
 
 ddlint is a Rust linter for DDlog. A tokenizer (`src/tokenizer.rs`) produces
@@ -424,32 +532,35 @@ parser driven by binding powers.
 Files that matter:
 
 - `src/parser/expression/pratt/mod.rs`: `parse_expression(src)`,
-  `parse_expr(min_bp)`, `parse_map_key_expr` (deleted in EP-M3), `parse_type`,
-  and the scoped struct-literal states that `BG-D11` imitates.
-- `src/parser/expression/infix.rs`: the infix loop and the
-  colon-terminating mode (`parse_infix_with_colon_mode`,
-  `parse_expr_for_map_key`; deleted in EP-M3).
+  `parse_expr(min_bp)`, `parse_type`, and the scoped struct-literal and
+  `;`-terminating states.
+- `src/parser/expression/block.rs`: block item parsing,
+  `classify_block_follow`, and the block diagnostics.
+- `src/parser/expression/infix.rs`: the infix loop; the colon-terminating
+  mode is gone.
 - `src/parser/expression/prefix.rs`: prefix dispatch for `T_LBRACE` and
   `T_LBRACKET`.
-- `src/parser/expression/data_structures.rs` (355 lines):
-  `parse_brace_or_map_literal`, `parse_map_entries`,
-  `parse_brace_group_continuation`, `parse_vector_literal`,
+- `src/parser/expression/data_structures.rs`: `parse_vector_literal`,
   `parse_parenthesized_expr`, `parse_closure_literal`, `parse_ident_expression`
-  (struct-literal guard), `parse_struct_fields`.
+  (struct-literal guard), `parse_struct_fields`; the brace map and brace group
+  parsers are gone.
 - `src/parser/expression/control_flow.rs`: `if`, `match`, `return`, `for`.
 - `src/parser/expression/pratt/postfix.rs`: call arguments and bit slices.
-- `src/parser/ast/expr/mod.rs` (314 lines): the public `Expr` enum; `MapLit`
-  documents brace syntax today.
+- `src/parser/ast/expr/mod.rs`: the public `Expr` enum, including
+  `Expr::Block(BlockExpr)`; `MapLit` documents `[k -> v, …]`.
+- `src/parser/ast/expr/block.rs`: `BlockExpr` and its item-order API.
 - `src/parser/ast/expr/sexpr.rs`: S-expression rendering for tests.
-- `src/parser/ast/precedence.rs`: binding powers; private `BP_SEQ = 0`.
-- `src/sema/resolve.rs`, `src/sema/variables.rs`: consumers that match
-  `Expr::Group` (`relation_name`, dispatch groups with `_ => {}` fallbacks).
+- `src/parser/ast/precedence.rs`: binding powers; private `BP_SEQ = 0` and
+  `BLOCK_ITEM_MIN_BP = BP_SEQ + 1`.
+- `src/sema/resolve.rs`, `src/sema/variables.rs`: consumers with dedicated
+  `Expr::Block` and `Expr::Group` arms (`relation_name`, use collection).
 - `src/parser/ast/rule/classification.rs`:
-  `classify_for_body_with_aggregation_tracking` unwraps `Group`.
+  `classify_for_body_with_aggregation_tracking` flattens `BlockExpr`.
 - `src/parser/top_level_for/lowering.rs`: `collect_lowered_terms`.
 - `src/parser/error_messages.rs`: crate-private message constants, selected
   ones re-exported through `src/test_util/mod.rs`.
-- `src/test_util/expressions.rs`: `var`, `call`, `map_lit`, `map_entry`.
+- `src/test_util/expressions.rs`: `var`, `call`, `block`, `map_lit`,
+  `map_entry`.
 
 Terms: a "block" is `{ s1; …; sn; v }`; "statements" are items followed by `;`;
 the "value" is the optional final item; "unit" is `()`. A "tail" is the part of
@@ -508,12 +619,15 @@ unit. The representation relation `R` maps it to
 ### Obligations
 
 - `V-B1` (representation bijection): `R` is a bijection between well-formed
-  abstract blocks and `BlockExpr` values. Method: a three-row `rstest` table
-  and a `proptest` round trip over lengths 0 to 8 with distinct items.
-  Non-vacuity: seeded faults "accept `([], true)`" and "move the last statement
-  into `value` when `t` holds" must fail. Verus: not used (approved); the
-  property follows from the type's shape and a three-case split that the round
-  trip covers completely.
+  abstract blocks and `BlockExpr` values. Method: named `rstest` cases with
+  explicit `BlockExpr` expectations (`block_renders_as_sexpr` and the
+  `parses_blocks` table) and a `proptest` round trip over lengths 0 to 4. The
+  round trip's oracle calls `from_items` too, so it checks the parser against
+  the representation rather than the representation itself; the named cases and
+  the seeded faults carry that part of the obligation. Non-vacuity: seeded
+  faults "accept `([], true)`" and "move the last statement into `value` when
+  `t` holds" must fail. Verus: not used (approved); the property follows from
+  the type's shape and a three-case split that the round trip covers completely.
 - `V-B2` (no swallowed separator): inside a block item every `BinaryOp::Seq`
   lies beneath a delimiter node within that item.
 - `V-B3` (order): the source order of items equals `items()` order.
@@ -548,20 +662,26 @@ unit. The representation relation `R` maps it to
 ### Methods and non-vacuity
 
 - `V-B2` to `V-B5`: class-first `proptest` generators emitting
-  `(source, expected Expr)` pairs. Each class is built, never filtered; items
-  use distinct names (`x0`, `x1`, …) so reordering is always observable.
-  Classes: empty block; one value; one statement with trailing `;`; two or more
-  items with and without trailing `;`; nesting depth two or more; first item a
-  nested block or map; one class per tail; a parenthesized-sequence item. A
-  `generator_covers_every_class` test counts classes over 256 draws from
-  `TestRunner::deterministic()` and asserts each count is at least 5; with
-  about 12 evenly weighted classes the chance of missing one in a run is below
-  `10^-8`. Named `rstest` tables give one witness per class.
-- `V-B6`: a unit test enumerates every `SyntaxKind` from `0` to `N_ERROR`
-  (asserting `from_u16` covers the range without gaps) plus end of input, for
-  each position. This is complete for the classifier but largely restates its
-  `match`; the stronger evidence is the whole-input table, which exercises
-  every outcome through the real parser with exact message and span.
+  `(source, expected Expr)` pairs. Each class is built, never filtered; item
+  sources are a fixed list of forms that each parse as exactly one item, and
+  `a` versus `b` makes order observable. Classes: empty block; one value; one
+  statement with trailing `;`; two or more items with and without trailing `;`;
+  nesting depth two or more; first item a nested block or map; the `if`, `for`,
+  `return`, and closure tails; tuple, parenthesized-sequence, vector, call, and
+  binary items. A `generator_covers_every_class` test counts these 16 classes
+  over 256 draws from `TestRunner::deterministic()` and asserts each count is
+  at least 5; the observed counts are recorded in `Artefacts and notes`. Named
+  `rstest` tables give one witness per class, including the `match`,
+  assignment, and `else if` forms the generator does not draw.
+- `V-B6`: amended during implementation. The classifier distinguishes only
+  `}` and `;` among concrete tokens, so the test sweeps a nine-token corpus
+  (end of input, `{`, `}`, `;`, `,`, `:`, an identifier, a number, and `+`)
+  over the three positions, which covers every semantic class rather than
+  restating the `match` for every `SyntaxKind`. It compares the result with an
+  independently shaped reference decision table and counts accepted and
+  rejected outcomes (`16` and `11`). The whole-input table remains the stronger
+  evidence, exercising every outcome through the real parser with exact message
+  and span.
 - `V-B7`: an inline `insta` characterization snapshot of all existing
   expression fixtures, taken in EP-M2 before any block change and paired with
   semantic assertions on representative rows.
@@ -663,9 +783,10 @@ constants, and `sema` arms that compile; then the block tests and scenarios in
   `parse_infix_with_colon_mode`, and `parse_expr_for_map_key`.
 - Add `pub(crate) const BLOCK_ITEM_MIN_BP: u8 = BP_SEQ + 1;` to
   `precedence.rs`.
-- Add the `;`-terminates state beside the struct-literal state, with
-  `with_semicolon_terminating` and `with_semicolon_terminating_cleared`, and
-  apply the clearing helper at every delimiter named in `BG-D11`.
+- Add the `;`-terminates state beside the struct-literal state, combined with
+  it by `with_block_item_scope`, and restore both at every delimiter named in
+  `BG-D11` through `with_nested_delimiter_scope`. A `for` guard uses
+  `with_guard_expression_scope`.
 - Narrow the struct-literal guard (`BG-D6`).
 - `sema` interim semantics, replaced by roadmap 3.3.5: `relation_name(Block)`
   is `relation_name(v)` when `statements` is empty and `value` is `Some(v)`,
@@ -916,16 +1037,17 @@ Feature: Block expressions and collection literals
   tests). Accepted: `{ x }`, `{ 1 }`, `{ f() }`, `{ (x, y) }`, `{ 1 + 2 }`,
   `{ a; b }`, `{ a; b; }`, `{ a; }`, `{}`, `{ { a } }`, `{ {a}; b }`,
   `{ (a; b) }`, `{ x: T }`, `{ a; x: T }`, `{ return }`, `{ x = 1; x }`,
-  `{ |x| x; y }`, `{ match (x) { A -> 1 }; y }`, `{ [a -> 1] }`. Tails (each
-  gives two items): `{ if c { a } else { b }; d }`, `{ if c { a }; d }`,
-  `{ if a { x } else if b { y }; z }`, `{ for (x in xs) { f(x) }; y }`,
-  `{ for (x in xs) f(x); g() }`, `{ return x; y }`,
-  `{ a = if c { x } else { y }; z }`. Delimiters still allow `Seq` (unchanged
-  behaviour, register item 16): `{ (a; b); c }`, `{ f(a; b) }`, `{ [a; b] }`,
-  `{ match (x) { A -> a; b } }`. Rejected with exact message and span:
-  `{ a, b }`, `{ a; b, c }`, `{ a; b c }`, `{ ; }`, `{ a;; b }`, `{ a`, `{ a;`,
-  `{a: 1, b: 2}`, and `{ var x = 1; x }` (existing "unexpected token: K_VAR"
-  until roadmap 2.6.12).
+  `{ |x| x; y }`, `{ match (x) { _ -> 1 }; y }` (a bare constructor pattern
+  such as `A` is not yet supported, see `Surprises & discoveries`),
+  `{ [a -> 1] }`. Tails (each gives two items): `{ if c { a } else { b }; d }`,
+  `{ if c { a }; d }`, `{ if a { x } else if b { y }; z }`,
+  `{ for (x in xs) { f(x) }; y }`, `{ for (x in xs) f(x); g() }`,
+  `{ return x; y }`, `{ a = if c { x } else { y }; z }`. Delimiters still allow
+  `Seq` (unchanged behaviour, register item 16): `{ (a; b); c }`, `{ f(a; b) }`,
+  `{ [a; b] }`, `{ match (x) { A -> a; b } }`. Rejected with exact message and
+  span: `{ a, b }`, `{ a; b, c }`, `{ a; b c }`, `{ ; }`, `{ a;; b }`, `{ a`,
+  `{ a;`, `{a: 1, b: 2}`, and `{ var x = 1; x }` (existing "unexpected token:
+  K_VAR" until roadmap 2.6.12).
 - Struct-literal guard (`tests/expression_compound.rs`): accepted
   `if ready {} else { go() }`, `if ready {}`, `for (x in xs if ok) {}`;
   rejected with the struct-literal message `if x == Foo{} { a }`,
@@ -1007,9 +1129,111 @@ confirming no uncommitted work is needed.
 
 ## Artefacts and notes
 
-Record here during implementation: red and green transcripts, class counts,
-seeded-fault and mutation summaries, the approved snapshot text, and gate log
-paths.
+### Implementation transcripts
+
+- EP-M2: the collection tables were written before the bracket-literal change
+  and failed against the brace-map implementation; after the change the
+  collection suite passed with `60` tests. Log:
+  `/tmp/test-ddlint-ep-m2-collections.out`.
+- EP-M3 scanner:
+  `Out(y) :- Items(x), var y = if x > 1 { x } else { 0 }, …` first reported
+  `Unexpected ... found: Some(K_IF)` because the span scanner stopped at `if`.
+  Adding the `assign_stmt` alternative made the end-to-end suite green
+  (`5 passed`). Log: `/tmp/test-ddlint-2-6-8-block.out`.
+- EP-M3 semantics: the first end-to-end semantic assertion failed with
+  "use at 129 should resolve" because `sema` records the enclosing term's span
+  for each use and leaves free relation-argument variables unresolved. The test
+  now asserts use term text plus resolution through the head binding `y`.
+- EP-M3 compatibility: `tests/expression_compound.rs` initially expected
+  `Expr::Group` for `if` branches written with braces; the suite failed until
+  the expectations became `block(...)`, which is the intended behaviour change.
+  All `27` cases then passed.
+- Every seeded fault below was applied, observed red against a named test, and
+  reverted by restoring a copy from `/tmp/ddlint-2-6-8/`; the restored tree was
+  green afterwards.
+
+### Generator class coverage
+
+`generator_covers_every_class` draws `256` `(items, ends_with_semicolon)`
+samples from `TestRunner::deterministic()` and counts the 16 classes described
+under `V-B2` to `V-B5`. Observed counts:
+
+| Class                  | Count |
+| ---------------------- | ----- |
+| empty block            | 61    |
+| single value           | 22    |
+| single statement       | 21    |
+| multi value            | 79    |
+| multi statement        | 73    |
+| nested block           | 34    |
+| map first              | 13    |
+| if tail                | 12    |
+| for tail               | 33    |
+| return tail            | 41    |
+| closure tail           | 31    |
+| tuple item             | 33    |
+| parenthesized sequence | 34    |
+| vector item            | 42    |
+| call item              | 38    |
+| binary item            | 27    |
+
+Every count is at least `5`, the floor the test asserts.
+
+### Classifier sweep (`V-B6`)
+
+`block_follow_classification_matches_the_reference_table` sweeps the three
+positions over nine tokens (end of input, `{`, `}`, `;`, `,`, `:`, an
+identifier, a number, and `+`), compares each result with the independently
+shaped reference table, and asserts the outcome split
+`(16 accepted, 11 rejected)`.
+
+### Seeded faults
+
+| Fault                                                        | Test that rejected it                                                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| accept `([], true)` (`V-B1`)                                 | `block_expr_from_items_rejects_empty_trailing_separator`                                               |
+| move the last statement into `value` when `t` holds (`V-B1`) | `parses_blocks::case_07_trailing_semicolon`, `case_08_single_statement`                                |
+| reverse statements                                           | `parses_blocks::case_06_statements`, `case_07_trailing_semicolon`, `case_11_nested_statement`          |
+| drop the trailing-`;` flag                                   | `parses_blocks::case_07_trailing_semicolon`                                                            |
+| parse items without the `;`-terminates state                 | `parses_blocks::case_17_closure_then_value`                                                            |
+| omit propagation into `for` bodies only                      | `parse_construct_tails_as_separate_items::case_5_for_with_expression_body`                             |
+| omit clearing inside call arguments                          | `nested_delimiters_still_allow_sequence::case_2_call_arguments`                                        |
+| return `Group` for `{ e }`                                   | `parses_blocks::case_01_variable`, `case_03_call`, `case_04_tuple`, `case_05_binary`                   |
+| set the state at top level                                   | `expression::characterization::non_brace_error_diagnostics_are_characterized` (`V-B7`)                 |
+| accept a mixed bracket literal                               | `rejects_empty_and_mixed_literals::case_3_mixed_element_then_entry`, `case_4_mixed_entry_then_element` |
+
+### Mutation testing
+
+Command:
+`cargo mutants --file src/parser/expression/block.rs --file
+src/parser/ast/expr/block.rs --all-features --cargo-test-arg=--lib`.
+
+The first attempt without `--cargo-test-arg=--lib` was stopped after its
+baseline exceeded 30 minutes on a host whose compiler slots were saturated by
+other repositories: the unmutated build compiles the integration, behavioural,
+and `trybuild` targets, none of which adds block coverage beyond the library
+suites that own it. Scoping to `--lib` is therefore the documented method for
+this item; the end-to-end and behavioural block suites remain part of the
+commit gates.
+
+Run 1 over 22 mutants: `12` caught, `2` missed, `7` unviable, `1` timeout, in
+`34m`. Log: `/tmp/mutants-ddlint-2-6-8.out`.
+
+- Missed `BlockExpr::items -> empty`: killed by the new
+  `block_items_follow_source_order` table, which asserts both `items()` and
+  `into_items()` yield statements then value in source order.
+- Missed `&& -> ||` in `ends_with_semicolon`: killed by the new
+  `block_ends_with_semicolon_only_for_a_unit_value` table over the empty,
+  value-only, statement-only, and both shapes.
+- Timeout `ends_with_semicolon -> true`: re-run with
+  `--minimum-test-timeout 120`, because the auto-set `20s` limit was reached
+  while the host was loaded and no code path loops on this predicate.
+
+Run 2 repeated the filtered survivors: `3` caught, `1` unviable, no misses
+(`/tmp/mutants-rerun-ddlint-2-6-8.out`). The timed-out mutant was then run
+alone and was caught in `102s` build plus `1s` test, confirming the earlier
+timeout was host contention rather than a hang
+(`/tmp/mutants-target-ddlint-2-6-8.out`). No missed mutant remains.
 
 ## Interfaces and dependencies
 

@@ -3,7 +3,7 @@
 //! Tests use these compact renderings to compare parsed structure without
 //! coupling to debug formatting.
 
-use super::{Expr, Literal, MatchArm, Pattern};
+use super::{BlockExpr, Expr, Literal, MatchArm, Pattern};
 
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
@@ -58,6 +58,7 @@ impl Expr {
                 format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
             }
             Self::Group(expr) => format_nary("group", std::iter::once(expr.to_sexpr())),
+            Self::Block(block) => format_block(block),
             Self::ForLoop {
                 pattern,
                 iterable,
@@ -99,6 +100,25 @@ fn format_kv(key: &Expr, value: &Expr) -> String {
     rendered.push_str(&value_text);
     rendered.push(')');
     rendered
+}
+
+/// Render a block as `(block ...)`.
+///
+/// `{}` renders as `(block)`, a block whose final item supplies its value as
+/// `(block (value e))`, and a block ending in `;` as `(block (stmts e...))`.
+/// A block with both renders the statements group before the value group.
+fn format_block(block: &BlockExpr) -> String {
+    let mut parts = Vec::new();
+    if !block.statements.is_empty() {
+        parts.push(format_nary(
+            "stmts",
+            block.statements.iter().map(Expr::to_sexpr),
+        ));
+    }
+    if let Some(value) = &block.value {
+        parts.push(format_nary("value", [value.to_sexpr()]));
+    }
+    format_nary("block", parts)
 }
 
 /// Render a space-separated n-ary S-expression `(label item...)`.

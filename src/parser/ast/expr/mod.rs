@@ -5,7 +5,10 @@
 //! can inspect without re-parsing tokens.
 use std::fmt;
 
+mod block;
 mod sexpr;
+
+pub use block::BlockExpr;
 
 use super::{number::NumberLiteral, pattern::Pattern, string_literal::StringLiteral};
 
@@ -268,8 +271,14 @@ pub enum Expr {
         /// Right-hand operand.
         rhs: Box<Self>,
     },
-    /// Grouped expression (parenthesised).
+    /// Parenthesised expression `( e )`.
     Group(Box<Self>),
+    /// Brace-delimited block expression `{ item; item; value }`.
+    ///
+    /// Braces always introduce a block in `DDlog`; they are never collection
+    /// literals. [`BlockExpr::items`] and [`BlockExpr::into_items`] are the
+    /// only traversal order consumers should use.
+    Block(BlockExpr),
     /// For-loop expression with optional guard.
     ForLoop {
         /// Pattern introduced by the loop header.

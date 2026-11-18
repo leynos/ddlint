@@ -157,6 +157,30 @@ assert_eq!(function.return_type().as_deref(), Some("u32"));
 assert_eq!(function.parameters().len(), 1);
 ```
 
+## Block expressions and collection literals
+
+Braces always form a block expression; they are not a collection literal and
+not a parenthesized group. Items are separated by `;`. The last item is the
+block's value unless it is followed by `;`, and `{}` is the empty block.
+
+```rust
+use ddlint::parser::expression::parse_expression;
+
+let block = parse_expression("{ a; b }").expect("block parses");
+assert!(block.to_sexpr().starts_with("(block"));
+```
+
+Map and vector literals use brackets and must be non-empty:
+
+- `[a, b]` is a vector literal; `[]` is rejected with
+  `empty vector literals are not DDlog syntax; use vec_empty() instead`.
+- `[k -> v]` is a map literal; `->` separates an entry's key from its value.
+- A literal that mixes vector elements and map entries is rejected with
+  `cannot mix vector elements and map entries in one literal`.
+- `{k: v}` is no longer a map literal; it is a block and reports
+  `expected ';' or '}' after a block item` unless the braces hold valid block
+  items.
+
 ## Run lint rules
 
 The linter flow is:

@@ -17,9 +17,12 @@ use crate::{
     },
 };
 
+#[path = "rules_assign.rs"]
+mod assign;
 #[path = "rules_support.rs"]
 mod support;
 
+use assign::assignment_statement;
 use support::is_at_line_start;
 
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
@@ -146,13 +149,23 @@ pub(super) fn rule_statement(
         ));
         let expr_stmt = expr_token.repeated().at_least(1).ignored();
 
+        let assign_stmt = assignment_statement(ws.clone(), stmt.clone().boxed());
+
         // Keep `expr_stmt` before `atom_stmt` so general expressions (including
-        // assignments/aggregations) win over the more restrictive atom grammar.
-        // This ordering guards future refactors from silently changing rule-body
+        // aggregations) win over the more restrictive atom grammar. This
+        // ordering guards future refactors from silently changing rule-body
         // semantics.
-        choice((for_stmt, if_stmt, block, skip_stmt, expr_stmt, atom_stmt))
-            .padded_by(ws.clone())
-            .ignored()
+        choice((
+            for_stmt,
+            if_stmt,
+            block,
+            skip_stmt,
+            assign_stmt,
+            expr_stmt,
+            atom_stmt,
+        ))
+        .padded_by(ws.clone())
+        .ignored()
     })
 }
 

@@ -275,6 +275,13 @@ fn classify_for_body_with_aggregation_tracking(
             )]
         }
         Expr::Group(inner) => classify_for_body_with_aggregation_tracking(*inner, ctx),
+        Expr::Block(block) => {
+            let mut terms = Vec::new();
+            for item in block.into_items() {
+                terms.extend(classify_for_body_with_aggregation_tracking(item, ctx));
+            }
+            terms
+        }
         other => classify_expression(other, ctx).into_iter().collect(),
     }
 }

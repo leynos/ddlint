@@ -63,7 +63,7 @@ where
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         let (_, _slice_span) = self.ts.next_tok()?;
-        self.with_struct_literals_suspended(move |this| {
+        self.with_nested_delimiter_scope(move |this| {
             let hi = this.parse_expr(0)?;
             if !this.ts.expect(SyntaxKind::T_COMMA) {
                 return None;
@@ -123,7 +123,7 @@ where
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
         // token is consumed to advance past '('
         let (_, _open_span) = self.ts.next_tok()?;
-        self.with_struct_literals_suspended(|this| {
+        self.with_nested_delimiter_scope(|this| {
             let args = this.parse_args()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;

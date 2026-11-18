@@ -14,24 +14,15 @@ impl<I> Pratt<'_, I>
 where
     I: Iterator<Item = (SyntaxKind, Span)> + Clone,
 {
-    pub(super) fn parse_infix(&mut self, lhs: Expr, min_bp: u8) -> Option<Expr> {
-        self.parse_infix_with_colon_mode(lhs, min_bp, false)
-    }
-
-    /// Parse infix operators, optionally treating `:` as a terminator.
+    /// Fold infix operators into `lhs` until the next token binds no tighter
+    /// than `min_bp`.
     ///
-    /// When `colon_terminates` is true, the `:` operator is not consumed as type
-    /// ascription but instead terminates parsing. This is used when parsing map
-    /// keys where `:` separates key from value rather than being type ascription.
-    pub(super) fn parse_infix_with_colon_mode(
-        &mut self,
-        mut lhs: Expr,
-        min_bp: u8,
-        colon_terminates: bool,
-    ) -> Option<Expr> {
+    /// While a block item is being parsed, `;` terminates the item instead of
+    /// forming a [`crate::parser::ast::BinaryOp::Seq`] node; the block parser
+    /// then consumes it as the item separator.
+    pub(super) fn parse_infix(&mut self, mut lhs: Expr, min_bp: u8) -> Option<Expr> {
         while let Some(op_kind) = self.ts.peek_kind() {
-            // When parsing map keys, treat `:` as a terminator
-            if colon_terminates && op_kind == SyntaxKind::T_COLON {
+            if self.semicolon_terminates() && op_kind == SyntaxKind::T_SEMI {
                 break;
             }
 
@@ -50,7 +41,7 @@ where
             let (_, op_span) = self.ts.next_tok()?;
             let Some(rhs) = (match op_kind {
                 SyntaxKind::T_COLON | SyntaxKind::K_AS => self.parse_type(),
-                _ => self.parse_expr_for_map_key(r_bp, colon_terminates),
+                _ => self.parse_expr(r_bp),
             }) else {
                 self.ts
                     .push_error(op_span, "missing right-hand side for operator");
@@ -63,14 +54,5 @@ where
             };
         }
         Some(lhs)
-    }
-
-    /// Parse an expression, optionally in map-key mode where `:` terminates.
-    fn parse_expr_for_map_key(&mut self, min_bp: u8, colon_terminates: bool) -> Option<Expr> {
-        if colon_terminates {
-            self.parse_map_key_expr(min_bp)
-        } else {
-            self.parse_expr(min_bp)
-        }
     }
 }

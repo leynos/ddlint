@@ -27,10 +27,15 @@ pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
     crate::parser::error_messages::MIXED_COLLECTION_ENTRY_ERROR;
 pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
     crate::parser::error_messages::EMPTY_VECTOR_LITERAL_ERROR;
+pub const BLOCK_ITEM_SEPARATOR_ERROR: &str =
+    crate::parser::error_messages::BLOCK_ITEM_SEPARATOR_ERROR;
+pub const EMPTY_BLOCK_ITEM_ERROR: &str = crate::parser::error_messages::EMPTY_BLOCK_ITEM_ERROR;
+pub const UNCLOSED_BLOCK_ERROR: &str = crate::parser::error_messages::UNCLOSED_BLOCK_ERROR;
 pub use expressions::{
     atom_delay,
     atom_diff,
     bit_slice,
+    block,
     break_expr,
     call,
     call_expr,

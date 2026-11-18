@@ -46,7 +46,7 @@ where
             SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACKET => self.parse_vector_literal(),
-            SyntaxKind::T_LBRACE => self.parse_brace_or_map_literal(),
+            SyntaxKind::T_LBRACE => self.parse_block(),
             SyntaxKind::K_IF => self.parse_if_expression(),
             SyntaxKind::K_MATCH => self.parse_match_expression(),
             SyntaxKind::K_FOR => self.parse_for_expression(),

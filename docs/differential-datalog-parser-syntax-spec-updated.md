@@ -174,6 +174,36 @@ they introduce a block expression (section 3.4).
   withdrawn with no compatibility path. See
   [ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md).
 
+### 3.4 Block expressions
+
+Braces always introduce a block expression, never a collection literal and
+never a parenthesized group. A block is a `;`-separated sequence of items. The
+final item is the block's value unless it is followed by `;`, and `{}` is the
+empty block, whose value is unit.
+
+```ebnf
+BlockExpr  ::= '{' BlockBody? '}'
+BlockBody  ::= Expr (';' Expr)* ';'?
+```
+
+- `;` separates items only inside braces. Commas are not block separators; a
+  comma between items reports `expected ';' or '}' after a block item`.
+- A doubled separator (`{ a;; b }`) and a block whose first token is `;`
+  (`{ ; }`) report `empty statement in block: remove the extra ';'`.
+- An unterminated block reports `expected '}' to close block`.
+- A block item is parsed above the sequencing binding power, so a control-flow
+  tail cannot swallow the following `;`. Outside braces, `;` remains an infix
+  sequencing expression until roadmap item `2.6.10` (register item 16).
+- The block is represented as `Expr::Block(BlockExpr)`. `statements` holds the
+  items followed by `;`, and `value` holds the final item when it is not.
+  Consequently `{ e }` is a block whose value is `e`, while `( e )` remains the
+  parenthesized group.
+- The earlier ddlint brace map literals `{k: v, …}` and brace type syntax are
+  withdrawn; maps are bracket-delimited (section 3.3).
+- Implementation status: `implemented`. See
+  `docs/parser-conformance-register.md` item 15 and
+  [ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md).
+
 ______________________________________________________________________
 
 ## 4. Operator precedence and associativity
@@ -209,6 +239,11 @@ semantics are described in §7.3. `:` is the implemented expression
 type-ascription operator, and `as` is the implemented expression cast operator;
 both use the type-operator binding level between shifts and bitwise operators.
 `as` is also the import alias keyword.
+
+`;` is not an operator in the table. Inside braces it separates block items
+(section 3.4). Outside braces, ddlint still accepts `;` as an infix sequencing
+expression in any expression position; that surface is tracked by register item
+16 and roadmap item `2.6.10`.
 
 ______________________________________________________________________
 
@@ -396,10 +431,14 @@ IfStmt          ::= 'if' '(' Expr ')' Statement ('else' Statement)?
 MatchStmt       ::= 'match' '(' Expr ')' '{' MatchArm (',' MatchArm)* '}'
 MatchArm        ::= Pattern '->' Statement
 Skip            ::= 'skip'
-Block           ::= '{' Statement* '}'
+Block           ::= BlockExpr            // section 3.4
 ExprInStmt      ::= LhsAssign '=' Expr   // see note below
 LhsAssign       ::= Pattern | Expr       // implementation permits pattern LHS
 ```
+
+Block items are expressions, not only statement forms, so `Block` reuses
+`BlockExpr` from section 3.4: items are separated by `;`, a trailing `;`
+discards the value, and `{}` is empty. A comma is not a block separator.
 
 **Top‑level `for`:** A top‑level `for` statement is **converted into one or
 more rules** during parsing (desugaring). This affects scoping, and it governs
@@ -640,6 +679,14 @@ clear diagnostic that includes a span:
 - **Delay out of range:** delay not in `0..=2^32-1`.
 - **Illegal placement of location:** `@` used outside a rule head.
 - **Use of reserved words as identifiers.**
+- **Malformed block:** an item followed by another item without `;` reports
+  `expected ';' or '}' after a block item`; an empty item reports
+  `empty statement in block: remove the extra ';'`; a block without its closing
+  brace reports `expected '}' to close block`.
+- **Malformed collection literal:** `[]` reports
+  `empty vector literals are not DDlog syntax; use vec_empty() instead`; a
+  literal mixing vector elements and map entries reports
+  `cannot mix vector elements and map entries in one literal`.
 
 ______________________________________________________________________
 
@@ -755,8 +802,10 @@ copy/paste. -->
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.
-- **Expr:** `ECall`, `EIndex`, `EField`, `EUnary`, `EBinary`, `EIf`, `EMapLit`,
-  `EVecLit`, `ERef`, `EFunc` (fully qualified only).
+- **Expr:** `ECall`, `EIndex`, `EField`, `EUnary`, `EBinary`, `EIf`,
+  `EBlock { statements: [Expr], value?: Expr }`, `EMapLit`, `EVecLit`, `ERef`,
+  `EFunc` (fully qualified only). `EBlock`'s `statements` are the items
+  followed by `;`; `value` is the final item when it is not.
 
 ______________________________________________________________________
 
@@ -820,11 +869,14 @@ let m1 = 16'sd-1;    // signed decimal width 16
 let f  = 3.14159'f64; // permitted widths: 32 or 64
 ```
 
-### 11.6 Collections
+### 11.6 Collections and blocks
 
 ```ddlog
 let v = [a, b, c];        // parsed today; lowering is scheduled
 let m = [k1 -> v1, k2 -> v2]; // parsed today; lowering is scheduled
+let b = { a; b };         // parsed today as Expr::Block with no value
+let c = { a + b };        // parsed today as Expr::Block whose value is `a + b`
+let d = {};               // the empty block, whose value is unit
 ```
 
 ### 11.7 Index
@@ -885,6 +937,31 @@ A() -<4294967296> :- B(). // error: delay must fit u32
 match s { i"X_${n}" -> skip } // error: patterns require constant strings
 ```
 
+- **Comma inside a block:**
+
+```ddlog
+let b = { a, b }; // error: expected ';' or '}' after a block item
+```
+
+- **Empty block item:**
+
+```ddlog
+let b = { a;; b }; // error: empty statement in block: remove the extra ';'
+```
+
+- **Unclosed block:**
+
+```ddlog
+let b = { a; // error: expected '}' to close block
+```
+
+- **Empty vector literal and mixed collection literal:**
+
+```ddlog
+let v = [];          // error: empty vector literals are not DDlog syntax; use vec_empty() instead
+let m = [a, b -> c]; // error: cannot mix vector elements and map entries in one literal
+```
+
 ______________________________________________________________________
 
 ## 13. Portability notes for implementers
@@ -931,6 +1008,15 @@ ______________________________________________________________________
 - Added AST crosswalk to guide ports and test fixture authorship.
 - Added the upstream variable-scoping rules as a scheduled target (section
   8.1).
+- Added section 3.4: braces are block expressions with `;`-separated items, an
+  optional trailing separator, and `{}` as the empty block; brace groups, brace
+  maps, and the colon-terminating map-key mode are withdrawn.
+- Made bracket map literals `[k -> v, …]` the only map form, required both
+  collection literal forms to be non-empty, and recorded their diagnostics.
+- Replaced the statement grammar's `Block` production with `BlockExpr` and
+  noted that `;` separates block items rather than acting as an operator.
+- Added block, collection-literal, and malformed-collection examples to the
+  error and validation sections, and `EBlock` to the AST crosswalk.
 
 ______________________________________________________________________
 

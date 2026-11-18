@@ -67,7 +67,7 @@ where
             return None;
         }
 
-        let scrutinee = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let scrutinee = self.with_nested_delimiter_scope(|this| this.parse_expr(0))?;
 
         if !self.ts.expect(SyntaxKind::T_RPAREN) {
             return None;
@@ -162,7 +162,7 @@ where
         if !self.ts.expect(SyntaxKind::T_ARROW) {
             return None;
         }
-        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let body = self.with_nested_delimiter_scope(|this| this.parse_expr(0))?;
         Some(MatchArm { pattern, body })
     }
 
@@ -276,14 +276,14 @@ where
 
         let (pattern, _pattern_span) = self.collect_for_pattern()?;
 
-        let iterable = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let iterable = self.with_nested_delimiter_scope(|this| this.parse_expr(0))?;
 
         let guard = if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_IF)) {
             let (_, if_span) = self
                 .ts
                 .next_tok()
                 .unwrap_or_else(|| (SyntaxKind::K_IF, self.ts.eof_span()));
-            let guard_expr = self.with_struct_literal_activation(|this| {
+            let guard_expr = self.with_guard_expression_scope(|this| {
                 this.parse_if_clause(
                     "expected guard expression after 'if' in for-loop header",
                     Some(if_span.clone()),

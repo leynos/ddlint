@@ -2,7 +2,7 @@
 
 use super::Name;
 use crate::parser::{
-    ast::{Expr, MatchArm, Pattern},
+    ast::{BlockExpr, Expr, MatchArm, Pattern},
     pattern::parse_pattern,
 };
 
@@ -216,6 +216,29 @@ pub const fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries)
 /// ```
 #[must_use]
 pub const fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
+
+/// Construct a block expression [`Expr::Block`].
+///
+/// `statements` are the items followed by `;`; `value` is the final item when
+/// it is not followed by `;`.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{block, var};
+///
+/// let b = block(vec![var("a")], Some(var("b")));
+/// assert_eq!(b.to_sexpr(), "(block (stmts a) (value b))");
+/// assert_eq!(block(Vec::new(), None).to_sexpr(), "(block)");
+/// assert_eq!(block(vec![var("a")], None).to_sexpr(), "(block (stmts a))");
+/// ```
+#[must_use]
+pub fn block(statements: Vec<Expr>, value: Option<Expr>) -> Expr {
+    Expr::Block(BlockExpr {
+        statements,
+        value: value.map(Box::new),
+    })
+}
 
 /// Construct a `match` arm with the provided pattern and body expression.
 ///

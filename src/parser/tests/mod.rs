@@ -2,6 +2,8 @@
 
 mod apply;
 mod attributes;
+mod block_expression_snapshots;
+mod block_expressions;
 mod collections;
 mod control_flow;
 mod cst_integration;

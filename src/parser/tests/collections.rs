@@ -2,8 +2,8 @@
 //!
 //! Covers parsing of `[e1, e2, ...]` vector literals and `[k -> v, ...]` map
 //! literals, including edge cases like trailing commas, nesting, and the
-//! rejection of empty and mixed literals. Brace forms are covered separately
-//! while the block-expression work is staged.
+//! rejection of empty and mixed literals. Braces always introduce a block,
+//! covered in detail by the block-expression tests.
 
 use rstest::rstest;
 
@@ -16,6 +16,7 @@ use crate::{
         EMPTY_VECTOR_LITERAL_ERROR,
         MIXED_COLLECTION_ENTRY_ERROR,
         assert_parse_error,
+        block,
         call,
         closure,
         field,
@@ -179,40 +180,23 @@ fn parses_nested_maps(#[case] src: &str, #[case] expected: Expr) {
 }
 
 // ============================================================================
-// Brace forms still parse while block-expression work is staged
+// Braces are not collection syntax
 // ============================================================================
 
 #[rstest]
-#[case::simple_var("{ x }", Expr::Group(Box::new(var("x"))))]
-#[case::simple_num("{ 1 }", Expr::Group(Box::new(lit_num("1"))))]
-#[case::function_call("{ f() }", Expr::Group(Box::new(call("f", vec![]))))]
-#[case::tuple("{ (x, y) }", Expr::Group(Box::new(tuple(vec![var("x"), var("y")]))))]
-#[case::binary_expr(
-    "{ 1 + 2 }",
-    Expr::Group(Box::new(Expr::Binary {
-        op: BinaryOp::Add,
-        lhs: Box::new(lit_num("1")),
-        rhs: Box::new(lit_num("2")),
-    }))
+#[case::empty_block("{}", block(vec![], None))]
+#[case::ascription_block(
+    "{a: 1}",
+    block(
+        vec![],
+        Some(Expr::Binary {
+            op: BinaryOp::Ascribe,
+            lhs: Box::new(var("a")),
+            rhs: Box::new(lit_num("1")),
+        })
+    )
 )]
-#[case::low_precedence_op(
-    "{ a and b }",
-    Expr::Group(Box::new(Expr::Binary {
-        op: BinaryOp::And,
-        lhs: Box::new(var("a")),
-        rhs: Box::new(var("b")),
-    }))
-)]
-fn parses_brace_groups(#[case] src: &str, #[case] expected: Expr) {
-    let expr =
-        parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
-    assert_eq!(expr, expected);
-}
-
-#[rstest]
-#[case::empty("{}", map_lit(vec![]))]
-#[case::single_entry("{a: 1}", map_lit(vec![map_entry(var("a"), lit_num("1"))]))]
-fn parses_brace_maps_until_removed(#[case] src: &str, #[case] expected: Expr) {
+fn braces_are_blocks_not_collections(#[case] src: &str, #[case] expected: Expr) {
     let expr =
         parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected);

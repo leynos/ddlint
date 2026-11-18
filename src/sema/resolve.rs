@@ -2,7 +2,7 @@
 
 use super::builder::SemanticModelBuilder;
 use crate::{
-    parser::ast::{Expr, Pattern},
+    parser::ast::{BlockExpr, Expr, Pattern},
     sema::model::{DeclarationKind, Resolution, ScopeId, ScopeKind, Symbol, UseKind},
 };
 
@@ -95,14 +95,30 @@ impl SemanticModelBuilder {
 
 pub(super) fn relation_name(expr: &Expr) -> Option<&str> {
     match expr {
-        Expr::Apply { callee, .. } | Expr::Call { callee, .. } => match callee.as_ref() {
-            Expr::Variable(name) => Some(name.as_str()),
-            _ => None,
-        },
+        Expr::Apply { callee, .. } | Expr::Call { callee, .. } => callee_variable_name(callee),
         Expr::AtomDiff { expr: inner }
         | Expr::AtomDelay { expr: inner, .. }
         | Expr::Group(inner) => relation_name(inner),
+        Expr::Block(block) => block_relation_name(block),
         _ => None,
+    }
+}
+
+/// A callee names a relation only when it is a plain variable.
+const fn callee_variable_name(callee: &Expr) -> Option<&str> {
+    match callee {
+        Expr::Variable(name) => Some(name.as_str()),
+        _ => None,
+    }
+}
+
+/// Interim rule until the scoped model in roadmap 3.3.5: only a block that is
+/// exactly `{ v }` names a relation.
+fn block_relation_name(block: &BlockExpr) -> Option<&str> {
+    if block.statements.is_empty() {
+        block.value.as_deref().and_then(relation_name)
+    } else {
+        None
     }
 }
 
@@ -143,7 +159,8 @@ fn collect_head_bindings(expr: &Expr, names: &mut Vec<String>) {
         | Expr::Tuple(_)
         | Expr::VecLit(_)
         | Expr::Struct { .. }
-        | Expr::MapLit(_) => collect_container_like_bindings(expr, names),
+        | Expr::MapLit(_)
+        | Expr::Block(_) => collect_container_like_bindings(expr, names),
         Expr::IfElse { .. } | Expr::Binary { .. } => {
             collect_control_flow_like_bindings(expr, names);
         }
@@ -195,6 +212,7 @@ fn collect_container_like_bindings(expr: &Expr, names: &mut Vec<String>) {
                 collect_head_bindings_many([key, value], names);
             }
         }
+        Expr::Block(block) => collect_head_bindings_many(block.items(), names),
         // The dispatcher routes only container-like expressions here.
         _ => {}
     }

@@ -229,13 +229,13 @@ mod type_def;
 /// Re-exports [`MatchArm`], allowing callers to assemble match expressions
 /// without reaching into private modules.
 pub use apply::Apply;
-pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
+pub use expr::{BinaryOp, BlockExpr, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;
 pub use index::Index;
 pub use number::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 pub use pattern::{Pattern, PatternLiteral};
-pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
+pub(crate) use precedence::{BLOCK_ITEM_MIN_BP, infix_binding_power, prefix_binding_power};
 pub use relation::{
     PrimaryKey,
     PrimaryKeyBinder,

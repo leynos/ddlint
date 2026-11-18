@@ -4,10 +4,9 @@
 //! can assert error counts, spans, and postfix delimiter recovery without
 //! duplicating fixture wiring.
 
-use crate::parser::tests::expression::fixtures::{
-    CountedErrorCase,
-    PostfixErrorCase,
-    SpannedErrorCase,
+use crate::{
+    parser::tests::expression::fixtures::{CountedErrorCase, PostfixErrorCase, SpannedErrorCase},
+    test_util::{BLOCK_ITEM_SEPARATOR_ERROR, UNCLOSED_BLOCK_ERROR},
 };
 
 pub(super) fn error_cases() -> Vec<CountedErrorCase> {
@@ -74,14 +73,14 @@ pub(super) fn postfix_error_cases() -> Vec<PostfixErrorCase> {
         },
         PostfixErrorCase {
             src: "{a: 1",
-            msg: "expected right brace",
+            msg: UNCLOSED_BLOCK_ERROR,
             start: 5,
             end: 5,
             unclosed: true,
         },
         PostfixErrorCase {
             src: "{a, b}",
-            msg: "expected ':'",
+            msg: BLOCK_ITEM_SEPARATOR_ERROR,
             start: 2,
             end: 3,
             unclosed: false,

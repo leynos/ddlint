@@ -6,6 +6,27 @@ parsing pipeline.
 
 ## Parser module structure
 
+### `src/parser/ast/expr/block.rs`
+
+- Owns `BlockExpr`, the brace-delimited block value stored in
+  `Expr::Block`.
+- `statements` holds items followed by `;`; `value` holds the final item when
+  it is not followed by `;`, so `None` means the block yields unit.
+- `from_items` is the only constructor that applies the trailing-separator
+  rule; `items()` and `into_items()` are the only traversal order.
+- Keeps block-shape concerns out of `expr/mod.rs`, which owns the `Expr`
+  variants themselves.
+
+### `src/parser/expression/block.rs`
+
+- Owns block item parsing: `parse_block`, `parse_block_items`,
+  `finish_block`, and the private `classify_block_follow` classifier.
+- Reads every item at `BLOCK_ITEM_MIN_BP` so an item cannot swallow the
+  following `;`, and owns the empty-item and missing-separator diagnostics
+  through `error_messages.rs` constants.
+- Should remain the only place that maps `ItemPosition` and the next token to
+  a block action; callers should not duplicate that classification.
+
 ### `src/parser/ast/expr/sexpr.rs`
 
 - Owns S-expression rendering helpers for `Expr`.
@@ -128,6 +149,18 @@ parsing pipeline.
 
 - Keep formatting helpers in `sexpr.rs` rather than mixing them into the core
   expression parser.
+- `BlockExpr::items()` and `into_items()` are the only permitted traversal
+  order for blocks. `sema` and rule-body classification must handle
+  `Expr::Block` and `Expr::Group` in dedicated arms rather than unwrapping
+  either variant generically, because only the block carries statements.
+- `BLOCK_ITEM_MIN_BP` is owned by `precedence.rs` and is the sole minimum
+  binding power for block items. Block state is entered through
+  `with_block_item_scope` and restored through `with_nested_delimiter_scope`;
+  every new delimiter context must use the latter rather than reading the
+  ambient `;` flag. A `for` guard uses `with_guard_expression_scope`, which
+  also re-enables struct literals.
+- `test_util::block` mirrors `BlockExpr` construction for tests. Keep it in
+  step with the AST rather than reimplementing block construction in a test.
 - Keep rule-body classification in `classification.rs` rather than adding
   helper-stage logic to `rule.rs`.
 - Prefer `Relation::role()` and `Relation::kind()` for new relation-aware

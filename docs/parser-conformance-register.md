@@ -122,11 +122,11 @@ This register tracks parser behaviour against the syntax specification.
   and map literals as raw `Expr::VecLit` and `Expr::MapLit` nodes in the CST
   (`src/parser/expression/data_structures.rs`, `src/parser/ast/expr/mod.rs`).
   Bracket map literals `[k -> v, …]` are `implemented`; the empty vector literal
-  `[]` is rejected; mixed element/entry literals are rejected. The brace map
-  literal `{k: v, …}` still parses and is removed by roadmap item `2.6.8`
-  milestone EP-M3, when braces become block expressions.
-  `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
-  does not lower collection literals.
+  `[]` is rejected; mixed element/entry literals are rejected. Brace map
+  literals are withdrawn: braces always form block expressions (item 15), so
+  `{k: v, …}` no longer parses as a collection. `Parsed::semantic_rules()`
+  remains limited to top-level `for` desugaring and does not lower collection
+  literals.
 - Spec/target behaviour: section 6.4 describes collection literal lowering as
   scheduled work owned by later lowering stages rather than the parser or
   current rule-analysis helpers. The literal surface itself is aligned with
@@ -222,17 +222,20 @@ This register tracks parser behaviour against the syntax specification.
 ### 15. Braces as block expressions
 
 - Topic: policy for braced expression forms.
-- Current behaviour (code): `{ expr }` parses as a ddlint brace-group
-  expression, `{k: v}` as a brace map literal, and `{}` as an empty map
-  (`src/parser/expression/data_structures.rs`).
-- Spec/target behaviour: braces are always upstream block expressions, `{ … }`
-  with `;` as the item separator and an optional final value, so `{}` is the
-  empty block and `{ e }` is a block whose value is `e`. There are no brace
-  group or brace map forms, and the colon-terminating map-key mode is deleted.
-  The block is represented as `Expr::Block(BlockExpr)` and the `;` separator is
-  kept from escaping a block item by a scoped parser state. Decision record:
+- Current behaviour (code): braces always parse as a block expression
+  `Expr::Block(BlockExpr)` (`src/parser/expression/block.rs`,
+  `src/parser/ast/expr/block.rs`). Items are separated by `;`; a trailing `;`
+  discards the value; `{}` is the empty block. Brace groups, brace map
+  literals, and the colon-terminating map-key mode are gone. A scoped
+  `;`-terminating state keeps a control-flow tail from swallowing the next
+  separator, and the struct-literal guard no longer treats `{ ident :` as a map
+  key.
+- Spec/target behaviour: matches section 3.4. Braces are upstream block
+  expressions, `{ … }` with `;` as the item separator and an optional final
+  value, so `{}` is the empty block and `{ e }` is a block whose value is `e`.
+  Decision record:
   [ADR 006](./adrs/adr-0006-block-expressions-and-collection-syntax.md).
-- Decision status: `scheduled`.
+- Decision status: `implemented`.
 - Roadmap item: `docs/roadmap.md` item `2.6.8`.
 
 ### 16. Sequencing and rule-level `for`
