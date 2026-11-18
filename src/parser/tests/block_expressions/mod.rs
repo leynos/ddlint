@@ -1,6 +1,6 @@
 //! Tests for brace-delimited block expressions.
 //!
-//! Braces always introduce a block, so these tests cover item ordering,
+//! A prefix `{` introduces a block, so these tests cover item ordering,
 //! trailing separators, the empty block, nested delimiters, and the
 //! diagnostics for malformed blocks. Property tests live in
 //! [`props`].
@@ -125,9 +125,24 @@ fn parses_blocks(#[case] src: &str, #[case] expected: Expr) {
 fn outer_block_condition_keeps_inner_guard_narrow() {
     let expr = parse_expression("if { if ready {} else {}; true } { done }")
         .expect("a block condition followed by a block body should parse");
-    assert!(
-        matches!(expr, Expr::IfElse { .. }),
-        "the outer expression must be an if, got {expr:?}"
+    // Asserting the whole tree pins the condition block, both inner branches,
+    // and the outer `{ done }` branch; a `matches!` on `IfElse` would accept a
+    // tree where any of them was dropped or reshaped.
+    let expected = if_expr(
+        block(
+            vec![if_expr(
+                var("ready"),
+                block(vec![], None),
+                Some(block(vec![], None)),
+            )],
+            Some(lit_bool(true)),
+        ),
+        block(vec![], Some(var("done"))),
+        None,
+    );
+    assert_eq!(
+        expr, expected,
+        "the block condition and both outer branches must keep their shape"
     );
 }
 

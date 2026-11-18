@@ -7,7 +7,11 @@ use crate::{
     SyntaxKind,
     parser::{
         ast::Expr,
-        error_messages::{EMPTY_VECTOR_LITERAL_ERROR, MIXED_COLLECTION_ENTRY_ERROR},
+        error_messages::{
+            EMPTY_VECTOR_LITERAL_ERROR,
+            MISSING_MAP_ARROW_ERROR,
+            MIXED_COLLECTION_ENTRY_ERROR,
+        },
     },
 };
 
@@ -155,10 +159,9 @@ where
     /// Parse the remaining entries of a bracket map after its first key.
     ///
     /// The caller has just seen, but not consumed, the `->` after the first
-    /// key. An entry without `->` mixes the two literal forms and is reported
-    /// at that item's first token.
+    /// key.
     fn parse_bracket_map_entries(&mut self, first_key: Expr) -> Option<Expr> {
-        self.ts.next_tok(); // consume '->'
+        self.ts.next_tok(); // consume the '->' the caller saw
         let first_value = self.parse_expr(0)?;
         let mut entries = vec![(first_key, first_value)];
 
@@ -167,15 +170,7 @@ where
             if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
                 break;
             }
-            let item_start = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            let key = self.parse_expr(0)?;
-            if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
-                self.ts.push_error(item_start, MIXED_COLLECTION_ENTRY_ERROR);
-                return None;
-            }
-            self.ts.next_tok(); // consume '->'
-            let value = self.parse_expr(0)?;
-            entries.push((key, value));
+            entries.push(self.parse_bracket_map_entry()?);
         }
 
         if !self.ts.expect(SyntaxKind::T_RBRACKET) {
@@ -184,12 +179,47 @@ where
         Some(Expr::MapLit(entries))
     }
 
+    /// Parse one comma-separated map entry, starting at its key.
+    ///
+    /// `None` means the key is not followed by `->`; the diagnostic has
+    /// already been reported at the entry's first token.
+    fn parse_bracket_map_entry(&mut self) -> Option<(Expr, Expr)> {
+        let item_start = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+        let key = self.parse_expr(0)?;
+        self.parse_map_arrow(item_start)?;
+        let value = self.parse_expr(0)?;
+        Some((key, value))
+    }
+
+    /// Consume the `->` that separates a map key from its value.
+    ///
+    /// `None` means the arrow is missing, after reporting why at `item_start`.
+    /// A comma or `]` completes the item as a vector element, so the literal
+    /// mixes the two forms; anything else leaves the map entry itself
+    /// unfinished, with no second item to mix.
+    fn parse_map_arrow(&mut self, item_start: Span) -> Option<()> {
+        let next = self.ts.peek_kind();
+        if matches!(next, Some(SyntaxKind::T_ARROW)) {
+            self.ts.next_tok();
+            return Some(());
+        }
+        let message = if matches!(next, Some(SyntaxKind::T_COMMA | SyntaxKind::T_RBRACKET)) {
+            MIXED_COLLECTION_ENTRY_ERROR
+        } else {
+            MISSING_MAP_ARROW_ERROR
+        };
+        self.ts.push_error(item_start, message);
+        None
+    }
+
     pub(super) fn parse_closure_literal(&mut self) -> Option<Expr> {
         let params = self.parse_closure_params()?;
         if !self.ts.expect(SyntaxKind::T_PIPE) {
             return None;
         }
-        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let body = self.with_struct_literals_suspended(|this| {
+            this.with_closure_body_scope(|closure| closure.parse_expr(0))
+        })?;
         Some(Expr::Closure {
             params,
             body: Box::new(body),

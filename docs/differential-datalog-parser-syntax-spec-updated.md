@@ -176,10 +176,13 @@ they introduce a block expression (section 3.4).
 
 ### 3.4 Block expressions
 
-Braces always introduce a block expression, never a collection literal and
-never a parenthesized group. A block is a `;`-separated sequence of items. The
-final item is the block's value unless it is followed by `;`, and `{}` is the
-empty block, whose value is unit.
+In expression-prefix position, braces introduce a block expression, never a
+collection literal and never a parenthesized group. A `{` directly after an
+identifier in a context that permits struct literals still opens a struct
+literal, so `C { f: 1 }` remains a struct expression; register item 17 covers
+the remaining struct syntax work. A block is a `;`-separated sequence of items.
+The final item is the block's value unless it is followed by `;`, and `{}` is
+the empty block, whose value is unit.
 
 ```ebnf
 BlockExpr  ::= '{' BlockBody? '}'

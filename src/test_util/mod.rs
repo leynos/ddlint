@@ -30,6 +30,8 @@ pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
 /// entries.
 pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
     crate::parser::error_messages::MIXED_COLLECTION_ENTRY_ERROR;
+/// Diagnostic emitted when a bracket map entry ends before its `->`.
+pub const MISSING_MAP_ARROW_ERROR: &str = crate::parser::error_messages::MISSING_MAP_ARROW_ERROR;
 /// Diagnostic emitted for `[]`, which `DDlog` spells `vec_empty()`.
 pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
     crate::parser::error_messages::EMPTY_VECTOR_LITERAL_ERROR;

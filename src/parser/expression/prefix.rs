@@ -52,7 +52,7 @@ where
             SyntaxKind::K_FOR => self.parse_for_expression(),
             SyntaxKind::K_BREAK => Some(Self::parse_break_expression()),
             SyntaxKind::K_CONTINUE => Some(Self::parse_continue_expression()),
-            SyntaxKind::K_RETURN => self.parse_return_expression(),
+            SyntaxKind::K_RETURN => self.parse_return_expression(&span),
             k => self.parse_operator_prefix(k, span),
         }
     }

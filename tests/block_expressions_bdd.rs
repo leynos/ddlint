@@ -13,6 +13,7 @@ use ddlint::{
         ast::{BlockExpr, Expr},
         expression::parse_expression,
     },
+    test_util::{block, call, if_expr, var},
 };
 use fixture_lints::allow_fixture_expansion_lints;
 use rstest::fixture;
@@ -70,10 +71,28 @@ fn diagnostic_message(error: &chumsky::error::Simple<SyntaxKind>) -> String {
     }
 }
 
-/// Parse one expected item from the feature's data table.
+/// Build one expected item from the feature's data table.
+///
+/// The table names each expected item as source text. Building the AST here
+/// rather than parsing that text keeps the expectation independent of the
+/// parser under test: a regression that turns `go()` into a variable would
+/// otherwise change both the parsed value and the expectation together.
 fn expected_item(item: &str) -> StepResult<Expr, String> {
-    parse_expression(item)
-        .map_err(|errors| format!("expected item {item:?} does not parse: {errors:?}"))
+    match item {
+        "a" => Ok(var("a")),
+        "b" => Ok(var("b")),
+        "c" => Ok(var("c")),
+        "d" => Ok(var("d")),
+        "go()" => Ok(call("go", Vec::new())),
+        "if c { a } else { b }" => Ok(if_expr(
+            var("c"),
+            block(Vec::new(), Some(var("a"))),
+            Some(block(Vec::new(), Some(var("b")))),
+        )),
+        other => Err(format!(
+            "no independent expectation for item {other:?}; add a fixture"
+        )),
+    }
 }
 
 /// Records the source under test for the parse step that follows.

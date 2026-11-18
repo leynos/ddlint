@@ -66,7 +66,9 @@ owes no compatibility with its earlier behaviour.
   value.
 - `[k1 -> v1, k2 -> v2]` parses as a map literal; braces never form a map, so
   `{a: 1, b: 2}` is an ordinary malformed block.
-- `[]` is rejected, naming `vec_empty()` and `map_empty()`.
+- `[]` is rejected with a diagnostic naming `vec_empty()`. Empty map
+  construction is not named here: the bracket form was introduced as a vector
+  literal, and map lowering remains roadmap item `2.6.3`.
 - Parenthesized forms are unchanged: `( e )` is a group, `()` is the empty
   tuple, and `(a, b)` is a tuple.
 
@@ -147,9 +149,11 @@ The following decisions are adopted, and are referred to as `BG-Dn` in
   parser, not the `BinaryOp::Seq` operator. A trailing `;` is accepted; an
   empty item (`{ ; }`, `{ a;; b }`) is rejected.
 - `BG-D4` (empty braces): `{}` is the empty block, whose value is unit.
-- `BG-D5` (braces always open a block): there are no brace map literals. Items
-  after `{` are ordinary expressions, so `{ x: T }` is a block whose value is
-  the ascription `x: T`, and the colon-terminating key mode is deleted.
+- `BG-D5` (no brace collection literals): a prefix `{` opens a block, never a
+  map. Items after `{` are ordinary expressions, so `{ x: T }` is a block whose
+  value is the ascription `x: T`, and the colon-terminating key mode is
+  deleted. A struct literal after an identifier (`C { f: 1 }`) is unchanged;
+  `BG-D6` governs where that ambiguity is permitted.
 - `BG-D6` (struct-literal guard): in an `if` condition or a `for` guard, an
   identifier followed by `{` is not a struct literal. `ident {}` is reported
   only when another `{` follows, so `if ready {} else { go() }` parses. The

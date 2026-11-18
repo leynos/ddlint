@@ -12,8 +12,10 @@
 //! `[a, b -> c]`, are recorded with their post-change behaviour, so a diff in
 //! those rows is expected whenever that syntax changes.
 
+use chumsky::error::SimpleReason;
+
 use super::fixtures::{error_cases, expression_cases};
-use crate::parser::expression::parse_expression;
+use crate::{SyntaxKind, parser::expression::parse_expression};
 
 /// Error returned when a fixture no longer behaves as the characterization
 /// recorded, naming the source that broke it.
@@ -39,6 +41,20 @@ fn render_valid_expressions() -> Result<Vec<String>, RenderError> {
         .collect()
 }
 
+/// Render a diagnostic as `message @ span`.
+///
+/// The full `Debug` form also carries `expected`, `found`, and `label` fields
+/// that no expression path sets. Snapshotting them would churn on a chumsky
+/// upgrade without pinning anything this repository owns, so only the span and
+/// the message — the parts consumers observe — are recorded.
+fn describe_diagnostic(error: &chumsky::error::Simple<SyntaxKind>) -> String {
+    let message = match error.reason() {
+        SimpleReason::Custom(message) => message.clone(),
+        other => format!("{other:?}"),
+    };
+    format!("{message} @ {:?}", error.span())
+}
+
 /// Render every diagnostic each in-scope error fixture reports, in order.
 ///
 /// Recording the whole list stops a source that gains a second diagnostic
@@ -55,7 +71,7 @@ fn render_error_diagnostics() -> Result<Vec<String>, RenderError> {
         if errors.is_empty() {
             return Err(format!("expected a diagnostic for {:?}", case.src).into());
         }
-        let messages: Vec<String> = errors.iter().map(|error| format!("{error:?}")).collect();
+        let messages: Vec<String> = errors.iter().map(describe_diagnostic).collect();
         rendered.push(format!("{:?} => {}", case.src, messages.join(" | ")));
     }
     Ok(rendered)
@@ -145,28 +161,28 @@ fn non_brace_error_diagnostics_are_characterized() {
 
     let snapshot = rendered.join("\n");
     insta::assert_snapshot!(snapshot, @r#"
-    "1 +" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
-    "(1 + 2" => Simple { span: 6..6, reason: Custom("expected T_RPAREN"), expected: {}, found: None, label: None }
-    "1 ? 2" => Simple { span: 2..3, reason: Custom("unexpected token: T_QUESTION"), expected: {}, found: None, label: None } | Simple { span: 4..5, reason: Custom("unexpected token: T_NUMBER"), expected: {}, found: None, label: None }
-    "x :" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
-    "x as" => Simple { span: 2..4, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
-    "x =" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
-    "x ;" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
-    "x =>" => Simple { span: 2..4, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
-    "" => Simple { span: 0..0, reason: Custom("invalid expression"), expected: {}, found: None, label: None }
-    "e[1 0]" => Simple { span: 4..5, reason: Custom("expected T_COMMA"), expected: {}, found: None, label: None }
-    "e[,0]" => Simple { span: 2..3, reason: Custom("unexpected token: T_COMMA"), expected: {}, found: None, label: None }
-    "e[1,]" => Simple { span: 4..5, reason: Custom("unexpected token: T_RBRACKET"), expected: {}, found: None, label: None }
-    "e[1,,0]" => Simple { span: 4..5, reason: Custom("unexpected token: T_COMMA"), expected: {}, found: None, label: None }
-    "t." => Simple { span: 2..2, reason: Custom("expected identifier or tuple index after '.'"), expected: {}, found: None, label: None }
-    "t.-1" => Simple { span: 2..3, reason: Custom("expected identifier or tuple index after '.'"), expected: {}, found: None, label: None }
-    "t.+1" => Simple { span: 2..3, reason: Custom("expected identifier or tuple index after '.'"), expected: {}, found: None, label: None }
-    "t..0" => Simple { span: 2..3, reason: Custom("expected identifier or tuple index after '.'"), expected: {}, found: None, label: None }
-    "if cond else value" => Simple { span: 8..12, reason: Custom("expected expression for 'then' branch of 'if'"), expected: {}, found: None, label: None }
-    "if cond value else" => Simple { span: 14..18, reason: Custom("expected expression for 'else' branch of 'if'"), expected: {}, found: None, label: None }
-    "if" => Simple { span: 2..2, reason: Custom("expected condition expression after 'if'"), expected: {}, found: None, label: None }
-    "[]" => Simple { span: 1..2, reason: Custom("empty vector literals are not DDlog syntax; use vec_empty() instead"), expected: {}, found: None, label: None }
-    "[1, 2" => Simple { span: 5..5, reason: Custom("expected T_RBRACKET"), expected: {}, found: None, label: None }
-    "[a, b -> c]" => Simple { span: 4..5, reason: Custom("cannot mix vector elements and map entries in one literal"), expected: {}, found: None, label: None }
+    "1 +" => missing right-hand side for operator @ 2..3
+    "(1 + 2" => expected T_RPAREN @ 6..6
+    "1 ? 2" => unexpected token: T_QUESTION @ 2..3 | unexpected token: T_NUMBER @ 4..5
+    "x :" => missing right-hand side for operator @ 2..3
+    "x as" => missing right-hand side for operator @ 2..4
+    "x =" => missing right-hand side for operator @ 2..3
+    "x ;" => missing right-hand side for operator @ 2..3
+    "x =>" => missing right-hand side for operator @ 2..4
+    "" => invalid expression @ 0..0
+    "e[1 0]" => expected T_COMMA @ 4..5
+    "e[,0]" => unexpected token: T_COMMA @ 2..3
+    "e[1,]" => unexpected token: T_RBRACKET @ 4..5
+    "e[1,,0]" => unexpected token: T_COMMA @ 4..5
+    "t." => expected identifier or tuple index after '.' @ 2..2
+    "t.-1" => expected identifier or tuple index after '.' @ 2..3
+    "t.+1" => expected identifier or tuple index after '.' @ 2..3
+    "t..0" => expected identifier or tuple index after '.' @ 2..3
+    "if cond else value" => expected expression for 'then' branch of 'if' @ 8..12
+    "if cond value else" => expected expression for 'else' branch of 'if' @ 14..18
+    "if" => expected condition expression after 'if' @ 2..2
+    "[]" => empty vector literals are not DDlog syntax; use vec_empty() instead @ 1..2
+    "[1, 2" => expected T_RBRACKET @ 5..5
+    "[a, b -> c]" => cannot mix vector elements and map entries in one literal @ 4..5
     "#);
 }

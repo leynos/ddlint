@@ -2,7 +2,7 @@
 //!
 //! Covers parsing of `[e1, e2, ...]` vector literals and `[k -> v, ...]` map
 //! literals, including edge cases like trailing commas, nesting, and the
-//! rejection of empty and mixed literals. Braces always introduce a block,
+//! rejection of empty and mixed literals. A prefix `{` introduces a block,
 //! covered in detail by the block-expression tests.
 
 use rstest::rstest;
@@ -14,6 +14,7 @@ use crate::{
     },
     test_util::{
         EMPTY_VECTOR_LITERAL_ERROR,
+        MISSING_MAP_ARROW_ERROR,
         MIXED_COLLECTION_ENTRY_ERROR,
         assert_parse_error,
         block,
@@ -291,6 +292,7 @@ fn preserves_raw_map_literal_nodes(#[case] src: &str, #[case] expected: Expr) {
 #[case::nested_empty_vector("[[]]", EMPTY_VECTOR_LITERAL_ERROR, 2, 3)]
 #[case::mixed_element_then_entry("[a, b -> c]", MIXED_COLLECTION_ENTRY_ERROR, 4, 5)]
 #[case::mixed_entry_then_element("[a -> 1, b]", MIXED_COLLECTION_ENTRY_ERROR, 9, 10)]
+#[case::map_entry_unfinished("[a -> 1, b", MISSING_MAP_ARROW_ERROR, 9, 10)]
 fn rejects_empty_and_mixed_literals(
     #[case] src: &str,
     #[case] expected_message: &str,

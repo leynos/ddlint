@@ -5,10 +5,11 @@
 //! without a trailing `;` supplies the block's value. When there is no such
 //! item the block's value is unit `()`.
 //!
-//! Upstream `DDlog` has no brace-delimited collections, so braces always mean
-//! a block. This module keeps the parsed items in source order and exposes
-//! [`BlockExpr::items`] and [`BlockExpr::into_items`] so every consumer walks
-//! that order consistently.
+//! Upstream `DDlog` has no brace-delimited collections, so a prefix `{` means
+//! a block; a `{` directly after an identifier in a struct-literal context
+//! opens a struct expression instead. This module keeps the parsed items in
+//! source order and exposes [`BlockExpr::items`] and
+//! [`BlockExpr::into_items`] so every consumer walks that order consistently.
 
 use super::Expr;
 

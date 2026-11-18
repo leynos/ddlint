@@ -232,9 +232,21 @@ pub const fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
 /// use ddlint::test_util::{block, var};
 ///
 /// let b = block(vec![var("a")], Some(var("b")));
-/// assert_eq!(b.to_sexpr(), "(block (stmts a) (value b))");
-/// assert_eq!(block(Vec::new(), None).to_sexpr(), "(block)");
-/// assert_eq!(block(vec![var("a")], None).to_sexpr(), "(block (stmts a))");
+/// assert_eq!(
+///     b.to_sexpr(),
+///     "(block (stmts a) (value b))",
+///     "a block must render its statements before its value"
+/// );
+/// assert_eq!(
+///     block(Vec::new(), None).to_sexpr(),
+///     "(block)",
+///     "an empty block must render with no items"
+/// );
+/// assert_eq!(
+///     block(vec![var("a")], None).to_sexpr(),
+///     "(block (stmts a))",
+///     "a trailing statement must render without a value"
+/// );
 /// ```
 #[must_use]
 pub fn block(statements: Vec<Expr>, value: Option<Expr>) -> Expr {

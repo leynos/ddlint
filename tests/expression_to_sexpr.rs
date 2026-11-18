@@ -100,7 +100,11 @@ fn vector_literals_format(#[case] src: &str, #[case] expected: &str) {
 )]
 fn map_literals_format(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).expect("map literal should parse");
-    assert_eq!(expr.to_sexpr(), expected);
+    assert_eq!(
+        expr.to_sexpr(),
+        expected,
+        "source {src:?} should render as {expected:?}"
+    );
 }
 
 #[rstest]

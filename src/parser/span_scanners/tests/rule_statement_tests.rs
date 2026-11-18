@@ -8,7 +8,11 @@ use chumsky::{Parser, Stream, prelude::end};
 use rstest::rstest;
 
 use super::super::{collect_rule_spans, rules::rule_statement};
-use crate::{SyntaxKind, parser::lexer_helpers::inline_ws, test_util::tokenize};
+use crate::{
+    SyntaxKind,
+    parser::{error_messages::RETURN_IN_RULE_BODY_ERROR, lexer_helpers::inline_ws},
+    test_util::{ErrorPattern, find_matching_error, tokenize},
+};
 
 fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<chumsky::error::Simple<SyntaxKind>>) {
     let tokens = tokenize(src);
@@ -54,6 +58,8 @@ fn rule_statement_parses_control_flow(#[case] src: &str) {
     "R(x) :- 1 + { y = obj.field; y }, Use(x).",
     &["1 + { y = obj.field; y }", "Use(x)"]
 )]
+#[case("R(x) :- { x }, Other(x).", &["{ x }", "Other(x)"])]
+#[case("R(x) :- { x } + 2, Other(x).", &["{ x } + 2", "Other(x)"])]
 fn assignment_with_block_rhs_scans_one_rule(#[case] src: &str, #[case] expected_terms: &[&str]) {
     let tokens = tokenize(src);
     let (rule_spans, expr_spans, errors) = collect_rule_spans(&tokens, src, &[]);
@@ -72,13 +78,37 @@ fn assignment_with_block_rhs_scans_one_rule(#[case] src: &str, #[case] expected_
     );
     let terms: Vec<&str> = expr_spans
         .iter()
-        .filter_map(|span| src.get(span.clone()))
-        .map(str::trim)
+        .map(|span| {
+            src.get(span.clone())
+                .map_or_else(|| panic!("span {span:?} is outside {src:?}"), str::trim)
+        })
         .collect();
     assert_eq!(
         terms.as_slice(),
         expected_terms,
         "each body term must keep its full span for {src:?}"
+    );
+}
+
+/// A `return` inside a block is still a rule-body `return`.
+///
+/// Term-level validation alone would accept it, because the block parses as an
+/// ordinary expression; only the rule-body context rejects the keyword.
+#[test]
+fn block_return_in_rule_body_is_reported() {
+    let src = "R(x) :- Atom(x), y = { return x; x }.";
+    let tokens = tokenize(src);
+    let (rule_spans, _expr_spans, errors) = collect_rule_spans(&tokens, src, &[]);
+
+    assert_eq!(
+        rule_spans.len(),
+        1,
+        "the misplaced `return` must not stop the rule being collected"
+    );
+    let expected = ErrorPattern::from(RETURN_IN_RULE_BODY_ERROR);
+    assert!(
+        find_matching_error(&errors, &expected).is_some(),
+        "the block `return` must be reported in the rule body, got {errors:?}"
     );
 }
 

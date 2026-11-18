@@ -123,10 +123,11 @@ This register tracks parser behaviour against the syntax specification.
   (`src/parser/expression/data_structures.rs`, `src/parser/ast/expr/mod.rs`).
   Bracket map literals `[k -> v, …]` are `implemented`; the empty vector literal
   `[]` is rejected; mixed element/entry literals are rejected. Brace map
-  literals are withdrawn: braces always form block expressions (item 15), so
-  `{k: v, …}` no longer parses as a collection. `Parsed::semantic_rules()`
-  remains limited to top-level `for` desugaring and does not lower collection
-  literals.
+  literals are withdrawn: a prefix `{` forms a block expression (item 15), so
+  `{k: v, …}` no longer parses as a collection. A `{` after an identifier in a
+  struct-literal context still opens a struct, as before.
+  `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
+  does not lower collection literals.
 - Spec/target behaviour: section 6.4 describes collection literal lowering as
   scheduled work owned by later lowering stages rather than the parser or
   current rule-analysis helpers. The literal surface itself is aligned with
@@ -222,14 +223,15 @@ This register tracks parser behaviour against the syntax specification.
 ### 15. Braces as block expressions
 
 - Topic: policy for braced expression forms.
-- Current behaviour (code): braces always parse as a block expression
+- Current behaviour (code): a prefix `{` parses as a block expression
   `Expr::Block(BlockExpr)` (`src/parser/expression/block.rs`,
-  `src/parser/ast/expr/block.rs`). Items are separated by `;`; a trailing `;`
-  discards the value; `{}` is the empty block. Brace groups, brace map
-  literals, and the colon-terminating map-key mode are gone. A scoped
-  `;`-terminating state keeps a control-flow tail from swallowing the next
-  separator, and the struct-literal guard no longer treats `{ ident :` as a map
-  key.
+  `src/parser/ast/expr/block.rs`); a `{` after an identifier in a
+  struct-literal context still parses as `Expr::Struct`. Items are separated by
+  `;`; a trailing `;` discards the value; `{}` is the empty block. Brace
+  groups, brace map literals, and the colon-terminating map-key mode are gone.
+  A scoped `;`-terminating state keeps a control-flow tail from swallowing the
+  next separator, and the struct-literal guard no longer treats `{ ident :` as
+  a map key.
 - Spec/target behaviour: matches section 3.4. Braces are upstream block
   expressions, `{ … }` with `;` as the item separator and an optional final
   value, so `{}` is the empty block and `{ e }` is a block whose value is `e`.

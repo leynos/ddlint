@@ -178,9 +178,18 @@ Map and vector literals use brackets and must be non-empty:
 - `[k -> v]` is a map literal; `->` separates an entry's key from its value.
 - A literal that mixes vector elements and map entries is rejected with
   `cannot mix vector elements and map entries in one literal`.
+- A map entry cut short by end of input, as in `[a -> 1, b`, reports
+  `expected '->' in map entry`; the literal is an unfinished map, not a mixed
+  one.
 - `{k: v}` is not a map literal; it is a block whose single item is the
   ascription `k : v`. Adding a second comma-separated entry, as in
   `{a: 1, b: 2}`, reports `expected ';' or '}' after a block item`.
+
+A rule body is not a function body, so `return` is rejected anywhere inside
+one, including within a block: `y = { return x; x }` reports
+`return is not valid in a rule body; use a function or closure body`. `return`
+remains valid in a function body and in a closure body, including a closure
+nested in a rule body.
 
 ## Run lint rules
 

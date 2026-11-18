@@ -59,6 +59,7 @@ const REJECTED: &[&str] = &[
     "[]",
     "[a, b -> c]",
     "[a -> 1, b]",
+    "[a -> 1, b",
     "[a ->]",
     "[-> a]",
 ];
@@ -218,6 +219,7 @@ fn block_and_collection_rendering_is_stable() {
     "[]" => empty vector literals are not DDlog syntax; use vec_empty() instead @ 1..2
     "[a, b -> c]" => cannot mix vector elements and map entries in one literal @ 4..5
     "[a -> 1, b]" => cannot mix vector elements and map entries in one literal @ 9..10
+    "[a -> 1, b" => expected '->' in map entry @ 9..10
     "[a ->]" => unexpected token: T_RBRACKET @ 5..6
     "[-> a]" => unexpected token: T_ARROW @ 1..3
     "#);

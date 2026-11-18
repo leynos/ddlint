@@ -36,9 +36,10 @@
 
 ### Changed
 
-- Braces now always parse as block expressions. `{ a; b }` is a block with `a`
-  as a statement and `b` as its value; a trailing `;` discards the value, and
-  `{}` is the empty block. Brace groups, brace map literals, and the
+- Braces in expression-prefix position now parse as block expressions.
+  `{ a; b }` is a block with `a` as a statement and `b` as its value; a trailing
+  `;` discards the value, and `{}` is the empty block. A struct literal such as
+  `C { f: 1 }` is unaffected. Brace groups, brace map literals, and the
   colon-terminating map-key mode are removed.
 - A block item that is followed by a comma or by another item without `;`
   reports `expected ';' or '}' after a block item`; an empty item reports

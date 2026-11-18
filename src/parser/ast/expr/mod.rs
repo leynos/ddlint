@@ -275,8 +275,10 @@ pub enum Expr {
     Group(Box<Self>),
     /// Brace-delimited block expression `{ item; item; value }`.
     ///
-    /// Braces always introduce a block in `DDlog`; they are never collection
-    /// literals. [`BlockExpr::items`] and [`BlockExpr::into_items`] are the
+    /// A standalone `{ … }` is a block, and braces never form collection
+    /// literals. A `{` directly after an identifier may instead open a struct
+    /// literal, which produces [`Expr::Struct`]; this variant covers only the
+    /// block form. [`BlockExpr::items`] and [`BlockExpr::into_items`] are the
     /// only traversal order consumers should use.
     Block(BlockExpr),
     /// For-loop expression with optional guard.

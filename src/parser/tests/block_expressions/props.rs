@@ -7,9 +7,12 @@
 use proptest::{prelude::*, strategy::ValueTree, test_runner::TestRunner};
 
 use super::strategy;
-use crate::parser::{
-    ast::{BlockExpr, Expr},
-    expression::parse_expression,
+use crate::{
+    parser::{
+        ast::{BlockExpr, Expr},
+        expression::parse_expression,
+    },
+    test_util::{block, if_expr, var},
 };
 
 /// Generator classes the block properties must exercise.
@@ -87,13 +90,27 @@ proptest! {
         let Some(expected_items) = oracle else {
             return Err(TestCaseError::fail(format!("missing oracle for {items:?}")));
         };
-        let expected = BlockExpr::from_items(expected_items, ends_with_semicolon)
-            .ok_or_else(|| TestCaseError::fail(format!("no expected block for {src:?}")))?;
+        // Assemble the expected block here rather than through
+        // `BlockExpr::from_items`, so a change to the split rule cannot move
+        // both the parser and the oracle in the same step.
+        let expected = if ends_with_semicolon {
+            Expr::Block(BlockExpr {
+                statements: expected_items,
+                value: None,
+            })
+        } else if let Some((last, rest)) = expected_items.split_last() {
+            Expr::Block(BlockExpr {
+                statements: rest.to_vec(),
+                value: Some(Box::new(last.clone())),
+            })
+        } else {
+            Expr::Block(BlockExpr::default())
+        };
 
         let parsed = parse_expression(&src)
             .map_err(|errs| TestCaseError::fail(format!("source {src:?} errors: {errs:?}")))?;
 
-        prop_assert_eq!(parsed, Expr::Block(expected), "source {}", src);
+        prop_assert_eq!(parsed, expected, "source {}", src);
     }
 
     #[test]
@@ -102,6 +119,34 @@ proptest! {
         // acceptable, but the parser must terminate with one of them.
         drop(parse_expression(&src));
     }
+}
+
+/// A construct followed by `;` is a statement, not a tail.
+///
+/// The `if tail` class only counts an `if` with no separator after it, so it
+/// cannot establish this boundary: the `;` must end the `if` item and leave
+/// the next item as the block's value.
+#[test]
+fn if_statement_followed_by_separator_leaves_the_next_item_as_value() {
+    let parsed = parse_expression("{ if c { a } else { b }; x }")
+        .expect("an `if` statement followed by `;` should parse");
+    let Expr::Block(block_expr) = parsed else {
+        panic!("expected a block, got {parsed:?}");
+    };
+    assert_eq!(
+        block_expr.statements,
+        vec![if_expr(
+            var("c"),
+            block(vec![], Some(var("a"))),
+            Some(block(vec![], Some(var("b"))))
+        )],
+        "the `if` must be the block's only statement"
+    );
+    assert_eq!(
+        block_expr.value.as_deref(),
+        Some(&var("x")),
+        "the item after the separator must be the block value"
+    );
 }
 
 #[test]

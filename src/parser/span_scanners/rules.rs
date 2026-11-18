@@ -98,7 +98,6 @@ pub(super) fn rule_statement(
             p.padded_by(ws.clone()).boxed()
         };
 
-        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE).boxed();
         let skip_stmt = just(SyntaxKind::K_SKIP).ignored().boxed();
         let atom_stmt = atom().boxed();
 
@@ -155,10 +154,14 @@ pub(super) fn rule_statement(
         // aggregations) win over the more restrictive atom grammar. This
         // ordering guards future refactors from silently changing rule-body
         // semantics.
+        //
+        // A statement that starts with `{` is an expression statement, not a
+        // separate block alternative: `expr_stmt` keeps consuming operators
+        // after the brace group, so `{ x } + 2` stays one term instead of
+        // ending the rule body at `}`.
         choice((
             for_stmt,
             if_stmt,
-            block,
             skip_stmt,
             assign_stmt,
             expr_stmt,

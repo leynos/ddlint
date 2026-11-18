@@ -27,3 +27,4 @@ mod token_stream;
 
 pub use numeric::parse_numeric_literal;
 pub use pratt::parse_expression;
+pub(crate) use pratt::parse_rule_body_expression;

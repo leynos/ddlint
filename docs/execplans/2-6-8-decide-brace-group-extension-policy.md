@@ -302,6 +302,22 @@ lines unless stated.
   `for` guard's active struct-literal guard. The `is_res` definition names
   `i.name = u.name`. The struct-syntax deferral remains register item 17 and
   roadmap 2.6.11.
+- [x] (2026-11-18) Fourth CodeRabbit CLI review triage. A brace statement that
+  is followed by an operator no longer ends the rule body early: `{ x } + 2` is
+  one term, so `R(x) :- { x } + 2, Other(x).` scans as one rule with two body
+  terms, proved red before the fix and green after. `return` inside a rule body
+  is now diagnosed at the keyword
+  (`return is not valid in a rule body; use a function or closure body`) via an
+  `in_rule_body` Pratt context that closure bodies clear, so a closure nested
+  in a rule body keeps `return` legal. A map entry cut short by end of input
+  reports `expected '->' in map entry`, while a comma or `]` still reports the
+  mixed-literal diagnostic. Span extraction in the rule-scanner tests now fails
+  loudly on an out-of-range span instead of slicing. The users' guide documents
+  both new diagnostics; the characterization, snapshot, property, BDD, and
+  end-to-end suites gained the corresponding assertions. Focused suites are
+  green: `918` library tests and the affected integration binaries
+  (`block_expressions` 5, `block_expressions_bdd` 15,
+  `collection_literal_boundary` 4, `expression_to_sexpr` 44).
 
 ## Surprises & discoveries
 
@@ -692,14 +708,14 @@ unit. The representation relation `R` maps it to
   `rstest` tables give one witness per class, including the `match`,
   assignment, and `else if` forms the generator does not draw.
 - `V-B6`: amended during implementation. The classifier distinguishes only
-  `}` and `;` among concrete tokens, so the test sweeps a nine-token corpus
-  (end of input, `{`, `}`, `;`, `,`, `:`, an identifier, a number, and `+`)
-  over the three positions, which covers every semantic class rather than
-  restating the `match` for every `SyntaxKind`. It compares the result with an
-  independently shaped reference decision table and counts accepted and
-  rejected outcomes (`16` and `11`). The whole-input table remains the stronger
-  evidence, exercising every outcome through the real parser with exact message
-  and span.
+  the close brace, the separator, and an enclosing delimiter among concrete
+  tokens, so the test sweeps an eleven-token corpus (end of input, `{`, `}`,
+  `;`, `,`, `:`, an identifier, a number, `+`, `)`, and `]`) over the three
+  positions, which covers every semantic class rather than restating the
+  `match` for every `SyntaxKind`. It compares the result with an independently
+  shaped reference decision table and counts accepted and rejected outcomes
+  (`16` and `17`). The whole-input table remains the stronger evidence,
+  exercising every outcome through the real parser with exact message and span.
 - `V-B7`: an inline `insta` characterization snapshot of all existing
   expression fixtures, taken in EP-M2 before any block change and paired with
   semantic assertions on representative rows.

@@ -1,7 +1,9 @@
 //! Parsing of brace-delimited block expressions.
 //!
-//! Braces always introduce a block; there are no brace collection literals in
-//! `DDlog`. Items are expressions separated by `;`, a trailing `;` is allowed,
+//! A prefix `{` always introduces a block; there are no brace collection
+//! literals in `DDlog`, and a `{` after an identifier in a struct-literal
+//! context opens a struct instead. Items are expressions separated by `;`, a
+//! trailing `;` is allowed,
 //! and an empty item is rejected. The final item without a trailing `;` is the
 //! block's value.
 //!
@@ -340,7 +342,7 @@ mod tests {
     }
 
     /// Every `SyntaxKind` falls into one of the sweep's semantic classes, so
-    /// the nine-token corpus is exhaustive rather than a sample.
+    /// the eleven-token corpus is exhaustive rather than a sample.
     #[test]
     fn block_follow_classification_matches_the_reference_table() {
         let mut accepted = 0usize;
