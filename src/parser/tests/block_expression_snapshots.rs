@@ -53,6 +53,7 @@ const REJECTED: &[&str] = &[
     "{ a;; b }",
     "{ a",
     "{ a;",
+    "({ x)",
     "{a: 1, b: 2}",
     "{ var x = 1; x }",
     "[]",
@@ -211,6 +212,7 @@ fn block_and_collection_rendering_is_stable() {
     "{ a;; b }" => empty statement in block: remove the extra ';' @ 4..5
     "{ a" => expected '}' to close block @ 3..3
     "{ a;" => expected '}' to close block @ 4..4
+    "({ x)" => expected '}' to close block @ 4..5
     "{a: 1, b: 2}" => expected ';' or '}' after a block item @ 5..6
     "{ var x = 1; x }" => unexpected token: K_VAR @ 2..5
     "[]" => empty vector literals are not DDlog syntax; use vec_empty() instead @ 1..2

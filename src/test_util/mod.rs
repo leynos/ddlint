@@ -19,17 +19,26 @@ pub use assertions::{
     assert_unclosed_delimiter_error,
     find_matching_error,
 };
+/// Diagnostic emitted when an output relation omits its signature.
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
     crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
+/// Diagnostic emitted for a transformer whose name starts with an uppercase
+/// letter.
 pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
     crate::parser::error_messages::CAPITALIZED_TRANSFORMER_NAME_ERROR;
+/// Diagnostic emitted when one bracket literal mixes vector elements and map
+/// entries.
 pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
     crate::parser::error_messages::MIXED_COLLECTION_ENTRY_ERROR;
+/// Diagnostic emitted for `[]`, which `DDlog` spells `vec_empty()`.
 pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
     crate::parser::error_messages::EMPTY_VECTOR_LITERAL_ERROR;
+/// Diagnostic emitted when two block items lack the `;` between them.
 pub const BLOCK_ITEM_SEPARATOR_ERROR: &str =
     crate::parser::error_messages::BLOCK_ITEM_SEPARATOR_ERROR;
+/// Diagnostic emitted for an empty item between two `;` separators.
 pub const EMPTY_BLOCK_ITEM_ERROR: &str = crate::parser::error_messages::EMPTY_BLOCK_ITEM_ERROR;
+/// Diagnostic emitted when a block reaches a delimiter without its `}`.
 pub const UNCLOSED_BLOCK_ERROR: &str = crate::parser::error_messages::UNCLOSED_BLOCK_ERROR;
 pub use expressions::{
     atom_delay,

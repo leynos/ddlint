@@ -2,8 +2,8 @@
 //!
 //! `V-B7` requires that the block-expression work changes nothing outside
 //! braces. This module records how every non-brace valid expression fixture
-//! renders and how every non-brace error fixture's first diagnostic reads, so
-//! a later accidental change appears as a snapshot diff instead of passing
+//! renders and every diagnostic each non-brace error fixture reports, so a
+//! later accidental change appears as a snapshot diff instead of passing
 //! unnoticed.
 //!
 //! Brace-bearing fixtures are excluded because their expectations change by
@@ -39,7 +39,10 @@ fn render_valid_expressions() -> Result<Vec<String>, RenderError> {
         .collect()
 }
 
-/// Render each in-scope error fixture's first diagnostic.
+/// Render every diagnostic each in-scope error fixture reports, in order.
+///
+/// Recording the whole list stops a source that gains a second diagnostic
+/// from passing while its first diagnostic stays unchanged.
 fn render_error_diagnostics() -> Result<Vec<String>, RenderError> {
     let mut rendered = Vec::new();
     for case in error_cases()
@@ -49,10 +52,11 @@ fn render_error_diagnostics() -> Result<Vec<String>, RenderError> {
         let errors = parse_expression(case.src)
             .err()
             .ok_or_else(|| format!("expected parse failure for {:?}", case.src))?;
-        let first = errors
-            .first()
-            .ok_or_else(|| format!("expected a diagnostic for {:?}", case.src))?;
-        rendered.push(format!("{:?} => {first:?}", case.src));
+        if errors.is_empty() {
+            return Err(format!("expected a diagnostic for {:?}", case.src).into());
+        }
+        let messages: Vec<String> = errors.iter().map(|error| format!("{error:?}")).collect();
+        rendered.push(format!("{:?} => {}", case.src, messages.join(" | ")));
     }
     Ok(rendered)
 }
@@ -143,7 +147,7 @@ fn non_brace_error_diagnostics_are_characterized() {
     insta::assert_snapshot!(snapshot, @r#"
     "1 +" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
     "(1 + 2" => Simple { span: 6..6, reason: Custom("expected T_RPAREN"), expected: {}, found: None, label: None }
-    "1 ? 2" => Simple { span: 2..3, reason: Custom("unexpected token: T_QUESTION"), expected: {}, found: None, label: None }
+    "1 ? 2" => Simple { span: 2..3, reason: Custom("unexpected token: T_QUESTION"), expected: {}, found: None, label: None } | Simple { span: 4..5, reason: Custom("unexpected token: T_NUMBER"), expected: {}, found: None, label: None }
     "x :" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
     "x as" => Simple { span: 2..4, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }
     "x =" => Simple { span: 2..3, reason: Custom("missing right-hand side for operator"), expected: {}, found: None, label: None }

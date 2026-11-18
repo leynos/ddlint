@@ -199,7 +199,11 @@ pub const fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
 ///
 /// let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
 /// assert_eq!(m.to_sexpr(), "(map (entry a 1))");
-/// assert_eq!(parse_expression("[a -> 1]").ok(), Some(m));
+/// let parsed = parse_expression("[a -> 1]").expect("`[a -> 1]` should parse as a map literal");
+/// assert_eq!(
+///     parsed, m,
+///     "the parsed map literal must match the constructed node"
+/// );
 /// ```
 #[must_use]
 pub const fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }

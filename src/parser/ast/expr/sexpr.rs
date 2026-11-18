@@ -108,15 +108,21 @@ fn format_kv(key: &Expr, value: &Expr) -> String {
 /// `(block (value e))`, and a block ending in `;` as `(block (stmts e...))`.
 /// A block with both renders the statements group before the value group.
 fn format_block(block: &BlockExpr) -> String {
+    // `items()` is the single traversal order; the statement count splits its
+    // leading statements from the optional trailing value.
+    let statement_count = block.statements.len();
     let mut parts = Vec::new();
-    if !block.statements.is_empty() {
+    if statement_count > 0 {
         parts.push(format_nary(
             "stmts",
-            block.statements.iter().map(Expr::to_sexpr),
+            block.items().take(statement_count).map(Expr::to_sexpr),
         ));
     }
-    if let Some(value) = &block.value {
-        parts.push(format_nary("value", [value.to_sexpr()]));
+    if block.value.is_some() {
+        parts.push(format_nary(
+            "value",
+            block.items().skip(statement_count).map(Expr::to_sexpr),
+        ));
     }
     format_nary("block", parts)
 }

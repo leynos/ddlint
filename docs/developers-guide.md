@@ -158,7 +158,8 @@ parsing pipeline.
   `with_block_item_scope` and restored through `with_nested_delimiter_scope`;
   every new delimiter context must use the latter rather than reading the
   ambient `;` flag. A `for` guard uses `with_guard_expression_scope`, which
-  also re-enables struct literals.
+  clears the `;` state and keeps the struct-literal guard active, so `ident {`
+  there is not a struct literal.
 - `test_util::block` mirrors `BlockExpr` construction for tests. Keep it in
   step with the AST rather than reimplementing block construction in a test.
 - Keep rule-body classification in `classification.rs` rather than adding

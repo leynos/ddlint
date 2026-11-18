@@ -159,9 +159,10 @@ assert_eq!(function.parameters().len(), 1);
 
 ## Block expressions and collection literals
 
-Braces always form a block expression; they are not a collection literal and
-not a parenthesized group. Items are separated by `;`. The last item is the
-block's value unless it is followed by `;`, and `{}` is the empty block.
+Outside a struct literal such as `Name { field: 1 }`, braces form a block
+expression; they are not a collection literal and not a parenthesized group.
+Items are separated by `;`. The last item is the block's value unless it is
+followed by `;`, and `{}` is the empty block.
 
 ```rust
 use ddlint::parser::expression::parse_expression;
@@ -177,9 +178,9 @@ Map and vector literals use brackets and must be non-empty:
 - `[k -> v]` is a map literal; `->` separates an entry's key from its value.
 - A literal that mixes vector elements and map entries is rejected with
   `cannot mix vector elements and map entries in one literal`.
-- `{k: v}` is no longer a map literal; it is a block and reports
-  `expected ';' or '}' after a block item` unless the braces hold valid block
-  items.
+- `{k: v}` is not a map literal; it is a block whose single item is the
+  ascription `k : v`. Adding a second comma-separated entry, as in
+  `{a: 1, b: 2}`, reports `expected ';' or '}' after a block item`.
 
 ## Run lint rules
 

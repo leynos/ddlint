@@ -18,9 +18,13 @@ pub(super) fn assignment_statement(
     ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
     statement: BoxedParser<'static, SyntaxKind, (), Simple<SyntaxKind>>,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
+    // Each delimiter is scanned as a unit so an `=` inside it cannot be
+    // mistaken for the assignment's own separator, as in
+    // `1 + { y = obj.field; y }`.
     let lhs_token = choice((
         balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
         balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+        balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
         filter(|kind: &SyntaxKind| {
             !matches!(
                 kind,

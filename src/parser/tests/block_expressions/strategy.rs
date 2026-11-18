@@ -54,10 +54,17 @@ pub(super) fn item_source() -> impl Strategy<Value = &'static str> {
     prop::sample::select(ITEM_SOURCES)
 }
 
-/// Strategy producing an arbitrary, possibly malformed brace-bearing source.
+/// Strategy producing an arbitrary, possibly malformed block source.
+///
+/// Every draw starts with `{` so it reaches block parsing; a `}` appears only
+/// when the token soup supplies one, exercising both complete and unterminated
+/// blocks.
 pub(super) fn brace_token_soup() -> impl Strategy<Value = String> {
-    prop::collection::vec(prop::sample::select(SOUP_TOKENS), 0..12)
-        .prop_map(|tokens| tokens.join(" "))
+    prop::collection::vec(prop::sample::select(SOUP_TOKENS), 0..12).prop_map(|tokens| {
+        let mut source = String::from("{ ");
+        source.push_str(&tokens.join(" "));
+        source
+    })
 }
 
 /// Render a block source from item sources and a trailing-separator flag.

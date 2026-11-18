@@ -70,3 +70,4 @@ Feature: Block expressions and collection literals
     Given the expression source "if ready {} else { go() }"
     When the expression is parsed
     Then the result is an if expression whose then branch is an empty block
+    And the else branch is a block whose value is "go()"

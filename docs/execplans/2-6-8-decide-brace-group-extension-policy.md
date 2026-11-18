@@ -284,6 +284,24 @@ lines unless stated.
   dedicated block arms, `BLOCK_ITEM_MIN_BP`, and `test_util::block`; roadmap
   2.6.8 is marked done with its `Done:` note; the full gate set is green; and
   no unrecorded deviation remains.
+- [x] (2026-11-18) Third CodeRabbit CLI review triage. The rule span scanner
+  now treats a braced left-hand side as one unit, so `1 + { y = obj.field; y }`
+  scans as one rule with two body terms. The block classifier reports an
+  unclosed block when an enclosing `)` or `]` arrives before `}`, exercised by
+  four new table rows. The s-expression renderer derives both groups from
+  `items()`, and the block property skips the unrepresentable `{ ; }` draw. The
+  end-to-end program gained a statement-bearing block, and its tests use a
+  fallible `rstest` fixture, assert a semicolon statement and a final value
+  independently, identify the `y` use by source text, and pin its resolution to
+  the assignment binding that shadows the head under interim rule 7. The BDD
+  scenario now asserts the `else` branch as a block whose value is `go()`.
+  Rustdoc was added to the diagnostic aliases and the `map_lit` doctest keeps
+  its parse diagnostics. Documentation corrections: users' guide distinguishes
+  standalone blocks from struct literals and describes `{k: v}` as an
+  ascription block; implementation notes describe the narrowed lookahead and the
+  `for` guard's active struct-literal guard. The `is_res` definition names
+  `i.name = u.name`. The struct-syntax deferral remains register item 17 and
+  roadmap 2.6.11.
 
 ## Surprises & discoveries
 
@@ -1386,13 +1404,13 @@ followed.
   `d.pos < proj(d.scope, u.scope, u.pos)`, and no barrier in `d.scope` hides
   `d` from that projected position.
 - `is_res(u, r)`: either `r = None` and no same-name declaration is visible
-  to `u`; or `r = Some(i)`, `visible(i, u)`, and every visible same-name `j`
-  other than `i` lies in a strict ancestor of `i`'s scope, or in the same scope
-  at a smaller position, or at the same position with a greater `order`
-  (upstream's first match wins among same-position declarations). The ancestor
-  comparison is strict and `i` itself is excluded: the inclusive `ancestor`
-  relation would otherwise accept every same-scope declaration regardless of
-  its position and order, defeating `K-L0`.
+  to `u`; or `r = Some(i)`, `i.name = u.name`, `visible(i, u)`, and every
+  visible same-name `j` other than `i` lies in a strict ancestor of `i`'s
+  scope, or in the same scope at a smaller position, or at the same position
+  with a greater `order` (upstream's first match wins among same-position
+  declarations). The ancestor comparison is strict and `i` itself is excluded:
+  the inclusive `ancestor` relation would otherwise accept every same-scope
+  declaration regardless of its position and order, defeating `K-L0`.
 
 ### Kernel lemmas (to be proved in Verus in roadmap 3.3.6)
 

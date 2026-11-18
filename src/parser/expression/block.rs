@@ -55,6 +55,8 @@ pub(super) enum BlockFollow {
     MissingSeparator,
     /// Report that the block is not closed.
     Unclosed,
+    /// Report that an enclosing delimiter closed before the block's `}`.
+    UnclosedBeforeDelimiter,
 }
 
 /// Map the loop position and next token to the next action.
@@ -65,7 +67,16 @@ pub(super) const fn classify_block_follow(
     position: ItemPosition,
     kind: Option<SyntaxKind>,
 ) -> BlockFollow {
-    use BlockFollow::{Close, Empty, EmptyItem, Item, MissingSeparator, Separator, Unclosed};
+    use BlockFollow::{
+        Close,
+        Empty,
+        EmptyItem,
+        Item,
+        MissingSeparator,
+        Separator,
+        Unclosed,
+        UnclosedBeforeDelimiter,
+    };
     use ItemPosition::{AfterItem, AfterSeparator, Opening};
 
     match (position, kind) {
@@ -74,6 +85,9 @@ pub(super) const fn classify_block_follow(
         (AfterItem | AfterSeparator, Some(SyntaxKind::T_RBRACE)) => Close,
         (Opening | AfterSeparator, Some(SyntaxKind::T_SEMI)) => EmptyItem,
         (AfterItem, Some(SyntaxKind::T_SEMI)) => Separator,
+        // An enclosing `)` or `]` ends the item list without a `}`, so the
+        // block is unclosed rather than missing a separator.
+        (_, Some(SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET)) => UnclosedBeforeDelimiter,
         (AfterItem, Some(_)) => MissingSeparator,
         (Opening | AfterSeparator, Some(_)) => Item,
     }
@@ -136,6 +150,11 @@ where
                     self.ts.push_error(self.ts.eof_span(), UNCLOSED_BLOCK_ERROR);
                     return None;
                 }
+                BlockFollow::UnclosedBeforeDelimiter => {
+                    let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+                    self.ts.push_error(span, UNCLOSED_BLOCK_ERROR);
+                    return None;
+                }
             }
         }
     }
@@ -165,6 +184,11 @@ mod tests {
         BlockFollow::EmptyItem
     )]
     #[case::opening_eof(ItemPosition::Opening, None, BlockFollow::Unclosed)]
+    #[case::opening_rparen(
+        ItemPosition::Opening,
+        Some(SyntaxKind::T_RPAREN),
+        BlockFollow::UnclosedBeforeDelimiter
+    )]
     #[case::opening_item(ItemPosition::Opening, Some(SyntaxKind::T_IDENT), BlockFollow::Item)]
     #[case::after_item_separator(
         ItemPosition::AfterItem,
@@ -177,6 +201,16 @@ mod tests {
         BlockFollow::Close
     )]
     #[case::after_item_eof(ItemPosition::AfterItem, None, BlockFollow::Unclosed)]
+    #[case::after_item_rparen(
+        ItemPosition::AfterItem,
+        Some(SyntaxKind::T_RPAREN),
+        BlockFollow::UnclosedBeforeDelimiter
+    )]
+    #[case::after_item_rbracket(
+        ItemPosition::AfterItem,
+        Some(SyntaxKind::T_RBRACKET),
+        BlockFollow::UnclosedBeforeDelimiter
+    )]
     #[case::after_item_missing(
         ItemPosition::AfterItem,
         Some(SyntaxKind::T_IDENT),
@@ -193,6 +227,11 @@ mod tests {
         BlockFollow::EmptyItem
     )]
     #[case::after_separator_eof(ItemPosition::AfterSeparator, None, BlockFollow::Unclosed)]
+    #[case::after_separator_rparen(
+        ItemPosition::AfterSeparator,
+        Some(SyntaxKind::T_RPAREN),
+        BlockFollow::UnclosedBeforeDelimiter
+    )]
     #[case::after_separator_item(
         ItemPosition::AfterSeparator,
         Some(SyntaxKind::T_IDENT),
@@ -211,9 +250,9 @@ mod tests {
     }
 
     /// The token corpus for the differential sweep: the tokens a block can
-    /// meet (`{`, `}`, `;`, `,`, `:`, an identifier, a number, `+`) plus end
-    /// of input.
-    const KINDS: [Option<SyntaxKind>; 9] = [
+    /// meet (`{`, `}`, `;`, `,`, `:`, an identifier, a number, `+`, and an
+    /// enclosing delimiter) plus end of input.
+    const KINDS: [Option<SyntaxKind>; 11] = [
         None,
         Some(SyntaxKind::T_LBRACE),
         Some(SyntaxKind::T_RBRACE),
@@ -223,6 +262,8 @@ mod tests {
         Some(SyntaxKind::T_IDENT),
         Some(SyntaxKind::T_NUMBER),
         Some(SyntaxKind::T_PLUS),
+        Some(SyntaxKind::T_RPAREN),
+        Some(SyntaxKind::T_RBRACKET),
     ];
 
     /// Independent decision table used to cross-check
@@ -237,41 +278,62 @@ mod tests {
         };
         let is_separator = matches!(token, SyntaxKind::T_SEMI);
         let is_close = matches!(token, SyntaxKind::T_RBRACE);
+        let is_delimiter = matches!(token, SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET);
         match position {
-            ItemPosition::Opening => reference_opening(is_close, is_separator),
-            ItemPosition::AfterItem => reference_after_item(is_close, is_separator),
-            ItemPosition::AfterSeparator => reference_after_separator(is_close, is_separator),
+            ItemPosition::Opening => reference_opening(is_close, is_separator, is_delimiter),
+            ItemPosition::AfterItem => reference_after_item(is_close, is_separator, is_delimiter),
+            ItemPosition::AfterSeparator => {
+                reference_after_separator(is_close, is_separator, is_delimiter)
+            }
         }
     }
 
     /// The reference outcome just after the opening `{`.
-    const fn reference_opening(is_close: bool, is_separator: bool) -> BlockFollow {
+    const fn reference_opening(
+        is_close: bool,
+        is_separator: bool,
+        is_delimiter: bool,
+    ) -> BlockFollow {
         if is_close {
             BlockFollow::Empty
         } else if is_separator {
             BlockFollow::EmptyItem
+        } else if is_delimiter {
+            BlockFollow::UnclosedBeforeDelimiter
         } else {
             BlockFollow::Item
         }
     }
 
     /// The reference outcome just after an item, where `;` separates.
-    const fn reference_after_item(is_close: bool, is_separator: bool) -> BlockFollow {
+    const fn reference_after_item(
+        is_close: bool,
+        is_separator: bool,
+        is_delimiter: bool,
+    ) -> BlockFollow {
         if is_separator {
             BlockFollow::Separator
         } else if is_close {
             BlockFollow::Close
+        } else if is_delimiter {
+            BlockFollow::UnclosedBeforeDelimiter
         } else {
             BlockFollow::MissingSeparator
         }
     }
 
     /// The reference outcome just after a separator, where `;` is empty.
-    const fn reference_after_separator(is_close: bool, is_separator: bool) -> BlockFollow {
+    const fn reference_after_separator(
+        is_close: bool,
+        is_separator: bool,
+        is_delimiter: bool,
+    ) -> BlockFollow {
         if is_close {
             BlockFollow::Close
         } else if is_separator {
             BlockFollow::EmptyItem
+        } else if is_delimiter {
+            BlockFollow::UnclosedBeforeDelimiter
         } else {
             BlockFollow::Item
         }
@@ -302,13 +364,14 @@ mod tests {
                     | BlockFollow::Item => accepted += 1,
                     BlockFollow::EmptyItem
                     | BlockFollow::MissingSeparator
-                    | BlockFollow::Unclosed => rejected += 1,
+                    | BlockFollow::Unclosed
+                    | BlockFollow::UnclosedBeforeDelimiter => rejected += 1,
                 }
             }
         }
         assert_eq!(
             (accepted, rejected),
-            (16, 11),
+            (16, 17),
             "the sweep should exercise both outcomes across every position"
         );
     }

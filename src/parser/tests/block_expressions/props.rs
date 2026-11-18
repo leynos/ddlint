@@ -36,27 +36,37 @@ const CLASS_NAMES: [&str; 16] = [
     "binary item",
 ];
 
+/// Return `true` when a generated item list can form a block.
+///
+/// `{ ; }` has no item to separate and is rejected by design, so the property
+/// and its coverage check skip the same draws.
+const fn is_representable(items: &[&str], ends_with_semicolon: bool) -> bool {
+    !items.is_empty() || !ends_with_semicolon
+}
+
 /// Mark every class this generated block belongs to.
 fn classes_of(items: &[&str], ends_with_semicolon: bool) -> [bool; CLASS_NAMES.len()] {
-    let has = |source: &str| items.contains(&source);
     let first_is = |source: &str| items.first() == Some(&source);
+    // A construct tail is the final item with no trailing `;`, which is the
+    // position where an item boundary could swallow the following separator.
+    let is_tail = |source: &str| items.last() == Some(&source) && !ends_with_semicolon;
     [
         items.is_empty(),
         items.len() == 1 && !ends_with_semicolon,
         items.len() == 1 && ends_with_semicolon,
         items.len() >= 2 && !ends_with_semicolon,
         items.len() >= 2 && ends_with_semicolon,
-        has("{ a }"),
+        items.contains(&"{ a }"),
         first_is("[k -> v]"),
-        first_is("if c { a } else { b }"),
-        has("for (x in xs) f(x)"),
-        has("return x"),
-        has("|x| x"),
-        has("(a, b)"),
-        has("(a; b)"),
-        has("[a, b]"),
-        has("f()"),
-        has("x + 1"),
+        is_tail("if c { a } else { b }"),
+        is_tail("for (x in xs) f(x)"),
+        is_tail("return x"),
+        is_tail("|x| x"),
+        items.contains(&"(a, b)"),
+        items.contains(&"(a; b)"),
+        items.contains(&"[a, b]"),
+        items.contains(&"f()"),
+        items.contains(&"x + 1"),
     ]
 }
 
@@ -67,7 +77,7 @@ proptest! {
         ends_with_semicolon in any::<bool>(),
     ) {
         // `{ ; }` has no item to separate and is rejected by design.
-        prop_assume!(!(items.is_empty() && ends_with_semicolon));
+        prop_assume!(is_representable(&items, ends_with_semicolon));
 
         let src = strategy::render_block(&items, ends_with_semicolon);
         let oracle = items
@@ -107,6 +117,11 @@ fn generator_covers_every_class() {
             .new_tree(&mut runner)
             .expect("the item strategy always builds a tree")
             .current();
+        // Count only draws the property actually parses, so rejected draws
+        // cannot satisfy a class threshold on their own.
+        if !is_representable(&items, ends_with_semicolon) {
+            continue;
+        }
         let present = classes_of(&items, ends_with_semicolon);
         for (count, is_present) in counts.iter_mut().zip(present) {
             *count += usize::from(is_present);

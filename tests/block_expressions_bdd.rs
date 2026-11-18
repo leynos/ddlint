@@ -197,6 +197,30 @@ fn if_then_branch_is_empty_block(world: &BlockWorld) -> StepResult<(), String> {
     }
 }
 
+/// Pins that a braced `else` branch is a block whose value is its final item,
+/// so the then-branch assertion cannot stand in for both branches.
+#[then("the else branch is a block whose value is {expected:string}")]
+fn if_else_branch_is_block_with_value(
+    world: &BlockWorld,
+    expected: &str,
+) -> StepResult<(), String> {
+    let expr = world.parsed()?;
+    let wanted = expected_item(expected)?;
+    let Expr::IfElse { else_branch, .. } = &*expr else {
+        return Err(format!("expected an if expression, got {expr:?}"));
+    };
+    let Expr::Block(block) = else_branch.as_ref() else {
+        return Err(format!("expected an else block, got {else_branch:?}"));
+    };
+    match block.value.as_deref() {
+        Some(value) if *value == wanted => Ok(()),
+        Some(value) => Err(format!(
+            "expected else block value {wanted:?}, got {value:?}"
+        )),
+        None => Err(format!("expected else block value {wanted:?}, got none")),
+    }
+}
+
 /// Assert that the scenario's `When` step recorded an outcome.
 fn assert_scenario_ran(world: &BlockWorld) {
     assert!(

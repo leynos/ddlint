@@ -139,11 +139,15 @@ Primary implementation points:
 struct-literal guard while parsing `if` conditions and similar prefixes to
 avoid consuming branch braces as struct fields.
 
-The guard only concludes that a brace opens a struct when the token after the
-opening brace is itself `{` or when the token after the next one is `:`; for
-example `if c { x: 1 }` still reads `{ x: 1 }` as a struct literal. A block
-beginning with an identifier and a value such as `{ x }` is therefore no longer
-treated as a struct.
+While the guard is active, `IDENT {` is read as a variable followed by a block.
+The parser reports a forbidden struct literal only when the lookahead suggests
+one: `ident {}` followed by another `{`, as in `if x == Foo{} { a }`, or
+`ident {` followed by an identifier and `:`, as in `if ready { x: T }`. Without
+either lookahead `if ready {} else { go() }` parses as intended. The
+`{ ident :` heuristic wrongly rejects the valid `if ready { x: T }`; the known
+false positive is recorded in register item 17. Outside the guard, `IDENT {`
+still parses a struct literal, which is why `Name { field: 1 }` keeps its
+current meaning until roadmap 2.6.11.
 
 Guard suspension points are explicit:
 
@@ -167,8 +171,9 @@ conformance register.
   `with_nested_delimiter_scope` wraps every nested delimiter context -
   parentheses, brackets, braces, call arguments, and match arms - so a `;`
   inside those delimiters keeps its sequencing meaning. A `for` guard uses
-  `with_guard_expression_scope`, which also re-enables struct literals. This is
-  the `BG-D11` invariant and the subject of `V-B2` to `V-B4`.
+  `with_guard_expression_scope`, which clears the `;` state and keeps the
+  struct-literal guard active, so `ident {` there is not a struct literal. This
+  is the `BG-D11` invariant and the subject of `V-B2` to `V-B4`.
 - `BlockExpr::from_items` returns `None` exactly for an empty item list that
   ends with `;`, which is the `{ ; }`-style empty item already rejected by
   `classify_block_follow`.

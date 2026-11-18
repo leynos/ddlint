@@ -227,7 +227,11 @@ where
         self.with_semicolon_scope(false, |this| this.with_struct_literals_suspended(f))
     }
 
-    /// Run `f` for a `for`-loop guard, which may contain a struct literal.
+    /// Run `f` for a `for`-loop guard.
+    ///
+    /// The guard is a control-flow prefix like an `if` condition, so the
+    /// struct-literal guard stays active: `ident {` there is a variable
+    /// followed by a block, not a struct literal (`BG-D6`).
     pub(super) fn with_guard_expression_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
         self.with_semicolon_scope(false, |this| this.with_struct_literal_activation(f))
     }
