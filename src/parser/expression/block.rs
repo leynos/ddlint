@@ -251,141 +251,134 @@ mod tests {
         );
     }
 
-    /// The token corpus for the differential sweep: the tokens a block can
-    /// meet (`{`, `}`, `;`, `,`, `:`, an identifier, a number, `+`, and an
-    /// enclosing delimiter) plus end of input.
-    const KINDS: [Option<SyntaxKind>; 11] = [
-        None,
-        Some(SyntaxKind::T_LBRACE),
-        Some(SyntaxKind::T_RBRACE),
-        Some(SyntaxKind::T_SEMI),
-        Some(SyntaxKind::T_COMMA),
-        Some(SyntaxKind::T_COLON),
-        Some(SyntaxKind::T_IDENT),
-        Some(SyntaxKind::T_NUMBER),
-        Some(SyntaxKind::T_PLUS),
-        Some(SyntaxKind::T_RPAREN),
-        Some(SyntaxKind::T_RBRACKET),
+    /// The loop positions, in the column order used by
+    /// [`EXPECTED_OUTCOMES`].
+    const POSITIONS: [ItemPosition; 3] = [
+        ItemPosition::Opening,
+        ItemPosition::AfterItem,
+        ItemPosition::AfterSeparator,
     ];
 
-    /// Independent decision table used to cross-check
-    /// [`classify_block_follow`].
+    /// Independent expected outcome for every token the sweep exercises.
     ///
-    /// It asks a token-shaped question first and only then dispatches on the
-    /// loop position, which is a different shape from the implementation's
-    /// pair match.
-    const fn reference_follow(position: ItemPosition, kind: Option<SyntaxKind>) -> BlockFollow {
-        let Some(token) = kind else {
-            return BlockFollow::Unclosed;
-        };
-        let is_separator = matches!(token, SyntaxKind::T_SEMI);
-        let is_close = matches!(token, SyntaxKind::T_RBRACE);
-        let is_delimiter = matches!(token, SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET);
-        match position {
-            ItemPosition::Opening => reference_opening(is_close, is_separator, is_delimiter),
-            ItemPosition::AfterItem => reference_after_item(is_close, is_separator, is_delimiter),
-            ItemPosition::AfterSeparator => {
-                reference_after_separator(is_close, is_separator, is_delimiter)
-            }
-        }
-    }
+    /// Rows cover the tokens a block can meet (`{`, `}`, `;`, `,`, `:`, an
+    /// identifier, a number, `+`, and an enclosing delimiter) plus end of
+    /// input; columns follow [`POSITIONS`]. Every `SyntaxKind` falls into one
+    /// of these semantic classes, so the corpus is exhaustive rather than a
+    /// sample.
+    const EXPECTED_OUTCOMES: [(Option<SyntaxKind>, [BlockFollow; 3]); 11] = [
+        // End of input leaves the block unclosed wherever it appears.
+        (None, [BlockFollow::Unclosed; 3]),
+        // A nested `{` begins an item unless one already ended without `;`.
+        (
+            Some(SyntaxKind::T_LBRACE),
+            [
+                BlockFollow::Item,
+                BlockFollow::MissingSeparator,
+                BlockFollow::Item,
+            ],
+        ),
+        // `}` closes an empty block at the opening, and any block afterwards.
+        (
+            Some(SyntaxKind::T_RBRACE),
+            [BlockFollow::Empty, BlockFollow::Close, BlockFollow::Close],
+        ),
+        // `;` separates only after an item; otherwise it is an empty item.
+        (
+            Some(SyntaxKind::T_SEMI),
+            [
+                BlockFollow::EmptyItem,
+                BlockFollow::Separator,
+                BlockFollow::EmptyItem,
+            ],
+        ),
+        // Any other token begins an item unless one already ended without a
+        // separator. `,`, `:`, an identifier, a number and `+` behave alike.
+        (
+            Some(SyntaxKind::T_COMMA),
+            [
+                BlockFollow::Item,
+                BlockFollow::MissingSeparator,
+                BlockFollow::Item,
+            ],
+        ),
+        (
+            Some(SyntaxKind::T_COLON),
+            [
+                BlockFollow::Item,
+                BlockFollow::MissingSeparator,
+                BlockFollow::Item,
+            ],
+        ),
+        (
+            Some(SyntaxKind::T_IDENT),
+            [
+                BlockFollow::Item,
+                BlockFollow::MissingSeparator,
+                BlockFollow::Item,
+            ],
+        ),
+        (
+            Some(SyntaxKind::T_NUMBER),
+            [
+                BlockFollow::Item,
+                BlockFollow::MissingSeparator,
+                BlockFollow::Item,
+            ],
+        ),
+        (
+            Some(SyntaxKind::T_PLUS),
+            [
+                BlockFollow::Item,
+                BlockFollow::MissingSeparator,
+                BlockFollow::Item,
+            ],
+        ),
+        // An enclosing delimiter ends the item list without a `}`.
+        (
+            Some(SyntaxKind::T_RPAREN),
+            [BlockFollow::UnclosedBeforeDelimiter; 3],
+        ),
+        (
+            Some(SyntaxKind::T_RBRACKET),
+            [BlockFollow::UnclosedBeforeDelimiter; 3],
+        ),
+    ];
 
-    /// The reference outcome just after the opening `{`.
-    const fn reference_opening(
-        is_close: bool,
-        is_separator: bool,
-        is_delimiter: bool,
-    ) -> BlockFollow {
-        if is_close {
-            BlockFollow::Empty
-        } else if is_separator {
-            BlockFollow::EmptyItem
-        } else if is_delimiter {
-            BlockFollow::UnclosedBeforeDelimiter
-        } else {
-            BlockFollow::Item
-        }
-    }
-
-    /// The reference outcome just after an item, where `;` separates.
-    const fn reference_after_item(
-        is_close: bool,
-        is_separator: bool,
-        is_delimiter: bool,
-    ) -> BlockFollow {
-        if is_separator {
-            BlockFollow::Separator
-        } else if is_close {
-            BlockFollow::Close
-        } else if is_delimiter {
-            BlockFollow::UnclosedBeforeDelimiter
-        } else {
-            BlockFollow::MissingSeparator
-        }
-    }
-
-    /// The reference outcome just after a separator, where `;` is empty.
-    const fn reference_after_separator(
-        is_close: bool,
-        is_separator: bool,
-        is_delimiter: bool,
-    ) -> BlockFollow {
-        if is_close {
-            BlockFollow::Close
-        } else if is_separator {
-            BlockFollow::EmptyItem
-        } else if is_delimiter {
-            BlockFollow::UnclosedBeforeDelimiter
-        } else {
-            BlockFollow::Item
-        }
-    }
-
-    /// Every `SyntaxKind` falls into one of the sweep's semantic classes, so
-    /// the eleven-token corpus is exhaustive rather than a sample.
+    /// Every corpus token produces its tabulated outcome in every position,
+    /// and the sweep exercises both accepting and rejecting outcomes.
     #[test]
-    fn block_follow_classification_matches_the_reference_table() {
-        let counts: Vec<(usize, usize)> = [
-            ItemPosition::Opening,
-            ItemPosition::AfterItem,
-            ItemPosition::AfterSeparator,
-        ]
-        .into_iter()
-        .map(count_position)
-        .collect();
-        let accepted: usize = counts.iter().map(|(accepted, _)| accepted).sum();
-        let rejected: usize = counts.iter().map(|(_, rejected)| rejected).sum();
-        assert_eq!(
-            (accepted, rejected),
-            (16, 17),
-            "the sweep should exercise both outcomes across every position"
-        );
-    }
-
-    /// Count one position's accepting and rejecting outcomes.
-    ///
-    /// Every outcome is checked against the reference table first, so a
-    /// disagreement fails the test at the position and token that caused it.
-    fn count_position(position: ItemPosition) -> (usize, usize) {
-        let outcomes: Vec<BlockFollow> = KINDS
+    fn block_follow_classification_matches_expected_outcomes() {
+        let outcomes: Vec<BlockFollow> = EXPECTED_OUTCOMES
             .iter()
-            .copied()
-            .map(|kind| checked_outcome(position, kind))
+            .flat_map(|(kind, row)| {
+                row.iter()
+                    .copied()
+                    .zip(POSITIONS)
+                    .map(|(expected, position)| checked_outcome(position, *kind, expected))
+            })
             .collect();
         let accepted = outcomes
             .iter()
             .filter(|outcome| is_accepted(**outcome))
             .count();
-        (accepted, outcomes.len() - accepted)
+        assert_eq!(
+            (accepted, outcomes.len() - accepted),
+            (16, 17),
+            "the sweep should exercise both outcomes across every position"
+        );
     }
 
-    /// Compare one corpus outcome with the reference table.
-    fn checked_outcome(position: ItemPosition, kind: Option<SyntaxKind>) -> BlockFollow {
+    /// Compare one corpus outcome with the expected table.
+    fn checked_outcome(
+        position: ItemPosition,
+        kind: Option<SyntaxKind>,
+        expected: BlockFollow,
+    ) -> BlockFollow {
         let actual = classify_block_follow(position, kind);
         assert_eq!(
-            actual,
-            reference_follow(position, kind),
-            "position {position:?} with {kind:?} disagreed with the reference table"
+            actual, expected,
+            "position {position:?} with {kind:?} should classify as {expected:?}"
         );
         actual
     }
