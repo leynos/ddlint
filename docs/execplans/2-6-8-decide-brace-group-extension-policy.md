@@ -318,6 +318,18 @@ lines unless stated.
   green: `918` library tests and the affected integration binaries
   (`block_expressions` 5, `block_expressions_bdd` 15,
   `collection_literal_boundary` 4, `expression_to_sexpr` 44).
+- [x] (2026-11-18) Hosted-gate follow-ups after the fourth review. CI's
+  `lint-whitaker` rejected the differential sweep's nested loop and match with
+  `bumpy_road_function`, although the same gate passed locally, so the sweep
+  was restructured into counting helpers; that refactor is commit `7f1b3c9`,
+  and CI run 44351195440 is green on it. CodeScene then reported introduced
+  code duplication in `src/parser/expression/block.rs`, where the reference
+  oracle used three same-shaped helpers. The oracle is now a token-by-position
+  expectation table, so the sweep still checks every corpus token in every loop
+  position, with the accepting and rejecting counts pinned at 16 and 17,
+  without duplicating structure or exceeding the Clippy cognitive-complexity
+  limit. `cs delta origin/main` reports no findings, and all six gates are
+  green on the result (commit `2bfdde4`).
 
 ## Surprises & discoveries
 
