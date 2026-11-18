@@ -345,36 +345,56 @@ mod tests {
     /// the eleven-token corpus is exhaustive rather than a sample.
     #[test]
     fn block_follow_classification_matches_the_reference_table() {
-        let mut accepted = 0usize;
-        let mut rejected = 0usize;
-        for position in [
+        let counts: Vec<(usize, usize)> = [
             ItemPosition::Opening,
             ItemPosition::AfterItem,
             ItemPosition::AfterSeparator,
-        ] {
-            for kind in KINDS {
-                let actual = classify_block_follow(position, kind);
-                assert_eq!(
-                    actual,
-                    reference_follow(position, kind),
-                    "position {position:?} with {kind:?} disagreed with the reference table"
-                );
-                match actual {
-                    BlockFollow::Empty
-                    | BlockFollow::Close
-                    | BlockFollow::Separator
-                    | BlockFollow::Item => accepted += 1,
-                    BlockFollow::EmptyItem
-                    | BlockFollow::MissingSeparator
-                    | BlockFollow::Unclosed
-                    | BlockFollow::UnclosedBeforeDelimiter => rejected += 1,
-                }
-            }
-        }
+        ]
+        .into_iter()
+        .map(count_position)
+        .collect();
+        let accepted: usize = counts.iter().map(|(accepted, _)| accepted).sum();
+        let rejected: usize = counts.iter().map(|(_, rejected)| rejected).sum();
         assert_eq!(
             (accepted, rejected),
             (16, 17),
             "the sweep should exercise both outcomes across every position"
         );
+    }
+
+    /// Count one position's accepting and rejecting outcomes.
+    ///
+    /// Every outcome is checked against the reference table first, so a
+    /// disagreement fails the test at the position and token that caused it.
+    fn count_position(position: ItemPosition) -> (usize, usize) {
+        let outcomes: Vec<BlockFollow> = KINDS
+            .iter()
+            .copied()
+            .map(|kind| checked_outcome(position, kind))
+            .collect();
+        let accepted = outcomes
+            .iter()
+            .filter(|outcome| is_accepted(**outcome))
+            .count();
+        (accepted, outcomes.len() - accepted)
+    }
+
+    /// Compare one corpus outcome with the reference table.
+    fn checked_outcome(position: ItemPosition, kind: Option<SyntaxKind>) -> BlockFollow {
+        let actual = classify_block_follow(position, kind);
+        assert_eq!(
+            actual,
+            reference_follow(position, kind),
+            "position {position:?} with {kind:?} disagreed with the reference table"
+        );
+        actual
+    }
+
+    /// Whether an outcome lets the block loop continue with the item.
+    const fn is_accepted(outcome: BlockFollow) -> bool {
+        matches!(
+            outcome,
+            BlockFollow::Empty | BlockFollow::Close | BlockFollow::Separator | BlockFollow::Item
+        )
     }
 }
