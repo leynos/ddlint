@@ -1387,9 +1387,12 @@ followed.
   `d` from that projected position.
 - `is_res(u, r)`: either `r = None` and no same-name declaration is visible
   to `u`; or `r = Some(i)`, `visible(i, u)`, and every visible same-name `j`
-  lies in an ancestor of `i`'s scope, or in the same scope at a smaller
-  position, or at the same position with a greater `order` (upstream's first
-  match wins among same-position declarations).
+  other than `i` lies in a strict ancestor of `i`'s scope, or in the same scope
+  at a smaller position, or at the same position with a greater `order`
+  (upstream's first match wins among same-position declarations). The ancestor
+  comparison is strict and `i` itself is excluded: the inclusive `ancestor`
+  relation would otherwise accept every same-scope declaration regardless of
+  its position and order, defeating `K-L0`.
 
 ### Kernel lemmas (to be proved in Verus in roadmap 3.3.6)
 

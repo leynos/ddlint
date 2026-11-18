@@ -1,15 +1,16 @@
 //! Characterization snapshot of expression parsing outside braces.
 //!
 //! `V-B7` requires that the block-expression work changes nothing outside
-//! braces and bracket map literals. This module records, before that work
-//! starts, how every existing valid expression fixture renders and how every
-//! error fixture's first diagnostic reads. A later accidental change then
-//! appears as a snapshot diff instead of passing unnoticed.
+//! braces. This module records how every non-brace valid expression fixture
+//! renders and how every non-brace error fixture's first diagnostic reads, so
+//! a later accidental change appears as a snapshot diff instead of passing
+//! unnoticed.
 //!
 //! Brace-bearing fixtures are excluded because their expectations change by
-//! design. Bracket map literals do not exist in the fixture set yet, and every
-//! existing arrow-bearing fixture is a match arm inside braces, so the brace
-//! filter already covers it.
+//! design. The snapshots are not a wholly pre-change baseline: bracket map
+//! literals such as `[a -> 1]`, and the diagnostics for `[]` and
+//! `[a, b -> c]`, are recorded with their post-change behaviour, so a diff in
+//! those rows is expected whenever that syntax changes.
 
 use super::fixtures::{error_cases, expression_cases};
 use crate::parser::expression::parse_expression;

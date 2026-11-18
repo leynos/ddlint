@@ -9,7 +9,7 @@ use crate::{SyntaxKind, parser::lexer_helpers::balanced_block};
 
 /// Scan an assignment whose right-hand side may be a control-flow expression.
 ///
-/// The flat expression loop in [`super::rules::rule_statement`] stops at `if`,
+/// The flat expression loop in [`super::rule_statement`] stops at `if`,
 /// `for`, and `skip`, so `var y = if x > 1 { x } else { 0 }` would otherwise be
 /// scanned as a left-hand side followed by a separate statement. Keyword
 /// statements are tried before this parser, keeping a leading `if` or `for`

@@ -27,21 +27,22 @@ fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<chumsky::error::Sim
 #[case("if (outer) { for (item in Items(item)) if (should(item)) Process(item) } else { Skip() }")]
 #[case("Call(x)")]
 #[case("foo = bar(baz)")]
-#[case("var y = if x > 1 { x } else { 0 }")]
-#[case("y = if ready(x) { Accept(x) } else { Skip() }")]
 fn rule_statement_parses_control_flow(#[case] src: &str) {
     let (res, errs) = parse_rule_statement_input(src);
     assert!(res.is_some(), "expected successful parse for {src}");
     assert!(errs.is_empty(), "unexpected errors for {src:?}: {errs:?}");
 }
 
-/// A brace-led assignment right-hand side must not end the rule early.
+/// An assignment right-hand side must not end the rule early.
 ///
 /// The statement parser accepts a valid prefix, so only the full rule scan
-/// shows whether the trailing operator became part of the same rule.
+/// shows whether the whole right-hand side stayed in the same rule.
 #[rstest]
 #[case("R(x) :- Atom(x), var y = { 1 } + 2.")]
 #[case("R(x) :- Atom(x), var y = if ready { 1 } else { 2 }.")]
+#[case("R(x) :- Atom(x), var y = if x > 1 { x } else { 0 }.")]
+#[case("R(x) :- Atom(x), y = if ready(x) { Accept(x) } else { Skip() }.")]
+#[case("R(x) :- Atom(x), var y = for (i in Items(i)) i.")]
 fn assignment_with_block_rhs_scans_one_rule(#[case] src: &str) {
     let tokens = tokenize(src);
     let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
