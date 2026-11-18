@@ -45,12 +45,20 @@ impl BlockExpr {
     /// ];
     /// let block = BlockExpr::from_items(items, false).expect("two items with no trailing ';'");
     ///
-    /// assert_eq!(block.statements, vec![Expr::Variable("a".to_owned())]);
+    /// assert_eq!(
+    ///     block.statements,
+    ///     vec![Expr::Variable("a".to_owned())],
+    ///     "the item before the last should be a statement"
+    /// );
     /// assert_eq!(
     ///     block.value.as_deref(),
-    ///     Some(&Expr::Variable("b".to_owned()))
+    ///     Some(&Expr::Variable("b".to_owned())),
+    ///     "the last item should be the block value"
     /// );
-    /// assert!(BlockExpr::from_items(Vec::new(), true).is_none());
+    /// assert!(
+    ///     BlockExpr::from_items(Vec::new(), true).is_none(),
+    ///     "an empty item list with a trailing ';' has nothing to separate"
+    /// );
     /// ```
     #[must_use]
     pub fn from_items(mut items: Vec<Expr>, ends_with_semicolon: bool) -> Option<Self> {
@@ -83,7 +91,11 @@ impl BlockExpr {
     /// };
     /// let rendered: Vec<String> = block.items().map(Expr::to_sexpr).collect();
     ///
-    /// assert_eq!(rendered, vec!["a".to_owned(), "b".to_owned()]);
+    /// assert_eq!(
+    ///     rendered,
+    ///     vec!["a".to_owned(), "b".to_owned()],
+    ///     "items() should yield the statement before the value"
+    /// );
     /// ```
     pub fn items(&self) -> impl Iterator<Item = &Expr> {
         self.statements.iter().chain(self.value.as_deref())
@@ -101,7 +113,11 @@ impl BlockExpr {
     ///     value: None,
     /// };
     ///
-    /// assert_eq!(block.into_items().count(), 1);
+    /// assert_eq!(
+    ///     block.into_items().count(),
+    ///     1,
+    ///     "one statement and no value should yield one item"
+    /// );
     /// ```
     pub fn into_items(self) -> impl Iterator<Item = Expr> {
         self.statements
@@ -126,8 +142,14 @@ impl BlockExpr {
     ///     value: Some(Box::new(Expr::Variable("a".to_owned()))),
     /// };
     ///
-    /// assert!(unit_block.ends_with_semicolon());
-    /// assert!(!value_block.ends_with_semicolon());
+    /// assert!(
+    ///     unit_block.ends_with_semicolon(),
+    ///     "a statement-only block ends with ';' and has unit value"
+    /// );
+    /// assert!(
+    ///     !value_block.ends_with_semicolon(),
+    ///     "a block with a value does not end with ';'"
+    /// );
     /// ```
     #[must_use]
     pub const fn ends_with_semicolon(&self) -> bool {

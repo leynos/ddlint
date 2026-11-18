@@ -874,7 +874,7 @@ let f  = 3.14159'f64; // permitted widths: 32 or 64
 ```ddlog
 let v = [a, b, c];        // parsed today; lowering is scheduled
 let m = [k1 -> v1, k2 -> v2]; // parsed today; lowering is scheduled
-let b = { a; b };         // parsed today as Expr::Block with no value
+let b = { a; b };         // parsed today as Expr::Block whose value is `b`
 let c = { a + b };        // parsed today as Expr::Block whose value is `a + b`
 let d = {};               // the empty block, whose value is unit
 ```

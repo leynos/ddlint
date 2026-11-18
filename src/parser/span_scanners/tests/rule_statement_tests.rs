@@ -7,7 +7,7 @@
 use chumsky::{Parser, Stream};
 use rstest::rstest;
 
-use super::super::rules::rule_statement;
+use super::super::{collect_rule_spans, rules::rule_statement};
 use crate::{SyntaxKind, parser::lexer_helpers::inline_ws, test_util::tokenize};
 
 fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<chumsky::error::Simple<SyntaxKind>>) {
@@ -33,6 +33,23 @@ fn rule_statement_parses_control_flow(#[case] src: &str) {
     let (res, errs) = parse_rule_statement_input(src);
     assert!(res.is_some(), "expected successful parse for {src}");
     assert!(errs.is_empty(), "unexpected errors for {src:?}: {errs:?}");
+}
+
+/// A brace-led assignment right-hand side must not end the rule early.
+///
+/// The statement parser accepts a valid prefix, so only the full rule scan
+/// shows whether the trailing operator became part of the same rule.
+#[rstest]
+#[case("R(x) :- Atom(x), var y = { 1 } + 2.")]
+#[case("R(x) :- Atom(x), var y = if ready { 1 } else { 2 }.")]
+fn assignment_with_block_rhs_scans_one_rule(#[case] src: &str) {
+    let tokens = tokenize(src);
+    let (rule_spans, _, errors) = collect_rule_spans(&tokens, src, &[]);
+    assert_eq!(rule_spans.len(), 1, "expected one rule span for {src:?}");
+    assert!(
+        errors.is_empty(),
+        "unexpected errors for {src:?}: {errors:?}"
+    );
 }
 
 #[rstest]

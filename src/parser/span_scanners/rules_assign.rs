@@ -40,6 +40,11 @@ pub(super) fn assignment_statement(
         .at_least(1)
         .ignored()
         .then_ignore(just(SyntaxKind::T_EQ).padded_by(ws))
-        .then(statement)
+        // Repeat the segment parser so a brace-led right-hand side keeps
+        // scanning past the block, as in `var x = { 1 } + 2`. A statement
+        // alternative consumes a whole `if`/`for`/`skip`, while the flat
+        // expression loop consumes operator tokens, and both stop at the rule
+        // body's `,` or `.`.
+        .then(statement.repeated().at_least(1))
         .ignored()
 }

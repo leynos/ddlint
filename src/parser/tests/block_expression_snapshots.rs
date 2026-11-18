@@ -66,17 +66,24 @@ const REJECTED: &[&str] = &[
 fn render(source: &str) -> String {
     match parse_expression(source) {
         Ok(expr) => format!("{source:?} => {}", expr.to_sexpr()),
-        Err(errors) => errors.first().map_or_else(
-            || format!("{source:?} => no diagnostic"),
-            |error| {
-                let message = match error.reason() {
-                    SimpleReason::Custom(message) => message.clone(),
-                    reason => format!("{reason:?}"),
-                };
-                let span = error.span();
-                format!("{source:?} => {message} @ {}..{}", span.start, span.end)
-            },
-        ),
+        Err(errors) => {
+            assert_eq!(
+                errors.len(),
+                1,
+                "rejected source {source:?} should report exactly one diagnostic"
+            );
+            errors.first().map_or_else(
+                || format!("{source:?} => no diagnostic"),
+                |error| {
+                    let message = match error.reason() {
+                        SimpleReason::Custom(message) => message.clone(),
+                        reason => format!("{reason:?}"),
+                    };
+                    let span = error.span();
+                    format!("{source:?} => {message} @ {}..{}", span.start, span.end)
+                },
+            )
+        }
     }
 }
 

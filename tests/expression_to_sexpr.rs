@@ -112,5 +112,9 @@ fn map_literals_format(#[case] src: &str, #[case] expected: &str) {
 #[case("{ { a } }", "(block (value (block (value a))))")]
 fn block_expressions_format(#[case] src: &str, #[case] expected: &str) {
     let expr = parse_expression(src).expect("block should parse");
-    assert_eq!(expr.to_sexpr(), expected);
+    assert_eq!(
+        expr.to_sexpr(),
+        expected,
+        "source {src:?} should render as {expected:?}"
+    );
 }

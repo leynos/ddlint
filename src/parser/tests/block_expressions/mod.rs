@@ -22,6 +22,7 @@ use crate::{
         closure,
         for_loop,
         if_expr,
+        lit_bool,
         lit_num,
         map_entry,
         map_lit,
@@ -96,6 +97,17 @@ fn ascribe(lhs: Expr, rhs: Expr) -> Expr {
     "{ [a -> 1] }",
     block(vec![], Some(map_lit(vec![map_entry(var("a"), lit_num("1"))])))
 )]
+#[case::nested_if_in_block_condition(
+    "{ if ready {} else {}; true }",
+    block(
+        vec![if_expr(
+            var("ready"),
+            block(vec![], None),
+            Some(block(vec![], None))
+        )],
+        Some(lit_bool(true))
+    )
+)]
 #[case::match_then_value(
     "{ match (x) { _ -> 1 }; y }",
     block(
@@ -107,6 +119,16 @@ fn parses_blocks(#[case] src: &str, #[case] expected: Expr) {
     let expr =
         parse_expression(src).unwrap_or_else(|errs| panic!("source {src:?} errors: {errs:?}"));
     assert_eq!(expr, expected, "source {src:?} parsed unexpectedly");
+}
+
+#[test]
+fn outer_block_condition_keeps_inner_guard_narrow() {
+    let expr = parse_expression("if { if ready {} else {}; true } { done }")
+        .expect("a block condition followed by a block body should parse");
+    assert!(
+        matches!(expr, Expr::IfElse { .. }),
+        "the outer expression must be an if, got {expr:?}"
+    );
 }
 
 #[rstest]
@@ -290,5 +312,9 @@ fn block_ends_with_semicolon_only_for_a_unit_value(#[case] expr: Expr, #[case] e
 #[case::statement(block(vec![var("a")], None), "(block (stmts a))")]
 #[case::both(block(vec![var("a")], Some(var("b"))), "(block (stmts a) (value b))")]
 fn block_renders_as_sexpr(#[case] expr: Expr, #[case] expected: &str) {
-    assert_eq!(expr.to_sexpr(), expected);
+    assert_eq!(
+        expr.to_sexpr(),
+        expected,
+        "block {expr:?} should render as {expected:?}"
+    );
 }

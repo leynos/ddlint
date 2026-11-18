@@ -47,32 +47,34 @@ where
 
 #[derive(Default)]
 struct StructLiteralState {
-    /// Active contexts where bare struct literals must be disabled (for example `if` conditions).
-    active: usize,
-    /// Nesting depth that temporarily suspends the guard for disambiguated sub-expressions.
-    suspension: usize,
+    /// Suspension depth for each active guard, innermost last.
+    ///
+    /// Suspension is recorded per guard level: a block or delimiter that
+    /// suspends an outer guard must not re-enable struct literals inside a
+    /// nested control-flow condition, where `ident {` is ambiguous again.
+    suspensions: Vec<usize>,
 }
 
 impl StructLiteralState {
-    const fn activate(&mut self) { self.active += 1; }
+    fn activate(&mut self) { self.suspensions.push(0); }
 
     fn deactivate(&mut self) {
         // The guard depth must not underflow; saturate rather than panic if
         // the scopes are ever unbalanced.
-        debug_assert!(self.active > 0, "struct literal guard underflow");
-        self.active = self.active.saturating_sub(1);
-        if self.active == 0 {
-            self.suspension = 0;
-        }
+        debug_assert!(
+            !self.suspensions.is_empty(),
+            "struct literal guard underflow"
+        );
+        self.suspensions.pop();
     }
 
     /// Suspend an active struct-literal guard, returning `false` when none is
     /// active so the caller knows the guard was not suspended.
-    const fn suspend(&mut self) -> bool {
-        if self.active == 0 {
+    fn suspend(&mut self) -> bool {
+        let Some(suspension) = self.suspensions.last_mut() else {
             return false;
-        }
-        self.suspension += 1;
+        };
+        *suspension += 1;
         true
     }
 
@@ -80,15 +82,17 @@ impl StructLiteralState {
         // The suspension depth must not underflow; saturate rather than
         // panic if the scopes are ever unbalanced.
         debug_assert!(
-            self.suspension > 0,
+            matches!(self.suspensions.last(), Some(suspension) if *suspension > 0),
             "struct literal guard suspension underflow"
         );
-        self.suspension = self.suspension.saturating_sub(1);
+        if let Some(suspension) = self.suspensions.last_mut() {
+            *suspension = suspension.saturating_sub(1);
+        }
     }
 
     /// Return `true` when a `{` here may open a struct literal, which requires
-    /// either no active guard or a suspended one.
-    const fn allows_struct_literal(&self) -> bool { self.active == 0 || self.suspension > 0 }
+    /// either no active guard or a suspended innermost one.
+    fn allows_struct_literal(&self) -> bool { !matches!(self.suspensions.last(), Some(&0)) }
 }
 
 /// Parse a source string into an [`Expr`].
@@ -140,7 +144,7 @@ where
         }
     }
 
-    pub(super) const fn allows_struct_literals(&self) -> bool {
+    pub(super) fn allows_struct_literals(&self) -> bool {
         self.struct_literals.allows_struct_literal()
     }
 
