@@ -62,6 +62,18 @@ pub(super) fn item_source() -> impl Strategy<Value = &'static str> {
     prop::sample::select(ITEM_SOURCES)
 }
 
+/// The item sources spliced into one generated block, in order.
+///
+/// Wrapping the slice names the body the renderers consume and keeps the join
+/// rule in one place.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct BlockItems<'a>(pub(super) &'a [&'a str]);
+
+impl BlockItems<'_> {
+    /// Render the items as a `;`-separated body.
+    fn body(self) -> String { self.0.join("; ") }
+}
+
 /// Strategy producing structurally arbitrary, possibly malformed block sources.
 ///
 /// Half the draws are arbitrary token soup over [`STRUCTURAL_TOKENS`], which
@@ -78,7 +90,9 @@ pub(super) fn structural_brace_sources() -> impl Strategy<Value = String> {
             prop::collection::vec(prop::sample::select(ITEM_SOURCES), 0..4),
             any::<bool>(),
         )
-            .prop_map(|(items, ends_with_semicolon)| render_block(&items, ends_with_semicolon)),
+            .prop_map(|(items, ends_with_semicolon)| {
+                render_block(BlockItems(items.as_slice()), ends_with_semicolon)
+            }),
     ]
 }
 
@@ -125,7 +139,7 @@ pub(super) fn differential_block_sources() -> impl Strategy<Value = String> {
         prop::sample::select(BLOCK_FAULTS),
     )
         .prop_map(|(items, ends_with_semicolon, fault)| {
-            render_faulty_block(&items, ends_with_semicolon, fault)
+            render_faulty_block(BlockItems(items.as_slice()), ends_with_semicolon, fault)
         })
 }
 
@@ -133,11 +147,15 @@ pub(super) fn differential_block_sources() -> impl Strategy<Value = String> {
 ///
 /// Unlike [`render_block`], the braces are always separated from the body, so
 /// the rendered source is unambiguous even for the empty block.
-fn render_faulty_block(items: &[&str], ends_with_semicolon: bool, fault: BlockFault) -> String {
-    let plain = items.join("; ");
+fn render_faulty_block(
+    items: BlockItems<'_>,
+    ends_with_semicolon: bool,
+    fault: BlockFault,
+) -> String {
+    let plain = items.body();
     match fault {
         BlockFault::None => {
-            let separator = if ends_with_semicolon && !items.is_empty() {
+            let separator = if ends_with_semicolon && !items.0.is_empty() {
                 ";"
             } else {
                 ""
@@ -167,13 +185,9 @@ pub(super) struct BlockShape {
 /// `+ atom` continuations, an empty item is rejected, and the last item is the
 /// value unless a `;` follows it. Returns the predicted shape, or `None` when
 /// the source is not a well-formed block.
-///
-/// The grammar is whitespace-insensitive, so `;` is split off its neighbours
-/// before tokenizing: `{a;}` and `{ a ; }` must reach the same state.
 pub(super) fn recognize_block(source: &str) -> Option<BlockShape> {
-    let spaced = source.replace(';', " ; ");
-    let tokens: Vec<&str> = spaced.split_whitespace().collect();
-    if tokens.first().copied() != Some("{") {
+    let tokens = tokenize(source)?;
+    if tokens.first().copied() != Some(RefToken::Open) {
         return None;
     }
     let mut index = 1;
@@ -181,19 +195,61 @@ pub(super) fn recognize_block(source: &str) -> Option<BlockShape> {
     let mut expects_item = true;
     loop {
         match tokens.get(index).copied()? {
-            "}" => return Some(close_block(items, expects_item)),
-            ";" if expects_item => return None,
-            ";" => {
+            RefToken::Close => return Some(close_block(items, expects_item)),
+            RefToken::Separator if expects_item => return None,
+            RefToken::Separator => {
                 expects_item = true;
                 index += 1;
             }
-            "a" | "1" if expects_item => {
+            RefToken::Atom if expects_item => {
                 index = parse_reference_item(&tokens, index)?;
                 items += 1;
                 expects_item = false;
             }
-            _ => return None,
+            RefToken::Open | RefToken::Plus | RefToken::Atom => return None,
         }
+    }
+}
+
+/// One token of the reference block grammar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RefToken {
+    /// The opening `{`.
+    Open,
+    /// The closing `}`.
+    Close,
+    /// The item separator `;`.
+    Separator,
+    /// The binary operator `+`.
+    Plus,
+    /// An atom, `a` or `1`.
+    Atom,
+}
+
+/// Split a rendered source into reference tokens.
+///
+/// Returns `None` for a token outside the block grammar, which the recognizer
+/// treats as a structural rejection. `;` is split off its neighbours first,
+/// matching the parser's whitespace insensitivity: `{a;}` and `{ a ; }` must
+/// reach the same state.
+fn tokenize(source: &str) -> Option<Vec<RefToken>> {
+    source
+        .replace(';', " ; ")
+        .split_whitespace()
+        .map(classify_token)
+        .collect()
+}
+
+/// Classify one whitespace-separated token, or `None` when it is not in the
+/// grammar.
+fn classify_token(token: &str) -> Option<RefToken> {
+    match token {
+        "{" => Some(RefToken::Open),
+        "}" => Some(RefToken::Close),
+        ";" => Some(RefToken::Separator),
+        "+" => Some(RefToken::Plus),
+        "a" | "1" => Some(RefToken::Atom),
+        _ => None,
     }
 }
 
@@ -218,14 +274,14 @@ const fn close_block(items: usize, expects_item: bool) -> BlockShape {
 }
 
 /// Consume one reference item: an atom with zero or more `+ atom` suffixes.
-fn parse_reference_item(tokens: &[&str], mut index: usize) -> Option<usize> {
-    if !matches!(tokens.get(index).copied(), Some("a" | "1")) {
+fn parse_reference_item(tokens: &[RefToken], mut index: usize) -> Option<usize> {
+    if tokens.get(index).copied() != Some(RefToken::Atom) {
         return None;
     }
     index += 1;
-    while tokens.get(index).copied() == Some("+") {
+    while tokens.get(index).copied() == Some(RefToken::Plus) {
         index += 1;
-        if !matches!(tokens.get(index).copied(), Some("a" | "1")) {
+        if tokens.get(index).copied() != Some(RefToken::Atom) {
             return None;
         }
         index += 1;
@@ -234,11 +290,11 @@ fn parse_reference_item(tokens: &[&str], mut index: usize) -> Option<usize> {
 }
 
 /// Render a block source from item sources and a trailing-separator flag.
-pub(super) fn render_block(items: &[&str], ends_with_semicolon: bool) -> String {
-    if items.is_empty() {
+pub(super) fn render_block(items: BlockItems<'_>, ends_with_semicolon: bool) -> String {
+    if items.0.is_empty() {
         return "{}".to_owned();
     }
-    let mut body = items.join("; ");
+    let mut body = items.body();
     if ends_with_semicolon {
         body.push(';');
     }

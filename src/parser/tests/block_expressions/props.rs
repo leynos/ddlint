@@ -89,7 +89,7 @@ proptest! {
         // `{ ; }` has no item to separate and is rejected by design.
         prop_assume!(is_representable(&items, ends_with_semicolon));
 
-        let src = strategy::render_block(&items, ends_with_semicolon);
+        let src = strategy::render_block(strategy::BlockItems(items.as_slice()), ends_with_semicolon);
         let oracle = items
             .iter()
             .map(|item| strategy::expected_item(item))
@@ -274,28 +274,30 @@ fn outcome_counts(strategy: impl Strategy<Value = String>) -> OutcomeCounts {
     counts
 }
 
-/// The structural fuzz must reach both accepted and rejected parses.
-#[test]
-fn structural_fuzz_exercises_both_parse_outcomes() {
-    let counts = outcome_counts(strategy::structural_brace_sources());
+/// Assert that a strategy reaches both accepted and rejected parses.
+///
+/// A strategy that only ever produced one outcome would make its property
+/// vacuous on the other side, so each strategy must reach both at least 100
+/// times in the same 2,048 deterministic draws.
+fn assert_both_parse_outcomes(strategy: impl Strategy<Value = String>) {
+    let counts = outcome_counts(strategy);
     assert!(
         counts.accepted >= 100 && counts.rejected >= 100,
-        "the structural fuzz must accept and reject at least 100 draws each, got {} accepted and \
-         {} rejected",
+        "the property strategy must accept and reject at least 100 draws each, got {} accepted \
+         and {} rejected",
         counts.accepted,
         counts.rejected
     );
 }
 
+/// The structural fuzz must reach both accepted and rejected parses.
+#[test]
+fn structural_fuzz_exercises_both_parse_outcomes() {
+    assert_both_parse_outcomes(strategy::structural_brace_sources());
+}
+
 /// The differential strategy must reach both accepted and rejected parses.
 #[test]
 fn differential_cases_exercise_both_parse_outcomes() {
-    let counts = outcome_counts(strategy::differential_block_sources());
-    assert!(
-        counts.accepted >= 100 && counts.rejected >= 100,
-        "the differential strategy must accept and reject at least 100 draws each, got {} \
-         accepted and {} rejected",
-        counts.accepted,
-        counts.rejected
-    );
+    assert_both_parse_outcomes(strategy::differential_block_sources());
 }
