@@ -206,6 +206,34 @@ lines unless stated.
 - Time: stop if a milestone runs eight working hours past its first
   `Progress` timestamp.
 
+### Recorded deviations
+
+The completeness assessment of 2026-11-18 asked for the disposition of the two
+triggers this plan crossed. Both were observed after the fact and are recorded
+here rather than left implicit in `Progress`.
+
+- **Code volume.** The delivered diff is 44 code files and 2,716 net added
+  lines against the 30-file, 1,600-line limit, an overage of 14 files and 1,116
+  lines. Documentation is 10 files and 767 net lines, inside its own limit. The
+  overage is concentrated in the rewritten expression fixtures (31 of the 44
+  files are tests), the two new block modules, and the rule-body scanner
+  rework. The user directed that the approved plan be carried to completion
+  without stopping, so implementation continued; this entry is the escalation
+  record, and the review of this pull request is where the overage is
+  dispositioned. No public API change beyond the interface tolerance was made.
+- **Grammar.** `validate_expression` now rejects `return` in every rule-body
+  literal through `parse_rule_body_expression`, including a literal outside
+  braces such as `y = return x`, which was previously accepted. Rule-body
+  scanning also now keeps an assignment whose right-hand side begins with `if`,
+  `for`, or `skip` in one term, where it previously split the statement and
+  produced a parse error. Neither input was a supported construct: a rule body
+  has no return value, and the split scan could not express the intended
+  assignment. Both changes are covered by
+  `validate_expression_rejects_return_in_a_rule_body_block`, the
+  `rule_statement_tests` table, and the users' guide's `return` rule. No parse
+  of a brace-free or bracket-free expression that was previously accepted and
+  well formed changed.
+
 ## Risks
 
 - Risk: `BG-D11` misses a tail or a delimiter. Severity: high. Likelihood:
@@ -330,9 +358,36 @@ lines unless stated.
   without duplicating structure or exceeding the Clippy cognitive-complexity
   limit. `cs delta origin/main` reports no findings, and all six gates are
   green on the result (commit `2bfdde4`).
+- [x] (2026-11-19) Completeness-assessment follow-ups. CodeRabbit's whole-plan
+  assessment (`ddlint-2.6.8-completeness-2026-11-18`) returned "do not treat
+  the whole plan as complete yet" with four remaining actions. The blocking
+  semantic gap is closed: `tests/block_expressions.rs` now asserts that
+  `{ Wrapped(x) }` records a `UseKind::Relation` use of `Wrapped`, and that
+  `{ x; Wrapped(x) }` records none, so deleting the statement guard or the
+  whole block arm each fails a named test. `V-B8` is implemented rather than
+  amended: two 2,048-case `proptest` properties (structural fuzz over the full
+  block alphabet, and a differential check against `strategy::recognize_block`)
+  assert diagnostic-span bounds, and companion deterministic draws pin at least
+  `100` accepted and `100` rejected cases per strategy. The `V-B6` artefact now
+  records the eleven-token sweep and its `(16, 17)` split. The two crossed
+  tolerances are recorded under `Recorded deviations`. The developers' guide
+  documents `parse_rule_body_expression`, closure context restoration, and
+  `rules_assign.rs`; the users' guide documents the `BlockExpr` API and scopes
+  the three-change "no code migration" statement to library APIs. The first
+  `V-B8` run then failed on the well-formed `{ a; }`, because the reference
+  recognizer tokenized on whitespace alone and saw `a;` as one token. The
+  recognizer now splits `;` from its neighbours before tokenizing, and the
+  shrunk input is committed as
+  `proptest-regressions/parser/tests/block_expressions/props.txt`.
 
 ## Surprises & discoveries
 
+- Observation (completeness-assessment follow-ups): the differential model
+  first tokenized on whitespace alone, so `{ a; }` — a well-formed block the
+  parser accepts — was classified as malformed. Evidence: the first `V-B8` run
+  failed on exactly that shrunk input. Impact: `recognize_block` now splits `;`
+  from its neighbours before tokenizing, matching the parser's whitespace
+  insensitivity, and the seed is retained as a regression guard.
 - Observation: upstream treats braces as a core block expression, and a
   single-item `eseq` returns the item itself, so `{ e }` and `( e )` are both
   just `e` upstream. Evidence: `braces eseq` and `eseq` in `Parse.hs`;
@@ -508,12 +563,12 @@ Evidence: `src/parser/tests/block_expressions.rs` (block, tail, delimiter,
 rejection, and S-expression tables), its `props` and `strategy` modules,
 `src/parser/tests/block_expression_snapshots.rs` (one accepted inline snapshot),
 `tests/block_expressions_bdd.rs` (15 passing scenarios), and
-`tests/block_expressions.rs` (5 passing end-to-end tests through `parse`,
+`tests/block_expressions.rs` (7 passing end-to-end tests through `parse`,
 `sema::build`, and `Runner`). The semantic model records the block branch and
-the bracket map key of the acceptance program, and `Runner` reports `Witness`
-but not `Checked`. The full parser library suite passed 790 tests after the
-change, and the focused expression, collection, span, and rule suites were
-green.
+the bracket map key of the acceptance program, records `Wrapped` as a relation
+use only through the value-only block, and `Runner` reports `Witness` but not
+`Checked`. The full parser library suite passed 790 tests after the change, and
+the focused expression, collection, span, and rule suites were green.
 
 Two discoveries changed the planned test text and one changed production code:
 the `match` tail uses `_ -> 1` because bare constructor patterns are not
@@ -527,9 +582,10 @@ reverted; `generator_covers_every_class` counts 16 generator classes over 256
 deterministic draws, the smallest count being `12`; and the mutation run over
 both block modules has no missed mutant after the two survivors were killed by
 new tests. The `V-B6` method was amended from an every-`SyntaxKind` sweep to a
-semantically exhaustive nine-token sweep checked against an independent
-reference table, because the classifier distinguishes only `}` and `;`. Details
-and log paths are in `Artefacts and notes`.
+semantically exhaustive eleven-token sweep checked against an independent
+expectation table, because the classifier distinguishes only `}` and `;` among
+concrete tokens and an enclosing delimiter. Details and log paths are in
+`Artefacts and notes`.
 
 ### EP-M4 outcome
 
@@ -731,12 +787,19 @@ unit. The representation relation `R` maps it to
 - `V-B7`: an inline `insta` characterization snapshot of all existing
   expression fixtures, taken in EP-M2 before any block change and paired with
   semantic assertions on representative rows.
-- `V-B8`: two `proptest` properties of at least 2,048 cases over
-  space-separated token sequences: a structural fuzz over
-  `{ } ( ) [ ] ; , : -> a b 1 + if else for in return | Foo`, and a
-  differential property against a small reference recognizer over
-  `{ } ; , : a 1 +` that predicts accept or reject and, when accepted, the root
-  form. Each asserts that `Ok` and `Err` both occur at least 100 times.
+- `V-B8`: two `proptest` properties of 2,048 cases each over space-separated
+  token sequences. The structural fuzz draws half its cases as arbitrary token
+  soup over `{ } ( ) [ ] ; , : -> a b 1 + if else for in return | Foo`, and
+  half as well-formed blocks spliced from item forms built from the same
+  tokens, so the property reaches both parse outcomes. The differential
+  property draws a small block grammar over `{ } ; a 1 +` with one injected
+  fault (none, unclosed, empty first item, empty last item, trailing operator)
+  and compares the parser with `strategy::recognize_block`, an independent
+  model that predicts accept or reject and, when accepted, the statement count
+  and whether a value is present. Every `Err` from either property must report
+  spans with `start <= end <= src.len()`. Because a `proptest!` body has no
+  post-run hook, a companion deterministic draw of each strategy asserts that
+  `Ok` and `Err` each occur at least 100 times.
 - `V-M1`, `V-M2`, `V-M4`: `rstest` tables, including `[(a, b) -> c]`,
   `[f(x) -> y]`, `[a -> |x| x, b -> 1]` (the closure tail must stop at `,`),
   nested maps with trailing commas, and `[[k -> v] -> 1]`.
@@ -1227,11 +1290,13 @@ Every count is at least `5`, the floor the test asserts.
 
 ### Classifier sweep (`V-B6`)
 
-`block_follow_classification_matches_the_reference_table` sweeps the three
-positions over nine tokens (end of input, `{`, `}`, `;`, `,`, `:`, an
-identifier, a number, and `+`), compares each result with the independently
-shaped reference table, and asserts the outcome split
-`(16 accepted, 11 rejected)`.
+`block_follow_classification_matches_expected_outcomes` sweeps the three
+positions over eleven tokens (end of input, `{`, `}`, `;`, `,`, `:`, an
+identifier, a number, `+`, `)`, and `]`), compares each result with the
+independently shaped `EXPECTED_OUTCOMES` table, and asserts the outcome split
+`(16 accepted, 17 rejected)`. The `)` and `]` rows are the enclosing-delimiter
+class that a nine-token corpus could not distinguish from end of input before
+the `UnclosedBeforeDelimiter` outcome existed.
 
 ### Seeded faults
 

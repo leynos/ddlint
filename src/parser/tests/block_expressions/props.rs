@@ -1,13 +1,16 @@
 //! Property tests for block expressions.
 //!
 //! The generated sources exercise item ordering, the optional trailing
-//! separator, and panic freedom over arbitrary brace-bearing token soup.
+//! separator, panic freedom over arbitrary brace-bearing token soup, and a
+//! differential check against a reference model of the block contract.
 //! Generators and the expected-AST oracle live in [`strategy`].
 
+use chumsky::error::Simple;
 use proptest::{prelude::*, strategy::ValueTree, test_runner::TestRunner};
 
 use super::strategy;
 use crate::{
+    SyntaxKind,
     parser::{
         ast::{BlockExpr, Expr},
         expression::parse_expression,
@@ -74,6 +77,10 @@ fn classes_of(items: &[&str], ends_with_semicolon: bool) -> [bool; CLASS_NAMES.l
 }
 
 proptest! {
+    // `V-B8` requires at least 2,048 cases. The setting applies to every
+    // property in this block, which raises confidence in the others too.
+    #![proptest_config(ProptestConfig::with_cases(2_048))]
+
     #[test]
     fn generated_blocks_preserve_items_and_trailing_separator(
         items in prop::collection::vec(strategy::item_source(), 0..5),
@@ -114,11 +121,68 @@ proptest! {
     }
 
     #[test]
-    fn malformed_brace_sources_never_panic(src in strategy::brace_token_soup()) {
-        // Panic freedom is the assertion: either a tree or diagnostics are
-        // acceptable, but the parser must terminate with one of them.
-        drop(parse_expression(&src));
+    fn structural_brace_sources_parse_or_report_bounded_diagnostics(
+        src in strategy::structural_brace_sources(),
+    ) {
+        // Panic freedom is the first assertion: either a tree or diagnostics
+        // are acceptable, but the parser must terminate with one of them.
+        if let Err(errors) = parse_expression(&src) {
+            check_diagnostic_spans(&src, &errors)?;
+        }
     }
+
+    #[test]
+    fn differential_block_parses_match_the_reference_recognizer(
+        src in strategy::differential_block_sources(),
+    ) {
+        match (strategy::recognize_block(&src), parse_expression(&src)) {
+            (Some(expected), Ok(expr)) => {
+                let actual = match expr {
+                    Expr::Block(actual) => actual,
+                    other => {
+                        return Err(TestCaseError::fail(format!(
+                            "source {src:?} should parse as a block, got {other:?}"
+                        )));
+                    }
+                };
+                prop_assert_eq!(
+                    (actual.statements.len(), actual.value.is_some()),
+                    (expected.statements, expected.has_value),
+                    "source {}",
+                    src
+                );
+            }
+            (Some(expected), Err(errors)) => {
+                return Err(TestCaseError::fail(format!(
+                    "the reference recognizer accepted {src:?} as {expected:?}, but the parser \
+                     reported {errors:?}"
+                )));
+            }
+            (None, Ok(expr)) => {
+                return Err(TestCaseError::fail(format!(
+                    "the reference recognizer rejected {src:?}, but the parser accepted {expr:?}"
+                )));
+            }
+            (None, Err(errors)) => check_diagnostic_spans(&src, &errors)?,
+        }
+    }
+}
+
+/// Assert every diagnostic span lies inside the source it describes.
+fn check_diagnostic_spans(src: &str, errors: &[Simple<SyntaxKind>]) -> Result<(), TestCaseError> {
+    for error in errors {
+        let span = error.span();
+        prop_assert!(
+            span.start <= span.end,
+            "source {src:?} reported a reversed span {span:?}"
+        );
+        prop_assert!(
+            span.end <= src.len(),
+            "source {src:?} reported span {span:?} past the {} bytes it consumed",
+            src.len()
+        );
+    }
+    Ok(())
 }
 
 /// A construct followed by `;` is a statement, not a tail.
@@ -179,4 +243,59 @@ fn generator_covers_every_class() {
              every class"
         );
     }
+}
+
+/// Parse outcomes a deterministic draw of one strategy produced.
+#[derive(Default)]
+struct OutcomeCounts {
+    accepted: usize,
+    rejected: usize,
+}
+
+/// Draw `strategy` 2,048 times from a fixed seed and count parse outcomes.
+///
+/// A `proptest!` property has no post-run hook, so the required "both outcomes
+/// occur at least 100 times" evidence is collected here from the same
+/// strategy the property draws.
+fn outcome_counts(strategy: impl Strategy<Value = String>) -> OutcomeCounts {
+    let mut runner = TestRunner::deterministic();
+    let mut counts = OutcomeCounts::default();
+    for _ in 0..2_048 {
+        let src = strategy
+            .new_tree(&mut runner)
+            .expect("the block strategy always builds a tree")
+            .current();
+        if parse_expression(&src).is_ok() {
+            counts.accepted += 1;
+        } else {
+            counts.rejected += 1;
+        }
+    }
+    counts
+}
+
+/// The structural fuzz must reach both accepted and rejected parses.
+#[test]
+fn structural_fuzz_exercises_both_parse_outcomes() {
+    let counts = outcome_counts(strategy::structural_brace_sources());
+    assert!(
+        counts.accepted >= 100 && counts.rejected >= 100,
+        "the structural fuzz must accept and reject at least 100 draws each, got {} accepted and \
+         {} rejected",
+        counts.accepted,
+        counts.rejected
+    );
+}
+
+/// The differential strategy must reach both accepted and rejected parses.
+#[test]
+fn differential_cases_exercise_both_parse_outcomes() {
+    let counts = outcome_counts(strategy::differential_block_sources());
+    assert!(
+        counts.accepted >= 100 && counts.rejected >= 100,
+        "the differential strategy must accept and reject at least 100 draws each, got {} \
+         accepted and {} rejected",
+        counts.accepted,
+        counts.rejected
+    );
 }

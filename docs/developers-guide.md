@@ -27,6 +27,20 @@ parsing pipeline.
 - Should remain the only place that maps `ItemPosition` and the next token to
   a block action; callers should not duplicate that classification.
 
+### `src/parser/expression/pratt/mod.rs`
+
+- Owns the Pratt parser entry points. `parse_expression` parses a free
+  expression; `parse_rule_body_expression` parses a rule-body literal and
+  rejects `return`, which a rule body cannot honour.
+- The rule-body context lives in `Pratt::in_rule_body` and is entered only
+  through `parse_rule_body_expression`. A closure body restores legality with
+  `with_closure_body_scope`, which clears the flag for the body and restores
+  the previous value afterwards, so a closure nested in a rule body keeps
+  `return` while the surrounding literal still rejects it.
+- `src/parser/expression_span.rs` validates rule-body literals through
+  `parse_rule_body_expression`, so both the span-scanner path and the
+  expression path report once, at the `return` keyword.
+
 ### `src/parser/ast/expr/sexpr.rs`
 
 - Owns S-expression rendering helpers for `Expr`.
@@ -42,6 +56,17 @@ parsing pipeline.
   within the rule-body helper path.
 - Keeps rule-body classification separate from the public `Rule` wrapper so
   `rule/mod.rs` stays focused on the surface API.
+
+### `src/parser/span_scanners/rules_assign.rs`
+
+- Owns the assignment alternative of the rule-body scanner: `lhs = rhs`, where
+  the right-hand side may begin with `if`, `for`, or `skip`.
+- Exists because the flat expression loop stops at those keywords; without it,
+  `var y = if x > 1 { x } else { 0 }` scans as a left-hand side followed by a
+  separate statement. Keyword statements are tried first, so a leading `if` or
+  `for` keeps its own grammar.
+- Scans each delimiter on the left-hand side as a balanced unit, so an `=`
+  inside braces is not mistaken for the assignment separator.
 
 ### `src/parser/ast/relation/mod.rs`
 
@@ -162,6 +187,11 @@ parsing pipeline.
   there is not a struct literal.
 - `test_util::block` mirrors `BlockExpr` construction for tests. Keep it in
   step with the AST rather than reimplementing block construction in a test.
+- Parse a rule-body literal with `parse_rule_body_expression`, never
+  `parse_expression`; only the former rejects `return`. Clear the rule-body
+  context for a closure body through `with_closure_body_scope` rather than
+  assigning `in_rule_body` directly, so the surrounding literal resumes the
+  restriction afterwards.
 - Keep rule-body classification in `classification.rs` rather than adding
   helper-stage logic to `rule.rs`.
 - Prefer `Relation::role()` and `Relation::kind()` for new relation-aware

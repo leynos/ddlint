@@ -59,6 +59,19 @@ fn ensure(condition: bool, message: impl FnOnce() -> String) -> Result<(), Strin
     if condition { Ok(()) } else { Err(message()) }
 }
 
+/// Names recorded as top-level relation uses in `parsed`.
+///
+/// The semantic model records relation uses at rule-body term level, so this
+/// list answers exactly the question the block relation-name rule decides.
+fn relation_use_names(parsed: &ddlint::Parsed) -> Vec<String> {
+    sema::build(parsed)
+        .uses()
+        .iter()
+        .filter(|use_site| use_site.kind() == UseKind::Relation)
+        .map(|use_site| use_site.name().to_owned())
+        .collect()
+}
+
 /// Run the shipped `unused-relation` rule over `PROGRAM`.
 fn unused_relation_diagnostics(parsed: &ddlint::Parsed) -> Vec<LintDiagnostic> {
     let mut store = CstRuleStore::new();
@@ -229,6 +242,46 @@ fn unused_relation_reports_witness_and_not_checked(
             )
         },
     )
+}
+
+#[rstest]
+fn braced_value_records_a_relation_use(
+    #[from(parsed_program)] parsed_res: Result<ddlint::Parsed, String>,
+) -> Result<(), String> {
+    let parsed = parsed_res?;
+    let names = relation_use_names(&parsed);
+    ensure(names.iter().any(|name| name == "Wrapped"), || {
+        format!("`{{ Wrapped(x) }}` must record a relation use of `Wrapped`, got {names:?}")
+    })
+}
+
+/// A block with statements must not name its value as a relation.
+///
+/// Interim rule 7 keeps relation detection to blocks that are exactly `{ v }`.
+/// Without the `statements.is_empty()` guard the value of `{ x; Wrapped(x) }`
+/// would be read as a top-level relation use even though the trailing item is
+/// not necessarily the rule-body atom. The positive case above pins the other
+/// side of the rule, so deleting the whole block arm also fails.
+#[test]
+fn braced_value_behind_a_statement_does_not_name_a_relation() {
+    let source = concat!(
+        "input relation Items(x: u32)\n",
+        "input relation Wrapped(x: u32)\n",
+        "output relation Out(x: u32)\n",
+        "Out(x) :- Items(x), { x; Wrapped(x) }.\n",
+    );
+    let parsed = parse(source);
+    assert!(
+        parsed.errors().is_empty(),
+        "the statement-bearing block program must parse cleanly, got {:?}",
+        parsed.errors()
+    );
+
+    let names = relation_use_names(&parsed);
+    assert!(
+        !names.iter().any(|name| name == "Wrapped"),
+        "a block with statements must not name `Wrapped` as a relation, got {names:?}"
+    );
 }
 
 #[test]

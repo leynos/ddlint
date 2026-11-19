@@ -30,9 +30,9 @@ against regression.
 
 ### Unreleased behaviour changes
 
-Three changes are not yet in a release. None removes an API, so no code
-migration is required, but results observed through the previous release can
-change:
+Three library changes are not yet in a release. None of them removes an API, so
+no code migration is required for them, but results observed through the
+previous release can change:
 
 - Public methods listed under [Const-capable APIs](#const-capable-apis) can now
   be evaluated in `const` items. Existing calls are unaffected.
@@ -44,6 +44,12 @@ change:
   lists containing nested parenthesized types. It previously stopped at the
   first closing parenthesis and could return a truncated type. See
   [Function signatures](#function-signatures).
+
+This list covers library behaviour only and is not a complete inventory of
+unreleased changes. The block and bracket literal rules in
+[Block expressions and collection literals](#block-expressions-and-collection-literals)
+describe the syntax this guide documents, including that `{k: v}` is a block
+ascription rather than a map literal.
 
 ## Planned CLI configuration
 
@@ -169,6 +175,31 @@ use ddlint::parser::expression::parse_expression;
 
 let block = parse_expression("{ a; b }").expect("block parses");
 assert!(block.to_sexpr().starts_with("(block"));
+```
+
+### Inspecting a block
+
+`parse` keeps a block as `Expr::Block` wrapping a `BlockExpr`. The `statements`
+and `value` fields are public, and three helpers apply the block rules:
+
+- `BlockExpr::items()` and `BlockExpr::into_items()` yield the statements
+  followed by the value. This is the only traversal order consumers should use.
+- `BlockExpr::from_items(items, ends_with_semicolon)` applies the
+  trailing-separator rule. It returns `None` for the one unrepresentable input,
+  an empty item list with a trailing `;`.
+- `BlockExpr::ends_with_semicolon()` reports whether a non-empty block ends
+  with `;`, and therefore whether its value is unit.
+
+```rust
+use ddlint::parser::ast::Expr;
+use ddlint::parser::expression::parse_expression;
+
+let parsed = parse_expression("{ x; y + 1 }").expect("block parses");
+let Expr::Block(block) = parsed else {
+    panic!("braces must yield a block");
+};
+assert_eq!(block.statements.len(), 1, "`x;` is a statement");
+assert!(block.value.is_some(), "the final item is the block value");
 ```
 
 Map and vector literals use brackets and must be non-empty:
