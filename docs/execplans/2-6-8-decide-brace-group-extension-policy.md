@@ -379,6 +379,22 @@ here rather than left implicit in `Progress`.
   recognizer now splits `;` from its neighbours before tokenizing, and the
   shrunk input is committed as
   `proptest-regressions/parser/tests/block_expressions/props.txt`.
+- [x] (2026-11-19) Rebase onto current `origin/main` and CodeScene repair. The
+  branch was replayed from `1e63592` onto `98f9b5d` (`--force-with-lease`
+  against the previous remote head); all 20 commits replayed unchanged
+  (`range-diff` reports `=` for each) and the rebased head was `a4b4163`.
+  `cs delta 98f9b5d HEAD` then reported two introduced findings that the
+  previous base had not: code duplication in `props.rs`, and a String Heavy
+  Function Arguments reading of 50% against a 39% threshold in `strategy.rs`.
+  Both are cleared by refactoring rather than suppression: the outcome
+  assertion is one `assert_both_parse_outcomes` helper, the item slice is a
+  `BlockItems` view with one `body()` join rule, and the reference recognizer
+  classifies each token into a `RefToken` variant instead of comparing string
+  parameters. The delta is empty and `cs check` scores both files 10.00. The
+  rebased candidate `19dfb21` passes all six gates. No proof obligation
+  changes: the plan's recorded decision stands (no Verus or Kani for this
+  item), and the Verus resolution kernel remains roadmap 3.3.6 work, so
+  `proofs.yml`'s path filters need no update here.
 
 ## Surprises & discoveries
 
