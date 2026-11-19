@@ -169,7 +169,14 @@ proptest! {
 }
 
 /// Assert every diagnostic span lies inside the source it describes.
+///
+/// A rejection with no diagnostics would make the loop vacuous, so the empty
+/// case fails rather than passing the property.
 fn check_diagnostic_spans(src: &str, errors: &[Simple<SyntaxKind>]) -> Result<(), TestCaseError> {
+    prop_assert!(
+        !errors.is_empty(),
+        "source {src:?} was rejected with no diagnostic to inspect"
+    );
     for error in errors {
         let span = error.span();
         prop_assert!(

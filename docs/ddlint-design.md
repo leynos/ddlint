@@ -817,9 +817,12 @@ with precise identifier-token spans captured additively when CST access exists.
 #### Planned change: upstream lexical scopes
 
 The model above treats rule-head bindings as visible from the start of the rule
-scope, so a head occurrence counts as a declaration and a body assignment to
-the same name resolves to that declaration. Upstream DDlog instead declares
-variables in body clauses and treats head occurrences as uses, which is why
+scope, so a head occurrence counts as a declaration. A body assignment to the
+same name declares a later binding that shadows the head: the assignment's own
+right-hand side still resolves to the head, because the binding becomes visible
+only after the literal that introduces it, while later uses resolve to the
+assignment. Upstream DDlog instead declares variables in body clauses and
+treats head occurrences as uses, which is why
 `Out(x) :- In(z), var x = 1, Sink(x).` declares `x` in the second clause.
 Aligning the model is scheduled as roadmap items 3.3.5 and 3.3.6, with the
 upstream scoping rules recorded as a target in

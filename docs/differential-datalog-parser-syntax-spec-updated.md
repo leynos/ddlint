@@ -820,9 +820,9 @@ ______________________________________________________________________
 // Two heads; first has a delay and location; second is a diff fact
 A(a)@site(x) -<10>, B'(b) :-
     for (t in tasks()) if ready(t) {
-        x = site_of(t),
-        a = project_a(t),
-        b = project_b(t)
+        x = site_of(t);
+        a = project_a(t);
+        b = project_b(t);
     }.
 ```
 

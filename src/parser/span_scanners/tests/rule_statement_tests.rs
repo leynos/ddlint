@@ -121,6 +121,9 @@ fn block_return_in_rule_body_is_reported() {
 #[case("if { Process(cond) }")]
 #[case("for (item Items(item)) Process(item)")]
 #[case("for (item in Items(item) Process(item)")]
+// `else` is not an expression token: without this rule the general
+// expression loop would swallow it, hiding a dangling else from the scanner.
+#[case("Process(a) else Skip()")]
 fn rule_statement_reports_errors(#[case] src: &str) {
     let (res, errs) = parse_rule_statement_input(src);
     if res.is_some() {

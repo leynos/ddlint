@@ -74,7 +74,12 @@ owes no compatibility with its earlier behaviour.
 
 ### Technical requirements
 
-- No parse outside braces and bracket literals changes.
+- No parse outside braces and bracket literals changes, with two recorded
+  exceptions. A rule body now rejects `return` at the keyword, so
+  `y = return x` in a rule body is an error where it previously parsed. The
+  rule-statement scanner also recognizes an assignment whose right-hand side
+  begins with `if`, `for`, or `skip`, so those scanner term boundaries change;
+  accepting them is required for the block tails the new grammar admits.
 - No operator's binding power or associativity changes.
 - New production code does not panic.
 - The block and collection syntax is defined in the specification as

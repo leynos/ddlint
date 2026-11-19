@@ -419,6 +419,31 @@ here rather than left implicit in `Progress`.
   remain. The rule-statement table gains closure-assignment rows whose bodies
   contain `return`, directly and inside an `if`, so that case is no longer
   untested; focused `rule_statement_tests` pass (`23`).
+- [x] (2026-11-19) Hosted formal review triage. The review on head `464c9020`
+  (`CHANGES_REQUESTED`, review `5983114116`) raised six inline findings and the
+  User-Facing Documentation pre-merge warning; all six are repaired and the
+  warning is dispositioned. The rule-statement expression filter now excludes
+  `K_ELSE` alongside `if`, `for`, and `skip`, so an `if` statement binds its
+  else branch instead of the general expression loop swallowing it; a dangling
+  `Process(a) else Skip()` is rejected, proved by a new table row in
+  `rule_statement_reports_errors`. `check_diagnostic_spans` asserts a rejection
+  carries at least one diagnostic, so its span loop cannot pass vacuously.
+  ADR-0006's unchanged-parse requirement records its two exceptions: a rule
+  body rejects `return` at the keyword (`y = return x`), and the rule-statement
+  scanner recognizes assignments whose right-hand side begins with `if`, `for`,
+  or `skip`. The design document states that a body assignment declares a later
+  binding that shadows the head — its own right-hand side resolves to the head,
+  later uses to the assignment. The specification's section 11.1 worked `for`
+  body separates its assignments with `;`. File-by-file parser ownership moved
+  from the developers' guide to a `Parser module ownership` section in the
+  repository layout, which already owns placement; the developers' guide keeps
+  the shared boundary conventions and links to it. The pre-merge warning asks
+  for a `docs/v0-2-0-migration-guide.md` section, which the plan's recorded
+  decision of 2026-11-17 excludes; the users' guide instead states the
+  `Expr::Block` variant effect, and no migration section is added. Gates pass
+  on the repaired candidate: focused `rule_statement_tests` (`24`) and
+  `block_expressions` (`61`); `make check-fmt`, `make typecheck`, `make lint`,
+  `make test` (`1,578` passed), `make markdownlint`, and `make nixie`.
 
 ## Surprises & discoveries
 
@@ -1622,3 +1647,10 @@ what the generator draws; the delivered diff counts are recomputed against the
 current base; `Progress` records the assessment repairs, the rebase onto
 `main`, the CodeScene refactor, and the closure-assignment coverage. No
 accepted scope, decision, or milestone changes.
+
+2026-11-19: seventh revision after the hosted formal review. What changed: the
+rule-statement expression filter excludes `else`, and the new rejection is
+covered by a table row; ADR-0006 records the two unchanged-parse exceptions;
+the design document states body-assignment shadowing; the specification's worked
+`for` body uses `;`; parser module ownership moved to the repository layout.
+No accepted scope, decision, or milestone changes.

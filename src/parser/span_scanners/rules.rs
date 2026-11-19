@@ -133,6 +133,11 @@ pub(super) fn rule_statement(
             balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
             balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
             balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+            // Keywords that begin or continue statement structure end an
+            // expression statement. `else` belongs here with `if`: if the
+            // general loop consumed it, `if (c) a else b` would swallow its
+            // else branch into the then-branch expression, leaving the
+            // enclosing `if` with nothing to bind.
             filter(|kind: &SyntaxKind| {
                 !matches!(
                     kind,
@@ -141,6 +146,7 @@ pub(super) fn rule_statement(
                         | SyntaxKind::K_IF
                         | SyntaxKind::K_FOR
                         | SyntaxKind::K_SKIP
+                        | SyntaxKind::K_ELSE
                 )
             })
             .ignored()
