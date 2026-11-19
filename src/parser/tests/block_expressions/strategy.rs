@@ -230,11 +230,12 @@ enum RefToken {
 ///
 /// Returns `None` for a token outside the grammar, which the recognizer treats
 /// as a structural rejection. `;` is split off its neighbours first, because
-/// the parser is whitespace-insensitive there: a generated `{a; }` must reach
+/// the parser is whitespace-insensitive there: a generated `{ a; }` must reach
 /// the same state as `{ a ; }`. Braces stay attached when no whitespace
-/// separates them, so only [`differential_block_sources`] — whose renderer
-/// always spaces braces and items — may rely on this tokenizer; the structural
-/// fuzz needs no model and is unaffected.
+/// separates them, so `{a; }` is not recognized. Only
+/// [`differential_block_sources`] — whose renderer always spaces braces and
+/// items — may rely on this tokenizer; the structural fuzz needs no model and
+/// is unaffected.
 fn tokenize(source: &str) -> Option<Vec<RefToken>> {
     source
         .replace(';', " ; ")

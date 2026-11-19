@@ -212,21 +212,23 @@ The completeness assessment of 2026-11-18 asked for the disposition of the two
 triggers this plan crossed. Both were observed after the fact and are recorded
 here rather than left implicit in `Progress`.
 
-- **Code volume.** The delivered diff is 44 code files and 3,112 net added
-  lines against the 30-file, 1,600-line limit, an overage of 14 files and 1,512
-  lines. Documentation is 10 files and 828 net lines, inside the 15-file and
-  1,200-line limits. Both counts use the tolerance base and method
-  (`git diff --numstat 98f9b5d..HEAD -- . ':!docs/execplans/'`, classified by
-  path, with the stats-only expression fixtures under `src/parser/tests`
-  counted as code). The earlier figures of 2,716 and 767 lines were measured
-  against the pre-rebase base and head and are superseded; the rebase onto
-  `main` added the rewritten fixtures from the upstream test reorganization.
-  The overage is concentrated in the rewritten expression fixtures (31 of the
-  44 files are tests), the two new block modules, and the rule-body scanner
-  rework. The user directed that the approved plan be carried to completion
-  without stopping, so implementation continued; this entry is the escalation
-  record, and the review of this pull request is where the overage is
-  dispositioned. No public API change beyond the interface tolerance was made.
+- **Code volume.** The delivered diff at head `c9d1ab27` is 44 code files and
+  3,120 net added lines against the 30-file, 1,600-line limit, an overage of 14
+  files and 1,520 lines. Documentation is 10 files and 835 net lines, inside
+  the 15-file and 1,200-line limits. Both counts use the tolerance base and
+  method (`git diff --numstat 98f9b5d..HEAD -- . ':!docs/execplans/'`,
+  classified by path, with the stats-only expression fixtures under
+  `src/parser/tests` counted as code). Earlier measurements are superseded:
+  `2,716`/`767` lines were taken against the pre-rebase base and head, and
+  `3,112`/`828` against head `5cf8cb29` before the second assessment repairs.
+  The rebase onto `main` added the rewritten fixtures from the upstream test
+  reorganization. The overage is concentrated in the rewritten expression
+  fixtures (31 of the 44 files are tests), the two new block modules, and the
+  rule-body scanner rework. The user directed that the approved plan be carried
+  to completion without stopping, so implementation continued; this entry is
+  the escalation record, and the review of this pull request is where the
+  overage is dispositioned. No public API change beyond the interface tolerance
+  was made.
 - **Grammar.** `validate_expression` now rejects `return` in every rule-body
   literal through `parse_rule_body_expression`, including a literal outside
   braces such as `y = return x`, which was previously accepted. Rule-body
@@ -404,19 +406,19 @@ here rather than left implicit in `Progress`.
 - [x] (2026-11-19) Second completeness follow-up. CodeRabbit's second
   whole-plan pass (`ddlint-2.6.8-completeness-2026-11-19-followup`) confirmed
   the two repaired gaps and raised three evidence gaps, all now closed. The
-  delivered diff against the current base is `44` code files and `3,112` net
-  lines, and `10` documentation files and `828` net lines;
-  `Recorded deviations` carries those figures and labels the earlier
-  `2,716`/`767` counts as superseded. `V-B5` no longer claims the generator
-  draws `and` or `else if`; the named tables cover those forms instead, which
-  is what the methods section already said. The reference recognizer's comment
-  now states that only `;` is split from its neighbours, so only the
-  differential generator — which always spaces braces — may rely on that
-  tokenizer. The users' guide records that `Expr::Block` adds a variant, so
-  exhaustive `Expr` matches must gain a `Block` arm, while `Expr::Group` and
-  `Expr::MapLit` remain. The rule-statement table gains closure-assignment rows
-  whose bodies contain `return`, directly and inside an `if`, so that case is
-  no longer untested; focused `rule_statement_tests` pass (`23`).
+  delivered diff at head `c9d1ab27` is `44` code files and `3,120` net lines,
+  and `10` documentation files and `835` net lines; `Recorded deviations`
+  carries those figures and labels the earlier `2,716`/`767` and `3,112`/`828`
+  measurements as superseded. `V-B5` no longer claims the generator draws `and`
+  or `else if`; the named tables cover those forms instead, which is what the
+  methods section already said. The reference recognizer's comment now states
+  that only `;` is split from its neighbours, so only the differential
+  generator — which always spaces braces — may rely on that tokenizer. The
+  users' guide records that `Expr::Block` adds a variant, so exhaustive `Expr`
+  matches must gain a `Block` arm, while `Expr::Group` and `Expr::MapLit`
+  remain. The rule-statement table gains closure-assignment rows whose bodies
+  contain `return`, directly and inside an `if`, so that case is no longer
+  untested; focused `rule_statement_tests` pass (`23`).
 
 ## Surprises & discoveries
 
