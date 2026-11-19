@@ -1588,3 +1588,10 @@ syntax gains roadmap 2.6.15 and register item 22 (`BG-D19`); the roadmap,
 register, and specification section 8.1 entries were created ahead of EP-M1,
 which now covers the ADR, design document, and register items 8, 10, and 15.
 Effect: implementation awaits approval of the plan itself.
+
+2026-11-19: sixth revision after the whole-plan completeness assessment. What
+changed: the two crossed tolerances are recorded under `Recorded deviations`;
+`V-B8` is implemented rather than amended, and the `V-B6` artefact states the
+eleven-token sweep and its `(16, 17)` split; `Progress` records the four
+assessment repairs, the rebase onto `main`, and the CodeScene refactor. No
+accepted scope, decision, or milestone changes.
