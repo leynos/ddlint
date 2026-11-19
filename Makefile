@@ -3,7 +3,8 @@
 .PHONY: help all clean test build release check lint typecheck fmt check-fmt \
         markdownlint spelling nixie tools \
         test-workflow-contracts test-clippy-policy interrogate \
-        lint-clippy lint-whitaker check-build-tools install-build-tools
+        lint-clippy lint-whitaker check-build-tools install-build-tools \
+        install-verus verus
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
@@ -41,6 +42,17 @@ WHITAKER_PACKAGES ?= --workspace
 
 UV ?= uv
 UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
+# The estate prover toolchain: one installer and runner, pinned by commit, so
+# every repository obtains Verus the same way. This literal is the only
+# `rust-prover-tools` revision the repository names; concordat's
+# `rust-prover-tooling` rule (PT-001) requires it to equal the estate pin.
+# `make verus` stays out of `make test` and `make lint`; the `Proofs` workflow
+# and an explicit local run are its only callers.
+PROVER_TOOLS_SOURCE ?= git+https://github.com/leynos/rust-prover-tools@592558f7183b554fc749696246984c5d7300d029
+PROVER_TOOLS ?= $(UV_ENV) $(UV) tool run --python 3.14 \
+	--from "$(PROVER_TOOLS_SOURCE)" prover-tools
+VERUS_FLAGS ?= --proof-file verus/smoke/main.rs
+VERUS_INSTALL_FLAGS ?=
 # The CV-005 CodeScene contracts live in shared-actions and run from a full
 # commit, so a fix is a pin bump. `.github/cv005.toml` holds this repository's
 # only parameters.
@@ -273,6 +285,20 @@ spelling: ## Enforce en-GB-oxendict spelling in Markdown prose
 
 nixie: ## Validate Mermaid diagrams
 	find . -type f -name '*.md' -not -path './target/*' -not -path './.uv-cache/*' -not -path './.uv-tools/*' -print0 | xargs -0 $(NIXIE)
+
+# Prover provisioning and proof runs delegate to the pinned `prover-tools`
+# CLI. Installation, checksum verification and toolchain selection live there,
+# not in this repository, so these targets stay thin. Diagnostics go to
+# standard error; the proof's own output and exit status pass through.
+install-verus: ## Install the pinned Verus release for local proof runs
+	@printf 'prover-tools: source=%s\n' '$(PROVER_TOOLS_SOURCE)' >&2
+	@printf 'prover-tools: target=install-verus\n' >&2
+	@$(PROVER_TOOLS) verus install $(VERUS_INSTALL_FLAGS)
+
+verus: ## Run the Verus proofs (outside test and lint)
+	@printf 'prover-tools: source=%s\n' '$(PROVER_TOOLS_SOURCE)' >&2
+	@printf 'prover-tools: target=verus\n' >&2
+	@$(PROVER_TOOLS) verus run $(VERUS_FLAGS)
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \

@@ -1,4 +1,6 @@
 target/
+.verus/
+.cache/
 **/*.rs.bk
 Cargo.lock
 .crush/
