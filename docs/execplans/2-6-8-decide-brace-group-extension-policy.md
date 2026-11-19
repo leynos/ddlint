@@ -212,11 +212,17 @@ The completeness assessment of 2026-11-18 asked for the disposition of the two
 triggers this plan crossed. Both were observed after the fact and are recorded
 here rather than left implicit in `Progress`.
 
-- **Code volume.** The delivered diff is 44 code files and 2,716 net added
-  lines against the 30-file, 1,600-line limit, an overage of 14 files and 1,116
-  lines. Documentation is 10 files and 767 net lines, inside its own limit. The
-  overage is concentrated in the rewritten expression fixtures (31 of the 44
-  files are tests), the two new block modules, and the rule-body scanner
+- **Code volume.** The delivered diff is 44 code files and 3,112 net added
+  lines against the 30-file, 1,600-line limit, an overage of 14 files and 1,512
+  lines. Documentation is 10 files and 828 net lines, inside the 15-file and
+  1,200-line limits. Both counts use the tolerance base and method
+  (`git diff --numstat 98f9b5d..HEAD -- . ':!docs/execplans/'`, classified by
+  path, with the stats-only expression fixtures under `src/parser/tests`
+  counted as code). The earlier figures of 2,716 and 767 lines were measured
+  against the pre-rebase base and head and are superseded; the rebase onto
+  `main` added the rewritten fixtures from the upstream test reorganization.
+  The overage is concentrated in the rewritten expression fixtures (31 of the
+  44 files are tests), the two new block modules, and the rule-body scanner
   rework. The user directed that the approved plan be carried to completion
   without stopping, so implementation continued; this entry is the escalation
   record, and the review of this pull request is where the overage is
@@ -395,6 +401,22 @@ here rather than left implicit in `Progress`.
   changes: the plan's recorded decision stands (no Verus or Kani for this
   item), and the Verus resolution kernel remains roadmap 3.3.6 work, so
   `proofs.yml`'s path filters need no update here.
+- [x] (2026-11-19) Second completeness follow-up. CodeRabbit's second
+  whole-plan pass (`ddlint-2.6.8-completeness-2026-11-19-followup`) confirmed
+  the two repaired gaps and raised three evidence gaps, all now closed. The
+  delivered diff against the current base is `44` code files and `3,112` net
+  lines, and `10` documentation files and `828` net lines;
+  `Recorded deviations` carries those figures and labels the earlier
+  `2,716`/`767` counts as superseded. `V-B5` no longer claims the generator
+  draws `and` or `else if`; the named tables cover those forms instead, which
+  is what the methods section already said. The reference recognizer's comment
+  now states that only `;` is split from its neighbours, so only the
+  differential generator — which always spaces braces — may rely on that
+  tokenizer. The users' guide records that `Expr::Block` adds a variant, so
+  exhaustive `Expr` matches must gain a `Block` arm, while `Expr::Group` and
+  `Expr::MapLit` remain. The rule-statement table gains closure-assignment rows
+  whose bodies contain `return`, directly and inside an `if`, so that case is
+  no longer untested; focused `rule_statement_tests` pass (`23`).
 
 ## Surprises & discoveries
 
@@ -752,13 +774,13 @@ unit. The representation relation `R` maps it to
 - `V-B4` (braces versus parentheses): braces never produce `Group`;
   parentheses never produce `Block`.
 - `V-B5` (parse correspondence): for item sources drawn from the
-  generator's grammar (identifiers, literals, `+`, `and`, calls, tuples,
-  parenthesized sequences, nested blocks, `[k -> v]` maps, and the tails
-  `if`/`else`, `else if`, `for`, pipe closures, `return`), parsing
-  `{ s1; …; sn[;] }` yields `Expr::Block(from_items([ê1 … ên], t))`, where `êi`
-  is built independently by the generator. Sketch: induction on `n`; each item
-  stops at the next `;` or `}` because the `;`-terminates state is set,
-  inherited by every tail, and cleared and restored at every delimiter.
+  generator's grammar (identifiers, literals, `+`, calls, tuples, parenthesized
+  sequences, nested blocks, `[k -> v]` maps, and the tails `if`/`else`, `for`,
+  pipe closures, `return`), parsing `{ s1; …; sn[;] }` yields
+  `Expr::Block(from_items([ê1 … ên], t))`, where `êi` is built independently by
+  the generator. Sketch: induction on `n`; each item stops at the next `;` or
+  `}` because the `;`-terminates state is set, inherited by every tail, and
+  cleared and restored at every delimiter.
 - `V-B6` (follow classification is total):
   `classify_block_follow(position, kind)` over positions {opening, after item,
   after separator} and every `SyntaxKind` plus end of input yields exactly one
@@ -790,7 +812,8 @@ unit. The representation relation `R` maps it to
   over 256 draws from `TestRunner::deterministic()` and asserts each count is
   at least 5; the observed counts are recorded in `Artefacts and notes`. Named
   `rstest` tables give one witness per class, including the `match`,
-  assignment, and `else if` forms the generator does not draw.
+  assignment, and `else if` forms, and the `and` binary operator, which the
+  generator does not draw.
 - `V-B6`: amended during implementation. The classifier distinguishes only
   the close brace, the separator, and an enclosing delimiter among concrete
   tokens, so the test sweeps an eleven-token corpus (end of input, `{`, `}`,
@@ -1592,6 +1615,8 @@ Effect: implementation awaits approval of the plan itself.
 2026-11-19: sixth revision after the whole-plan completeness assessment. What
 changed: the two crossed tolerances are recorded under `Recorded deviations`;
 `V-B8` is implemented rather than amended, and the `V-B6` artefact states the
-eleven-token sweep and its `(16, 17)` split; `Progress` records the four
-assessment repairs, the rebase onto `main`, and the CodeScene refactor. No
+eleven-token sweep and its `(16, 17)` split; the `V-B5` generator list matches
+what the generator draws; the delivered diff counts are recomputed against the
+current base; `Progress` records the assessment repairs, the rebase onto
+`main`, the CodeScene refactor, and the closure-assignment coverage. No
 accepted scope, decision, or milestone changes.

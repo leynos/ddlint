@@ -58,6 +58,11 @@ fn rule_statement_parses_control_flow(#[case] src: &str) {
     "R(x) :- 1 + { y = obj.field; y }, Use(x).",
     &["1 + { y = obj.field; y }", "Use(x)"]
 )]
+#[case("R(x) :- Atom(x), var f = |v| return v.", &["Atom(x)", "var f = |v| return v"])]
+#[case(
+    "R(x) :- Atom(x), var f = |v| if v { return v } else { 0 }.",
+    &["Atom(x)", "var f = |v| if v { return v } else { 0 }"]
+)]
 #[case("R(x) :- { x }, Other(x).", &["{ x }", "Other(x)"])]
 #[case("R(x) :- { x } + 2, Other(x).", &["{ x } + 2", "Other(x)"])]
 fn assignment_with_block_rhs_scans_one_rule(#[case] src: &str, #[case] expected_terms: &[&str]) {

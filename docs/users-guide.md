@@ -51,6 +51,13 @@ unreleased changes. The block and bracket literal rules in
 describe the syntax this guide documents, including that `{k: v}` is a block
 ascription rather than a map literal.
 
+Braces in expression-prefix position now parse as `Expr::Block`, which adds an
+`Expr` variant and so affects code that matches `Expr` exhaustively. `Expr` has
+no `#[non_exhaustive]` attribute, so such a match must gain a `Block` arm to
+compile. No variant is removed: `Expr::Group` still carries parenthesized
+groups and statement sequences outside braces, and `Expr::MapLit` still carries
+bracket maps.
+
 ## Planned CLI configuration
 
 The CLI remains a placeholder. Roadmap item 5.1.5 defines the configuration
