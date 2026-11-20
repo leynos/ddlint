@@ -444,6 +444,22 @@ here rather than left implicit in `Progress`.
   on the repaired candidate: focused `rule_statement_tests` (`24`) and
   `block_expressions` (`61`); `make check-fmt`, `make typecheck`, `make lint`,
   `make test` (`1,578` passed), `make markdownlint`, and `make nixie`.
+- [x] (2026-11-20) Seventh-round review triage. Automatic review had paused
+  after `464c9020`; a queued `@coderabbitai review` resumed it on `648adccc`
+  and the review completed with no new inline findings. Its status reads
+  `Review completed` and the review decision is `APPROVED`; the pre-merge table
+  reads 13 passed and one warning, the User-Facing Documentation row already
+  dispositioned by the recorded decision of 2026-11-17. The review's remaining
+  actionable item was a Testing (Compile-Time / Ui) coverage gap:
+  `tests/ui/const_api_pass.rs` now imports `BlockExpr`, binds
+  `ends_with_semicolon()` in a const item, and lists
+  `BlockExpr::ends_with_semicolon` in its covered-API comment. The workspace
+  lint baseline denies `missing_const_for_fn`, and the fixture is a `trybuild`
+  pass case, so removing `const` from the method makes it fail. Focused
+  `cargo test --test const_api_compile` passes (`1` passed), and the six gates
+  pass on the candidate: `make check-fmt`, `make typecheck`, `make lint`,
+  `make test` (`1,578` passed; doctests `1` passed, `2` ignored),
+  `make markdownlint`, and `make nixie`.
 
 ## Surprises & discoveries
 

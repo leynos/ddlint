@@ -19,14 +19,15 @@
 //! - `RuleCtx::config`;
 //! - `Parsed::green`;
 //! - `Parsed::root`;
-//! - `PrimaryKey::expression`.
+//! - `PrimaryKey::expression`;
+//! - `BlockExpr::ends_with_semicolon`.
 
 use ddlint::{
     DiagnosticCategory,
     ParseAttemptContext,
     Parsed,
     linter::{LintDiagnostic, RuleConfigValue, RuleCtx},
-    parser::ast::{PrimaryKey, StringKind, StringLiteral},
+    parser::ast::{BlockExpr, PrimaryKey, StringKind, StringLiteral},
     sema::{SymbolOrigin, UseOrigin},
 };
 
@@ -69,7 +70,23 @@ const _: () = assert!(matches!(ATTEMPT_CATEGORY, DiagnosticCategory::Parser));
 const _: () = assert!(ATTEMPT_COUNT == 2);
 const _: () = assert!(IS_RELATION_READ);
 const _: () = assert!(IS_WARNING_ELIGIBLE);
+
+/// A block's trailing-separator flag is inspectable at compile time.
+const BLOCK_ENDS_WITH_SEMICOLON: bool = {
+    let block = BlockExpr {
+        statements: Vec::new(),
+        value: None,
+    };
+    let ends_with_semicolon = block.ends_with_semicolon();
+    // `BlockExpr` owns a `Vec`, whose destructor cannot run during const
+    // evaluation (`const_destruct` is unstable), so leak the temporary.
+    core::mem::forget(block);
+    ends_with_semicolon
+};
+
 const _: () = assert!(IS_INTERPOLATED);
+// An empty block has no trailing `;`, so the flag is false.
+const _: () = assert!(!BLOCK_ENDS_WITH_SEMICOLON);
 
 /// Diagnostic accessors are callable from a `const fn`.
 const fn check_diagnostic(diagnostic: &LintDiagnostic) {
