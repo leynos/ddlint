@@ -35,6 +35,13 @@ const BP_ASSIGN: u8 = 8;
 const BP_IMPLY: u8 = 5;
 const BP_SEQ: u8 = 0;
 
+/// Minimum binding power for an item inside a brace-delimited block.
+///
+/// Block items are parsed one above [`BinaryOp::Seq`] so the block parser, not
+/// the infix loop, owns `;`. Operator right-hand sides use higher binding
+/// powers, so they remain unaffected.
+pub(crate) const BLOCK_ITEM_MIN_BP: u8 = BP_SEQ + 1;
+
 const PREFIX_TABLE: &[(SyntaxKind, PrefixEntry)] = &[
     (
         SyntaxKind::T_MINUS,

@@ -1,5 +1,6 @@
 //! Tests for the Pratt expression parser.
 
+mod characterization;
 mod fixtures;
 
 use fixtures::{

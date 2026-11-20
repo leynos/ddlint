@@ -120,6 +120,176 @@ Relation primary-key suffix parsing and recovery live in the private
 entrypoints reuse the existing cursor helpers; the module belongs only to the
 relation scanner and adds no public API.
 
+## Parser module ownership
+
+Each parser module owns the responsibilities named here. The conventions those
+modules share, including delimiter and block-state rules, live in the
+[developer's guide](developers-guide.md#boundary-rules).
+
+### `src/parser/ast/expr/block.rs`
+
+- Owns `BlockExpr`, the brace-delimited block value stored in
+  `Expr::Block`.
+- `statements` holds items followed by `;`; `value` holds the final item when
+  it is not followed by `;`, so `None` means the block yields unit.
+- `from_items` is the only constructor that applies the trailing-separator
+  rule; `items()` and `into_items()` are the only traversal order.
+- Keeps block-shape concerns out of `expr/mod.rs`, which owns the `Expr`
+  variants themselves.
+
+### `src/parser/expression/block.rs`
+
+- Owns block item parsing: `parse_block`, `parse_block_items`,
+  `finish_block`, and the private `classify_block_follow` classifier.
+- Reads every item at `BLOCK_ITEM_MIN_BP` so an item cannot swallow the
+  following `;`, and owns the empty-item and missing-separator diagnostics
+  through `error_messages.rs` constants.
+- Should remain the only place that maps `ItemPosition` and the next token to
+  a block action; callers should not duplicate that classification.
+
+### `src/parser/expression/pratt/mod.rs`
+
+- Owns the Pratt parser entry points. `parse_expression` parses a free
+  expression; `parse_rule_body_expression` parses a rule-body literal and
+  rejects `return`, which a rule body cannot honour.
+- The rule-body context lives in `Pratt::in_rule_body` and is entered only
+  through `parse_rule_body_expression`. A closure body restores legality with
+  `with_closure_body_scope`, which clears the flag for the body and restores
+  the previous value afterwards, so a closure nested in a rule body keeps
+  `return` while the surrounding literal still rejects it.
+- `src/parser/expression_span.rs` validates rule-body literals through
+  `parse_rule_body_expression`, so both the span-scanner path and the
+  expression path report once, at the `return` keyword.
+
+### `src/parser/ast/expr/sexpr.rs`
+
+- Owns S-expression rendering helpers for `Expr`.
+- Supports test and fixture comparisons without coupling callers to debug
+  formatting.
+- Should remain presentation-only; parsing and semantic classification belong
+  elsewhere.
+
+### `src/parser/ast/rule/classification.rs`
+
+- Owns rule-body term classification for raw literals.
+- Handles assignment parsing, aggregation detection, and `for`-loop lowering
+  within the rule-body helper path.
+- Keeps rule-body classification separate from the public `Rule` wrapper so
+  `rule/mod.rs` stays focused on the surface API.
+
+### `src/parser/span_scanners/rules_assign.rs`
+
+- Owns the assignment alternative of the rule-body scanner: `lhs = rhs`, where
+  the right-hand side may begin with `if`, `for`, or `skip`.
+- Exists because the flat expression loop stops at those keywords; without it,
+  `var y = if x > 1 { x } else { 0 }` scans as a left-hand side followed by a
+  separate statement. Keyword statements are tried first, so a leading `if` or
+  `for` keeps its own grammar.
+- Scans each delimiter on the left-hand side as a balanced unit, so an `=`
+  inside braces is not mistaken for the assignment separator.
+
+### `src/parser/ast/relation/mod.rs`
+
+- Owns the typed relation declaration surface for role, kind, ref marker, and
+  body form.
+- Treats `role()` and `kind()` as the canonical APIs for new code.
+  `is_input()` and `is_output()` are derived helpers kept for callers that only
+  need role predicates.
+- Uses `role_keyword_present()` and `kind_keyword_present()` when callers need
+  source-fidelity rather than the defaulted semantic value.
+- Exposes declaration-level reference relations through `is_ref()`. Do not
+  infer ref status from raw `&` tokens in downstream callers.
+- Exposes `body()`, `element_type()`, `columns()`, and `primary_key()` as
+  fallible queries returning `Result<_, RelationParseErrors>`. A valid record
+  body yields `Ok(RelationBody::Fields(..))` with `element_type()` as
+  `Ok(None)`; a valid bracket body yields `Ok(RelationBody::ElementType(..))`
+  with `columns()` as `Ok(Vec::new())`. Malformed or missing bodies return
+  `Err(..)` rather than an empty `Fields` vector, so direct AST querying stays
+  reliable for malformed or synthetic nodes.
+- Exposes `primary_key()` as the only supported way to read a key clause; it
+  returns `PrimaryKey`, whose `binders()`, `binder_names()`, `span()`, and
+  `expression()` cover the binder list, the clause span, and the optional
+  spec-form expression. `PrimaryKeyExpression::parse()` parses the preserved
+  text lazily with source-absolute error spans. Lint rules must not re-tokenize
+  relation declaration text themselves; extend this surface instead.
+  `Parsed::errors()` remains the parser-level diagnostic channel.
+
+### `src/parser/span_scanners/relations/mod.rs`
+
+- Owns top-level relation-candidate discovery, declaration orchestration,
+  record and bracket body parsing, primary-key validation,
+  relation-versus-rule/fact disambiguation, span collection, and recovery.
+- Applies delimiter-depth-aware line-start filtering, so only genuine top-level
+  declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
+- Produces relation declaration spans for CST construction;
+  `src/parser/ast/relation/mod.rs` then exposes the typed AST accessors over
+  the resulting nodes.
+
+### `src/parser/span_scanners/relations/cursor.rs`
+
+- Owns shared cursor movement, trivia handling, token inspection, and
+  balanced-delimiter traversal (including delimiter-stack maintenance) for the
+  relation scanner.
+- Holds no grammar decisions; those remain in `relations/mod.rs`.
+
+### `src/parser/span_scanners/relations/preamble.rs`
+
+- Parses only the optional role/kind preamble keywords and enforces
+  `D-REL-001`, `D-REL-002`, and `D-REL-003`.
+- Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
+  and recovery in `relations/mod.rs`.
+
+### `src/parser/span_scanners/typedefs.rs`
+
+- Collects spans for `type` and `extern type` declarations; it finds statement
+  boundaries rather than validating the complete type grammar. A top-level
+  semicolon or newline ends a span, while nested delimiters keep internal
+  newlines within it.
+- Reuses `TypeDepths` and `adjust_type_depths` from
+  `src/parser/span_scanners/indexes_support.rs` to track `()`, `[]`, `{}`, and
+  `<>`; `>>` closes two angle levels. This support is shared with the index
+  scanner. Legacy `typedef` diagnostics remain owned by
+  `src/parser/reserved_tokens.rs`.
+
+### `src/parser/expression/pratt/postfix.rs`
+
+- Owns postfix dispatch for the Pratt parser.
+- Routes function calls, bit slices, field access, tuple indexing, method
+  calls, and delay postfixes to the appropriate helper.
+- Coordinates the pending diff-marker state across the postfix chain.
+
+### `src/parser/expression/pratt/diff.rs`
+
+- Owns diff-marker tracking and validation.
+- Wraps completed postfix expressions in `Expr::AtomDiff` when a diff marker
+  is pending.
+- Emits the targeted diagnostics for duplicate, misplaced, or dangling diff
+  markers.
+
+### `src/parser/expression/pratt/delay.rs`
+
+- Owns `expr -<N>` postfix parsing.
+- Consumes the `-<` token pair, reads the delay literal, and returns
+  `Expr::AtomDelay` on success.
+- Keeps delay-specific validation separate from the generic postfix loop.
+
+### `src/parser/expression/pattern_collection.rs`
+
+- Owns the shared pattern-collection context for `match` arms and `for`
+  headers. A `PatternContext` carries a `PatternSite` (`MatchArm` or `ForLoop`)
+  and supplies the diagnostics and delimiter rules for that site.
+- Builds the context with `for_match_pattern()` or `for_for_loop_pattern()`.
+  A match arm ends at `->`; a for-loop header ends at `in`.
+- Applies site-specific behaviour through `validate_on_eof()` and
+  `use_for_paren()`, which are true only for a for-loop pattern. An unbalanced
+  for-loop header is therefore diagnosed before the missing `in`, and the
+  `for (x) in xs` form is accepted.
+- Renders site-specific text through `missing_terminator_msg()`,
+  `unmatched_delimiter_msg()`, and `unexpected_end_msg()`.
+- Defines `DelimiterKind` (`Paren`, `Brace`, `Bracket`).
+  `unmatched_delimiter_msg()` takes it to name the offending delimiter in the
+  site's message.
+
 ## Documentation layout
 
 The `docs/` directory is the source of truth for project context that should

@@ -13,7 +13,7 @@ use crate::{
     SyntaxKind,
     parser::{
         delimiter::find_top_level_eq_span,
-        expression::parse_expression,
+        expression::parse_rule_body_expression,
         pattern::parse_pattern,
         span_utils::{shift_errors, trim_byte_range},
     },
@@ -241,16 +241,18 @@ pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Expressio
                 "expected expression after '=' in rule literal",
             )]));
         }
-        return parse_expression(rhs_trimmed).map(|_| ()).map_err(|errs| {
-            ExpressionError::Parse(shift_errors(
-                errs,
-                base_offset
-                    .saturating_add(eq_span.end)
-                    .saturating_add(rhs_start),
-            ))
-        });
+        return parse_rule_body_expression(rhs_trimmed)
+            .map(|_| ())
+            .map_err(|errs| {
+                ExpressionError::Parse(shift_errors(
+                    errs,
+                    base_offset
+                        .saturating_add(eq_span.end)
+                        .saturating_add(rhs_start),
+                ))
+            });
     }
-    parse_expression(text)
+    parse_rule_body_expression(text)
         .map(|_| ())
         .map_err(|errs| ExpressionError::Parse(shift_errors(errs, base_offset)))
 }

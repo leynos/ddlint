@@ -2,7 +2,18 @@
 //! collection literals.
 
 use super::pratt::Pratt;
-use crate::{Span, SyntaxKind, parser::ast::Expr};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::Expr,
+        error_messages::{
+            EMPTY_VECTOR_LITERAL_ERROR,
+            MISSING_MAP_ARROW_ERROR,
+            MIXED_COLLECTION_ENTRY_ERROR,
+        },
+    },
+};
 
 /// Shape of a comma-separated identifier list.
 ///
@@ -31,9 +42,14 @@ where
 
         if !self.allows_struct_literals() {
             let next_kind = self.ts.peek_nth_kind(1);
-            let colon_kind = self.ts.peek_nth_kind(2);
-            let looks_like_struct = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
-                || matches!(colon_kind, Some(SyntaxKind::T_COLON));
+            let after_next_kind = self.ts.peek_nth_kind(2);
+            // `ident {}` is only suspicious when another `{` follows, as in
+            // `if x == Foo{} { a }`. Without that lookahead `if ready {}`
+            // must fall through to the branch block.
+            let brace_brace = matches!(next_kind, Some(SyntaxKind::T_RBRACE))
+                && matches!(after_next_kind, Some(SyntaxKind::T_LBRACE));
+            let looks_like_struct =
+                brace_brace || matches!(after_next_kind, Some(SyntaxKind::T_COLON));
             if looks_like_struct {
                 self.ts.push_error(
                     span.clone(),
@@ -56,7 +72,7 @@ where
             self.ts.next_tok();
             return Some(Expr::Tuple(Vec::new()));
         }
-        self.with_struct_literals_suspended(|this| {
+        self.with_nested_delimiter_scope(|this| {
             let (mut items, is_tuple) = this.parse_parenthesized_items()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
@@ -65,8 +81,8 @@ where
                 Some(Expr::Tuple(items))
             } else {
                 // Parser invariant: the group contains exactly one item, so
-                // `pop` always succeeds; propagate `None` rather than panic
-                // if the invariant is ever broken.
+                // `pop` always succeeds; propagate `None` rather than panic if
+                // the invariant is ever broken.
                 let item = items.pop()?;
                 Some(Expr::Group(Box::new(item)))
             }
@@ -92,143 +108,108 @@ where
         Some((items, is_tuple))
     }
 
-    /// Parse a vector literal `[e1, e2, ...]`.
+    /// Parse a bracket literal: a vector `[e1, …]` or a map `[k1 -> v1, …]`.
     ///
-    /// Supports trailing commas and empty vectors. The opening bracket has
-    /// already been consumed by the prefix dispatcher.
+    /// Both forms require at least one item and allow a trailing comma,
+    /// mirroring upstream `evec_literal` and `emap_literal`. The form is chosen
+    /// by whether the first item is followed by `->`; a literal that mixes the
+    /// two forms is rejected at the first offending item. The opening bracket
+    /// has already been consumed by the prefix dispatcher.
     pub(super) fn parse_vector_literal(&mut self) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
-            self.ts.next_tok();
-            return Some(Expr::VecLit(Vec::new()));
+            let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            self.ts.push_error(span, EMPTY_VECTOR_LITERAL_ERROR);
+            return None;
         }
 
-        self.with_struct_literals_suspended(|this| {
-            let items = this.parse_comma_separated_expressions(SyntaxKind::T_RBRACKET)?;
-            if !this.ts.expect(SyntaxKind::T_RBRACKET) {
+        self.with_nested_delimiter_scope(|this| {
+            let first = this.parse_expr(0)?;
+            if matches!(this.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
+                this.parse_bracket_map_entries(first)
+            } else {
+                this.parse_bracket_vector_items(first)
+            }
+        })
+    }
+
+    /// Parse the remaining elements of a bracket vector after its first item.
+    ///
+    /// A later item followed by `->` would mix the two literal forms, which
+    /// upstream cannot express; report it at that item's first token.
+    fn parse_bracket_vector_items(&mut self, first: Expr) -> Option<Expr> {
+        let mut items = vec![first];
+        while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
+            self.ts.next_tok();
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
+                break;
+            }
+            let item_start = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+            items.push(self.parse_expr(0)?);
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_ARROW)) {
+                self.ts.push_error(item_start, MIXED_COLLECTION_ENTRY_ERROR);
                 return None;
             }
-            Some(Expr::VecLit(items))
-        })
-    }
-
-    /// Parse either a map literal `{k: v, ...}` or a brace group `{ expr }`.
-    ///
-    /// Disambiguation:
-    /// - `{}` → empty map
-    /// - `{ expr }` → brace group (backward compatible)
-    /// - `{ expr: expr, ... }` → map literal
-    ///
-    /// The opening brace has already been consumed by the prefix dispatcher.
-    ///
-    /// Map keys are parsed in "colon-terminates" mode where `:` stops parsing
-    /// rather than being consumed as type ascription. This allows keys like
-    /// `a and b` in `{a and b: 1}` to be correctly parsed.
-    pub(super) fn parse_brace_or_map_literal(&mut self) -> Option<Expr> {
-        // Handle empty map `{}`
-        if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-            self.ts.next_tok();
-            return Some(Expr::MapLit(Vec::new()));
         }
-
-        self.with_struct_literals_suspended(|this| {
-            // Parse first key/expression in map-key mode (`:` terminates)
-            let first_key = this.parse_map_key_expr(0)?;
-
-            match this.ts.peek_kind() {
-                // Colon after expression → map literal
-                Some(SyntaxKind::T_COLON) => this.parse_map_entries(first_key),
-
-                // Single expression followed by `}` → brace group
-                Some(SyntaxKind::T_RBRACE) => {
-                    this.ts.next_tok();
-                    Some(Expr::Group(Box::new(first_key)))
-                }
-
-                // Comma without colon → error (looks like malformed map literal)
-                Some(SyntaxKind::T_COMMA) => {
-                    let sp = this.ts.peek_span().unwrap_or_else(|| this.ts.eof_span());
-                    this.ts
-                        .push_error(sp, "expected ':' for map literal or '}' for brace group");
-                    None
-                }
-
-                // Something else (unexpected token) → brace group with remaining expr
-                _ => this.parse_brace_group_continuation(first_key),
-            }
-        })
+        if !self.ts.expect(SyntaxKind::T_RBRACKET) {
+            return None;
+        }
+        Some(Expr::VecLit(items))
     }
 
-    /// Parse remaining map entries after detecting a colon following the first key.
+    /// Parse the remaining entries of a bracket map after its first key.
     ///
-    /// The first key has already been parsed. The caller has peeked a colon but
-    /// not yet consumed it.
-    fn parse_map_entries(&mut self, first_key: Expr) -> Option<Expr> {
-        self.ts.next_tok(); // consume ':'
+    /// The caller has just seen, but not consumed, the `->` after the first
+    /// key.
+    fn parse_bracket_map_entries(&mut self, first_key: Expr) -> Option<Expr> {
+        self.ts.next_tok(); // consume the '->' the caller saw
         let first_value = self.parse_expr(0)?;
         let mut entries = vec![(first_key, first_value)];
 
         while matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
             self.ts.next_tok();
-
-            // Handle trailing comma
-            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
+            if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACKET)) {
                 break;
             }
-
-            // Parse key in map-key mode (`:` terminates parsing)
-            let key = self.parse_map_key_expr(0)?;
-            if !self.ts.expect(SyntaxKind::T_COLON) {
-                return None;
-            }
-            let value = self.parse_expr(0)?;
-            entries.push((key, value));
+            entries.push(self.parse_bracket_map_entry()?);
         }
 
-        if !self.ts.expect(SyntaxKind::T_RBRACE) {
+        if !self.ts.expect(SyntaxKind::T_RBRACKET) {
             return None;
         }
         Some(Expr::MapLit(entries))
     }
 
-    /// Continue parsing a brace group after an unexpected token.
+    /// Parse one comma-separated map entry, starting at its key.
     ///
-    /// Since we parsed the first expression in map-key mode (which stops at `:`),
-    /// if we reach here with an unexpected token, we try to continue parsing as
-    /// a brace group by consuming remaining infix operators.
-    fn parse_brace_group_continuation(&mut self, first_expr: Expr) -> Option<Expr> {
-        // Continue parsing any remaining infix operators (with `:` as ascription now)
-        let full_expr = self.parse_infix(first_expr, 0)?;
-        if !self.ts.expect(SyntaxKind::T_RBRACE) {
-            return None;
-        }
-        Some(Expr::Group(Box::new(full_expr)))
+    /// `None` means the key is not followed by `->`; the diagnostic has
+    /// already been reported at the entry's first token.
+    fn parse_bracket_map_entry(&mut self) -> Option<(Expr, Expr)> {
+        let item_start = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
+        let key = self.parse_expr(0)?;
+        self.parse_map_arrow(item_start)?;
+        let value = self.parse_expr(0)?;
+        Some((key, value))
     }
 
-    /// Parse a comma-separated list of expressions up to (but not consuming)
-    /// `terminator`. Supports trailing commas.
-    fn parse_comma_separated_expressions(&mut self, terminator: SyntaxKind) -> Option<Vec<Expr>> {
-        let mut items = Vec::new();
-
-        if matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
-            return Some(items);
-        }
-
-        loop {
-            let expr = self.parse_expr(0)?;
-            items.push(expr);
-
-            if !matches!(self.ts.peek_kind(), Some(SyntaxKind::T_COMMA)) {
-                break;
-            }
+    /// Consume the `->` that separates a map key from its value.
+    ///
+    /// `None` means the arrow is missing, after reporting why at `item_start`.
+    /// A comma or `]` completes the item as a vector element, so the literal
+    /// mixes the two forms; anything else leaves the map entry itself
+    /// unfinished, with no second item to mix.
+    fn parse_map_arrow(&mut self, item_start: Span) -> Option<()> {
+        let next = self.ts.peek_kind();
+        if matches!(next, Some(SyntaxKind::T_ARROW)) {
             self.ts.next_tok();
-
-            // Handle trailing comma
-            if matches!(self.ts.peek_kind(), Some(k) if k == terminator) {
-                break;
-            }
+            return Some(());
         }
-
-        Some(items)
+        let message = if matches!(next, Some(SyntaxKind::T_COMMA | SyntaxKind::T_RBRACKET)) {
+            MIXED_COLLECTION_ENTRY_ERROR
+        } else {
+            MISSING_MAP_ARROW_ERROR
+        };
+        self.ts.push_error(item_start, message);
+        None
     }
 
     pub(super) fn parse_closure_literal(&mut self) -> Option<Expr> {
@@ -236,7 +217,9 @@ where
         if !self.ts.expect(SyntaxKind::T_PIPE) {
             return None;
         }
-        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let body = self.with_struct_literals_suspended(|this| {
+            this.with_closure_body_scope(|closure| closure.parse_expr(0))
+        })?;
         Some(Expr::Closure {
             params,
             body: Box::new(body),
@@ -265,7 +248,7 @@ where
                 if !parser.ts.expect(SyntaxKind::T_COLON) {
                     return None;
                 }
-                let value = parser.parse_expr(0)?;
+                let value = parser.with_nested_delimiter_scope(|p| p.parse_expr(0))?;
                 Some((name, value))
             },
         )

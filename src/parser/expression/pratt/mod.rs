@@ -34,38 +34,54 @@ where
     expr_depth: usize,
     /// Records contexts where bare struct literals should be disallowed or temporarily re-enabled.
     struct_literals: StructLiteralState,
+    /// When set, the infix loop stops at `;` instead of building
+    /// [`crate::parser::ast::BinaryOp::Seq`].
+    ///
+    /// Block items own their `;` separators. The mode is set while block
+    /// items are parsed and restored at every nested delimiter, whose `;`
+    /// remains the sequencing operator.
+    semicolon_terminates: bool,
+    /// When set, `return` is rejected because the expression is a rule-body
+    /// literal.
+    ///
+    /// A rule body has no return value, so the spec forbids `return` there.
+    /// Closure bodies clear the flag because they are function bodies for this
+    /// purpose.
+    in_rule_body: bool,
     /// Cache of parsed string literals keyed by start offset to avoid re-parsing.
     pub(super) string_literal_cache: HashMap<usize, StringLiteral>,
 }
 
 #[derive(Default)]
 struct StructLiteralState {
-    /// Active contexts where bare struct literals must be disabled (for example `if` conditions).
-    active: usize,
-    /// Nesting depth that temporarily suspends the guard for disambiguated sub-expressions.
-    suspension: usize,
+    /// Suspension depth for each active guard, innermost last.
+    ///
+    /// Suspension is recorded per guard level: a block or delimiter that
+    /// suspends an outer guard must not re-enable struct literals inside a
+    /// nested control-flow condition, where `ident {` is ambiguous again.
+    suspensions: Vec<usize>,
 }
 
 impl StructLiteralState {
-    const fn activate(&mut self) { self.active += 1; }
+    fn activate(&mut self) { self.suspensions.push(0); }
 
     fn deactivate(&mut self) {
         // The guard depth must not underflow; saturate rather than panic if
         // the scopes are ever unbalanced.
-        debug_assert!(self.active > 0, "struct literal guard underflow");
-        self.active = self.active.saturating_sub(1);
-        if self.active == 0 {
-            self.suspension = 0;
-        }
+        debug_assert!(
+            !self.suspensions.is_empty(),
+            "struct literal guard underflow"
+        );
+        self.suspensions.pop();
     }
 
     /// Suspend an active struct-literal guard, returning `false` when none is
     /// active so the caller knows the guard was not suspended.
-    const fn suspend(&mut self) -> bool {
-        if self.active == 0 {
+    fn suspend(&mut self) -> bool {
+        let Some(suspension) = self.suspensions.last_mut() else {
             return false;
-        }
-        self.suspension += 1;
+        };
+        *suspension += 1;
         true
     }
 
@@ -73,15 +89,17 @@ impl StructLiteralState {
         // The suspension depth must not underflow; saturate rather than
         // panic if the scopes are ever unbalanced.
         debug_assert!(
-            self.suspension > 0,
+            matches!(self.suspensions.last(), Some(suspension) if *suspension > 0),
             "struct literal guard suspension underflow"
         );
-        self.suspension = self.suspension.saturating_sub(1);
+        if let Some(suspension) = self.suspensions.last_mut() {
+            *suspension = suspension.saturating_sub(1);
+        }
     }
 
     /// Return `true` when a `{` here may open a struct literal, which requires
-    /// either no active guard or a suspended one.
-    const fn allows_struct_literal(&self) -> bool { self.active == 0 || self.suspension > 0 }
+    /// either no active guard or a suspended innermost one.
+    fn allows_struct_literal(&self) -> bool { !matches!(self.suspensions.last(), Some(&0)) }
 }
 
 /// Parse a source string into an [`Expr`].
@@ -93,7 +111,26 @@ impl StructLiteralState {
 /// Returns a vector of [`Simple`] errors when parsing fails.
 #[must_use = "discarding the Result will ignore parse errors"]
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
+    parse_with_context(src, false)
+}
+
+/// Parse a rule-body literal into an [`Expr`], rejecting `return`.
+///
+/// A rule body has no return value, so `return` is only valid in a function or
+/// closure body. The diagnostic points at the `return` keyword inside any
+/// nested block, `if`, or loop, while a closure body still accepts it.
+///
+/// # Errors
+/// Returns a vector of [`Simple`] errors when parsing fails or `return`
+/// appears outside a closure body.
+#[must_use = "discarding the Result will ignore parse errors"]
+pub(crate) fn parse_rule_body_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
+    parse_with_context(src, true)
+}
+
+fn parse_with_context(src: &str, in_rule_body: bool) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let mut parser = Pratt::new(tokenize_without_trivia(src).into_iter(), src);
+    parser.in_rule_body = in_rule_body;
     let expr = parser.parse_expr(0);
     if expr.is_some() {
         for (kind, sp) in parser.ts.drain_unexpected_tokens() {
@@ -128,12 +165,33 @@ where
             ts: TokenStream::new(tokens, src),
             expr_depth: 0,
             struct_literals: StructLiteralState::default(),
+            semicolon_terminates: false,
+            in_rule_body: false,
             string_literal_cache: HashMap::new(),
         }
     }
 
-    pub(super) const fn allows_struct_literals(&self) -> bool {
+    pub(super) fn allows_struct_literals(&self) -> bool {
         self.struct_literals.allows_struct_literal()
+    }
+
+    /// Return `true` while `;` terminates infix parsing rather than forming a
+    /// sequencing expression.
+    pub(super) const fn semicolon_terminates(&self) -> bool { self.semicolon_terminates }
+
+    /// Return `true` when the expression is a rule-body literal.
+    pub(super) const fn in_rule_body(&self) -> bool { self.in_rule_body }
+
+    /// Run `f` for a closure body, where `return` is legal again.
+    ///
+    /// A closure is a function body for the purpose of the `return`
+    /// restriction, so the rule-body context ends at the `|…|` and resumes
+    /// after the body.
+    pub(super) fn with_closure_body_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        let previous = std::mem::replace(&mut self.in_rule_body, false);
+        let result = f(self);
+        self.in_rule_body = previous;
+        result
     }
 
     pub(super) fn with_struct_literals_suspended<R>(
@@ -193,16 +251,38 @@ where
         self.parse_infix(lhs, min_bp)
     }
 
-    /// Parse an expression in map-key mode where `:` terminates parsing.
+    /// Run `f` while parsing one block item.
     ///
-    /// This is used for map literal keys where `:` separates key from value
-    /// rather than being consumed as type ascription.
-    pub(super) fn parse_map_key_expr(&mut self, min_bp: u8) -> Option<Expr> {
-        self.with_depth_check(|this| {
-            let prefix = this.parse_prefix()?;
-            let lhs = this.parse_postfix(prefix)?;
-            this.parse_infix_with_colon_mode(lhs, min_bp, true)
-        })
+    /// A block item needs both states at once: `;` terminates the item so a
+    /// construct tail cannot swallow the separator, and struct literals stay
+    /// suspended because `{ ident :` inside a block starts a nested item
+    /// rather than a struct value.
+    pub(super) fn with_block_item_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.with_semicolon_scope(true, |this| this.with_struct_literals_suspended(f))
+    }
+
+    /// Run `f` inside a nested delimiter, whose contents are not block items.
+    ///
+    /// `;` sequences again and struct literals are allowed, so the two pieces
+    /// of block state are restored together at the delimiter.
+    pub(super) fn with_nested_delimiter_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.with_semicolon_scope(false, |this| this.with_struct_literals_suspended(f))
+    }
+
+    /// Run `f` for a `for`-loop guard.
+    ///
+    /// The guard is a control-flow prefix like an `if` condition, so the
+    /// struct-literal guard stays active: `ident {` there is a variable
+    /// followed by a block, not a struct literal (`BG-D6`).
+    pub(super) fn with_guard_expression_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.with_semicolon_scope(false, |this| this.with_struct_literal_activation(f))
+    }
+
+    fn with_semicolon_scope<R>(&mut self, terminates: bool, f: impl FnOnce(&mut Self) -> R) -> R {
+        let previous = std::mem::replace(&mut self.semicolon_terminates, terminates);
+        let result = f(self);
+        self.semicolon_terminates = previous;
+        result
     }
 
     /// Parse a type expression following `:` or `as`.

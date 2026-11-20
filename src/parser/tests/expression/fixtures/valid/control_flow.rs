@@ -9,6 +9,7 @@ use crate::{
         tests::expression::fixtures::ExpressionCase,
     },
     test_util::{
+        block,
         call,
         field,
         field_access,
@@ -46,8 +47,8 @@ fn basic_if_expression_cases() -> Vec<ExpressionCase> {
             src: "if x { y } else { z }",
             expected: if_expr(
                 var("x"),
-                Expr::Group(Box::new(var("y"))),
-                Some(Expr::Group(Box::new(var("z")))),
+                block(vec![], Some(var("y"))),
+                Some(block(vec![], Some(var("z")))),
             ),
         },
         ExpressionCase {
@@ -57,19 +58,19 @@ fn basic_if_expression_cases() -> Vec<ExpressionCase> {
                     "Point",
                     vec![field("x", lit_num("1"))],
                 ))),
-                Expr::Group(Box::new(var("y"))),
-                Some(Expr::Group(Box::new(var("z")))),
+                block(vec![], Some(var("y"))),
+                Some(block(vec![], Some(var("z")))),
             ),
         },
         ExpressionCase {
             src: "if flag { Point { x: 1 } } else { z }",
             expected: if_expr(
                 var("flag"),
-                Expr::Group(Box::new(struct_expr(
-                    "Point",
-                    vec![field("x", lit_num("1"))],
-                ))),
-                Some(Expr::Group(Box::new(var("z")))),
+                block(
+                    vec![],
+                    Some(struct_expr("Point", vec![field("x", lit_num("1"))])),
+                ),
+                Some(block(vec![], Some(var("z")))),
             ),
         },
         ExpressionCase {
@@ -80,8 +81,8 @@ fn basic_if_expression_cases() -> Vec<ExpressionCase> {
                     lhs: Box::new(var("a")),
                     rhs: Box::new(var("b")),
                 },
-                Expr::Group(Box::new(var("x"))),
-                Some(Expr::Group(Box::new(var("y")))),
+                block(vec![], Some(var("x"))),
+                Some(block(vec![], Some(var("y")))),
             ),
         },
         ExpressionCase {
@@ -92,11 +93,11 @@ fn basic_if_expression_cases() -> Vec<ExpressionCase> {
             src: "if cond { left } else if other { mid } else { right }",
             expected: if_expr(
                 var("cond"),
-                Expr::Group(Box::new(var("left"))),
+                block(vec![], Some(var("left"))),
                 Some(if_expr(
                     var("other"),
-                    Expr::Group(Box::new(var("mid"))),
-                    Some(Expr::Group(Box::new(var("right")))),
+                    block(vec![], Some(var("mid"))),
+                    Some(block(vec![], Some(var("right")))),
                 )),
             ),
         },
@@ -109,43 +110,52 @@ fn struct_if_expression_cases() -> Vec<ExpressionCase> {
             src: "if cond { Outer { inner: Inner { a: 1, b: 2 }, flag: true } } else { fallback }",
             expected: if_expr(
                 var("cond"),
-                Expr::Group(Box::new(struct_expr(
-                    "Outer",
-                    vec![
-                        field(
-                            "inner",
-                            struct_expr(
-                                "Inner",
-                                vec![field("a", lit_num("1")), field("b", lit_num("2"))],
+                block(
+                    vec![],
+                    Some(struct_expr(
+                        "Outer",
+                        vec![
+                            field(
+                                "inner",
+                                struct_expr(
+                                    "Inner",
+                                    vec![field("a", lit_num("1")), field("b", lit_num("2"))],
+                                ),
                             ),
-                        ),
-                        field("flag", lit_bool(true)),
-                    ],
-                ))),
-                Some(Expr::Group(Box::new(var("fallback")))),
+                            field("flag", lit_bool(true)),
+                        ],
+                    )),
+                ),
+                Some(block(vec![], Some(var("fallback")))),
             ),
         },
         ExpressionCase {
             src: "if ok { S { f: T { x: 1, y: U { z: 2 } }, g: 3 } } else { alt }",
             expected: if_expr(
                 var("ok"),
-                Expr::Group(Box::new(struct_expr(
-                    "S",
-                    vec![
-                        field(
-                            "f",
-                            struct_expr(
-                                "T",
-                                vec![
-                                    field("x", lit_num("1")),
-                                    field("y", struct_expr("U", vec![field("z", lit_num("2"))])),
-                                ],
+                block(
+                    vec![],
+                    Some(struct_expr(
+                        "S",
+                        vec![
+                            field(
+                                "f",
+                                struct_expr(
+                                    "T",
+                                    vec![
+                                        field("x", lit_num("1")),
+                                        field(
+                                            "y",
+                                            struct_expr("U", vec![field("z", lit_num("2"))]),
+                                        ),
+                                    ],
+                                ),
                             ),
-                        ),
-                        field("g", lit_num("3")),
-                    ],
-                ))),
-                Some(Expr::Group(Box::new(var("alt")))),
+                            field("g", lit_num("3")),
+                        ],
+                    )),
+                ),
+                Some(block(vec![], Some(var("alt")))),
             ),
         },
     ]

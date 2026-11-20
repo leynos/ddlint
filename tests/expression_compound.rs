@@ -11,6 +11,7 @@ use ddlint::{
     test_util::{
         assert_parse_error,
         assert_unclosed_delimiter_error,
+        block,
         closure,
         field,
         if_expr,
@@ -119,8 +120,8 @@ fn compound_expression_errors(#[case] case: CompoundErrorCase) {
     "if x { y } else { z }",
     if_expr(
         var("x"),
-        Expr::Group(Box::new(var("y"))),
-        Some(Expr::Group(Box::new(var("z")))),
+        block(vec![], Some(var("y"))),
+        Some(block(vec![], Some(var("z")))),
     )
 )]
 #[case(
@@ -130,19 +131,19 @@ fn compound_expression_errors(#[case] case: CompoundErrorCase) {
             "Point",
             vec![field("x", lit_num("1"))],
         ))),
-        Expr::Group(Box::new(var("y"))),
-        Some(Expr::Group(Box::new(var("z")))),
+        block(vec![], Some(var("y"))),
+        Some(block(vec![], Some(var("z")))),
     )
 )]
 #[case(
     "if flag { Point { x: 1 } } else { z }",
     if_expr(
         var("flag"),
-        Expr::Group(Box::new(struct_expr(
-            "Point",
-            vec![field("x", lit_num("1"))],
-        ))),
-        Some(Expr::Group(Box::new(var("z")))),
+        block(
+            vec![],
+            Some(struct_expr("Point", vec![field("x", lit_num("1"))])),
+        ),
+        Some(block(vec![], Some(var("z")))),
     )
 )]
 #[case(
@@ -153,8 +154,8 @@ fn compound_expression_errors(#[case] case: CompoundErrorCase) {
             lhs: Box::new(var("a")),
             rhs: Box::new(var("b")),
         },
-        Expr::Group(Box::new(var("x"))),
-        Some(Expr::Group(Box::new(var("y")))),
+        block(vec![], Some(var("x"))),
+        Some(block(vec![], Some(var("y")))),
     )
 )]
 #[case("if flag value", if_expr(var("flag"), var("value"), None))]
@@ -168,7 +169,7 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
     "if cond { Outer { inner: Inner { a: 1, b: 2 }, flag: true } } else { fallback }",
     if_expr(
         var("cond"),
-        Expr::Group(Box::new(struct_expr(
+        block(vec![], Some(struct_expr(
             "Outer",
             vec![
                 field(
@@ -184,14 +185,14 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
                 field("flag", lit_bool(true)),
             ],
         ))),
-        Some(Expr::Group(Box::new(var("fallback")))),
+        Some(block(vec![], Some(var("fallback")))),
     )
 )]
 #[case(
     "if ok { S { f: T { x: 1, y: U { z: 2 } }, g: 3 } } else { alt }",
     if_expr(
         var("ok"),
-        Expr::Group(Box::new(struct_expr(
+        block(vec![], Some(struct_expr(
             "S",
             vec![
                 field(
@@ -213,7 +214,7 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
                 field("g", lit_num("3")),
             ],
         ))),
-        Some(Expr::Group(Box::new(var("alt")))),
+        Some(block(vec![], Some(var("alt")))),
     )
 )]
 fn parses_if_then_with_struct_literal(#[case] src: &str, #[case] expected: Expr) {

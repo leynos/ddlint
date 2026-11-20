@@ -5,7 +5,10 @@
 //! can inspect without re-parsing tokens.
 use std::fmt;
 
+mod block;
 mod sexpr;
+
+pub use block::BlockExpr;
 
 use super::{number::NumberLiteral, pattern::Pattern, string_literal::StringLiteral};
 
@@ -268,8 +271,16 @@ pub enum Expr {
         /// Right-hand operand.
         rhs: Box<Self>,
     },
-    /// Grouped expression (parenthesised).
+    /// Parenthesised expression `( e )`.
     Group(Box<Self>),
+    /// Brace-delimited block expression `{ item; item; value }`.
+    ///
+    /// A standalone `{ … }` is a block, and braces never form collection
+    /// literals. A `{` directly after an identifier may instead open a struct
+    /// literal, which produces [`Expr::Struct`]; this variant covers only the
+    /// block form. [`BlockExpr::items`] and [`BlockExpr::into_items`] are the
+    /// only traversal order consumers should use.
+    Block(BlockExpr),
     /// For-loop expression with optional guard.
     ForLoop {
         /// Pattern introduced by the loop header.
@@ -299,16 +310,18 @@ pub enum Expr {
     },
     /// Vector literal expression.
     ///
-    /// Syntactically `[e1, e2, ...]`, preserved as a raw AST node during
-    /// parsing. Builder-sequence desugaring (for example to
+    /// Syntactically `[e1, e2, ...]` with at least one element, preserved as a
+    /// raw AST node during parsing. The empty source form `[]` is not `DDlog`
+    /// syntax; `vec_empty()` is the upstream spelling. Builder-sequence
+    /// desugaring (for example to
     /// `vec_with_capacity(n); push(e1); push(e2); ...`) is scheduled work for
     /// later lowering stages, not current parser behaviour.
     VecLit(Vec<Self>),
     /// Map literal expression.
     ///
-    /// Syntactically `{k1: v1, k2: v2, ...}`, preserved as a raw AST node
-    /// during parsing. Builder-sequence desugaring (for example to
-    /// `map_empty(); insert(k1, v1); insert(k2, v2); ...`) is scheduled work
-    /// for later lowering stages, not current parser behaviour.
+    /// Syntactically `[k1 -> v1, k2 -> v2, ...]` with at least one entry,
+    /// preserved as a raw AST node during parsing. Builder-sequence desugaring
+    /// (for example to `map_empty(); insert(k1, v1); insert(k2, v2); ...`) is
+    /// scheduled work for later lowering stages, not current parser behaviour.
     MapLit(Vec<(Self, Self)>),
 }
