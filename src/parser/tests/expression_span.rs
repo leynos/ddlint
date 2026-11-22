@@ -17,6 +17,39 @@ fn validate_expression_reports_out_of_bounds() {
     }
 }
 
+/// A block is the case that hides `return` from term-level scanning: the
+/// diagnostic must point at the keyword inside the block, not at the literal.
+#[test]
+fn validate_expression_rejects_return_in_a_rule_body_block() {
+    let src = "y = { return x; x }";
+    let Err(ExpressionError::Parse(errors)) = validate_expression(src, 0..src.len()) else {
+        panic!("a rule-body block with `return` must be rejected");
+    };
+    let Some(error) = errors.first() else {
+        panic!("the block `return` must report a diagnostic");
+    };
+    assert_eq!(
+        error.span().clone(),
+        6..12,
+        "the diagnostic must point at `return`"
+    );
+    assert!(
+        format!("{:?}", error.reason()).contains("not valid in a rule body"),
+        "the diagnostic must explain the rule-body restriction, got {error:?}"
+    );
+}
+
+/// A closure body is a function body for this purpose, so `return` stays
+/// legal even when the closure itself sits in a rule body.
+#[test]
+fn validate_expression_allows_return_in_a_rule_body_closure() {
+    let src = "|v| return v";
+    assert!(
+        validate_expression(src, 0..src.len()).is_ok(),
+        "a closure body must keep `return` legal inside a rule body"
+    );
+}
+
 #[test]
 fn splits_rule_body_literals() {
     let src = "R(x) :- A(x), if cond(x) { B(x) } else { C(x) }.";

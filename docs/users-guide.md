@@ -30,9 +30,9 @@ against regression.
 
 ### Unreleased behaviour changes
 
-Three changes are not yet in a release. None removes an API, so no code
-migration is required, but results observed through the previous release can
-change:
+Three library changes are not yet in a release. None of them removes an API, so
+no code migration is required for them, but results observed through the
+previous release can change:
 
 - Public methods listed under [Const-capable APIs](#const-capable-apis) can now
   be evaluated in `const` items. Existing calls are unaffected.
@@ -44,6 +44,19 @@ change:
   lists containing nested parenthesized types. It previously stopped at the
   first closing parenthesis and could return a truncated type. See
   [Function signatures](#function-signatures).
+
+This list covers library behaviour only and is not a complete inventory of
+unreleased changes. The block and bracket literal rules in
+[Block expressions and collection literals](#block-expressions-and-collection-literals)
+describe the syntax this guide documents, including that `{k: v}` is a block
+ascription rather than a map literal.
+
+Braces in expression-prefix position now parse as `Expr::Block`, which adds an
+`Expr` variant and so affects code that matches `Expr` exhaustively. `Expr` has
+no `#[non_exhaustive]` attribute, so such a match must gain a `Block` arm to
+compile. No variant is removed: `Expr::Group` still carries parenthesized
+groups and statement sequences outside braces, and `Expr::MapLit` still carries
+bracket maps.
 
 ## Planned CLI configuration
 
@@ -156,6 +169,65 @@ let function = parsed.root().functions().into_iter().next().expect("one function
 assert_eq!(function.return_type().as_deref(), Some("u32"));
 assert_eq!(function.parameters().len(), 1);
 ```
+
+## Block expressions and collection literals
+
+Outside a struct literal such as `Name { field: 1 }`, braces form a block
+expression; they are not a collection literal and not a parenthesized group.
+Items are separated by `;`. The last item is the block's value unless it is
+followed by `;`, and `{}` is the empty block.
+
+```rust
+use ddlint::parser::expression::parse_expression;
+
+let block = parse_expression("{ a; b }").expect("block parses");
+assert!(block.to_sexpr().starts_with("(block"));
+```
+
+### Inspecting a block
+
+`parse` keeps a block as `Expr::Block` wrapping a `BlockExpr`. The `statements`
+and `value` fields are public, and three helpers apply the block rules:
+
+- `BlockExpr::items()` and `BlockExpr::into_items()` yield the statements
+  followed by the value. This is the only traversal order consumers should use.
+- `BlockExpr::from_items(items, ends_with_semicolon)` applies the
+  trailing-separator rule. It returns `None` for the one unrepresentable input,
+  an empty item list with a trailing `;`.
+- `BlockExpr::ends_with_semicolon()` reports whether a non-empty block ends
+  with `;`, and therefore whether its value is unit.
+
+```rust
+use ddlint::parser::ast::Expr;
+use ddlint::parser::expression::parse_expression;
+
+let parsed = parse_expression("{ x; y + 1 }").expect("block parses");
+let Expr::Block(block) = parsed else {
+    panic!("braces must yield a block");
+};
+assert_eq!(block.statements.len(), 1, "`x;` is a statement");
+assert!(block.value.is_some(), "the final item is the block value");
+```
+
+Map and vector literals use brackets and must be non-empty:
+
+- `[a, b]` is a vector literal; `[]` is rejected with
+  `empty vector literals are not DDlog syntax; use vec_empty() instead`.
+- `[k -> v]` is a map literal; `->` separates an entry's key from its value.
+- A literal that mixes vector elements and map entries is rejected with
+  `cannot mix vector elements and map entries in one literal`.
+- A map entry cut short by end of input, as in `[a -> 1, b`, reports
+  `expected '->' in map entry`; the literal is an unfinished map, not a mixed
+  one.
+- `{k: v}` is not a map literal; it is a block whose single item is the
+  ascription `k : v`. Adding a second comma-separated entry, as in
+  `{a: 1, b: 2}`, reports `expected ';' or '}' after a block item`.
+
+A rule body is not a function body, so `return` is rejected anywhere inside
+one, including within a block: `y = { return x; x }` reports
+`return is not valid in a rule body; use a function or closure body`. `return`
+remains valid in a function body and in a closure body, including a closure
+nested in a rule body.
 
 ## Run lint rules
 

@@ -1,133 +1,39 @@
 # Developer guide
 
-This guide records the parser module structure introduced by issue `#223`. It
-is intentionally narrow and documents ownership boundaries rather than the full
-parsing pipeline.
+This guide records maintainer-facing conventions for the parser introduced by
+issue `#223`. File-by-file ownership and placement live in the
+[repository layout](repository-layout.md#parser-module-ownership); this guide
+records the conventions those modules share across the wider codebase.
 
-## Parser module structure
+## Parser module ownership
 
-### `src/parser/ast/expr/sexpr.rs`
-
-- Owns S-expression rendering helpers for `Expr`.
-- Supports test and fixture comparisons without coupling callers to debug
-  formatting.
-- Should remain presentation-only; parsing and semantic classification belong
-  elsewhere.
-
-### `src/parser/ast/rule/classification.rs`
-
-- Owns rule-body term classification for raw literals.
-- Handles assignment parsing, aggregation detection, and `for`-loop lowering
-  within the rule-body helper path.
-- Keeps rule-body classification separate from the public `Rule` wrapper so
-  `rule/mod.rs` stays focused on the surface API.
-
-### `src/parser/ast/relation/mod.rs`
-
-- Owns the typed relation declaration surface for role, kind, ref marker, and
-  body form.
-- Treats `role()` and `kind()` as the canonical APIs for new code.
-  `is_input()` and `is_output()` are derived helpers kept for callers that only
-  need role predicates.
-- Uses `role_keyword_present()` and `kind_keyword_present()` when callers need
-  source-fidelity rather than the defaulted semantic value.
-- Exposes declaration-level reference relations through `is_ref()`. Do not
-  infer ref status from raw `&` tokens in downstream callers.
-- Exposes `body()`, `element_type()`, `columns()`, and `primary_key()` as
-  fallible queries returning `Result<_, RelationParseErrors>`. A valid record
-  body yields `Ok(RelationBody::Fields(..))` with `element_type()` as
-  `Ok(None)`; a valid bracket body yields `Ok(RelationBody::ElementType(..))`
-  with `columns()` as `Ok(Vec::new())`. Malformed or missing bodies return
-  `Err(..)` rather than an empty `Fields` vector, so direct AST querying stays
-  reliable for malformed or synthetic nodes.
-- Exposes `primary_key()` as the only supported way to read a key clause; it
-  returns `PrimaryKey`, whose `binders()`, `binder_names()`, `span()`, and
-  `expression()` cover the binder list, the clause span, and the optional
-  spec-form expression. `PrimaryKeyExpression::parse()` parses the preserved
-  text lazily with source-absolute error spans. Lint rules must not re-tokenize
-  relation declaration text themselves; extend this surface instead.
-  `Parsed::errors()` remains the parser-level diagnostic channel.
-
-### `src/parser/span_scanners/relations/mod.rs`
-
-- Owns top-level relation-candidate discovery, declaration orchestration,
-  record and bracket body parsing, primary-key validation,
-  relation-versus-rule/fact disambiguation, span collection, and recovery.
-- Applies delimiter-depth-aware line-start filtering, so only genuine top-level
-  declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
-- Produces relation declaration spans for CST construction;
-  `src/parser/ast/relation/mod.rs` then exposes the typed AST accessors over
-  the resulting nodes.
-
-### `src/parser/span_scanners/relations/cursor.rs`
-
-- Owns shared cursor movement, trivia handling, token inspection, and
-  balanced-delimiter traversal (including delimiter-stack maintenance) for the
-  relation scanner.
-- Holds no grammar decisions; those remain in `relations/mod.rs`.
-
-### `src/parser/span_scanners/relations/preamble.rs`
-
-- Parses only the optional role/kind preamble keywords and enforces
-  `D-REL-001`, `D-REL-002`, and `D-REL-003`.
-- Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
-  and recovery in `relations/mod.rs`.
-
-### `src/parser/span_scanners/typedefs.rs`
-
-- Collects spans for `type` and `extern type` declarations; it finds statement
-  boundaries rather than validating the complete type grammar. A top-level
-  semicolon or newline ends a span, while nested delimiters keep internal
-  newlines within it.
-- Reuses `TypeDepths` and `adjust_type_depths` from
-  `src/parser/span_scanners/indexes_support.rs` to track `()`, `[]`, `{}`, and
-  `<>`; `>>` closes two angle levels. This support is shared with the index
-  scanner. Legacy `typedef` diagnostics remain owned by
-  `src/parser/reserved_tokens.rs`.
-
-### `src/parser/expression/pratt/postfix.rs`
-
-- Owns postfix dispatch for the Pratt parser.
-- Routes function calls, bit slices, field access, tuple indexing, method
-  calls, and delay postfixes to the appropriate helper.
-- Coordinates the pending diff-marker state across the postfix chain.
-
-### `src/parser/expression/pratt/diff.rs`
-
-- Owns diff-marker tracking and validation.
-- Wraps completed postfix expressions in `Expr::AtomDiff` when a diff marker
-  is pending.
-- Emits the targeted diagnostics for duplicate, misplaced, or dangling diff
-  markers.
-
-### `src/parser/expression/pratt/delay.rs`
-
-- Owns `expr -<N>` postfix parsing.
-- Consumes the `-<` token pair, reads the delay literal, and returns
-  `Expr::AtomDelay` on success.
-- Keeps delay-specific validation separate from the generic postfix loop.
-
-### `src/parser/expression/pattern_collection.rs`
-
-- Owns the shared pattern-collection context for `match` arms and `for`
-  headers. A `PatternContext` carries a `PatternSite` (`MatchArm` or `ForLoop`)
-  and supplies the diagnostics and delimiter rules for that site.
-- Builds the context with `for_match_pattern()` or `for_for_loop_pattern()`.
-  A match arm ends at `->`; a for-loop header ends at `in`.
-- Applies site-specific behaviour through `validate_on_eof()` and
-  `use_for_paren()`, which are true only for a for-loop pattern. An unbalanced
-  for-loop header is therefore diagnosed before the missing `in`, and the
-  `for (x) in xs` form is accepted.
-- Renders site-specific text through `missing_terminator_msg()`,
-  `unmatched_delimiter_msg()`, and `unexpected_end_msg()`.
-- Defines `DelimiterKind` (`Paren`, `Brace`, `Bracket`).
-  `unmatched_delimiter_msg()` takes it to name the offending delimiter in the
-  site's message.
+File-by-file ownership, including the entries for `block.rs` and
+`rules_assign.rs`, lives in the repository layout's
+[parser module ownership](repository-layout.md#parser-module-ownership)
+section. The conventions those modules share are recorded below.
 
 ## Boundary rules
 
 - Keep formatting helpers in `sexpr.rs` rather than mixing them into the core
   expression parser.
+- `BlockExpr::items()` and `into_items()` are the only permitted traversal
+  order for blocks. `sema` and rule-body classification must handle
+  `Expr::Block` and `Expr::Group` in dedicated arms rather than unwrapping
+  either variant generically, because only the block carries statements.
+- `BLOCK_ITEM_MIN_BP` is owned by `precedence.rs` and is the sole minimum
+  binding power for block items. Block state is entered through
+  `with_block_item_scope` and restored through `with_nested_delimiter_scope`;
+  every new delimiter context must use the latter rather than reading the
+  ambient `;` flag. A `for` guard uses `with_guard_expression_scope`, which
+  clears the `;` state and keeps the struct-literal guard active, so `ident {`
+  there is not a struct literal.
+- `test_util::block` mirrors `BlockExpr` construction for tests. Keep it in
+  step with the AST rather than reimplementing block construction in a test.
+- Parse a rule-body literal with `parse_rule_body_expression`, never
+  `parse_expression`; only the former rejects `return`. Clear the rule-body
+  context for a closure body through `with_closure_body_scope` rather than
+  assigning `in_rule_body` directly, so the surrounding literal resumes the
+  restriction afterwards.
 - Keep rule-body classification in `classification.rs` rather than adding
   helper-stage logic to `rule.rs`.
 - Prefer `Relation::role()` and `Relation::kind()` for new relation-aware

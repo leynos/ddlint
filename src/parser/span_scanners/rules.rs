@@ -17,9 +17,12 @@ use crate::{
     },
 };
 
+#[path = "rules_assign.rs"]
+mod assign;
 #[path = "rules_support.rs"]
 mod support;
 
+use assign::assignment_statement;
 use support::is_at_line_start;
 
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
@@ -95,7 +98,6 @@ pub(super) fn rule_statement(
             p.padded_by(ws.clone()).boxed()
         };
 
-        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE).boxed();
         let skip_stmt = just(SyntaxKind::K_SKIP).ignored().boxed();
         let atom_stmt = atom().boxed();
 
@@ -131,6 +133,11 @@ pub(super) fn rule_statement(
             balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
             balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
             balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+            // Keywords that begin or continue statement structure end an
+            // expression statement. `else` belongs here with `if`: if the
+            // general loop consumed it, `if (c) a else b` would swallow its
+            // else branch into the then-branch expression, leaving the
+            // enclosing `if` with nothing to bind.
             filter(|kind: &SyntaxKind| {
                 !matches!(
                     kind,
@@ -139,6 +146,7 @@ pub(super) fn rule_statement(
                         | SyntaxKind::K_IF
                         | SyntaxKind::K_FOR
                         | SyntaxKind::K_SKIP
+                        | SyntaxKind::K_ELSE
                 )
             })
             .ignored()
@@ -146,13 +154,27 @@ pub(super) fn rule_statement(
         ));
         let expr_stmt = expr_token.repeated().at_least(1).ignored();
 
+        let assign_stmt = assignment_statement(ws.clone(), stmt.clone().boxed());
+
         // Keep `expr_stmt` before `atom_stmt` so general expressions (including
-        // assignments/aggregations) win over the more restrictive atom grammar.
-        // This ordering guards future refactors from silently changing rule-body
+        // aggregations) win over the more restrictive atom grammar. This
+        // ordering guards future refactors from silently changing rule-body
         // semantics.
-        choice((for_stmt, if_stmt, block, skip_stmt, expr_stmt, atom_stmt))
-            .padded_by(ws.clone())
-            .ignored()
+        //
+        // A statement that starts with `{` is an expression statement, not a
+        // separate block alternative: `expr_stmt` keeps consuming operators
+        // after the brace group, so `{ x } + 2` stays one term instead of
+        // ending the rule body at `}`.
+        choice((
+            for_stmt,
+            if_stmt,
+            skip_stmt,
+            assign_stmt,
+            expr_stmt,
+            atom_stmt,
+        ))
+        .padded_by(ws.clone())
+        .ignored()
     })
 }
 

@@ -10,6 +10,7 @@
 //! literals (e.g., `8'hFF`, `16'sd-1`, `3.14'f32`). The public API is
 //! re-exported here, including [`parse_numeric_literal`] for standalone numeric
 //! literal parsing.
+mod block;
 mod control_flow;
 mod data_structures;
 mod delimiter_handling;
@@ -26,3 +27,4 @@ mod token_stream;
 
 pub use numeric::parse_numeric_literal;
 pub use pratt::parse_expression;
+pub(crate) use pratt::parse_rule_body_expression;

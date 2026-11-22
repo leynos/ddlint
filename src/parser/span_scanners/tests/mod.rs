@@ -1,8 +1,8 @@
 //! Tests for specialised span scanners.
 
 mod relation_tests;
+mod rule_statement_tests;
 
-use chumsky::{Parser, Stream};
 use rstest::rstest;
 
 use super::{
@@ -13,15 +13,10 @@ use super::{
     collect_rule_spans,
     collect_transformer_spans,
     collect_typedef_spans,
-    rules::rule_statement,
 };
 use crate::{
     Span,
-    SyntaxKind,
-    parser::{
-        lexer_helpers::inline_ws,
-        span_scanner::{merge_spans, parse_tokens},
-    },
+    parser::span_scanner::{merge_spans, parse_tokens},
     test_util::tokenize,
 };
 
@@ -89,14 +84,6 @@ fn assert_rule_span_collection(src: &str, config: &RuleSpanAssertConfig<'_>) {
     );
 }
 
-fn parse_rule_statement_input(src: &str) -> (Option<()>, Vec<chumsky::error::Simple<SyntaxKind>>) {
-    let tokens = tokenize(src);
-    let ws = inline_ws().repeated().ignored();
-    let parser = rule_statement(ws);
-    let stream = Stream::from_iter(0..src.len(), tokens.into_iter());
-    parser.parse_recovery(stream)
-}
-
 #[rstest]
 #[case("import foo\n", vec![0..11], true)]
 #[case("import\n", vec![], false)]
@@ -109,40 +96,6 @@ fn collect_import_spans_cases(
     let (spans, errs) = collect_import_spans(&tokens, src);
     assert_eq!(spans, expected);
     assert_eq!(errs.is_empty(), errs_empty);
-}
-
-#[rstest]
-#[case("if (cond) if (nested) Process(nested) else Skip() else Handle()")]
-#[case("for (a in A(a)) for (b in B(b)) ProcessPair(a, b)")]
-#[case("for (item in if cond { Items(item) } else { Others(item) }) Process(item)")]
-#[case("for (item in Items(item)) if (item > 10) Process(item)")]
-#[case("for (item in Items(item) if item.active) Process(item)")]
-#[case("if (outer) { for (item in Items(item)) if (should(item)) Process(item) } else { Skip() }")]
-#[case("Call(x)")]
-#[case("foo = bar(baz)")]
-fn rule_statement_parses_control_flow(#[case] src: &str) {
-    let (res, errs) = parse_rule_statement_input(src);
-    assert!(res.is_some(), "expected successful parse for {src}");
-    assert!(errs.is_empty(), "unexpected errors for {src:?}: {errs:?}");
-}
-
-#[rstest]
-#[case("if { Process(cond) }")]
-#[case("for (item Items(item)) Process(item)")]
-#[case("for (item in Items(item) Process(item)")]
-fn rule_statement_reports_errors(#[case] src: &str) {
-    let (res, errs) = parse_rule_statement_input(src);
-    if res.is_some() {
-        assert!(
-            !errs.is_empty(),
-            "expected errors for {src}, but parser recovered without diagnostics",
-        );
-    } else {
-        assert!(
-            !errs.is_empty(),
-            "expected errors for {src}, but parser reported none",
-        );
-    }
 }
 
 #[test]

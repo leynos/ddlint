@@ -2,7 +2,7 @@
 
 use super::Name;
 use crate::parser::{
-    ast::{Expr, MatchArm, Pattern},
+    ast::{BlockExpr, Expr, MatchArm, Pattern},
     pattern::parse_pattern,
 };
 
@@ -186,13 +186,24 @@ pub const fn vec_lit(items: Vec<Expr>) -> Expr { Expr::VecLit(items) }
 
 /// Construct a map literal [`Expr::MapLit`].
 ///
+/// The source form is `[k -> v, …]`, and the parsed form of that spelling is
+/// exactly this node.
+///
 /// # Examples
 ///
 /// ```
-/// use ddlint::test_util::{lit_num, map_entry, map_lit, var};
+/// use ddlint::{
+///     parser::expression::parse_expression,
+///     test_util::{lit_num, map_entry, map_lit, var},
+/// };
 ///
 /// let m = map_lit(vec![map_entry(var("a"), lit_num("1"))]);
 /// assert_eq!(m.to_sexpr(), "(map (entry a 1))");
+/// let parsed = parse_expression("[a -> 1]").expect("`[a -> 1]` should parse as a map literal");
+/// assert_eq!(
+///     parsed, m,
+///     "the parsed map literal must match the constructed node"
+/// );
 /// ```
 #[must_use]
 pub const fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries) }
@@ -209,6 +220,41 @@ pub const fn map_lit(entries: Vec<(Expr, Expr)>) -> Expr { Expr::MapLit(entries)
 /// ```
 #[must_use]
 pub const fn map_entry(key: Expr, value: Expr) -> (Expr, Expr) { (key, value) }
+
+/// Construct a block expression [`Expr::Block`].
+///
+/// `statements` are the items followed by `;`; `value` is the final item when
+/// it is not followed by `;`.
+///
+/// # Examples
+///
+/// ```
+/// use ddlint::test_util::{block, var};
+///
+/// let b = block(vec![var("a")], Some(var("b")));
+/// assert_eq!(
+///     b.to_sexpr(),
+///     "(block (stmts a) (value b))",
+///     "a block must render its statements before its value"
+/// );
+/// assert_eq!(
+///     block(Vec::new(), None).to_sexpr(),
+///     "(block)",
+///     "an empty block must render with no items"
+/// );
+/// assert_eq!(
+///     block(vec![var("a")], None).to_sexpr(),
+///     "(block (stmts a))",
+///     "a trailing statement must render without a value"
+/// );
+/// ```
+#[must_use]
+pub fn block(statements: Vec<Expr>, value: Option<Expr>) -> Expr {
+    Expr::Block(BlockExpr {
+        statements,
+        value: value.map(Box::new),
+    })
+}
 
 /// Construct a `match` arm with the provided pattern and body expression.
 ///

@@ -85,6 +85,10 @@
   helper](./adrs/adr-0005-fixture-expansion-lint-helper.md): Decision record
   for the `fixture-lints` proc-macro boundary and its `unused_braces`
   suppression.
+- [Architectural decision record 006: block expressions and collection
+  syntax](./adrs/adr-0006-block-expressions-and-collection-syntax.md): Decision
+  record for `{ … }` block expressions, `[k -> v]` map literals, the rejection
+  of `[]`, and the scoped block-separator parser state.
 
 ## Execution plans
 
@@ -110,6 +114,9 @@
   Plan for closing the legacy-token compatibility policy.
 - [2.6.7 legacy token policy diagnostic follow-up](./execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md):
   Continuation for diagnostic-path acceptance and validation follow-up.
+- [2.6.8 decide the brace-group extension policy](./execplans/2-6-8-decide-brace-group-extension-policy.md):
+  Plan for upstream block expressions, bracket map literals, and the scheduled
+  lexical-scope alignment.
 - [Issue 411 OrthoConfig CLI configuration
   spine][issue-411-ortho-config-plan]: Plan for the v0.10.0 configuration
   package, source-aware tests, and draft pull request (PR).

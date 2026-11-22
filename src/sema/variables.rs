@@ -85,11 +85,12 @@ impl SemanticModelBuilder {
             Expr::Closure { params, body } => {
                 self.walk_variable_uses_closure(params, body, context);
             }
-            Expr::BitSlice { .. }
-            | Expr::Struct { .. }
-            | Expr::Tuple(_)
-            | Expr::VecLit(_)
-            | Expr::MapLit(_) => self.walk_variable_uses_composite(expr, context),
+            Expr::BitSlice { .. } | Expr::Struct { .. } | Expr::Tuple(_) | Expr::VecLit(_) => {
+                self.walk_variable_uses_positional(expr, context);
+            }
+            Expr::MapLit(_) | Expr::Block(_) => {
+                self.walk_variable_uses_container(expr, context);
+            }
             Expr::IfElse { .. } | Expr::Binary { .. } => {
                 self.walk_variable_uses_conditional(expr, context);
             }
@@ -182,7 +183,11 @@ impl SemanticModelBuilder {
         );
     }
 
-    fn walk_variable_uses_composite(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
+    /// Walks composite expressions whose children share one positional role.
+    ///
+    /// Bit-slice bounds, struct field values, tuple items, and vector items
+    /// are all just expressions to walk in source order.
+    fn walk_variable_uses_positional(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
         match expr {
             Expr::BitSlice {
                 expr: inner,
@@ -203,8 +208,21 @@ impl SemanticModelBuilder {
                     self.walk_variable_uses(item, context);
                 }
             }
+            // The dispatcher routes only positional composites here.
+            _ => {}
+        }
+    }
+
+    /// Walks the delimited containers that hold further expressions.
+    fn walk_variable_uses_container(&mut self, expr: &Expr, context: VariableUseContext<'_>) {
+        match expr {
             Expr::MapLit(entries) => self.walk_map_entries_uses(entries, context),
-            // The dispatcher routes only composite expressions here.
+            Expr::Block(block) => {
+                for item in block.items() {
+                    self.walk_variable_uses(item, context);
+                }
+            }
+            // The dispatcher routes only container expressions here.
             _ => {}
         }
     }
