@@ -177,12 +177,12 @@ estimates 1,600 net code lines, with 50 % contingency.
   guide states it with the braced form, and a table row pins it. A future
   type-aware lint can flag calls on unit values; it is recorded as a follow-up
   candidate, not scheduled.
-- Risk: the top-level statement parser mis-computes a statement's extent now
-  that there is no terminating `.`, swallowing the next declaration or leaving
-  stray tokens. Severity: high. Likelihood: medium. Mitigation: EP-M0 probes
-  the extent API first; extent tests cover every statement form followed by
-  every declaration kind; recovery skips to the next line-initial token at
-  depth 0.
+- Risk: the top-level statement parser computes the wrong extent for a
+  statement now that there is no terminating `.`, swallowing the next
+  declaration or leaving stray tokens. Severity: high. Likelihood: medium.
+  Mitigation: EP-M0 probes the extent API first; extent tests cover every
+  statement form followed by every declaration kind; recovery skips to the next
+  line-initial token at depth 0.
 - Risk: removing `RuleBodyTerm::ForLoop` changes what `unused-relation` and
   `unused-variable` report, because a relation named in a rule-body `for`
   iterable is no longer a relation read. Severity: medium. Likelihood: certain.
@@ -207,7 +207,7 @@ estimates 1,600 net code lines, with 50 % contingency.
   `2-6-10-decide-semicolon-sequencing`; Lody session titled.
 - [x] (2026-11-23T18:05Z) Reconnaissance by three Wyvern agents (`;`,
   top-level `for`, rule-body `for`) and an upstream-grammar researcher;
-  upstream sources read at `ca5ded82`.
+  upstream sources read at `ca5ded823dc2c01bc33aac44e526c12d2fed03a6`.
 - [x] (2026-11-23T18:40Z) First draft written.
 - [ ] Expert design review applied.
 - [ ] Plan approved by the user.
@@ -405,15 +405,15 @@ with `rg -n '<symbol>' src`.
 
 ### Expression parsing and `;`
 
-The expression parser is a hand-written Pratt parser in
-`src/parser/expression/`. `Pratt::parse_expr` (`pratt/mod.rs`) runs a prefix
-production (`prefix.rs`, dispatching `if`, `match`, and `for` to
-`control_flow.rs`), then postfix forms (`pratt/postfix.rs`), then
-`Pratt::parse_infix` (`infix.rs`). Binding powers live in
-`src/parser/ast/precedence.rs`; `;` is `BinaryOp::Seq` with `BP_SEQ = 0`
-(left-associative), and `BLOCK_ITEM_MIN_BP = BP_SEQ + 1`. `BinaryOp` is public
-(`src/parser/ast/expr/mod.rs`, re-exported from `src/parser/ast/mod.rs`); its
-symbol is `";"` and its s-expression is `(; lhs rhs)`.
+The expression parser is a handwritten Pratt parser in `src/parser/expression/`.
+`Pratt::parse_expr` (`pratt/mod.rs`) runs a prefix production (`prefix.rs`,
+dispatching `if`, `match`, and `for` to `control_flow.rs`), then postfix forms
+(`pratt/postfix.rs`), then `Pratt::parse_infix` (`infix.rs`). Binding powers
+live in `src/parser/ast/precedence.rs`; `;` is `BinaryOp::Seq` with
+`BP_SEQ = 0` (left-associative), and `BLOCK_ITEM_MIN_BP = BP_SEQ + 1`.
+`BinaryOp` is public (`src/parser/ast/expr/mod.rs`, re-exported from
+`src/parser/ast/mod.rs`); its symbol is `";"` and its s-expression is
+`(; lhs rhs)`.
 
 Blocks (`src/parser/expression/block.rs`, `src/parser/ast/expr/block.rs`) never
 build `Seq`. While a block item is parsed, the flag
@@ -676,9 +676,10 @@ of its children's leaves.
 
 ### Axioms (trusted, not verified here)
 
-- `AXIOM-UPSTREAM`: the upstream sources at `ca5ded82` define the target
-  grammar and lowering. Boundary: the specification text and the `rstest`
-  tables transcribe `Parse.hs` and `Statement.hs`.
+- `AXIOM-UPSTREAM`: the upstream sources at
+  `ca5ded823dc2c01bc33aac44e526c12d2fed03a6` define the target grammar and
+  lowering. Boundary: the specification text and the `rstest` tables transcribe
+  `Parse.hs` and `Statement.hs`.
 - `AXIOM-TOKENIZER`: `tokenize_without_trivia` yields the same tokens for a
   statement whether or not it is followed by other declarations. Boundary:
   `INV-EXTENT` tests.
@@ -1137,7 +1138,8 @@ they produce are deleted.
 
 ## Artefacts and notes
 
-Reconnaissance evidence (planning time, upstream `ca5ded82`):
+Reconnaissance evidence (planning time, upstream
+`ca5ded823dc2c01bc33aac44e526c12d2fed03a6`):
 
 ```haskell
 -- Parse.hs 600-611: `;` only in eseq
