@@ -303,7 +303,7 @@ are recorded in `docs/ortho-config-provenance.md`.
 - `docs/ddlint-design.md` §4.1–4.3 and `docs/roadmap.md` §5.1; these are the
   current project design artefacts. No Terms of Reference or earlier
   CLI-specific ADR existed.
-- ADR 004 records the application/library boundary and configuration
+- ADR 0008 records the application/library boundary and configuration
   contract.
 - Upstream `leynos/ortho-config` tag object
   `996e5a1c9f22ace4f55bf5dcc196d2c0524262bf`, peeled to commit
@@ -312,12 +312,12 @@ are recorded in `docs/ortho-config-provenance.md`.
 
 Trace links:
 
-- ISSUE-411-APP-BOUNDARY -> ADR-004 -> `cli/Cargo.toml` and
+- ISSUE-411-APP-BOUNDARY -> ADR-0008 -> `cli/Cargo.toml` and
   `cli/src/config/mod.rs` -> EP-M2 -> dependency-boundary tests and workspace
   gates.
-- ISSUE-411-PRECEDENCE -> design §4.2 and ADR-004 -> `LintConfig` -> EP-M2 ->
+- ISSUE-411-PRECEDENCE -> design §4.2 and ADR-0008 -> `LintConfig` -> EP-M2 ->
   source-injected layer tests.
-- ISSUE-411-ERRORS -> design §4.2 and ADR-004 -> application error mapping ->
+- ISSUE-411-ERRORS -> design §4.2 and ADR-0008 -> application error mapping ->
   EP-M2 -> malformed, missing, invalid, and unknown-key tests.
 - ISSUE-411-BASELINE -> `src/main.rs` baseline -> preserved app placeholder ->
   EP-M2 -> binary child-process regression test.
@@ -443,7 +443,7 @@ Stage A: finish inventory and baseline. Record the command surface specified by
 the design, the placeholder's actual behaviour, the absence of CLI tests, all
 repository callers, compiler identity, and open issue/PR/branch state.
 
-Stage B: write the design decision before code. Add ADR-004, update design
+Stage B: write the design decision before code. Add ADR-0008, update design
 §4.1–4.3, update roadmap 5.1.5, add users' and developers' guidance, and keep
 the imported guides unchanged. Run documentation gates, commit the coherent
 documentation milestone, and request CodeRabbit review.
@@ -500,7 +500,7 @@ gate evidence: 1,288 tests passed; lint and all documentation gates are green.
 
 Conformance check: no CLI commands or lint execution implemented; v0.10.0
 default features enabled; application errors remain at the app boundary; docs
-and tests match ADR-004.
+and tests match ADR-0008.
 
 Recovery: revert only the app package and workspace-wiring commit; the M1
 design and provenance commit remains independently coherent.
@@ -655,7 +655,7 @@ child process, environment selection suppressing project discovery, and relative
 The missing-file test exposed a behavioural gap rather than a missing test.
 OrthoConfig v0.10.0's legacy candidate walk treats an environment-selected path
 as one more optional candidate, so a missing `DDLINT_CONFIG_PATH` value fell
-back to defaults. That contradicts ADR-004 and the users' guide, which promise
+back to defaults. That contradicts ADR-0008 and the users' guide, which promise
 a selected path is exclusive and required. `AppConfig` now declares
 `explicit_mode = "required_exclusive"`, opting into OrthoConfig's selector
 policy; automatic discovery keeps first-wins. The ADR, design §4.2, and the

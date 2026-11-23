@@ -1,4 +1,6 @@
-# Architectural decision record (ADR) 004: OrthoConfig CLI boundary
+# Architectural decision record (ADR) 0008: OrthoConfig CLI boundary
+
+Renumbered from 0004 on 2026-11-23 (duplicate number).
 
 ## Status
 

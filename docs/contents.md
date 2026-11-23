@@ -78,7 +78,7 @@
   structure.
 - [Architectural decision record 002: relation role and kind modelling](./adrs/adr-0002-relation-role-kind-modelling.md):
   Decision record for typed relation role, kind, ref, and body accessors.
-- [Architectural decision record 004: OrthoConfig CLI
+- [Architectural decision record 0008: OrthoConfig CLI
   boundary][ortho-config-cli-adr]: Decision record for the application-owned
   configuration layer and library boundary.
 - [Architectural decision record 005: fixture expansion lint
@@ -159,6 +159,6 @@
   Historical analysis of parser documentation structure.
 
 [ortho-config-migration-guide]: ./v0-10-0-migration-guide.md
-[ortho-config-cli-adr]: ./adrs/adr-0004-ortho-config-cli-boundary.md
+[ortho-config-cli-adr]: ./adrs/adr-0008-ortho-config-cli-boundary.md
 [issue-411-ortho-config-plan]:
   ./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md
