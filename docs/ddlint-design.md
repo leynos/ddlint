@@ -878,7 +878,7 @@ The current binary is still a placeholder. Roadmap items 5.1.1–5.1.4 own the
 CLI parser and command execution; the configuration model and loader are
 roadmap item 5.1.5. The application boundary belongs in the non-published
 `ddlint-cli` package. It depends on the reusable `ddlint` library, while the
-library remains free of CLI and configuration frameworks. ADR-004 records this
+library remains free of CLI and configuration frameworks. ADR-0007 records this
 boundary and the v0.10.0 configuration contract.
 
 The core commands will be:

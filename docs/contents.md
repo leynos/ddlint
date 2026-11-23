@@ -78,7 +78,7 @@
   structure.
 - [Architectural decision record 002: relation role and kind modelling](./adrs/adr-0002-relation-role-kind-modelling.md):
   Decision record for typed relation role, kind, ref, and body accessors.
-- [Architectural decision record 004: OrthoConfig CLI
+- [Architectural decision record 0007: OrthoConfig CLI
   boundary][ortho-config-cli-adr]: Decision record for the application-owned
   configuration layer and library boundary.
 - [Architectural decision record 005: fixture expansion lint
