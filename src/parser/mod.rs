@@ -8,7 +8,6 @@
 
 use crate::tokenize_with_trivia;
 
-#[macro_use]
 mod lexer_helpers;
 
 mod token_stream;

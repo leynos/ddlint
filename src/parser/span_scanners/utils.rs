@@ -6,7 +6,10 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::span_collector::SpanCollector;
+use crate::parser::span_collector::{
+    SpanCollector, parse_span as split_parse_span, skip_line as split_skip_line,
+};
+use crate::parser::token_stream::TokenStream;
 use crate::{Span, SyntaxKind};
 
 /// Convenience alias for scanners that accumulate `Simple` errors.
@@ -45,13 +48,34 @@ where
     P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
     E: Extend<Simple<SyntaxKind>>,
 {
-    let (res, errs) = st.parse_span(parser, start);
+    parse_and_record_split(&mut st.stream, &mut st.spans, &mut st.extra, start, parser)
+}
+
+/// Split-state form of [`parse_and_record`] for dispatch callbacks.
+///
+/// [`TokenStream::dispatch`] callbacks already hold the stream, so they pass
+/// the stream, span vector and diagnostic vector as separate borrows. The
+/// behaviour matches [`parse_and_record`]: a successful parse records its span
+/// and skips to the span end, while a failed parse skips the current line;
+/// diagnostics are appended either way.
+pub(crate) fn parse_and_record_split<P, E>(
+    stream: &mut TokenStream<'_>,
+    spans: &mut Vec<Span>,
+    extra: &mut E,
+    start: usize,
+    parser: P,
+) -> (Option<Span>, Vec<Simple<SyntaxKind>>)
+where
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+    E: Extend<Simple<SyntaxKind>>,
+{
+    let (res, errs) = split_parse_span(stream, parser, start);
     if let Some(ref sp) = res {
-        st.stream.skip_until(sp.end);
-        st.spans.push(sp.clone());
+        stream.skip_until(sp.end);
+        spans.push(sp.clone());
     } else {
-        st.skip_line();
+        split_skip_line(stream);
     }
-    st.extra.extend(errs.clone());
+    extra.extend(errs.clone());
     (res, errs)
 }

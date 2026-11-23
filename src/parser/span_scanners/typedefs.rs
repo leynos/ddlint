@@ -5,8 +5,36 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::span_collector::SpanCollector;
+use crate::parser::span_collector::{SpanCollector, push_line_span, skip_line};
+use crate::parser::token_stream::TokenStream;
 use crate::{Span, SyntaxKind};
+
+/// Consume a `typedef` or `extern type` head and record the rest of its line.
+///
+/// Both keyword arms share this handler because they differ only in whether a
+/// `type` keyword must follow. `extern` declarations that continue with any
+/// other keyword are skipped so later declarations stay aligned.
+fn handle_typedef(
+    stream: &mut TokenStream<'_>,
+    spans: &mut Vec<Span>,
+    span: Span,
+    is_extern: bool,
+) {
+    let start = span.start;
+    stream.advance();
+    if is_extern {
+        stream.skip_ws_inline();
+        if stream
+            .peek()
+            .is_none_or(|(kind, _)| *kind != SyntaxKind::K_TYPE)
+        {
+            skip_line(stream);
+            return;
+        }
+        stream.advance();
+    }
+    push_line_span(stream, spans, start);
+}
 
 pub(crate) fn collect_typedef_spans(
     tokens: &[(SyntaxKind, Span)],
@@ -14,33 +42,17 @@ pub(crate) fn collect_typedef_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
-    fn handle_typedef(st: &mut State<'_>, span: Span) {
-        let start = span.start;
-        st.stream.advance();
-        st.push_line_span(start);
-    }
-
-    fn handle_extern(st: &mut State<'_>, span: Span) {
-        let start = span.start;
-        st.stream.advance();
-        st.stream.skip_ws_inline();
-        if st
-            .stream
-            .peek()
-            .is_some_and(|(kind, _)| *kind == SyntaxKind::K_TYPE)
-        {
-            st.stream.advance();
-            st.push_line_span(start);
-        } else {
-            st.skip_line();
-        }
-    }
-
     let mut st = State::new(tokens, src, Vec::new());
 
-    token_dispatch!(st, {
-        SyntaxKind::K_TYPEDEF => handle_typedef,
-        SyntaxKind::K_EXTERN => handle_extern,
+    let State {
+        stream,
+        spans,
+        extra: _,
+    } = &mut st;
+    stream.dispatch(|stream, kind, span| match kind {
+        SyntaxKind::K_TYPEDEF => handle_typedef(stream, spans, span, false),
+        SyntaxKind::K_EXTERN => handle_typedef(stream, spans, span, true),
+        _ => stream.advance(),
     });
 
     st.into_parts()

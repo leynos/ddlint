@@ -92,6 +92,55 @@ impl<'a> TokenStream<'a> {
         }
     }
 
+    /// Drive a user-supplied closure over every remaining peeked token.
+    ///
+    /// The closure receives the stream, the current token kind, and a cloned
+    /// span. It owns all cursor movement: every invocation must advance the
+    /// stream, including the catch-all arm of a `match`. A closure arm that
+    /// does not handle a kind should call [`TokenStream::advance`] itself.
+    /// Dispatch stops when the stream is exhausted.
+    ///
+    /// The peeked token is copied out of the stream before the closure runs,
+    /// so the closure may freely mutate the stream (and any other disjoint
+    /// state it captures).
+    ///
+    /// # Panics
+    ///
+    /// Panics in debug builds if one closure invocation leaves the cursor
+    /// unchanged. Such a closure would otherwise loop forever on the same
+    /// token.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use ddlint::parser::token_stream::TokenStream;
+    /// use ddlint::{SyntaxKind, tokenize_with_trivia};
+    ///
+    /// let src = "()";
+    /// let tokens = tokenize_with_trivia(src);
+    /// let mut stream = TokenStream::new(&tokens, src);
+    /// let mut kinds = Vec::new();
+    /// stream.dispatch(|stream, kind, _span| {
+    ///     kinds.push(kind);
+    ///     stream.advance();
+    /// });
+    /// assert_eq!(kinds, [SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN]);
+    /// ```
+    pub(crate) fn dispatch<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut Self, SyntaxKind, Span),
+    {
+        while let Some((kind, span)) = self.peek() {
+            let (kind, span) = (*kind, span.clone());
+            let cursor = self.cursor;
+            f(self, kind, span);
+            debug_assert!(
+                self.cursor > cursor,
+                "TokenStream::dispatch callback must advance the stream"
+            );
+        }
+    }
+
     /// Returns a reference to the underlying slice of tokens.
     ///
     /// # Examples

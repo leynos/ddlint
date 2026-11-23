@@ -127,3 +127,80 @@ fn line_end_out_of_bounds_returns_len(typedef_stream: (String, Vec<(SyntaxKind, 
     let start = tokens.len();
     assert_eq!(stream.line_end(start), src.len());
 }
+
+#[test]
+fn dispatch_on_empty_stream_does_not_invoke_the_callback() {
+    let src = "";
+    let tokens = tokenize(src);
+    let mut stream = TokenStream::new(&tokens, src);
+    let mut calls = 0;
+
+    stream.dispatch(|stream, _, _| {
+        calls += 1;
+        stream.advance();
+    });
+
+    assert_eq!(calls, 0);
+}
+
+#[test]
+fn dispatch_passes_each_kind_with_its_span() {
+    let src = "()";
+    let tokens = tokenize(src);
+    let mut stream = TokenStream::new(&tokens, src);
+    let mut seen = Vec::new();
+
+    stream.dispatch(|stream, kind, span| {
+        seen.push((kind, span));
+        stream.advance();
+    });
+
+    assert_eq!(
+        seen,
+        vec![(SyntaxKind::T_LPAREN, 0..1), (SyntaxKind::T_RPAREN, 1..2),]
+    );
+}
+
+#[test]
+fn dispatch_invokes_matching_handlers_and_skips_others() {
+    let src = "()";
+    let tokens = tokenize(src);
+    let mut stream = TokenStream::new(&tokens, src);
+    let mut out = Vec::new();
+
+    stream.dispatch(|stream, kind, _span| match kind {
+        SyntaxKind::T_LPAREN => {
+            stream.advance();
+            out.push("lp");
+        }
+        SyntaxKind::T_RPAREN => {
+            stream.advance();
+            out.push("rp");
+        }
+        _ => stream.advance(),
+    });
+
+    assert_eq!(out, vec!["lp", "rp"]);
+    assert!(stream.peek().is_none());
+}
+
+#[test]
+fn dispatch_handler_may_consume_several_tokens() {
+    let src = "typedef A = string\nnext";
+    let tokens = tokenize(src);
+    let mut stream = TokenStream::new(&tokens, src);
+    let mut consumed = Vec::new();
+
+    stream.dispatch(|stream, kind, span| {
+        if kind == SyntaxKind::K_TYPEDEF {
+            let end = stream.line_end(stream.cursor());
+            stream.skip_until(end);
+            consumed.push(span.start..end);
+        } else {
+            stream.advance();
+        }
+    });
+
+    assert_eq!(consumed.len(), 1);
+    assert!(stream.peek().is_none());
+}

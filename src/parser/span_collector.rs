@@ -55,20 +55,16 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
         (self.spans, self.extra)
     }
 
-    /// Record a span starting at `start` up to the end of the current line.
-    pub(crate) fn push_line_span(&mut self, start: usize) {
-        let end = self.stream.line_end(self.stream.cursor());
-        self.stream.skip_until(end);
-        self.spans.push(start..end);
-    }
-
     /// Skip tokens up to the end of the current line without recording a span.
+    ///
+    /// Delegates to [`skip_line`] for use inside dispatch callbacks.
     pub(crate) fn skip_line(&mut self) {
-        let end = self.stream.line_end(self.stream.cursor());
-        self.stream.skip_until(end);
+        skip_line(&mut self.stream);
     }
 
     /// Parse a sub-tree starting at `start` using `parser`.
+    ///
+    /// Delegates to [`parse_span`] for use inside dispatch callbacks.
     pub(crate) fn parse_span<P>(
         &mut self,
         parser: P,
@@ -77,16 +73,44 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
     where
         P: chumsky::Parser<SyntaxKind, Span, Error = chumsky::error::Simple<SyntaxKind>>,
     {
-        use chumsky::Stream;
-        let iter = self
-            .stream
-            .tokens()
-            .iter()
-            .skip(self.stream.cursor())
-            .cloned();
-        let sub = Stream::from_iter(start..self.stream.src().len(), iter);
-        parser.parse_recovery(sub)
+        parse_span(&self.stream, parser, start)
     }
+}
+
+/// Record a span from `start` to the end of the stream's current line.
+///
+/// Consumes the remainder of the line. This is the split-borrow form used by
+/// [`TokenStream::dispatch`] callbacks, which already hold the stream.
+pub(crate) fn push_line_span(stream: &mut TokenStream<'_>, spans: &mut Vec<Span>, start: usize) {
+    let end = stream.line_end(stream.cursor());
+    stream.skip_until(end);
+    spans.push(start..end);
+}
+
+/// Advance `stream` past the end of its current line without recording a span.
+///
+/// This is the split-borrow form used by [`TokenStream::dispatch`] callbacks.
+pub(crate) fn skip_line(stream: &mut TokenStream<'_>) {
+    let end = stream.line_end(stream.cursor());
+    stream.skip_until(end);
+}
+
+/// Parse a sub-tree starting at `start` from the tokens remaining in `stream`.
+///
+/// This is the split-borrow form used by [`TokenStream::dispatch`] callbacks,
+/// which cannot borrow a whole [`SpanCollector`].
+pub(crate) fn parse_span<P>(
+    stream: &TokenStream<'_>,
+    parser: P,
+    start: usize,
+) -> (Option<Span>, Vec<chumsky::error::Simple<SyntaxKind>>)
+where
+    P: chumsky::Parser<SyntaxKind, Span, Error = chumsky::error::Simple<SyntaxKind>>,
+{
+    use chumsky::Stream;
+    let iter = stream.tokens().iter().skip(stream.cursor()).cloned();
+    let sub = Stream::from_iter(start..stream.src().len(), iter);
+    parser.parse_recovery(sub)
 }
 
 #[cfg(test)]

@@ -40,49 +40,6 @@ pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
     }
 }
 
-/// Iterate over the token stream and dispatch handlers by [`SyntaxKind`].
-///
-/// The macro expects a parsing context `ctx` with a `stream` field. It loops
-/// until the stream is exhausted, invoking the handler associated with each
-/// recognized kind. Handlers must advance the stream to consume the tokens they
-/// process. Any unhandled kind is skipped.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use ddlint::parser::token_stream::TokenStream;
-/// use ddlint::parser::lexer_helpers::token_dispatch;
-/// use ddlint::{Span, SyntaxKind};
-///
-/// struct State<'a> {
-///     stream: TokenStream<'a>,
-/// }
-///
-/// fn handle_kw(st: &mut State<'_>, _span: Span) {
-///     st.stream.advance();
-/// }
-///
-/// # let tokens = crate::test_util::tokenize("extern type Foo;");
-/// # let src = "extern type Foo;";
-/// let mut st = State { stream: TokenStream::new(&tokens, src) };
-/// token_dispatch!(st, {
-///     SyntaxKind::K_EXTERN => handle_kw,
-/// });
-/// ```
-macro_rules! token_dispatch {
-    ( $ctx:ident, {
-        $( $kind:path => $handler:ident ),* $(,)?
-    } ) => {{
-        while let Some(&(kind, ref span_ref)) = $ctx.stream.peek() {
-            let span = span_ref.clone();
-            match kind {
-                $( $kind => $handler(&mut $ctx, span.clone()), )*
-                _ => $ctx.stream.advance(),
-            }
-        }
-    }};
-}
-
 /// Parser recognizing whitespace and comment tokens.
 ///
 /// The combinator is useful when padding other parsers that allow whitespace.

@@ -5,6 +5,8 @@
 use chumsky::prelude::*;
 
 use crate::parser::lexer_helpers::token_display;
+use crate::parser::span_collector::skip_line;
+use crate::parser::token_stream::TokenStream;
 use crate::{Span, SyntaxKind};
 
 use super::utils::State;
@@ -29,25 +31,36 @@ pub(crate) fn collect_index_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
-    let handle_index = |st: &mut State<'_>, span: Span| {
-        let start = span.start;
-        match parse_index_decl(st.stream.tokens(), st.stream.src(), st.stream.cursor()) {
-            Ok(end) => {
-                st.spans.push(start..end);
-                st.stream.skip_until(end);
-            }
-            Err(error) => {
-                st.extra.push(*error);
-                st.skip_line();
-            }
-        }
-    };
-
-    token_dispatch!(st, {
-        SyntaxKind::K_INDEX => handle_index,
+    let State {
+        stream,
+        spans,
+        extra,
+    } = &mut st;
+    stream.dispatch(|stream, kind, span| match kind {
+        SyntaxKind::K_INDEX => handle_index(stream, spans, extra, &span),
+        _ => stream.advance(),
     });
 
     st.into_parts()
+}
+
+fn handle_index(
+    stream: &mut TokenStream<'_>,
+    spans: &mut Vec<Span>,
+    diagnostics: &mut Vec<Simple<SyntaxKind>>,
+    span: &Span,
+) {
+    let start = span.start;
+    match parse_index_decl(stream.tokens(), stream.src(), stream.cursor()) {
+        Ok(end) => {
+            spans.push(start..end);
+            stream.skip_until(end);
+        }
+        Err(error) => {
+            diagnostics.push(*error);
+            skip_line(stream);
+        }
+    }
 }
 
 fn parse_index_decl(

@@ -7,6 +7,7 @@
 use chumsky::error::Simple;
 
 use crate::parser::span_collector::SpanCollector;
+use crate::parser::token_stream::TokenStream;
 use crate::{Span, SyntaxKind};
 
 type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
@@ -46,8 +47,8 @@ fn is_permitted_extern_continuation(kind: SyntaxKind) -> bool {
 /// past any inline whitespace to confirm the next keyword is `type` or
 /// `function` — otherwise constructs like `extern transformer` would be
 /// incorrectly accepted.
-fn is_valid_attribute_target(st: &State<'_>) -> bool {
-    let Some(&(kind, _)) = st.stream.peek() else {
+fn is_valid_attribute_target(stream: &TokenStream<'_>) -> bool {
+    let Some(&(kind, _)) = stream.peek() else {
         return false;
     };
     if is_simple_attribute_target(kind) {
@@ -55,8 +56,7 @@ fn is_valid_attribute_target(st: &State<'_>) -> bool {
     }
     if kind == SyntaxKind::K_EXTERN {
         // Peek past inline whitespace to find the keyword after `extern`.
-        return st
-            .stream
+        return stream
             .peek_after_ws_inline()
             .is_some_and(|(k, _)| is_permitted_extern_continuation(*k));
     }
@@ -68,35 +68,38 @@ fn is_valid_attribute_target(st: &State<'_>) -> bool {
 /// The stream cursor must point at `T_HASH`. Returns `None` if the hash is
 /// not followed by `T_LBRACKET` (not an attribute) or if the bracket is
 /// never closed (an error is emitted instead).
-fn consume_attribute(st: &mut State<'_>) -> Option<Span> {
-    let (_, hash_span) = st.stream.peek()?.clone();
+fn consume_attribute(
+    stream: &mut TokenStream<'_>,
+    diagnostics: &mut Vec<Simple<SyntaxKind>>,
+) -> Option<Span> {
+    let (_, hash_span) = stream.peek()?.clone();
     let start = hash_span.start;
-    st.stream.advance(); // consume T_HASH
+    stream.advance(); // consume T_HASH
 
     // Skip optional inline whitespace between # and [
-    st.stream.skip_ws_inline();
+    stream.skip_ws_inline();
 
     // Must be followed by T_LBRACKET to form an attribute
-    let next = st.stream.peek()?;
+    let next = stream.peek()?;
     if next.0 != SyntaxKind::T_LBRACKET {
         return None;
     }
-    st.stream.advance(); // consume T_LBRACKET
+    stream.advance(); // consume T_LBRACKET
 
     // Consume tokens until the matching T_RBRACKET, tracking bracket depth
     let mut depth: usize = 1;
     loop {
-        let Some(&(kind, ref span)) = st.stream.peek() else {
+        let Some(&(kind, ref span)) = stream.peek() else {
             // EOF without closing bracket
-            st.extra.push(Simple::custom(
-                start..st.stream.src().len(),
+            diagnostics.push(Simple::custom(
+                start..stream.src().len(),
                 "unclosed attribute bracket",
             ));
             return None;
         };
 
         let end = span.end;
-        st.stream.advance();
+        stream.advance();
 
         match kind {
             SyntaxKind::T_LBRACKET => depth += 1,
@@ -116,25 +119,56 @@ fn consume_attribute(st: &mut State<'_>) -> Option<Span> {
 /// After gathering one or more `#[…]` spans, peeks at the next
 /// non-whitespace token to determine the target item. If the target is not
 /// a permitted attribute host, emits a diagnostic.
-fn handle_hash(st: &mut State<'_>, _span: Span) {
+fn handle_hash(
+    stream: &mut TokenStream<'_>,
+    spans: &mut Vec<Span>,
+    diagnostics: &mut Vec<Simple<SyntaxKind>>,
+) {
     let mut attr_spans: Vec<Span> = Vec::new();
 
     // Consume the first attribute
-    let Some(first) = consume_attribute(st) else {
+    let Some(first) = consume_attribute(stream, diagnostics) else {
         return;
     };
     let first_start = first.start;
     attr_spans.push(first);
 
-    // Consume any consecutive attributes (stacked #[a] #[b] …)
-    loop {
-        st.stream.skip_ws_inline();
-        // Also skip newline-containing whitespace between stacked attributes
-        skip_trivia_across_lines(st);
+    consume_stacked_attributes(stream, diagnostics, &mut attr_spans);
 
-        match st.stream.peek() {
+    // Peek at the target item keyword
+    skip_trivia_across_lines(stream);
+    stream.skip_ws_inline();
+
+    if is_valid_attribute_target(stream) {
+        spans.extend(attr_spans);
+    } else {
+        // `attr_spans` is guaranteed non-empty — the first attribute is
+        // pushed above — so the fallback end is never used in practice.
+        let last_end = attr_spans.last().map_or(first_start, |span| span.end);
+        diagnostics.push(Simple::custom(
+            first_start..last_end,
+            "attribute not permitted on this item",
+        ));
+    }
+}
+
+/// Consume any consecutive attributes following the first one.
+///
+/// Stacked attributes may be separated by inline trivia or by trivia spanning
+/// newlines, so both forms are skipped before each lookahead.
+fn consume_stacked_attributes(
+    stream: &mut TokenStream<'_>,
+    diagnostics: &mut Vec<Simple<SyntaxKind>>,
+    attr_spans: &mut Vec<Span>,
+) {
+    loop {
+        stream.skip_ws_inline();
+        // Also skip newline-containing whitespace between stacked attributes
+        skip_trivia_across_lines(stream);
+
+        match stream.peek() {
             Some(&(SyntaxKind::T_HASH, _)) => {
-                if let Some(attr) = consume_attribute(st) {
+                if let Some(attr) = consume_attribute(stream, diagnostics) {
                     attr_spans.push(attr);
                 } else {
                     break;
@@ -143,32 +177,14 @@ fn handle_hash(st: &mut State<'_>, _span: Span) {
             _ => break,
         }
     }
-
-    // Peek at the target item keyword
-    skip_trivia_across_lines(st);
-    st.stream.skip_ws_inline();
-
-    let is_valid = is_valid_attribute_target(st);
-
-    if is_valid {
-        st.spans.extend(attr_spans);
-    } else {
-        // `attr_spans` is guaranteed non-empty — the first attribute is
-        // pushed above — so the fallback end is never used in practice.
-        let last_end = attr_spans.last().map_or(first_start, |span| span.end);
-        st.extra.push(Simple::custom(
-            first_start..last_end,
-            "attribute not permitted on this item",
-        ));
-    }
 }
 
 /// Advance past whitespace and comment tokens, including those containing
 /// newlines.
-fn skip_trivia_across_lines(st: &mut State<'_>) {
-    while let Some(&(kind, _)) = st.stream.peek() {
+fn skip_trivia_across_lines(stream: &mut TokenStream<'_>) {
+    while let Some(&(kind, _)) = stream.peek() {
         if matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT) {
-            st.stream.advance();
+            stream.advance();
         } else {
             break;
         }
@@ -198,8 +214,14 @@ pub(crate) fn collect_attribute_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st = State::new(tokens, src, Vec::new());
 
-    token_dispatch!(st, {
-        SyntaxKind::T_HASH => handle_hash,
+    let State {
+        stream,
+        spans,
+        extra,
+    } = &mut st;
+    stream.dispatch(|stream, kind, _span| match kind {
+        SyntaxKind::T_HASH => handle_hash(stream, spans, extra),
+        _ => stream.advance(),
     });
 
     st.into_parts()
