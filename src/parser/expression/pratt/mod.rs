@@ -41,13 +41,14 @@ where
     /// items are parsed and restored at every nested delimiter, whose `;`
     /// remains the sequencing operator.
     semicolon_terminates: bool,
-    /// When set, `return` is rejected because the expression is a rule-body
-    /// literal.
+    /// Whether `return` currently has a legal enclosing body.
     ///
     /// A rule body has no return value, so the spec forbids `return` there.
-    /// Closure bodies clear the flag because they are function bodies for this
-    /// purpose.
-    in_rule_body: bool,
+    /// The permission starts `true`, matching the public `parse_expression`
+    /// contract, and the crate-private rule-body entry point starts it
+    /// `false`. Closure bodies re-enable it because they are function bodies
+    /// for this purpose.
+    return_permitted: bool,
     /// Cache of parsed string literals keyed by start offset to avoid re-parsing.
     pub(super) string_literal_cache: HashMap<usize, StringLiteral>,
 }
@@ -111,7 +112,7 @@ impl StructLiteralState {
 /// Returns a vector of [`Simple`] errors when parsing fails.
 #[must_use = "discarding the Result will ignore parse errors"]
 pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
-    parse_with_context(src, false)
+    parse_with_context(src, true)
 }
 
 /// Parse a rule-body literal into an [`Expr`], rejecting `return`.
@@ -125,12 +126,16 @@ pub fn parse_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
 /// appears outside a closure body.
 #[must_use = "discarding the Result will ignore parse errors"]
 pub(crate) fn parse_rule_body_expression(src: &str) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
-    parse_with_context(src, true)
+    parse_with_context(src, false)
 }
 
-fn parse_with_context(src: &str, in_rule_body: bool) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
+/// Parse `src`, starting with `return` permitted or forbidden.
+///
+/// The two public entry points differ only in that initial permission, so the
+/// shared routine keeps one parse, recovery, and error-completion path.
+fn parse_with_context(src: &str, return_permitted: bool) -> Result<Expr, Vec<Simple<SyntaxKind>>> {
     let mut parser = Pratt::new(tokenize_without_trivia(src).into_iter(), src);
-    parser.in_rule_body = in_rule_body;
+    parser.return_permitted = return_permitted;
     let expr = parser.parse_expr(0);
     if expr.is_some() {
         for (kind, sp) in parser.ts.drain_unexpected_tokens() {
@@ -166,7 +171,7 @@ where
             expr_depth: 0,
             struct_literals: StructLiteralState::default(),
             semicolon_terminates: false,
-            in_rule_body: false,
+            return_permitted: true,
             string_literal_cache: HashMap::new(),
         }
     }
@@ -179,18 +184,30 @@ where
     /// sequencing expression.
     pub(super) const fn semicolon_terminates(&self) -> bool { self.semicolon_terminates }
 
-    /// Return `true` when the expression is a rule-body literal.
-    pub(super) const fn in_rule_body(&self) -> bool { self.in_rule_body }
+    /// Return `true` when a `return` here has a legal enclosing body.
+    pub(super) const fn is_return_permitted(&self) -> bool { self.return_permitted }
 
     /// Run `f` for a closure body, where `return` is legal again.
     ///
     /// A closure is a function body for the purpose of the `return`
-    /// restriction, so the rule-body context ends at the `|…|` and resumes
-    /// after the body.
+    /// restriction, so the rule-body restriction ends at the `|…|` and the
+    /// previous permission resumes after the body.
     pub(super) fn with_closure_body_scope<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
-        let previous = std::mem::replace(&mut self.in_rule_body, false);
+        self.with_return_permission(true, f)
+    }
+
+    /// Run `f` with `return` permitted or forbidden.
+    ///
+    /// The previous permission is restored afterwards, so a nested closure
+    /// cannot leave the enclosing rule-body restriction cleared.
+    pub(super) fn with_return_permission<R>(
+        &mut self,
+        permitted: bool,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let previous = std::mem::replace(&mut self.return_permitted, permitted);
         let result = f(self);
-        self.in_rule_body = previous;
+        self.return_permitted = previous;
         result
     }
 

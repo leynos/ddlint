@@ -110,8 +110,10 @@ split parser library surfaces defined in
 - [x] 2.2.3. Parse `match` expressions (`e_match`).
   See docs/parser-implementation-notes.md and
   docs/differential-datalog-parser-syntax-spec-updated.md §5.13.
-- [x] 2.2.4. Parse imperative statements (`break`, `continue`, `return`).
-  See docs/differential-datalog-parser-syntax-spec-updated.md §5.10.
+- [x] 2.2.4. Parse imperative statements (`break`, `continue`, `return`) and
+  enforce `return` placement at parse time. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §5.10 and
+  docs/parser-conformance-register.md item 7.
 
 ### 2.3. Rule body parsing integration
 

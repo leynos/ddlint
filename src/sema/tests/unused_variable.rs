@@ -45,9 +45,9 @@ fn rule_binding_symbol_id(model: &super::super::SemanticModel, name: &str) -> Sy
 #[case("Output(head_x) :- Source(|head_x| head_x).", "head_x", false)]
 // A capture in the closure body still resolves to the enclosing binding.
 #[case("Output(head_x) :- Source(|ignored| head_x).", "head_x", true)]
-// `return` is only legal in function or closure bodies, never in a rule body,
-// so the wrapper is exercised through a closure while `head_x` stays a rule
-// binding.
+// The parser rejects a `return` written directly in a rule body (see
+// `parser::tests::rules::return_placement`), so the wrapper is exercised
+// through a permitted closure body while `head_x` stays a rule binding.
 #[case("Output(head_x) :- Source(|ignored| return head_x).", "head_x", true)]
 #[case(
     "Output(result) :- Source(result), var assigned_x = Seed(result), Use(assigned_x).",

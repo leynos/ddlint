@@ -218,6 +218,29 @@ conformance register.
   "top-level \`for\` body must end in an atom-like expression (for example \`
   Rel(args)\`)".
 
+### `return`, `break`, and `continue`
+
+- `return` takes an optional value; a missing value terminator yields unit.
+- `return` is legal only where a function or closure body encloses it. The
+  Pratt parser starts with the keyword permitted, so the public
+  `parse_expression` contract is unchanged, and the crate-private rule-body
+  entry point starts with it forbidden.
+- Two callers use the rule-body entry point: the span scanner validates each
+  rule-body literal through `validate_expression`, and `Rule::body_terms()`
+  reaches the same routine through `parse_rule_body_term`. The parser therefore
+  reports a misplaced keyword in `Parsed::errors()` under the `Rule` observer
+  category and again as a classification error, and neither path silently
+  accepts it.
+- A closure body calls `with_closure_body_scope`, which re-enables `return`
+  for its own expression and restores the previous permission afterwards. A
+  sibling expression after the closure, such as the second argument in
+  `Source(|ignored| ignored, return x)`, is therefore checked again.
+- The rejection is reported at the `return` keyword span as
+  `RETURN_IN_RULE_BODY_ERROR`, and the value is still parsed so one misplaced
+  keyword does not add structural errors for the surrounding block or call.
+- `break` and `continue` parse unconditionally; loop-placement policy is not
+  enforced yet and is recorded as a remaining gap in register item 7.
+
 ## Rule-body integration and term extraction
 
 Rule bodies are split into comma-separated literal spans with delimiter-aware
@@ -443,6 +466,14 @@ Constants currently defined:
 - `MIXED_COLLECTION_ENTRY_ERROR` — emitted when one literal mixes vector
   elements and map entries.
 - `EMPTY_VECTOR_LITERAL_ERROR` — emitted for `[]`.
+- `RETURN_IN_RULE_BODY_ERROR` — emitted at the `return` keyword when no
+  function or closure body encloses it.
+
+Final errors are rendered for humans by `parse_error_message`, which lives
+beside the stable diagnostic identifiers in `src/parser/diagnostics/`. The
+observer uses it for every `DiagnosticContext.message`, and the command-line
+front end uses it together with `parse_error_span` to print
+`<path>:<start>..<end>: error: <message>`.
 
 Test utilities that match these messages:
 

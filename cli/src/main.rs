@@ -1,43 +1,160 @@
 //! CLI entry point for the `ddlint` tool.
 //!
-//! The current implementation does not perform any analysis. It writes a
-//! placeholder message through a testable output boundary and exits non-zero.
+//! The current implementation parses each named file and reports parse
+//! diagnostics. Linting, configuration loading, and directory walking are not
+//! implemented yet; with no arguments the placeholder message keeps its
+//! previous output and exit status.
 
-use std::io::{self, Write};
+use std::{
+    ffi::{OsStr, OsString},
+    io::{self, Write},
+};
 
-/// Writes the placeholder message to the supplied writer.
+use ddlint::{parse_error_message, parse_error_span};
+
+/// Message written when the command is invoked without file arguments.
+const PLACEHOLDER_MESSAGE: &str =
+    "ddlint: CLI not yet implemented. Run with --help for planned options.";
+
+/// Renderer for a parse-only run.
 ///
-/// Keeping the write behind a `Write` boundary lets a test observe a failed
-/// standard-output write without spawning a process.
-fn run(writer: &mut impl Write) -> io::Result<()> {
-    writeln!(
-        writer,
-        "ddlint: CLI not yet implemented. Run with --help for planned options."
-    )
+/// Reporting goes through writer handles so a closed stream is observable as
+/// an `io::Error` rather than a panic, and so a test can drive the same code
+/// without spawning a process.
+struct Reporter<'a, O, E> {
+    stdout: &'a mut O,
+    stderr: &'a mut E,
 }
 
-/// Run the CLI entry point, reporting output failures to stderr and always
-/// exiting with a non-zero status while the tool is unimplemented.
-fn main() -> io::Result<()> {
-    if let Err(error) = run(&mut io::stdout()) {
-        // The placeholder has no other reporting channel, so send the failure
-        // to stderr and keep the non-zero status callers already observe.
-        writeln!(io::stderr(), "ddlint: {error}")?;
-        std::process::exit(1);
+impl<O, E> Reporter<'_, O, E>
+where
+    O: Write,
+    E: Write,
+{
+    /// Write the no-argument placeholder message.
+    fn placeholder(&mut self) -> io::Result<()> { writeln!(self.stdout, "{PLACEHOLDER_MESSAGE}") }
+
+    /// Report a file that could not be read.
+    fn read_failure(&mut self, path: &OsStr, error: &io::Error) -> io::Result<()> {
+        writeln!(self.stderr, "ddlint: {}: {error}", path.to_string_lossy())
     }
-    std::process::exit(1);
+
+    /// Report one final parse diagnostic for `path`, naming its byte span.
+    ///
+    /// `span` is the half-open byte range the diagnostic covers, taken from
+    /// the parser error by the caller so this renderer stays independent of
+    /// the parser's error type.
+    fn parse_diagnostic(
+        &mut self,
+        path: &OsStr,
+        span: &std::ops::Range<usize>,
+        message: &str,
+    ) -> io::Result<()> {
+        writeln!(
+            self.stderr,
+            "{}:{}..{}: error: {message}",
+            path.to_string_lossy(),
+            span.start,
+            span.end,
+        )
+    }
+}
+
+/// Exit status of a completed run.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum Status {
+    /// Every named file parsed without diagnostics.
+    Clean,
+    /// At least one file failed to read or parse, or the tool is a placeholder.
+    Failed,
+}
+
+impl Status {
+    /// Process exit code for this status.
+    const fn code(self) -> i32 {
+        match self {
+            Self::Clean => 0,
+            Self::Failed => 1,
+        }
+    }
+}
+
+/// Parse every named file, reporting failures, and return the run status.
+///
+/// With no arguments the placeholder message keeps the original behaviour: it
+/// is written to standard output and the run fails.
+fn run(args: &[OsString], stdout: &mut impl Write, stderr: &mut impl Write) -> io::Result<Status> {
+    let mut reporter = Reporter { stdout, stderr };
+    if args.is_empty() {
+        reporter.placeholder()?;
+        return Ok(Status::Failed);
+    }
+
+    let mut is_clean = true;
+    for path in args {
+        is_clean &= check_file(path, &mut reporter)?;
+    }
+    Ok(if is_clean {
+        Status::Clean
+    } else {
+        Status::Failed
+    })
+}
+
+/// Parse one file, reporting read failures and parse diagnostics.
+///
+/// Returns `true` when the file was read and produced no diagnostics, so the
+/// caller can keep scanning the remaining paths instead of stopping at the
+/// first bad file.
+fn check_file<O, E>(path: &OsStr, reporter: &mut Reporter<'_, O, E>) -> io::Result<bool>
+where
+    O: Write,
+    E: Write,
+{
+    let source = match std::fs::read_to_string(path) {
+        Ok(source) => source,
+        Err(error) => {
+            reporter.read_failure(path, &error)?;
+            return Ok(false);
+        }
+    };
+
+    let parsed = ddlint::parse(&source);
+    for error in parsed.errors() {
+        let message = parse_error_message(error);
+        reporter.parse_diagnostic(path, &parse_error_span(error), &message)?;
+    }
+    Ok(parsed.errors().is_empty())
+}
+
+/// Run the CLI entry point, reporting writer failures to standard error.
+///
+/// A failed diagnostic write is not a diagnostic itself, so it goes through
+/// the same `ddlint: <error>` channel as an unreadable file and exits
+/// non-zero without pretending the remaining files were checked.
+fn main() -> io::Result<()> {
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    match run(&args, &mut io::stdout(), &mut io::stderr()) {
+        Ok(status) => std::process::exit(status.code()),
+        Err(error) => {
+            writeln!(io::stderr(), "ddlint: {error}")?;
+            std::process::exit(1);
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    //! Tests for the CLI output boundary.
+    //! Tests for the CLI output boundaries.
 
-    use std::io::{self, Write};
+    use std::{
+        ffi::OsString,
+        io::{self, Write},
+    };
 
-    use super::run;
+    use super::{Status, run};
 
-    /// A writer that rejects every write, standing in for a closed standard
-    /// output.
+    /// A writer that rejects every write, standing in for a closed stream.
     struct FailingWriter;
 
     impl Write for FailingWriter {
@@ -48,12 +165,84 @@ mod tests {
         fn flush(&mut self) -> io::Result<()> { Err(io::Error::from(io::ErrorKind::BrokenPipe)) }
     }
 
+    /// Collects everything written to it.
+    #[derive(Default)]
+    struct Captured(String);
+
+    impl Write for Captured {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.0.push_str(&String::from_utf8_lossy(bytes));
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+
     #[test]
-    fn run_surfaces_a_write_failure() {
-        let mut writer = FailingWriter;
+    fn run_surfaces_a_placeholder_write_failure() {
+        let mut stdout = FailingWriter;
+        let mut stderr = Captured::default();
         assert!(
-            run(&mut writer).is_err(),
+            run(&[], &mut stdout, &mut stderr).is_err(),
             "a failing writer should surface its error",
+        );
+    }
+
+    #[test]
+    fn run_surfaces_a_diagnostic_write_failure() {
+        let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
+        let path = directory.path().join("bad.dl");
+        std::fs::write(&path, "R(x) :- return x.").expect("the fixture should be written");
+
+        let mut stdout = Captured::default();
+        let mut stderr = FailingWriter;
+        assert!(
+            run(&[OsString::from(path)], &mut stdout, &mut stderr).is_err(),
+            "a failing diagnostic writer should surface its error",
+        );
+    }
+
+    #[test]
+    fn the_placeholder_keeps_its_message_and_failed_status() {
+        let mut stdout = Captured::default();
+        let mut stderr = Captured::default();
+        let status = run(&[], &mut stdout, &mut stderr).expect("writing to memory cannot fail");
+
+        assert_eq!(
+            status,
+            Status::Failed,
+            "the placeholder must keep its non-zero status",
+        );
+        assert_eq!(
+            stdout.0, "ddlint: CLI not yet implemented. Run with --help for planned options.\n",
+            "the placeholder message must not change",
+        );
+        assert!(
+            stderr.0.is_empty(),
+            "the placeholder must not write to stderr, got {:?}",
+            stderr.0,
+        );
+    }
+
+    #[test]
+    fn a_missing_file_is_reported_with_the_path_prefix() {
+        let mut stdout = Captured::default();
+        let mut stderr = Captured::default();
+        let missing = OsString::from("/nonexistent/ddlint-fixture.dl");
+        let status =
+            run(&[missing], &mut stdout, &mut stderr).expect("writing to memory cannot fail");
+
+        assert_eq!(
+            status,
+            Status::Failed,
+            "an unreadable file must fail the run",
+        );
+        assert!(
+            stderr
+                .0
+                .starts_with("ddlint: /nonexistent/ddlint-fixture.dl: "),
+            "a read failure must name the path, got {:?}",
+            stderr.0,
         );
     }
 }

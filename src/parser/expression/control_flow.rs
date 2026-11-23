@@ -7,10 +7,7 @@ use super::{
 use crate::{
     Span,
     SyntaxKind,
-    parser::{
-        ast::{Expr, MatchArm},
-        error_messages::RETURN_IN_RULE_BODY_ERROR,
-    },
+    parser::ast::{Expr, MatchArm},
 };
 
 impl<I> Pratt<'_, I>
@@ -98,15 +95,11 @@ where
 
     /// Parse `return` and its optional value.
     ///
-    /// `keyword_span` is the `return` token, which is where the rule-body
-    /// diagnostic points. Parsing continues after the diagnostic so one
-    /// misplaced `return` does not also produce structural errors for the
-    /// surrounding block or call.
-    pub(super) fn parse_return_expression(&mut self, keyword_span: &Span) -> Option<Expr> {
-        if self.in_rule_body() {
-            self.ts
-                .push_error(keyword_span.clone(), RETURN_IN_RULE_BODY_ERROR);
-        }
+    /// The keyword's placement has already been checked against the enclosing
+    /// body, so this routine only parses the value. The value is parsed even
+    /// after a placement diagnostic, so one misplaced `return` does not also
+    /// produce structural errors for the surrounding block or call.
+    pub(super) fn parse_return_expression(&mut self) -> Option<Expr> {
         if Self::is_return_value_terminator(self.ts.peek_kind()) {
             return Some(Expr::Return {
                 value: Box::new(Expr::Tuple(Vec::new())),

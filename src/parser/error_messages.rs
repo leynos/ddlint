@@ -47,7 +47,7 @@ pub const UNCLOSED_BLOCK_ERROR: &str = "expected '}' to close block";
 /// return value, so the keyword is rejected wherever it appears in one,
 /// including inside a block, `if`, or loop nested in the body.
 pub const RETURN_IN_RULE_BODY_ERROR: &str =
-    "return is not valid in a rule body; use a function or closure body";
+    "'return' is not permitted in a rule body; use it only in a function or closure body";
 
 /// Diagnostic emitted when a transformer declaration omits `:` or its first
 /// output identifier.

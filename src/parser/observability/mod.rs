@@ -7,10 +7,10 @@
 
 use std::fmt;
 
-use chumsky::error::{Simple, SimpleReason};
+use chumsky::error::Simple;
 
-use super::diagnostics::{DiagnosticCategory, DiagnosticCode};
-use crate::{Span, SyntaxKind, parser::lexer_helpers::token_display};
+use super::diagnostics::{DiagnosticCategory, DiagnosticCode, parse_error_message};
+use crate::{Span, SyntaxKind};
 
 #[cfg(feature = "observability")]
 mod telemetry;
@@ -149,7 +149,7 @@ pub(crate) fn report_diagnostics(
     }
 
     for error in errors {
-        let message = diagnostic_message(error);
+        let message = parse_error_message(error);
         let context = DiagnosticContext {
             code: DiagnosticCode::from_message(&message),
             category,
@@ -170,51 +170,13 @@ pub(crate) fn complete_attempt(
     observer.parse_attempt_completed(ParseAttemptContext::new(category, errors.len()));
 }
 
-fn diagnostic_message(error: &Simple<SyntaxKind>) -> String {
-    match error.reason() {
-        SimpleReason::Custom(message) => message.clone(),
-        SimpleReason::Unexpected => {
-            let found = error
-                .found()
-                .map_or_else(|| "end of input".to_owned(), |kind| display_kind(*kind));
-            let mut expected: Vec<String> = error
-                .expected()
-                .map(|kind| {
-                    kind.as_ref().map_or_else(
-                        || "end of input".to_owned(),
-                        |expected_kind| display_kind(*expected_kind),
-                    )
-                })
-                .collect();
-            expected.sort();
-
-            if expected.is_empty() {
-                format!("unexpected {found}")
-            } else {
-                format!("expected {} but found {found}", expected.join(" or "))
-            }
-        }
-        SimpleReason::Unclosed { delimiter, .. } => {
-            format!("unclosed {}", display_kind(*delimiter))
-        }
-    }
-}
-
-fn display_kind(kind: SyntaxKind) -> String {
-    match token_display(kind) {
-        "" => format!("{kind:?}"),
-        symbol => format!("`{symbol}`"),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     //! Tests for detailed, deterministic observer messages.
 
     use chumsky::error::Error;
 
-    use super::diagnostic_message;
-    use crate::SyntaxKind;
+    use crate::{SyntaxKind, parser::diagnostics::parse_error_message};
 
     #[test]
     fn unexpected_message_includes_sorted_expected_and_found_tokens() {
@@ -225,8 +187,9 @@ mod tests {
         );
 
         assert_eq!(
-            diagnostic_message(&error),
-            "expected T_IDENT or `(` but found `)`"
+            parse_error_message(&error),
+            "expected T_IDENT or `(` but found `)`",
+            "structural failures must name the sorted alternatives"
         );
     }
 
@@ -240,6 +203,10 @@ mod tests {
             Some(SyntaxKind::T_IDENT),
         );
 
-        assert_eq!(diagnostic_message(&error), "unclosed `[`");
+        assert_eq!(
+            parse_error_message(&error),
+            "unclosed `[`",
+            "an unclosed delimiter must be named"
+        );
     }
 }

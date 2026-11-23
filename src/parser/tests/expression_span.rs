@@ -4,7 +4,7 @@ use rstest::rstest;
 
 use crate::{
     parser::expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
-    test_util::tokenize,
+    test_util::{RETURN_IN_RULE_BODY_ERROR, tokenize},
 };
 
 #[test]
@@ -34,7 +34,7 @@ fn validate_expression_rejects_return_in_a_rule_body_block() {
         "the diagnostic must point at `return`"
     );
     assert!(
-        format!("{:?}", error.reason()).contains("not valid in a rule body"),
+        format!("{:?}", error.reason()).contains(RETURN_IN_RULE_BODY_ERROR),
         "the diagnostic must explain the rule-body restriction, got {error:?}"
     );
 }
