@@ -477,7 +477,7 @@ This phase delivers the end-user command-line interface and diagnostic output.
   source-aware `ddlint.toml` loader in the application-owned `ddlint-cli`
   package. Keep command parsing and execution in 5.1.1–5.1.4. See
   docs/ddlint-design.md §4.1–4.3 and
-  [ADR 0007](adrs/adr-0008-ortho-config-cli-boundary.md).
+  [ADR 0008](adrs/adr-0008-ortho-config-cli-boundary.md).
 
 ### 5.2. Rich diagnostics
 

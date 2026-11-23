@@ -88,7 +88,7 @@ _Figure 1: Compact repository tree for contributor orientation._
 
 The `src/` tree is organized by domain responsibility rather than by generic
 layer names. The `cli/` package holds the application boundary described in
-[ADR-0007](adrs/adr-0008-ortho-config-cli-boundary.md); OrthoConfig and Clap
+[ADR-0008](adrs/adr-0008-ortho-config-cli-boundary.md); OrthoConfig and Clap
 stay confined to that package.
 
 - `cli/src/main.rs`: Command-line entrypoint for the `ddlint` binary.
