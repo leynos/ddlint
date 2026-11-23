@@ -31,10 +31,11 @@ fn nested_block_source(nesting: usize) -> String {
 }
 
 /// Parse on a default-sized thread, matching a plain `std::thread` stack.
-fn parses_on_default_thread(src: String) -> bool {
-    std::thread::spawn(move || parses_complete(paren_block(), &src))
-        .join()
-        .expect("parser thread should not panic")
+///
+/// The join result stays fallible; callers in test bodies decide how to
+/// report a panicking parser thread.
+fn parses_on_default_thread(src: String) -> std::thread::Result<bool> {
+    std::thread::spawn(move || parses_complete(paren_block(), &src)).join()
 }
 
 #[rstest]
@@ -171,9 +172,10 @@ fn balanced_block_parser_can_be_reused_after_a_failure() {
 #[test]
 fn balanced_block_accepts_nesting_at_the_limit() {
     let src = nested_block_source(MAX_BLOCK_DEPTH);
+    let parsed = parses_on_default_thread(src).expect("parser thread should not panic");
 
     assert!(
-        parses_on_default_thread(src),
+        parsed,
         "expected nesting at the {MAX_BLOCK_DEPTH}-level limit to parse"
     );
 }
@@ -181,9 +183,10 @@ fn balanced_block_accepts_nesting_at_the_limit() {
 #[test]
 fn balanced_block_rejects_nesting_beyond_the_limit() {
     let src = nested_block_source(MAX_BLOCK_DEPTH + 1);
+    let parsed = parses_on_default_thread(src).expect("parser thread should not panic");
 
     assert!(
-        !parses_on_default_thread(src),
+        !parsed,
         "expected nesting beyond the {MAX_BLOCK_DEPTH}-level limit to be rejected"
     );
 }
