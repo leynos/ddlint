@@ -303,7 +303,7 @@ are recorded in `docs/ortho-config-provenance.md`.
 - `docs/ddlint-design.md` §4.1–4.3 and `docs/roadmap.md` §5.1; these are the
   current project design artefacts. No Terms of Reference or earlier
   CLI-specific ADR existed.
-- ADR 004 records the application/library boundary and configuration
+- ADR 0008 records the application/library boundary and configuration
   contract.
 - Upstream `leynos/ortho-config` tag object
   `996e5a1c9f22ace4f55bf5dcc196d2c0524262bf`, peeled to commit
