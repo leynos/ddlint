@@ -159,6 +159,6 @@
   Historical analysis of parser documentation structure.
 
 [ortho-config-migration-guide]: ./v0-10-0-migration-guide.md
-[ortho-config-cli-adr]: ./adrs/adr-0004-ortho-config-cli-boundary.md
+[ortho-config-cli-adr]: ./adrs/adr-0007-ortho-config-cli-boundary.md
 [issue-411-ortho-config-plan]:
   ./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md
