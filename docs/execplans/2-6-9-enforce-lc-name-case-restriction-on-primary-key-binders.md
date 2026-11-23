@@ -249,6 +249,7 @@ above replace it before approval.
 - [x] (2026-11-23 19:45Z) Community-of-experts design review (structure and
   contracts; alternatives and viability; failure modes and cost) applied; see
   the revision note.
+- [x] (2026-11-23 20:05Z) Draft PR #472 opened for plan review.
 - [ ] Plan approved by the user.
 - [ ] `EP-M1` shared recognizer and binder case enforcement.
 - [ ] `EP-M2` property tests, observability row, and seeded-fault evidence.
