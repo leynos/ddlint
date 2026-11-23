@@ -140,7 +140,10 @@ fn dispatch_on_empty_stream_does_not_invoke_the_callback() {
         stream.advance();
     });
 
-    assert_eq!(calls, 0);
+    assert_eq!(
+        calls, 0,
+        "dispatch must not call the closure on empty input"
+    );
 }
 
 #[test]
@@ -157,16 +160,20 @@ fn dispatch_passes_each_kind_with_its_span() {
 
     assert_eq!(
         seen,
-        vec![(SyntaxKind::T_LPAREN, 0..1), (SyntaxKind::T_RPAREN, 1..2),]
+        vec![(SyntaxKind::T_LPAREN, 0..1), (SyntaxKind::T_RPAREN, 1..2)],
+        "dispatch must report each token kind with its own span"
     );
 }
 
 #[test]
 fn dispatch_invokes_matching_handlers_and_skips_others() {
-    let src = "()";
+    // The identifier between the parentheses only matches the catch-all arm,
+    // so the test fails if that arm forgets to advance or stops dispatch.
+    let src = "(x)";
     let tokens = tokenize(src);
     let mut stream = TokenStream::new(&tokens, src);
     let mut out = Vec::new();
+    let mut skipped = 0;
 
     stream.dispatch(|stream, kind, _span| match kind {
         SyntaxKind::T_LPAREN => {
@@ -177,19 +184,36 @@ fn dispatch_invokes_matching_handlers_and_skips_others() {
             stream.advance();
             out.push("rp");
         }
-        _ => stream.advance(),
+        _ => {
+            skipped += 1;
+            stream.advance();
+        }
     });
 
-    assert_eq!(out, vec!["lp", "rp"]);
-    assert!(stream.peek().is_none());
+    assert_eq!(
+        out,
+        vec!["lp", "rp"],
+        "dispatch must reach the closing paren after an unmatched token"
+    );
+    assert_eq!(
+        skipped, 1,
+        "the identifier must be handled by the catch-all arm exactly once"
+    );
+    assert!(
+        stream.peek().is_none(),
+        "dispatch must consume the whole stream"
+    );
 }
 
 #[test]
 fn dispatch_handler_may_consume_several_tokens() {
     let src = "typedef A = string\nnext";
     let tokens = tokenize(src);
+    let newline = src.find('\n').expect("test source must contain a newline");
+    let typedef_line = 0..newline + 1;
     let mut stream = TokenStream::new(&tokens, src);
     let mut consumed = Vec::new();
+    let mut fallback = Vec::new();
 
     stream.dispatch(|stream, kind, span| {
         if kind == SyntaxKind::K_TYPEDEF {
@@ -197,10 +221,50 @@ fn dispatch_handler_may_consume_several_tokens() {
             stream.skip_until(end);
             consumed.push(span.start..end);
         } else {
+            fallback.push((kind, span));
             stream.advance();
         }
     });
 
-    assert_eq!(consumed.len(), 1);
-    assert!(stream.peek().is_none());
+    assert_eq!(
+        consumed,
+        vec![typedef_line],
+        "the handler must consume exactly the typedef line"
+    );
+    assert_eq!(
+        fallback.len(),
+        1,
+        "only the token after the consumed line may reach the fallback arm: {fallback:?}"
+    );
+    assert_eq!(
+        fallback.first().map(|(kind, span)| (*kind, span.clone())),
+        Some((SyntaxKind::T_IDENT, newline + 1..src.len())),
+        "dispatch must continue at the token following the consumed line"
+    );
+    assert!(
+        stream.peek().is_none(),
+        "dispatch must finish the stream after the trailing token"
+    );
+}
+
+#[test]
+fn nested_atom_arguments_parse_at_the_limit_on_a_default_thread() {
+    // The atom's own argument list counts as the first nesting level, so the
+    // inner source supplies one fewer pair.
+    let nested = super::lexer_helpers::MAX_BLOCK_DEPTH - 1;
+    let src = format!("R({}a{})", "(".repeat(nested), ")".repeat(nested));
+    let errors = std::thread::spawn(move || {
+        crate::parse(&src)
+            .errors()
+            .iter()
+            .map(|error| format!("{error:?}"))
+            .collect::<Vec<_>>()
+    })
+    .join()
+    .expect("parser thread should not panic");
+
+    assert!(
+        errors.is_empty(),
+        "expected nested atom arguments at the limit to parse, got {errors:?}"
+    );
 }

@@ -124,7 +124,11 @@ impl<'a> TokenStream<'a> {
     ///     kinds.push(kind);
     ///     stream.advance();
     /// });
-    /// assert_eq!(kinds, [SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN]);
+    /// assert_eq!(
+    ///     kinds,
+    ///     [SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN],
+    ///     "dispatch must visit both parentheses in order",
+    /// );
     /// ```
     pub(crate) fn dispatch<F>(&mut self, mut f: F)
     where

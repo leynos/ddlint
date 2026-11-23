@@ -70,6 +70,28 @@ parsing pipeline.
 - Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
   and recovery in `relations.rs`.
 
+### `src/parser/span_scanners/*.rs`
+
+- Drive token scanning with `TokenStream::dispatch`. The closure receives the
+  stream, the current `SyntaxKind`, and a cloned `Span`, and owns all cursor
+  movement. Every arm must advance the stream — including a catch-all
+  `_ => stream.advance()` — or dispatch would revisit the same token. A debug
+  assertion reports an arm that fails to advance.
+- Pass the stream, span vector and diagnostic vector to dispatch handlers as
+  separate `&mut` borrows. Destructure `SpanCollector` (or a `State` alias of
+  it) into `stream`, `spans` and `extra` before dispatch so the closure
+  captures only output borrows; the stream itself is already borrowed by
+  `dispatch`. Do not pass a whole `SpanCollector` into a dispatch handler.
+- Use the split-state helpers
+  (`span_collector::{parse_span, skip_line, push_line_span}` and
+  `utils::parse_and_record_split`) inside dispatch handlers. The
+  whole-collector forms `SpanCollector::parse_span`, `SpanCollector::skip_line`
+  and `utils::parse_and_record` remain for call sites that are not driven by
+  `dispatch`.
+- Keep scanner grammar decisions in the category module and shared cursor
+  mechanics in `token_stream.rs`, matching the relation scanner's separation of
+  `relations.rs` and `relations/cursor.rs`.
+
 ### `src/parser/expression/pratt/postfix.rs`
 
 - Owns postfix dispatch for the Pratt parser.

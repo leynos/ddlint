@@ -139,13 +139,23 @@ where
         .ignored()
 }
 
+/// Maximum nesting depth accepted inside one balanced block.
+///
+/// Each nesting level adds several Rust stack frames while parsing, and an
+/// unoptimized build needs roughly 24 KiB per level. The limit keeps a
+/// pathological input from exhausting a default 2 MiB thread stack; nesting
+/// beyond it is reported as a parse error. Real `DDlog` declarations nest only
+/// a handful of levels, so the limit leaves a wide margin.
+pub(super) const MAX_BLOCK_DEPTH: usize = 64;
+
 /// Parser for a balanced token block such as parentheses or braces.
 ///
 /// Nested blocks use the same delimiter pair. The first matching closing
 /// token ends the current block; other delimiter kinds are ordinary tokens.
-/// Whitespace and comments are permitted between tokens. Recursive parsing
-/// keeps nesting state local to each parse, so a failed parse cannot affect a
-/// later use of the parser.
+/// Whitespace and comments are permitted between tokens. Nesting is bounded
+/// by [`MAX_BLOCK_DEPTH`], so deeper input fails to parse instead of
+/// recursing without limit. The grammar holds no mutable state, so a failed
+/// parse cannot affect a later use of the parser.
 ///
 /// # Examples
 ///
@@ -155,14 +165,30 @@ where
 ///     "Totals(user, total) :- Orders(user, amt), ",
 ///     "Aggregate((user), sum(amt)), total = __group.",
 /// ));
-/// assert!(parsed.errors().is_empty());
-/// assert_eq!(parsed.root().rules().len(), 1);
+/// assert!(
+///     parsed.errors().is_empty(),
+///     "expected no parse errors, got {:?}",
+///     parsed.errors(),
+/// );
+/// assert_eq!(
+///     parsed.root().rules().len(),
+///     1,
+///     "expected exactly one rule",
+/// );
 /// ```
 pub(super) fn balanced_block(
     open: SyntaxKind,
     close: SyntaxKind,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
-    recursive(|block| balanced_block_body(open, close, block, 0))
+    // Build the grammar from the deepest level outwards. The innermost parser
+    // rejects the block's own delimiters, so the level above the limit fails
+    // to parse rather than recursing further.
+    let ordinary = filter(move |kind: &SyntaxKind| *kind != open && *kind != close)
+        .ignored()
+        .boxed();
+    (0..MAX_BLOCK_DEPTH).fold(ordinary, |nested, _| {
+        balanced_block_body(open, close, nested, 0).boxed()
+    })
 }
 
 /// As [`balanced_block`] but requires at least one item inside the delimiters.
