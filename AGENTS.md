@@ -287,12 +287,17 @@ project:
 
     ```sh
     RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" \
+      $(CARGO) fetch --locked
+    RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" \
       $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
     RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" \
       RUSTDOCFLAGS="${RUSTDOCFLAGS:+$RUSTDOCFLAGS }-Zunstable-options --doctest-build-arg=-Dwarnings" \
       $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
     ```
 
+    first fetching the locked dependencies (`Cargo.lock` is tracked; if a
+    manifest change leaves it stale, the fetch fails before any test runs, and
+    `cargo update` or a build refreshes the lockfile for commit), then
     running the full workspace test suite with `cargo test` (not
     `cargo nextest`) and the doctests with warnings treated as errors. Rustdoc
     compiles each doctest snippet as a separate crate and reads `RUSTDOCFLAGS`,

@@ -145,12 +145,17 @@ docstring on every Python definition under `tests` (it fails on any `MISSED`
 row, because interrogate rounds its percentage to one decimal). It then runs
 Clippy, a Rustdoc build with `RUSTDOC_FLAGS` (`--cfg docsrs -D warnings` by
 default), the Clippy policy script, Whitaker, and the spelling gate.
-`make test` runs the workspace tests and then the doctests, both with warnings
-denied. Workspace crates take `RUSTFLAGS`, while rustdoc compiles each doctest
-snippet separately and takes `RUSTDOCFLAGS`; the recipe forwards `-Dwarnings`
-to those compilations through `--doctest-build-arg`. `make markdownlint` also
-invokes the spelling gate for tracked Markdown. `make markdownlint` lints every
-Markdown source, and `make nixie` validates the Mermaid diagrams within them.
+`make test` first runs `cargo fetch --locked`, so nested builds that tests
+start find the package cache warm, and then runs the workspace tests and the
+doctests, both with warnings denied. `Cargo.lock` is tracked because ddlint
+ships a binary; when a manifest change leaves it stale the fetch fails before
+any test runs, and the fix is to refresh the lockfile (`cargo update -w` or a
+build) and commit it with the manifest change. Workspace crates take
+`RUSTFLAGS`, while rustdoc compiles each doctest snippet separately and takes
+`RUSTDOCFLAGS`; the recipe forwards `-Dwarnings` to those compilations through
+`--doctest-build-arg`. `make markdownlint` also invokes the spelling gate for
+tracked Markdown. `make markdownlint` lints every Markdown source, and
+`make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
