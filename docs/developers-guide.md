@@ -106,10 +106,15 @@ The workspace lint baseline is authoritative in two files:
   `[workspace.lints.rustdoc]`, and `[workspace.lints.clippy]` tables. Every
   member opts in with `[lints] workspace = true`, so a rule added once applies
   to the whole estate.
-- `clippy.toml` holds the numeric thresholds: cognitive complexity 9, too many
-  arguments 4, too many lines 70, and excessive nesting 4. They match
-  CodeScene's ceilings so the local and hosted gates agree about the same
-  function.
+- `clippy.toml` holds the numeric thresholds: too many arguments 4, too many
+  lines 70, and excessive nesting 4. They match CodeScene's ceilings so the
+  local and hosted gates agree about the same function.
+- Cognitive complexity is not gated by Clippy, which scores after macro
+  expansion and so counts branching a macro generated. Whitaker's experimental
+  `macro_aware_cognitive_complexity` gates it at `max_complexity = 9`,
+  CodeScene's ceiling; `dylint.toml` opts in with
+  `[whitaker] experimental = ["macro_aware_cognitive_complexity"]`. Fix a
+  finding by extracting named helpers, never by raising the threshold.
 
 The baseline denies the restriction lints it names. Fix a finding at its
 source: rename a shadowed binding, group related parameters in a struct, or
