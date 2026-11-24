@@ -112,8 +112,13 @@ Pratt parser already carries the scoping state.
   restores permission.
 - [x] (2026-11-23 17:40Z) `EP-M2`: parser test module, CLI parse-only path,
   CLI process tests, and unit tests written.
-- [ ] `EP-M2` verification: focused and full gates.
-- [ ] `EP-M3`: documentation closure and PR delivery.
+- [x] (2026-11-23 20:20Z) `EP-M2` verification: 15 focused parser tests, 4 CLI
+  process tests, `make typecheck`, and the full `make test` suite pass,
+  including both new doctests.
+- [x] (2026-11-23 21:10Z) Code committed as `6d366ea7`.
+- [ ] `EP-M3`: `make lint` (Clippy, Rustdoc, Whitaker, spelling), then
+  `make markdownlint` and `make nixie`, then PR delivery.
+- [ ] CodeRabbit review loop and draft pull request.
 
 ## Surprises & discoveries
 
@@ -147,6 +152,12 @@ Pratt parser already carries the scoping state.
   (`'return' is not permitted ...`). Rationale: it names the keyword and
   matches the existing single-quote style for tokens such as `'->'`.
   Date/Author: 2026-11-23, implementer.
+- D5. Use a local `ensure(holds, message)` helper in the CLI process tests
+  instead of `assert!`. Rationale: the workspace denies `expect_used`,
+  `unwrap_used`, and `panic_in_result_fn`, so a fallible test must report
+  through its `Result`; the helper mirrors `tests/block_expressions.rs` and
+  `tests/build_standard_support/injected.rs`. Date/Author: 2026-11-23,
+  implementer.
 
 ## Outcomes & retrospective
 
@@ -154,7 +165,7 @@ To be completed after the gates pass and the pull request is opened.
 
 ## Context and orientation
 
-The parser is split into span scanners and a hand-written Pratt expression
+The parser is split into span scanners and a handwritten Pratt expression
 parser. `src/parser/span_scanners/rules.rs` splits each rule body into
 comma-separated literals and validates each one through
 `src/parser/expression_span.rs::validate_expression`, which now calls the

@@ -8,8 +8,10 @@
 use std::{
     ffi::{OsStr, OsString},
     io::{self, Write},
+    path::Path,
 };
 
+use cap_std::{ambient_authority, fs::Dir};
 use ddlint::{parse_error_message, parse_error_span};
 
 /// Message written when the command is invoked without file arguments.
@@ -101,6 +103,25 @@ fn run(args: &[OsString], stdout: &mut impl Write, stderr: &mut impl Write) -> i
     })
 }
 
+/// Read `path` as UTF-8 text through a capability rooted at its directory.
+///
+/// The operator supplies ambient paths on the command line, so the capability
+/// covers exactly one directory and is used for the single read. Everything
+/// below this boundary receives the resulting text only.
+fn read_source(path: &Path) -> io::Result<String> {
+    let Some(name) = path.file_name() else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "path does not name a file",
+        ));
+    };
+    let parent = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
+    Dir::open_ambient_dir(parent, ambient_authority())?.read_to_string(name)
+}
+
 /// Parse one file, reporting read failures and parse diagnostics.
 ///
 /// Returns `true` when the file was read and produced no diagnostics, so the
@@ -111,7 +132,7 @@ where
     O: Write,
     E: Write,
 {
-    let source = match std::fs::read_to_string(path) {
+    let source = match read_source(Path::new(path)) {
         Ok(source) => source,
         Err(error) => {
             reporter.read_failure(path, &error)?;
@@ -152,6 +173,8 @@ mod tests {
         io::{self, Write},
     };
 
+    use cap_std::{ambient_authority, fs::Dir};
+
     use super::{Status, run};
 
     /// A writer that rejects every write, standing in for a closed stream.
@@ -191,8 +214,12 @@ mod tests {
     #[test]
     fn run_surfaces_a_diagnostic_write_failure() {
         let directory = tempfile::TempDir::new().expect("a temporary directory should be created");
+        let fixture = Dir::open_ambient_dir(directory.path(), ambient_authority())
+            .expect("the fixture directory should open");
+        fixture
+            .write("bad.dl", "R(x) :- return x.")
+            .expect("the fixture should be written");
         let path = directory.path().join("bad.dl");
-        std::fs::write(&path, "R(x) :- return x.").expect("the fixture should be written");
 
         let mut stdout = Captured::default();
         let mut stderr = FailingWriter;
