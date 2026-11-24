@@ -402,21 +402,21 @@ while the two `hashbrown 0.14.5` diagnostics remain under the
 
 ### Sequential gates
 
-The gates below ran sequentially on the documented content tree. The Rust
-gates ran on `65f1e6519cd2acb94ee1770f16a00b516aa4cf91`; the documentation
-gates were re-run after the later prose edits.
+The gates below ran sequentially on the documented content tree. The Rust gates
+ran on `65f1e6519cd2acb94ee1770f16a00b516aa4cf91`; the documentation gates were
+re-run after the later prose edits.
 
 Table 11. Sequential gate results.
 
-| Gate                | Exit | Scope                                                           |
-| ------------------- | ---- | --------------------------------------------------------------- |
+| Gate                | Exit | Scope                                                            |
+| ------------------- | ---- | ---------------------------------------------------------------- |
 | `make fmt`          | `0`  | Formatting applied; `markdownlint --fix` reported 0 issues       |
 | `make check-fmt`    | `0`  | `cargo fmt --check` and `mdtablefix --check`; 74 files unchanged |
-| `make typecheck`    | `0`  | Workspace, all targets and features                             |
+| `make typecheck`    | `0`  | Workspace, all targets and features                              |
 | `make lint`         | `0`  | Interrogate, Clippy, Clippy policy, Whitaker, and spelling       |
-| `make test`         | `0`  | Full workspace suite, none failed                               |
-| `make markdownlint` | `0`  | 74 files, 0 issues, plus the spelling gate                      |
-| `make nixie`        | `0`  | Every Mermaid diagram validated                                 |
+| `make test`         | `0`  | Full workspace suite, none failed                                |
+| `make markdownlint` | `0`  | 74 files, 0 issues, plus the spelling gate                       |
+| `make nixie`        | `0`  | Every Mermaid diagram validated                                  |
 
 ## Differences from the baseline
 
