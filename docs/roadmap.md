@@ -210,6 +210,10 @@ split parser library surfaces defined in
 
 ### 2.6. Parser conformance decisions before crate extraction
 
+Upstream DDlog is authoritative (see the specification's "Upstream authority"
+section). Items below that say "decide whether to align" are decided in favour
+of upstream; only how to align remains open.
+
 - [x] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
   tests, and spec language around the desugaring contract. See
   docs/parser-conformance-register.md item 8.
@@ -241,11 +245,13 @@ split parser library surfaces defined in
   bracket map literals are the only map form and `[]` is rejected. See
   docs/parser-conformance-register.md items 10 and 15 and
   docs/execplans/2-6-8-decide-brace-group-extension-policy.md.
-- [ ] 2.6.9. Enforce the `LcName` case restriction on primary-key binders, and
-  decide the same question for import aliases, so `primary key (Foo)` reports
-  `D-REL-007` the way transformer names already do, or record an intentional
-  superset in the syntax specification. See docs/parser-conformance-register.md
-  item 13 and the section 5.2 import-alias note.
+- [ ] 2.6.9. Align primary-key clauses and import aliases with upstream: a
+  clause is one parenthesized `LcName` binder followed by a required expression
+  (`key_expr`), so `primary key (Foo)`, compound binders, and a missing
+  expression report `D-REL-007`; an import alias is an any-case, optionally
+  scoped module name. See docs/parser-conformance-register.md item 13, the
+  section 5.2 import-alias note, and
+  docs/execplans/2-6-9-enforce-lc-name-case-restriction-on-primary-key-binders.md.
 - [ ] 2.6.10. Decide how `;` sequencing and rule-level `for` align with
   upstream: `;` appears only inside block expressions upstream, a top-level
   `for` header is an atom with an optional `v in` binder (so `for (a in A(a))`
@@ -276,6 +282,15 @@ split parser library surfaces defined in
   `bit<N>`, `signed<N>`, `bigint`, `double`, `float`), which the 2.6.7 policy
   rejects in favour of `type`, sized integers, and `f32`/`f64`. See
   docs/parser-conformance-register.md items 14 and 22.
+- [ ] 2.6.16. Align transformer declarations with upstream `transformer`:
+  `UcName` (optionally scoped) names, typed `relation[T]` and
+  `function(args): T` parameters, and a parenthesized, typed `->` output list.
+  Replace the lowercase-name rule and the `:` output list. Requires 2.6.9. See
+  docs/parser-conformance-register.md item 12.
+- [ ] 2.6.17. Align primary-key placement with upstream: accept keys on
+  bracket-bodied relations (retiring `D-REL-004`), and reject keys on streams
+  and multisets. Requires 2.6.9. See docs/parser-conformance-register.md item
+  13.
 
 ### 2.7. Split parser crate foundation
 
