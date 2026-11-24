@@ -452,6 +452,9 @@ Because a successful package build hides dependency diagnostics, the owners and
 dispositions of the warnings that package verification reports are qualified
 separately in the
 [dependency warning qualification](dependency-warning-qualification.md) ledger.
+That ledger also indexes the review ticket for each major dependency migration,
+so a dependency bump that changes the warning inventory can cite its ticket
+rather than re-deriving the inventory.
 
 ### Cranelift
 
