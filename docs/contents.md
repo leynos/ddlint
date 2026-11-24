@@ -117,8 +117,8 @@
 - [2.6.8 decide the brace-group extension policy](./execplans/2-6-8-decide-brace-group-extension-policy.md):
   Plan for upstream block expressions, bracket map literals, and the scheduled
   lexical-scope alignment.
-- [2.6.9 enforce the `LcName` case restriction on primary-key binders](./execplans/2-6-9-enforce-lc-name-case-restriction-on-primary-key-binders.md):
-  Plan for binder case enforcement and the import-alias case decision.
+- [2.6.9 align primary-key clauses and import aliases with upstream](./execplans/2-6-9-enforce-lc-name-case-restriction-on-primary-key-binders.md):
+  Plan for the upstream primary-key clause and import-alias grammar.
 - [Issue 411 OrthoConfig CLI configuration
   spine][issue-411-ortho-config-plan]: Plan for the v0.10.0 configuration
   package, source-aware tests, and draft pull request (PR).
