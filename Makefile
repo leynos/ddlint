@@ -196,6 +196,7 @@ clean: ## Remove build artifacts
 	rm -f .typos-oxendict-base.json .typos-oxendict-base.toml
 
 test: | check-build-tools ## Run tests and doctests with warnings treated as errors
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) fetch --locked
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$${RUSTDOCFLAGS:+$$RUSTDOCFLAGS }$(DOCTEST_RUSTDOCFLAGS)" $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
 
@@ -240,8 +241,8 @@ interrogate: ## Enforce complete Python docstring coverage
 lint: interrogate lint-clippy lint-whitaker spelling ## Run every lint gate with warnings denied
 
 lint-clippy: | check-build-tools ## Run Clippy, Rustdoc and the Clippy policy contract with warnings denied
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy --locked $(CLIPPY_FLAGS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps --locked
 	+$(MAKE) test-clippy-policy
 
 # Whitaker runs under the toolchain its installer manages, so it takes none of

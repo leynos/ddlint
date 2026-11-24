@@ -2,7 +2,6 @@ target/
 .verus/
 .cache/
 **/*.rs.bk
-Cargo.lock
 .crush/
 .grepai/
 __pycache__/
