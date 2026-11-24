@@ -420,8 +420,10 @@ Clippy policy, Whitaker, and spelling), and `make test`. The documentation
 gates ran locally on the same content and were re-run after later prose edits.
 
 The pull request's continuous integration (CI) run is the external, immutable
-binding for the full route. Run [45337172520][ci-run], on commit
-`8cd46985c9a7f95796174746c72842627636a9bc`, completed every step successfully.
+binding for the steps CI runs. Run [45337172520][ci-run], on commit
+`8cd46985c9a7f95796174746c72842627636a9bc`, completed the seven steps in Table
+11 successfully. The run does not cover `make nixie`, the resolved-graph
+capture, or package verification; those steps rely on their own records above.
 
 Table 11. CI step results for run `45337172520`.
 
