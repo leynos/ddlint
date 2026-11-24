@@ -57,8 +57,16 @@ pub(super) fn parse_rule_body_term(
             };
             classify_expression(expr, &mut ctx)
         }
-        Err(mut errs) => {
-            errors.append(&mut errs);
+        Err(errs) => {
+            // The expression parser reports spans relative to the trimmed
+            // literal, while the assignment branch reports file offsets. Shift
+            // these errors by the literal's start plus the leading whitespace
+            // `trim()` removed, so both branches speak one coordinate system.
+            let leading_whitespace = raw.len() - raw.trim_start().len();
+            errors.extend(shift_errors(
+                errs,
+                literal_span.start.saturating_add(leading_whitespace),
+            ));
             None
         }
     }

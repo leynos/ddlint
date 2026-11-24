@@ -116,12 +116,32 @@ Pratt parser already carries the scoping state.
   process tests, `make typecheck`, and the full `make test` suite pass,
   including both new doctests.
 - [x] (2026-11-23 21:10Z) Code committed as `6d366ea7`.
-- [ ] `EP-M3`: `make lint` (Clippy, Rustdoc, Whitaker, spelling), then
-  `make markdownlint` and `make nixie`, then PR delivery.
-- [ ] CodeRabbit review loop and draft pull request.
+- [x] (2026-11-24 00:30Z) `make check-fmt`, `make typecheck`, `make lint`
+  (Clippy, Rustdoc, Whitaker, spelling), `make markdownlint`, and `make nixie`
+  pass; the CLI reads through a `cap_std` file capability after Whitaker's
+  `no_std_fs_operations` finding (commit `5a9b4d12`).
+- [x] (2026-11-24 04:40Z) CodeRabbit review completed with three findings; all
+  three were verified valid and fixed: register wording excludes nested closure
+  bodies, `File::open_ambient` restores symlink resolution with a new process
+  test, and classification spans now use file coordinates.
+- [ ] `EP-M3`: commit the review fixes, push, and open the draft pull request.
 
 ## Surprises & discoveries
 
+- Observation: the workspace's Whitaker suite enforces a capability-based
+  filesystem policy that denies `std::fs` outright, including in binary crates.
+  Evidence: `make lint` reported `no_std_fs_operations` for `cli/src/main.rs`
+  and `cli/tests/return_placement_cli.rs`. Impact: the plan's instruction to
+  read with `std::fs` cannot stand; the CLI uses `cap_std`.
+- Observation: a directory capability refuses symlinks that leave the
+  directory. Evidence: CodeRabbit review finding on `Dir::open_ambient_dir` plus
+  `read_to_string`. Impact: opening the named file with
+  `cap_std::fs::File::open_ambient` preserves ordinary CLI symlink semantics.
+- Observation: `Rule::body_terms()` reported standalone-literal parse errors in
+  literal-relative coordinates while the assignment branch used file
+  coordinates. Evidence: CodeRabbit review finding and the existing
+  `body_terms_shift_assignment_*` tests. Impact: the standalone branch now
+  shifts by the literal start plus the leading whitespace `trim()` removed.
 - Observation: the merged brace-block work (PR 408) had already introduced
   `RETURN_IN_RULE_BODY_ERROR`, `parse_rule_body_expression`, and the
   `in_rule_body` Pratt flag, and applied them in `validate_expression`.
@@ -158,6 +178,19 @@ Pratt parser already carries the scoping state.
   through its `Result`; the helper mirrors `tests/block_expressions.rs` and
   `tests/build_standard_support/injected.rs`. Date/Author: 2026-11-23,
   implementer.
+- D6. Read the CLI's input files with `cap_std::fs::File::open_ambient`, not
+  `Dir::open_ambient_dir` plus `read_to_string` and not `std::fs`. Rationale:
+  the Whitaker `no_std_fs_operations` lint denies `std::fs`, while an
+  operator-supplied symlink may point outside its own directory and a directory
+  capability refuses that target. Opening the named file is the narrowest
+  ambient operation that preserves ordinary CLI semantics. Date/Author:
+  2026-11-24, implementer.
+- D7. Fix the classification offset discrepancy that the plan originally said
+  to preserve. Rationale: CodeRabbit showed the standalone branch reporting
+  literal-relative spans while the assignment branch reports file offsets; the
+  new `return` diagnostic makes that inconsistency user-visible, and one
+  coordinate system is now asserted by `body_terms_reject_a_bare_return`.
+  Date/Author: 2026-11-24, implementer.
 
 ## Outcomes & retrospective
 

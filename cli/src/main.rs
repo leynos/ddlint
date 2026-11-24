@@ -7,11 +7,11 @@
 
 use std::{
     ffi::{OsStr, OsString},
-    io::{self, Write},
+    io::{self, Read as _, Write},
     path::Path,
 };
 
-use cap_std::{ambient_authority, fs::Dir};
+use cap_std::{ambient_authority, fs::File};
 use ddlint::{parse_error_message, parse_error_span};
 
 /// Message written when the command is invoked without file arguments.
@@ -103,23 +103,17 @@ fn run(args: &[OsString], stdout: &mut impl Write, stderr: &mut impl Write) -> i
     })
 }
 
-/// Read `path` as UTF-8 text through a capability rooted at its directory.
+/// Read `path` as UTF-8 text through an ambient file capability.
 ///
-/// The operator supplies ambient paths on the command line, so the capability
-/// covers exactly one directory and is used for the single read. Everything
-/// below this boundary receives the resulting text only.
+/// The operator supplies ambient paths on the command line, so the only
+/// ambient operation is opening exactly the named file; every later read goes
+/// through the resulting capability. Opening the file itself rather than a
+/// directory lets an operator-supplied symlink resolve to a target outside
+/// the link's directory, which a directory capability would refuse.
 fn read_source(path: &Path) -> io::Result<String> {
-    let Some(name) = path.file_name() else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "path does not name a file",
-        ));
-    };
-    let parent = match path.parent() {
-        Some(parent) if !parent.as_os_str().is_empty() => parent,
-        _ => Path::new("."),
-    };
-    Dir::open_ambient_dir(parent, ambient_authority())?.read_to_string(name)
+    let mut source = String::new();
+    File::open_ambient(path, ambient_authority())?.read_to_string(&mut source)?;
+    Ok(source)
 }
 
 /// Parse one file, reporting read failures and parse diagnostics.

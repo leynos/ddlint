@@ -69,7 +69,9 @@ fn recovers_the_rule_after_a_misplaced_return() {
     );
 }
 
-/// Term classification applies the same rule-body restriction as the scanner.
+/// Term classification applies the same rule-body restriction as the scanner,
+/// and reports the keyword in file coordinates rather than literal-relative
+/// ones.
 #[test]
 fn body_terms_reject_a_bare_return() {
     let src = "R(x) :- Source(return x).";
@@ -82,10 +84,18 @@ fn body_terms_reject_a_bare_return() {
         Ok(terms) => panic!("a bare return must not classify, got {terms:?}"),
         Err(errors) => errors,
     };
+    let keyword_start = src.find("return").expect("the case contains `return`");
     let expected = RETURN_IN_RULE_BODY_ERROR.into();
-    assert!(
-        find_matching_error(&errors, &expected).is_some(),
-        "classification must report the rule-body diagnostic, got {errors:?}"
+    let Some(index) = find_matching_error(&errors, &expected) else {
+        panic!("classification must report the rule-body diagnostic, got {errors:?}");
+    };
+    let Some(error) = errors.get(index) else {
+        panic!("the matched diagnostic index must be in range");
+    };
+    assert_eq!(
+        error.span(),
+        keyword_start..keyword_start + "return".len(),
+        "classification must report the keyword in file coordinates",
     );
 }
 

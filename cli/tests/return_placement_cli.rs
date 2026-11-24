@@ -90,6 +90,36 @@ fn a_bare_rule_body_return_is_reported() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// A symlink whose target sits outside its own directory still parses.
+///
+/// Opening the named file at the ambient boundary, rather than a capability
+/// rooted at the link's directory, is what lets an ordinary operator-supplied
+/// link resolve; a directory capability would refuse this target.
+#[cfg(unix)]
+#[test]
+fn a_symlink_to_a_target_outside_its_directory_is_read() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::TempDir::new()?;
+    let root = Dir::open_ambient_dir(directory.path(), ambient_authority())?;
+    root.create_dir("shared")?;
+    root.create_dir("work")?;
+    root.write("shared/input.dl", "Output(head_x) :- Source(head_x).\n")?;
+    root.symlink("../shared/input.dl", "work/input.dl")?;
+
+    let linked = directory.path().join("work/input.dl");
+    let output = run_binary(&directory, &[&linked])?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    ensure(
+        output.status.code() == Some(0),
+        format!("a symlinked file must parse, stderr: {stderr}"),
+    )?;
+    ensure(
+        output.stderr.is_empty(),
+        format!("a clean parse must not write to standard error, got: {stderr}"),
+    )?;
+    Ok(())
+}
+
 /// An unreadable path is reported with the tool's own error prefix.
 #[test]
 fn a_missing_file_is_reported() -> Result<(), Box<dyn Error>> {
