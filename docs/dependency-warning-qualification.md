@@ -96,7 +96,7 @@ Table 2. Resolved versions and the constraint edges that pin them.
 | Crate            | Resolved | Constraint that admits it                                           | Dependency path                                                                         |
 | ---------------- | -------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `allocator-api2` | `0.2.21` | `hashbrown 0.14.5` requires `0.2.9`                                 | `ddlint -> chumsky 0.9.3 -> hashbrown 0.14.5 -> allocator-api2`                         |
-| `ahash`          | `0.8.12` | `hashbrown 0.14.5` requires `0.8.7`                                 | `ddlint -> chumsky 0.9.3 / rowan 0.17.0 -> hashbrown 0.14.5 -> ahash`                   |
+| `ahash`          | `0.8.13` | `hashbrown 0.14.5` requires `0.8.7`                                 | `ddlint -> chumsky 0.9.3 -> hashbrown 0.14.5 -> ahash` (via `hashbrown` defaults)       |
 | `hashbrown`      | `0.14.5` | `chumsky 0.9.3` requires `0.14.2`; `rowan 0.17.0` requires `0.14.3` | `ddlint -> chumsky 0.9.3 / rowan 0.17.0 -> hashbrown`                                   |
 | `memoffset`      | `0.9.1`  | `rowan 0.17.0` requires `0.9`                                       | `ddlint -> rowan 0.17.0 -> memoffset`                                                   |
 | `regex-syntax`   | `0.6.29` | `logos-codegen 0.13.0` requires `0.6`                               | `ddlint -> logos 0.13.0 -> logos-derive 0.13.0 -> logos-codegen 0.13.0 -> regex-syntax` |
@@ -104,15 +104,17 @@ Table 2. Resolved versions and the constraint edges that pin them.
 | `logos-codegen`  | `0.13.0` | `logos-derive 0.13.0` requires `0.13`                               | `ddlint -> logos 0.13.0 -> logos-derive 0.13.0 -> logos-codegen`                        |
 | `thiserror-impl` | `1.0.69` | `thiserror 1.0.69` requires `1.0.69`                                | `ddlint -> thiserror 1.0.69 -> thiserror-impl`                                          |
 
-Three observations follow from the constraint column. First, no
-caret-compatible newer release exists for any affected crate:
-`cargo update --dry-run` leaves `chumsky`, `logos`, and `thiserror` unchanged
-and reports each resolved version as the newest in its line. Second, several
-crates are pinned indirectly: `memoffset` and `regex-syntax 0.6` cannot move
-without a `rowan` or `logos` change. Third, `hashbrown 0.14.5` has two
-independent holders. `chumsky 0.9.3` is one, but `rowan 0.17.0` requires
-`hashbrown ^0.14.3` on its own, so a Chumsky migration alone does not remove
-that edge. This matters for the `hashbrown` and `ahash` rows below.
+Three observations follow from the constraint column. First, the fresh
+resolution selects the newest release in every caret range. `ahash 0.8.13`
+(2026-11-23) is newer than the `0.8.12` the ticket recorded, but it leaves all
+four `ahash` diagnostics in place; `chumsky`, `logos`, `hashbrown 0.14`,
+`memoffset`, `regex-syntax 0.6`, `allocator-api2 0.2`, and `thiserror 1.x` are
+already at the newest release in their lines. Second, several crates are pinned
+indirectly: `memoffset` and `regex-syntax 0.6` cannot move without a `rowan` or
+`logos` change. Third, `hashbrown 0.14.5` has two independent holders.
+`chumsky 0.9.3` is one, but `rowan 0.17.0` requires `hashbrown ^0.14.3` on its
+own, so a Chumsky migration alone does not remove that edge. This matters for
+the `hashbrown` and `ahash` rows below.
 
 ## Diagnostics and dispositions
 
@@ -124,19 +126,19 @@ upstream fix", "resolved by separate major migration", and "fixed in-range".
 
 Table 3. Diagnostics, sites, paths, owners, and dispositions.
 
-| Crate            | Version  | Lint                                                    | Verbatim message                                                                                                     | Site                                                          | Path and constraint                                              | Upstream owner                | Tracking owner | Disposition                          | Upstream evidence                                                                                                                                                                                                                                                                                                                                             |
-| ---------------- | -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------- | -------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `allocator-api2` | `0.2.21` | `dangerous_implicit_autorefs`                           | ``implicit autoref creates a reference to the dereference of a raw pointer``                                         | `src/stable/vec/mod.rs:1902`                                  | `chumsky -> hashbrown -> allocator-api2`; `hashbrown ^0.2.9`     | `zakarumych/allocator-api2`   | `@leynos`      | awaiting upstream release            | [issue 41][a2-41] closed; [PR 42][a2-42] merged `930b1695` fixes this exact expression. The fix first appears in a published release at `0.3.1`, not `0.4.0`, and every published `0.3+` release is outside `hashbrown`'s `^0.2.9`. No open report covers a `0.2.x` backport.                                                                                 |
-| `ahash`          | `0.8.12` | `unexpected_cfgs` (`condition_value = "128"`)           | ``unexpected `cfg` condition value: `128```                                                                          | `src/fallback_hash.rs:164`                                    | `chumsky -> hashbrown -> ahash`; `hashbrown ^0.8.7`              | `tkaitchuck/aHash`            | `@leynos`      | contribute upstream fix              | No exact match in the tracker. [PR 269][ahash-269] only converts `feature = "specialize"`/`"folded_multiply"` cfgs to custom cfgs and registers those two; it leaves `target_pointer_width = "128"` and `fuzzing` unregistered, so it does not fix these rows. The consumer path is the [chumsky migration][t-chumsky], which removes `ahash` from the graph. |
-| `ahash`          | `0.8.12` | `unexpected_cfgs` (`condition_name = "fuzzing"`, twice) | ``unexpected `cfg` condition name: `fuzzing```                                                                       | `src/random_state.rs:48`, `src/random_state.rs:68`            | `chumsky -> hashbrown -> ahash`; `hashbrown ^0.8.7`              | `tkaitchuck/aHash`            | `@leynos`      | contribute upstream fix              | Same. `fuzzing` is never registered through `cargo::rustc-check-cfg`, even after PR 269. The consumer path is the [chumsky migration][t-chumsky].                                                                                                                                                                                                             |
-| `ahash`          | `0.8.12` | `dead_code` (`methods`)                                 | ``methods `read_u128x2`, `read_u128x4`, `read_last_u16`, `read_last_u128x2`, and `read_last_u128x4` are never used`` | `src/convert.rs:69`                                           | `chumsky -> hashbrown -> ahash`; `hashbrown ^0.8.7`              | `tkaitchuck/aHash`            | `@leynos`      | contribute upstream fix              | `0.8.12` is the newest `0.8` release and still carries the site. `ahash` enters only because `chumsky` enables `hashbrown`'s default features; the [chumsky migration][t-chumsky] removes it, while `rowan`'s own `hashbrown` edge does not enable it.                                                                                                        |
-| `hashbrown`      | `0.14.5` | `dead_code` (`struct`, twice)                           | ``struct `RawIterHash` is never constructed`` and ``struct `RawIterHashInner` is never constructed``                 | `src/raw/mod.rs:4442`, `src/raw/mod.rs:4447`                  | `chumsky` and `rowan -> hashbrown`; `^0.14.2`, `^0.14.3`         | `rust-lang/hashbrown`         | `@leynos`      | awaiting upstream release            | The two types are gated behind `#[cfg(feature = "raw")]`, which the resolved graph does not enable. `hashbrown 0.16.1` and later restructure the module so the site disappears. Held here by `rowan 0.17.0` as well as `chumsky 0.9.3`, and no published `rowan` moves off `0.14`; see [rowan review][t-rowan].                                               |
-| `memoffset`      | `0.9.1`  | `unexpected_cfgs` (24)                                  | ``unexpected `cfg` condition name: `…```                                                                             | `src/lib.rs:59`, `src/lib.rs:62`, `src/offset_of.rs:23-383`   | `rowan -> memoffset`; `rowan ^0.9`                               | `Gilnaa/memoffset`            | `@leynos`      | contribute upstream fix              | `0.9.1` is the newest release and the repository has been dormant since 2024-03-26. Its `build.rs` emits `cargo:rustc-cfg=<name>` for `tuple_ty`, `allow_clippy`, `maybe_uninit`, `doctests`, `raw_ref_macros`, `stable_const`, and `stable_offset_of` without the matching `cargo::rustc-check-cfg`.                                                         |
-| `regex-syntax`   | `0.6.29` | `dead_code` (`method`)                                  | ``method `symmetric_difference` is never used``                                                                      | `src/hir/interval.rs:423`                                     | `logos -> logos-derive -> logos-codegen -> regex-syntax`; `^0.6` | `rust-lang/regex`             | `@leynos`      | resolved by separate major migration | `0.6.29` is the newest `0.6` release. The whole crate leaves the graph once `logos` moves past `0.13`. See [logos migration][t-logos].                                                                                                                                                                                                                        |
-| `regex-syntax`   | `0.6.29` | `noop_method_call`                                      | ``call to `.borrow()` on a reference in this situation does nothing``                                                | `src/ast/parse.rs:379`                                        | `logos -> logos-derive -> logos-codegen -> regex-syntax`; `^0.6` | `rust-lang/regex`             | `@leynos`      | resolved by separate major migration | Same; no fix exists on the `0.6` line.                                                                                                                                                                                                                                                                                                                        |
-| `chumsky`        | `0.9.3`  | `mismatched_lifetime_syntaxes`                          | ``hiding a lifetime that's elided elsewhere is confusing``                                                           | `src/recursive.rs:31`                                         | direct dependency; `ddlint ^0.9`                                 | `zesterer/chumsky` (Codeberg) | `@leynos`      | resolved by separate major migration | `0.9.3` is the newest `0.9` release. `0.13.0` and `0.14.2` clear this site but each raises one unrelated `unused_import` warning instead. See [chumsky migration][t-chumsky].                                                                                                                                                                                 |
-| `logos-codegen`  | `0.13.0` | `mismatched_lifetime_syntaxes`                          | ``hiding a lifetime that's elided elsewhere is confusing``                                                           | `src/generator/tables.rs:25`                                  | `logos -> logos-derive -> logos-codegen`; `logos-derive ^0.13`   | `maciejhirsz/logos`           | `@leynos`      | resolved by separate major migration | `0.13.x` is the newest line `logos 0.13` admits. `0.15.1` and `0.16.1` clear this site. See [logos migration][t-logos].                                                                                                                                                                                                                                       |
-| `thiserror-impl` | `1.0.69` | `mismatched_lifetime_syntaxes` (9)                      | ``hiding a lifetime that's elided elsewhere is confusing``                                                           | `src/attr.rs:48`, `src/prop.rs:7, 11, 15, 19, 53, 57, 61, 65` | `thiserror -> thiserror-impl`; `thiserror =1.0.69`               | `dtolnay/thiserror`           | `@leynos`      | resolved by separate major migration | `2.0.21` clears all nine hits, but with a crate-level `#![allow(unknown_lints, mismatched_lifetime_syntaxes)]` rather than a source fix. `1.0.69` is the newest `1.x` release. See [thiserror migration][t-thiserror].                                                                                                                                        |
+| Crate            | Version  | Lint                                                    | Verbatim message                                                                                                     | Site                                                          | Path and constraint                                              | Upstream owner                | Tracking owner | Disposition                          | Upstream evidence                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------- | -------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `allocator-api2` | `0.2.21` | `dangerous_implicit_autorefs`                           | ``implicit autoref creates a reference to the dereference of a raw pointer``                                         | `src/stable/vec/mod.rs:1902`                                  | `chumsky -> hashbrown -> allocator-api2`; `hashbrown ^0.2.9`     | `zakarumych/allocator-api2`   | `@leynos`      | awaiting upstream release            | [issue 41][a2-41] closed; [PR 42][a2-42] merged `930b1695` fixes this exact expression. The fix first appears in a published release at `0.3.1`, not `0.4.0`, and every published `0.3+` release is outside `hashbrown`'s `^0.2.9`. No open report covers a `0.2.x` backport.                                                                                                                                           |
+| `ahash`          | `0.8.13` | `unexpected_cfgs` (`condition_value = "128"`)           | ``unexpected `cfg` condition value: `128```                                                                          | `src/fallback_hash.rs:179`                                    | `chumsky -> hashbrown -> ahash`; `hashbrown ^0.8.7`              | `tkaitchuck/aHash`            | `@leynos`      | contribute upstream fix              | No exact match in the tracker. [PR 269][ahash-269] only converts `feature = "specialize"`/`"folded_multiply"` cfgs to custom cfgs and registers those two. `0.8.13` adds `vaes` to the registered set and moves this site, but it still declares `target_pointer_width = "128"` and still leaves `fuzzing` unregistered. The consumer path is the [chumsky migration][t-chumsky], which removes `ahash` from the graph. |
+| `ahash`          | `0.8.13` | `unexpected_cfgs` (`condition_name = "fuzzing"`, twice) | ``unexpected `cfg` condition name: `fuzzing```                                                                       | `src/random_state.rs:57`, `src/random_state.rs:77`            | `chumsky -> hashbrown -> ahash`; `hashbrown ^0.8.7`              | `tkaitchuck/aHash`            | `@leynos`      | contribute upstream fix              | Same. `fuzzing` is never registered through `cargo::rustc-check-cfg`, in `0.8.12` or `0.8.13`. The consumer path is the [chumsky migration][t-chumsky].                                                                                                                                                                                                                                                                 |
+| `ahash`          | `0.8.13` | `dead_code` (`methods`)                                 | ``methods `read_u128x2`, `read_u128x4`, `read_last_u16`, `read_last_u128x2`, and `read_last_u128x4` are never used`` | `src/convert.rs:67`                                           | `chumsky -> hashbrown -> ahash`; `hashbrown ^0.8.7`              | `tkaitchuck/aHash`            | `@leynos`      | contribute upstream fix              | `0.8.13` is the newest `0.8` release and still carries these methods. `ahash` enters only because `chumsky` enables `hashbrown`'s default features; the [chumsky migration][t-chumsky] removes it, while `rowan`'s own `hashbrown` edge does not enable it.                                                                                                                                                             |
+| `hashbrown`      | `0.14.5` | `dead_code` (`struct`, twice)                           | ``struct `RawIterHash` is never constructed`` and ``struct `RawIterHashInner` is never constructed``                 | `src/raw/mod.rs:4442`, `src/raw/mod.rs:4447`                  | `chumsky` and `rowan -> hashbrown`; `^0.14.2`, `^0.14.3`         | `rust-lang/hashbrown`         | `@leynos`      | awaiting upstream release            | The two types are gated behind `#[cfg(feature = "raw")]`, which the resolved graph does not enable. `hashbrown 0.16.1` and later restructure the module so the site disappears. Held here by `rowan 0.17.0` as well as `chumsky 0.9.3`, and no published `rowan` moves off `0.14`; see [rowan review][t-rowan].                                                                                                         |
+| `memoffset`      | `0.9.1`  | `unexpected_cfgs` (24)                                  | ``unexpected `cfg` condition name: `…```                                                                             | `src/lib.rs:59`, `src/lib.rs:62`, `src/offset_of.rs:23-383`   | `rowan -> memoffset`; `rowan ^0.9`                               | `Gilnaa/memoffset`            | `@leynos`      | contribute upstream fix              | `0.9.1` is the newest release and the repository has been dormant since 2024-03-26. Its `build.rs` emits `cargo:rustc-cfg=<name>` for `tuple_ty`, `allow_clippy`, `maybe_uninit`, `doctests`, `raw_ref_macros`, `stable_const`, and `stable_offset_of` without the matching `cargo::rustc-check-cfg`.                                                                                                                   |
+| `regex-syntax`   | `0.6.29` | `dead_code` (`method`)                                  | ``method `symmetric_difference` is never used``                                                                      | `src/hir/interval.rs:423`                                     | `logos -> logos-derive -> logos-codegen -> regex-syntax`; `^0.6` | `rust-lang/regex`             | `@leynos`      | resolved by separate major migration | `0.6.29` is the newest `0.6` release. The whole crate leaves the graph once `logos` moves past `0.13`. See [logos migration][t-logos].                                                                                                                                                                                                                                                                                  |
+| `regex-syntax`   | `0.6.29` | `noop_method_call`                                      | ``call to `.borrow()` on a reference in this situation does nothing``                                                | `src/ast/parse.rs:379`                                        | `logos -> logos-derive -> logos-codegen -> regex-syntax`; `^0.6` | `rust-lang/regex`             | `@leynos`      | resolved by separate major migration | Same; no fix exists on the `0.6` line.                                                                                                                                                                                                                                                                                                                                                                                  |
+| `chumsky`        | `0.9.3`  | `mismatched_lifetime_syntaxes`                          | ``hiding a lifetime that's elided elsewhere is confusing``                                                           | `src/recursive.rs:31`                                         | direct dependency; `ddlint ^0.9`                                 | `zesterer/chumsky` (Codeberg) | `@leynos`      | resolved by separate major migration | `0.9.3` is the newest `0.9` release. `0.13.0` and `0.14.2` clear this site but each raises one unrelated `unused_import` warning instead. See [chumsky migration][t-chumsky].                                                                                                                                                                                                                                           |
+| `logos-codegen`  | `0.13.0` | `mismatched_lifetime_syntaxes`                          | ``hiding a lifetime that's elided elsewhere is confusing``                                                           | `src/generator/tables.rs:25`                                  | `logos -> logos-derive -> logos-codegen`; `logos-derive ^0.13`   | `maciejhirsz/logos`           | `@leynos`      | resolved by separate major migration | `0.13.x` is the newest line `logos 0.13` admits. `0.15.1` and `0.16.1` clear this site. See [logos migration][t-logos].                                                                                                                                                                                                                                                                                                 |
+| `thiserror-impl` | `1.0.69` | `mismatched_lifetime_syntaxes` (9)                      | ``hiding a lifetime that's elided elsewhere is confusing``                                                           | `src/attr.rs:48`, `src/prop.rs:7, 11, 15, 19, 53, 57, 61, 65` | `thiserror -> thiserror-impl`; `thiserror =1.0.69`               | `dtolnay/thiserror`           | `@leynos`      | resolved by separate major migration | `2.0.21` clears all nine hits, but with a crate-level `#![allow(unknown_lints, mismatched_lifetime_syntaxes)]` rather than a source fix. `1.0.69` is the newest `1.x` release. See [thiserror migration][t-thiserror].                                                                                                                                                                                                  |
 
 Every row above has a named upstream owner and an actionable disposition.
 Cargo's lint cap is not treated as a waiver anywhere in this table.
@@ -145,8 +147,8 @@ Cargo's lint cap is not treated as a waiver anywhere in this table.
 
 The exact-owner searches were run on 2026-10-28 and repeated on 2026-11-23.
 
-- `dtolnay/thiserror`: `mismatched_lifetime_syntaxes` and `"hiding a
-  lifetime"` returned no issue or pull request.
+- `dtolnay/thiserror`: `mismatched_lifetime_syntaxes` and `"hiding a lifetime"`
+  returned no issue or pull request.
 - `maciejhirsz/logos`: the same two queries returned no issue or pull
   request.
 - `rust-lang/hashbrown`: `RawIterHash` returned related iterator work but
@@ -228,8 +230,7 @@ dispositions are recorded above with the contact that already exists for each:
 
 - `allocator-api2`: [issue 41][a2-41] and [PR 42][a2-42] already cover the
   defect; the remaining ask is a `0.2.x` release, recorded as a comment on that
-  thread rather than a new report: [issue comment
-  7109286384][a2-comment].
+  thread rather than a new report: [issue comment 7109286384][a2-comment].
 - `ahash`: no existing owner, so a fix is to be contributed.
 - `memoffset`: issues are disabled, so a fix is to be contributed.
 - `chumsky`, `logos`, `hashbrown`, and `thiserror`: covered by the migration
@@ -249,19 +250,23 @@ The ticket's own inventory was captured on content tree
 `6d7dd56f51452c0c55830396ba8d79d5031ae5db06a4721d60709c0b73ac3b15`. It is
 historical evidence only and does not validate any later tree.
 
-### Package verification, tree `f2dcad5b`
+### Package verification, tree `768f6172`
 
 Table 6. Package verification record.
 
 | Field                 | Value                                                              |
 | --------------------- | ------------------------------------------------------------------ |
-| Commit                | `b90492c64582421a1e81dc48a97afa3ba7961b69`                         |
-| Content tree          | `f2dcad5b4863b297b2056ae8b0639186cfb6eb6c`                         |
+| Commit                | `ccb6e748aa3a93a662a66f8f73769997b609357b`                         |
+| Content tree          | `768f6172cf7e2e307add6767e0fd480f56eeb817`                         |
 | Package command       | `RUSTFLAGS="-D warnings" cargo package -vv`                        |
 | Command exit          | `0`                                                                |
 | `tee` exit            | `0`                                                                |
-| `package.log` SHA-256 | `974b0cec9574463f8bd40e04791a593fbdb0e1e54e2983ddc2386f825c9d2171` |
+| `package.log` SHA-256 | `cf6f2a0fae743dbd48466b6dd78ba040bf3d76502738ada6081e4a2b4a7ebc89` |
 | Declared warnings     | `44`                                                               |
+
+The run resolved `ahash 0.8.13`, published on the day of the run, rather than
+the `0.8.12` recorded by the ticket. The dependency set and the counts are
+otherwise unchanged.
 
 Per-crate counts, as the toolchain itself reports them:
 
@@ -284,34 +289,49 @@ diagnostics, so a diagnostic may be printed far from its crate's summary line.
 Attribution here comes from each diagnostic's own `-->` path, which reconciles
 to the same 44 the toolchain declares.
 
-### Resolved graph, tree `f2dcad5b`
+Edits to this page after the recorded commit are documentation-only. The
+package route is bound to the tree above; the later documentation gates are
+recorded separately.
+
+### Resolved graph, tree `768f6172`
 
 `Cargo.lock` is ignored, so the graph is captured rather than committed. The
-capture uses the pinned toolchain and the normal and build edges:
+capture uses the pinned toolchain, the resolved lock, and the normal and build
+edges:
 
 ```shell
-cargo tree --edges normal,build
+cargo tree --locked --edges normal,build
 ```
 
 Table 8. Resolved-graph capture record.
 
 | Field          | Value                                                              |
 | -------------- | ------------------------------------------------------------------ |
-| Content tree   | `f2dcad5b4863b297b2056ae8b0639186cfb6eb6c`                         |
+| Content tree   | `768f6172cf7e2e307add6767e0fd480f56eeb817`                         |
 | Command exit   | `0`                                                                |
+| `tee` exit     | `0`                                                                |
 | Output lines   | `80`                                                               |
-| SHA-256 digest | `e9c7a9a90a4c981a63eaa9b8a5db953216c6103157096e62536895842b2bff74` |
+| SHA-256 digest | `ddbdf3857a75222c7c775e27eae256507eb1c847051d4e0cd17f67bab9fea073` |
 
 The capture resolves the eight crates in this ledger: `allocator-api2 0.2.21`,
-`ahash 0.8.12`, `hashbrown 0.14.5`, `memoffset 0.9.1`, `regex-syntax 0.6.29`,
+`ahash 0.8.13`, `hashbrown 0.14.5`, `memoffset 0.9.1`, `regex-syntax 0.6.29`,
 `chumsky 0.9.3`, `logos-codegen 0.13.0`, and `thiserror-impl 1.0.69`. It also
 shows the two `hashbrown` holders directly.
 
-This is point-in-time evidence, not a reproducible guarantee. The capture omits
-`--locked`, and `Cargo.lock` is ignored, so a later registry index could select
-a different caret-compatible version while this tree stays unchanged. The
-digest therefore identifies what was captured on that tree and day; it does not
-assert what a future resolution will choose.
+This is point-in-time evidence, not a reproducible guarantee. `Cargo.lock` is
+ignored, so a later registry index could select a different caret-compatible
+version while this tree stays unchanged. The digest therefore identifies what
+was captured on that tree and day; it does not assert what a future resolution
+will choose.
+
+### Candidate scope
+
+The candidate tree pins `nightly-2025-09-16`, the compiler date the ticket
+specifies. `main` has since moved to `nightly-2026-11-09`, and that newer
+compiler raises additional deprecation diagnostics in the same registry crates.
+Those results are not transferred validation for this tree, and a separate
+re-qualification is required after the branch is rebased onto the newer pin.
+The toolchain pin is deliberately not changed here, as the ticket requires.
 
 ### Migration probes
 
@@ -328,27 +348,38 @@ Table 9. Probe records.
 
 ### Sequential gates
 
-The gates below ran on the content tree named in the run records above, each
-with command exit `0`.
+The gates below ran sequentially on the documented content tree, each with
+command exit `0` and `tee` exit `0`.
 
 Table 10. Sequential gate results.
 
-| Gate                | Exit |
-| ------------------- | ---- |
-| `make fmt`          | `0`  |
-| `make check-fmt`    | `0`  |
-| `make typecheck`    | `0`  |
-| `make lint`         | `0`  |
-| `make test`         | `0`  |
-| `make markdownlint` | `0`  |
-| `make nixie`        | `0`  |
+| Gate                | Exit | Scope                                                            |
+| ------------------- | ---- | ---------------------------------------------------------------- |
+| `make fmt`          | `0`  | Formatting applied; `markdownlint --fix` reported 0 issues       |
+| `make check-fmt`    | `0`  | `cargo fmt --check` and `mdtablefix --check`, 57 files unchanged |
+| `make typecheck`    | `0`  | Workspace, all targets and features                              |
+| `make lint`         | `0`  | Interrogate, Clippy, Clippy policy, Whitaker, and spelling       |
+| `make test`         | `0`  | 35 suites passed, none failed                                    |
+| `make markdownlint` | `0`  | 57 files, 0 issues, plus the spelling gate                       |
+| `make nixie`        | `0`  | Every Mermaid diagram validated                                  |
+
+`make lint` ran the rolling Whitaker suite, which reported
+`Checking with toolchain nightly-2026-05-28` and completed without a finding.
 
 ## Differences from the baseline
 
-None. The run records above reproduce the ticket's 44-warning inventory on the
-current tree: the same eight crates and the same per-crate counts.
-Re-attributing the package log by diagnostic path reproduces that attribution
-exactly.
+The total is unchanged at 44, across the same eight crates and with the same
+per-crate counts. Two details differ from the ticket's recorded run:
+
+- `ahash` resolves to `0.8.13` (2026-11-23) rather than `0.8.12`. The release
+  registers `vaes` and moves the three `ahash` sites, but it leaves the `128`
+  condition value and the `fuzzing` condition name unregistered and keeps the
+  dead-code methods, so all four `ahash` diagnostics remain.
+- Consequently the recorded sites are `src/fallback_hash.rs:179`,
+  `src/random_state.rs:57`, `src/random_state.rs:77`, and `src/convert.rs:67`.
+
+Re-attributing the package log by diagnostic path reproduces the per-crate
+counts exactly.
 
 [issue-400]: https://github.com/leynos/ddlint/issues/400
 [a2-41]: https://github.com/zakarumych/allocator-api2/issues/41
