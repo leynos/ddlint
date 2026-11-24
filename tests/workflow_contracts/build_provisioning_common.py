@@ -31,6 +31,9 @@ SHARED_ACTION_PREFIX = "leynos/shared-actions/.github"
 SETUP_RUST = f"{SHARED_ACTION_PREFIX}/actions/setup-rust@{APPROVED_SHARED_ACTIONS_REF}"
 MUTATION_CARGO = f"{SHARED_ACTION_PREFIX}/workflows/mutation-cargo.yml@{APPROVED_SHARED_ACTIONS_REF}"
 DEPENDABOT_AUTOMERGE = f"{SHARED_ACTION_PREFIX}/workflows/dependabot-automerge.yml@{APPROVED_SHARED_ACTIONS_REF}"
+# The delayed PR comment workflow only sleeps and posts a comment, so it moves
+# with its own pin rather than the approved ref used for build tooling.
+DELAYED_PR_COMMENT = f"{SHARED_ACTION_PREFIX}/workflows/delayed-pr-comment.yml@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02"
 COVERAGE_ACTION = f"{SHARED_ACTION_PREFIX}/actions/generate-coverage@{APPROVED_SHARED_ACTIONS_REF}"
 PROVISIONING_TARGET = "check-build-tools"
 # The pinned mold release this repository provisions, read from its own record
