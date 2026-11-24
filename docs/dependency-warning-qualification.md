@@ -402,21 +402,33 @@ while the two `hashbrown 0.14.5` diagnostics remain under the
 
 ### Sequential gates
 
-The gates below ran sequentially on the documented content tree. The Rust gates
-ran on `65f1e6519cd2acb94ee1770f16a00b516aa4cf91`; the documentation gates were
-re-run after the later prose edits.
+The ordered route has two recorded forms for this candidate.
 
-Table 11. Sequential gate results.
+The Rust gates ran on content tree `65f1e6519cd2acb94ee1770f16a00b516aa4cf91`
+with command exit `0`: `make typecheck`, `make lint` (interrogate, Clippy,
+Clippy policy, Whitaker, and spelling), and `make test`. The documentation
+gates ran locally on the same content and were re-run after later prose edits.
 
-| Gate                | Exit | Scope                                                            |
-| ------------------- | ---- | ---------------------------------------------------------------- |
-| `make fmt`          | `0`  | Formatting applied; `markdownlint --fix` reported 0 issues       |
-| `make check-fmt`    | `0`  | `cargo fmt --check` and `mdtablefix --check`; 74 files unchanged |
-| `make typecheck`    | `0`  | Workspace, all targets and features                              |
-| `make lint`         | `0`  | Interrogate, Clippy, Clippy policy, Whitaker, and spelling       |
-| `make test`         | `0`  | Full workspace suite, none failed                                |
-| `make markdownlint` | `0`  | 74 files, 0 issues, plus the spelling gate                       |
-| `make nixie`        | `0`  | Every Mermaid diagram validated                                  |
+The pull request's continuous integration (CI) run is the external, immutable
+binding for the full route. Run [45337172520][ci-run], on commit
+`8cd46985c9a7f95796174746c72842627636a9bc`, completed every step successfully.
+
+Table 11. CI step results for run `45337172520`.
+
+| Step                              | Conclusion |
+| --------------------------------- | ---------- |
+| Format                            | `success`  |
+| Lint Markdown                     | `success`  |
+| Install the Whitaker Dylint suite | `success`  |
+| Lint                              | `success`  |
+| Test                              | `success`  |
+| Workflow contract tests           | `success`  |
+| Generate coverage                 | `success`  |
+
+A local `make test` on the same tree was stopped by the harness time limit
+while the trybuild user-interface suite was still running. That is an
+interruption, not a failure, and the CI `Test` step on the identical content is
+the recorded result.
 
 ## Differences from the baseline
 
@@ -454,6 +466,7 @@ in-range release, with "awaiting upstream release" as the disposition. A
 compiler-date rollback would hide them again; that would be exactly the kind of
 suppression the ticket forbids.
 
+[ci-run]: https://github.com/leynos/ddlint/actions/runs/45337172520
 [issue-400]: https://github.com/leynos/ddlint/issues/400
 [a2-41]: https://github.com/zakarumych/allocator-api2/issues/41
 [a2-42]: https://github.com/zakarumych/allocator-api2/pull/42
