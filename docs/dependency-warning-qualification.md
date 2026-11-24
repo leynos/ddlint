@@ -141,6 +141,32 @@ Table 3. Diagnostics, sites, paths, owners, and dispositions.
 Every row above has a named upstream owner and an actionable disposition.
 Cargo's lint cap is not treated as a waiver anywhere in this table.
 
+## Upstream ownership searches
+
+The exact-owner searches were run on 2026-10-28 and repeated on 2026-11-23.
+
+- `dtolnay/thiserror`: `mismatched_lifetime_syntaxes` and `"hiding a
+  lifetime"` returned no issue or pull request.
+- `maciejhirsz/logos`: the same two queries returned no issue or pull
+  request.
+- `rust-lang/hashbrown`: `RawIterHash` returned related iterator work but
+  nothing about the `raw` feature gating producing dead code;
+  `"never constructed"` returned nothing.
+- `rust-lang/regex`: `symmetric_difference "never used"` returned nothing.
+- `Gilnaa/memoffset`: `rustc-check-cfg` over all issues and pull requests
+  returned nothing. Issues were disabled when the ticket was written and are
+  enabled again as of 2026-11-23.
+- `tkaitchuck/aHash`: `fuzzing unexpected_cfgs` returned nothing;
+  [PR 269][ahash-269] covers only the feature cfgs.
+- `zesterer/chumsky`, now on Codeberg: `mismatched_lifetime_syntaxes`
+  returned zero open, closed, or all results. The GitHub repository was
+  archived on 2 April 2026.
+- `zakarumych/allocator-api2`: [issue 41][a2-41] and [PR 42][a2-42] are the
+  existing coverage; no `0.2.x` backport request existed before this update.
+
+A zero-result search is not proof that no owner exists; it records what was
+searched and when.
+
 ## Migration tracking
 
 Each major migration has its own review ticket. The three Cargo migrations
@@ -202,8 +228,8 @@ dispositions are recorded above with the contact that already exists for each:
 
 - `allocator-api2`: [issue 41][a2-41] and [PR 42][a2-42] already cover the
   defect; the remaining ask is a `0.2.x` release, recorded as a comment on that
-  thread rather than a new report:
-  <https://github.com/zakarumych/allocator-api2/issues/41#issuecomment-7109286384>.
+  thread rather than a new report: [issue comment
+  7109286384][a2-comment].
 - `ahash`: no existing owner, so a fix is to be contributed.
 - `memoffset`: issues are disabled, so a fix is to be contributed.
 - `chumsky`, `logos`, `hashbrown`, and `thiserror`: covered by the migration
@@ -327,6 +353,7 @@ exactly.
 [issue-400]: https://github.com/leynos/ddlint/issues/400
 [a2-41]: https://github.com/zakarumych/allocator-api2/issues/41
 [a2-42]: https://github.com/zakarumych/allocator-api2/pull/42
+[a2-comment]: https://github.com/zakarumych/allocator-api2/issues/41#issuecomment-7109286384
 [ahash-269]: https://github.com/tkaitchuck/aHash/pull/269
 [t-thiserror]: https://github.com/leynos/ddlint/issues/468
 [t-logos]: https://github.com/leynos/ddlint/issues/469
