@@ -211,8 +211,8 @@ split parser library surfaces defined in
 ### 2.6. Parser conformance decisions before crate extraction
 
 Upstream DDlog is authoritative (see the specification's "Upstream authority"
-section). Items below that say "decide whether to align" are decided in favour
-of upstream; only how to align remains open.
+section). Items 2.6.10, 2.6.11, 2.6.14, and 2.6.15 ask whether to align; that
+is decided in favour of upstream, and only how to align remains open.
 
 - [x] 2.6.1. Close the top-level `for` decision and align scanner behaviour,
   tests, and spec language around the desugaring contract. See
@@ -283,14 +283,21 @@ of upstream; only how to align remains open.
   rejects in favour of `type`, sized integers, and `f32`/`f64`. See
   docs/parser-conformance-register.md items 14 and 22.
 - [ ] 2.6.16. Align transformer declarations with upstream `transformer`:
-  `UcName` (optionally scoped) names, typed `relation[T]` and
-  `function(args): T` parameters, and a parenthesized, typed `->` output list.
-  Replace the lowercase-name rule and the `:` output list. Requires 2.6.9. See
+  `extern`-only, `UcName` (optionally scoped) names, any-case parameter names
+  typed `relation[T]` or `function(args): T`, and a parenthesized, typed `->`
+  output list; both lists may be empty or end in a comma. Replace the
+  lowercase-name rule and the `:` output list. See
   docs/parser-conformance-register.md item 12.
 - [ ] 2.6.17. Align primary-key placement with upstream: accept keys on
   bracket-bodied relations (retiring `D-REL-004`), and reject keys on streams
   and multisets. Requires 2.6.9. See docs/parser-conformance-register.md item
   13.
+- [ ] 2.6.18. Give primary-key expressions the extent upstream's grammar gives
+  them, replacing the newline and leading-token heuristics. Requires 2.6.9.
+- [ ] 2.6.19. Align the reserved-word set with upstream: release `index` and
+  `on`, reserve `string`, and correct specification section 2.3.
+- [ ] 2.6.20. Require a relation kind keyword, as upstream does, so a bare
+  `R(id: u32)` is not a relation declaration.
 
 ### 2.7. Split parser crate foundation
 

@@ -69,29 +69,33 @@ each category independently. Code is `*.rs`, `*.dl`, and `*.feature`;
 configuration is Cargo, Make, CI, and lint settings; documentation is other
 Markdown. Files under `proptest-regressions/` are excluded but must be reviewed.
 
-- Code: stop beyond 38 files or 900 net lines.
-- Documentation: stop beyond 14 files or 350 net lines.
+- Code: stop beyond 44 files or 1,400 net lines in total, of which `EP-M3` and
+  `EP-M4` together may use at most 10 files and 250 lines.
+- Documentation: stop beyond 15 files or 400 net lines.
 - Configuration: stop on any change.
 - Public API: stop if more than the authorized change is needed.
-- Scanner: stop if statement-boundary or `;` handling must change.
+- Scanner: the recovery change in `D11` is authorized by approval of this plan.
+  Stop if statement-boundary, `;`, or rule-scanner grammar must also change.
 - Gates: stop after three unsuccessful fix rounds.
 - Time: stop if a milestone exceeds four active hours.
 - Ambiguity: stop if evidence challenges a decision below.
 
-Budget rationale: 25 code files mention `primary key`, and expression-less
-fixtures must be migrated rather than deleted. Imports add three files, helper
-consolidation three, and new modules and tests about six, giving about 37.
-Migration is mostly one-for-one, so new tests dominate net lines. Plan 2.6.6.1
-set 1,100 net Rust lines and finished at 2,062; 2.6.8 set 1,600 and finished at
-3,120. Both overran on tests. This redesign needs fewer tests because the
-grammar is now fixed-size.
+Budget rationale: a review counted 36 to 40 code files. Twenty-five mention
+`primary key`, of which about five need no edit; scanner recovery adds
+`span_scanner.rs`, `parser/mod.rs`, and `relations/mod.rs`; imports add three,
+consolidation two, and new modules and tests about six. Multi-binder and
+expression-less strategies and the `INV-TERM` fixtures need restructuring, not
+one-for-one edits. Plan 2.6.6.1 set 1,100 net Rust lines and finished at 2,062;
+2.6.8 set 1,600 and finished at 3,120. Both overran on tests. `EP-M3` and
+`EP-M4` are independent and may be delivered as separate pull requests.
 
 ## Risks
 
-- Multi-line declarations. Upstream style puts `primary key` on its own line,
-  but `skip_line()` skips only the line on which the declaration starts.
-  Severity: medium. Likelihood: high. A rejected second-line clause may be
-  rescanned and report twice. `EP-M0` measures this before design is fixed.
+- Duplicate diagnostics. A rejected relation records no span, so the rule
+  scanner reads its tokens. By source trace (not yet executed), `x` in
+  `primary key (Foo) Foo.x` is scanned as a rule because it follows `.`, and a
+  second-line `primary` is scanned as a rule head. Severity: high. Likelihood:
+  high. `D11` fixes it; `EP-M0` confirms it first.
 - Expression on a later line. Upstream ignores newlines; ddlint reads an
   expression only on the same line as `)`. Requiring one would reject valid
   input unless the search crosses newlines (`D5`). Severity: medium.
@@ -124,7 +128,8 @@ Times are commit times in UTC, taken from git.
   `;`, and upstream has no top-level `;`.
 - `_` is reserved upstream, as in ddlint, so `primary key (_)` is malformed.
 - `examples/primary_key_and_index.dl` puts a key on a bracket-bodied relation.
-  This is valid upstream, but ddlint's scanner reports `D-REL-004` (2.6.17).
+  Upstream accepts that placement, but ddlint's scanner reports `D-REL-004`
+  (2.6.17). The file is not otherwise valid upstream: it uses `type`.
 - Upstream `Validate.hs` lines 274 to 277 reject keys on non-`input` relations,
   streams, and multisets. ddlint enforces only the first.
 - Upstream transformer names are `ucScopedIdentifier`, with typed `->` outputs.
@@ -137,6 +142,10 @@ Times are commit times in UTC, taken from git.
   length 10). One seeded fault also targeted a test that could not detect it.
   The redesign removes the automaton argument.
 
+- Reserved words differ: upstream does not reserve `index` or `on`, and does
+  reserve `string`, so ddlint treats `(index) index.id` and `(string) string`
+  wrongly (2.6.19). Upstream also requires a relation kind keyword (2.6.20).
+
 ## Decision log
 
 - D1. Match `key_expr` exactly: one `LcName` binder, then a required expression.
@@ -148,12 +157,15 @@ Times are commit times in UTC, taken from git.
   expression is missing.
 - D4. Represent the contract in the type: one binder and one expression.
   Rejected: keeping a vector and an option that can never vary.
-- D5. Look for the expression across newlines. If the next significant token is
-  on a later line and can begin a declaration (a declaration keyword, `#`, or a
-  `UcName`), report the expression missing. This wrongly rejects a later-line
-  expression starting with an uppercase constructor. The corpus contains none;
-  record it as a defect in the register, not as an intentional subset. The
-  proper fix is grammar-driven expression extent.
+- D5. One token predicate decides whether an expression starts at the next
+  significant token. It is missing at end of input, `;`, `:-`, `.`, `,`, a
+  closing delimiter, a binary operator, `#`, or a reserved word that cannot
+  start an expression. On a later line it is also missing for `&`, `for`,
+  `function`, `index`, an identifier followed by `in`, and a path whose last
+  segment is uppercase, because each can start a declaration or rule. Remaining
+  defects, all scheduled as 2.6.18: later-line expressions starting with those
+  tokens, expressions continued across a newline, and rules whose head is a
+  lowercase-led path.
 - D6. Import aliases follow `modname`: any case, optionally scoped.
 - D7. Use no Verus or Kani; see `Formal verification decision`. Requires user
   approval.
@@ -165,6 +177,13 @@ Times are commit times in UTC, taken from git.
   roles. This reverses the first review's `D10`: a capitalized binder on an
   `output` relation changes from `D-REL-006`, with the relation exposed, to
   `D-REL-007`, with it dropped. It also avoids a two-stage verdict.
+
+- D11. Recover without leaking tokens. A rejected or recoverable clause skips to
+  a computed clause end, or to the line end if its group is unbalanced, and
+  `collect_relation_spans` returns the skipped range. That range is excluded
+  from rule and top-level `for` scanning. Rejected: filtering duplicate
+  diagnostics afterwards, which leaves phantom rules and relations. This widens
+  scope and requires user approval.
 
 ## Outcomes & retrospective
 
@@ -255,8 +274,9 @@ The group must be balanced; an unclosed group keeps its current diagnostic.
 - `INV-EXPR`: every exposed key has expression text. The text may still fail
   `parse()`, so ADR-0002 `INV-INDEP` holds for accepted clauses.
 - `INV-AGREE`: scanner and accessor accept the same clauses.
-- `INV-ONE`: a rejected clause yields exactly one diagnostic and no relation,
-  and the next declaration is scanned.
+- `INV-ONE`: a rejected clause yields exactly one entry in `errors()` of any
+  kind, no relation, no rule, and no phantom declaration; the next declaration
+  on a later line survives.
 - `INV-ALIAS`: `alias()` returns the full alias in any case.
 - `INV-REFAC`: consolidation changes no classification.
 - `L-LEX`: for text matching `[A-Za-z_][A-Za-z0-9_]*`, `LC` is equivalent to a
@@ -275,35 +295,43 @@ The group must be balanced; an unclosed group keeps its current diagnostic.
   an expression on the next line, `primary key` on its own line, and comments
   inside the group. Rejected rows: `(Foo) Foo.x`, `(a, b) a`, `(x,) x`, `() x`,
   `(_) x`, `(type) x`, `(Self) x`, no expression at end of file, no expression
-  before a keyword declaration, and before a rule. Each rejected row has a
-  following declaration that must survive. `output` and bracket rows pin `D10`.
+  before a keyword declaration, and before a rule. Each rejected row asserts
+  the entire `errors()` slice (length, code, byte span) and the complete
+  relation and rule lists, and has a later-line declaration that must survive.
+  Existing helpers filter to `D-REL-007` text and would miss the rule scanner's
+  uncoded errors. Add rows for a second-line clause, `&Rel(x) :- …`,
+  `x in Rel`, a same-line `input relation` in place of an expression, and an
+  accepted `(key) key.id`. `output` and bracket rows pin `D10`.
 - Binder function: enumerate all sequences up to length four over `a`, `_b`,
   `Cd`, comma, comment, `_`, and `type` (2,801 cases) against an oracle built
   from the symbols' labels. The function's result depends only on the first two
   non-trivia tokens, so this covers every case of that shape; review confirms
   the final code keeps that shape.
-- Agreement: a `proptest` over labelled binder groups and expressions compares
-  the scanner with the accessor on hand-built CSTs. Expected results come from
-  labels. Names are kept only when they lex to one `T_IDENT`; a deterministic
-  run asserts that each class occurs.
+- Agreement: a `proptest` over labelled clauses compares the scanner, and the
+  accessor on hand-built CSTs, each with the label. Comparing them only with
+  each other would be vacuous because they share code. Names are kept only when
+  they lex to one `T_IDENT`; a deterministic run asserts that each class occurs.
 - `L-LEX` and `INV-REFAC`: labelled `proptest` cases in `ident_case`; existing
   transformer, pattern, and qualified-call tests stay unchanged.
 - Aliases: an `rstest` table for `baz`, `Baz`, `_baz`, `a::b`, `A::b`, and the
-  incomplete `a::`.
+  malformed `a::`, bare `as`, `as type`, and module path `foo::`. Each
+  malformed row gives one error and no import, and the next line survives.
 - End to end: the BDD feature and one `parse_with_observer` row.
 - Non-vacuity: temporarily ignore case, accept two binders, skip the expression
-  check, remove the accessor check, and truncate a scoped alias. Each named
+  check, remove the accessor check, truncate a scoped alias, search for the
+  expression on one line only, remove each later-line declaration test, swap
+  the anchors, check the role before the clause, remove the rejected-range
+  exclusion, and drop the accessor's `primary`/`key` prefix check. Each named
   test must fail; revert each fault before committing.
 
 ### Formal verification decision
 
-Verus is not warranted. The clause contract has no loop invariant, arithmetic,
-or unbounded state: it inspects a group of fixed size and one following token.
-A Verus theorem about `Binder` would restate its definition. The risk lies in
-integration between the lexer, scanner, CST, and accessor, which tests exercise
-directly. The Verus lane also checks standalone files under `verus/`, so a
-proof would cover a transcription. Kani is not configured, and enumeration
-already covers the function. No `make verus` gate applies.
+Verus is not warranted. `Binder` is a fixed-size decision, so a theorem about
+it would restate its definition. The risk lies in integration between the
+lexer, scanner, CST, and accessor, which tests exercise directly. The Verus
+lane also checks standalone files under `verus/`, so a proof would cover a
+transcription. Kani is not configured, and enumeration already covers the
+function. No `make verus` gate applies.
 
 ### Suggested BDD features
 
@@ -333,21 +361,24 @@ Scenario: A key without an expression is rejected
 
 ### `EP-M0` probe current behaviour
 
-With a deleted scratch example, record `errors()`, names, and accessor results
-for: scoped aliases; a trailing `;` after an import; a rejected clause on the
-line after its relation header; an expression on a later line; and a multi-line
-expression. Go if a rejected second-line clause reports once and loses no later
-declaration. Otherwise stop: recovery must change, which needs approval.
+With a deleted scratch example, record the whole `errors()` slice and all
+declarations for: each rejected form on the header's line and on the next line;
+later-line and continued expressions; scoped, incomplete, and `;`-terminated
+imports. Go if the results match the trace in `Risks`, or show no leak (then
+drop `D11`). Stop for any third outcome.
 
 ### `EP-M1` align the clause and accessor
 
 Red: add the contract table and BDD scenarios; confirm that the three rejected
-forms are accepted today. Green: add `src/parser/ident_case.rs` and
-`src/parser/primary_key_binder.rs`; replace `is_binder_identifier_list`;
-require the expression (`D5`); use the binder function in the accessor; delete
-`primary_key_clause`; change `PrimaryKey` (`D4`). Migrate fixtures in a
-separate commit within the milestone. Update specification sections 2.2 and 5.5
-and register item 13 in the same change.
+forms are accepted today. First implement `D11` in its own commit, with a red
+test using an already rejected list such as `(x,)`. Green: add
+`src/parser/ident_case.rs` and `src/parser/primary_key_binder.rs`; replace
+`is_binder_identifier_list`; require the expression (`D5`); parse the whole
+clause head (`primary`, `key`, group, binder, expression start) in the shared
+module and call it from scanner and accessor; delete `primary_key_clause`,
+whose prefix check moves there; change `PrimaryKey` (`D4`). Migrate fixtures in
+a separate commit within the milestone. Update specification sections 2.2 and
+5.5 and register item 13 in the same change.
 
 ### `EP-M2` property and fault evidence
 
@@ -355,23 +386,27 @@ Add enumeration and agreement tests, run each seeded fault, and record results.
 
 ### `EP-M3` align import aliases
 
-Red: the alias table. Green: reuse the module-path parser for the alias and
-collect the full alias in `Import::alias()`. Correct section 5.2, removing
-`LcName` and the trailing `';'`, and add a register entry. If today's scanner
-accepts a trailing `;`, record that under 2.6.10.
+Red: the alias table. Green: make `as` commit to a full path that cannot end in
+`::`, reuse it for the alias and collect the full alias in `Import::alias()`.
+Correct section 5.2, removing `LcName` and the trailing `';'`, and add a
+register entry. If today's scanner accepts a trailing `;`, record that under
+2.6.10.
 
 ### `EP-M4` consolidate case predicates
 
-Replace the private helpers with `ident_case` in a separate refactor commit.
-Each argument must be the text of one token matching the identifier pattern.
+Replace the pattern and qualified-call helpers (2.6.16 deletes the transformer
+helper) with `ident_case` in a separate refactor commit. Each argument must be
+the text of one token matching the identifier pattern.
 
 ### `EP-M5` documentation and closure
 
 Update the users' guide, implementation notes, developers' guide (including the
 reuse policy for both new modules), repository layout, design document,
-changelog, and contents. Append the ADR-0002 amendment. Correct register item
-12's conformance claim. Record the bracket-body, stream, Unicode, `;`, and `D5`
-defects in the register. Mark roadmap 2.6.9 done and this plan `COMPLETE`.
+changelog, and contents. Mark `docs/v0-2-0-migration-guide.md` as historical
+where it describes the removed API. Append the ADR-0002 amendment. Correct
+register item 12's conformance claim. Record the bracket-body, stream, Unicode,
+`;`, and `D5` defects in the register. Mark roadmap 2.6.9 done and this plan
+`COMPLETE`.
 
 ## Milestones and plateaus
 
@@ -443,3 +478,6 @@ No new dependencies. `ident_case` provides `is_lc_name(&str) -> bool` and
   recognizer and automaton argument are gone; `D10` is reversed; transformer
   and key-placement alignment become 2.6.16 and 2.6.17; and the errors listed
   under `Surprises & discoveries` are corrected.
+- 2026-11-24: applied an independent review of the redesign. Added `D11`,
+  whole-slice assertions, a complete `D5` predicate, malformed-alias results,
+  accessor prefix validation, larger budgets, and roadmap 2.6.18 to 2.6.20.

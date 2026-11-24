@@ -28,7 +28,8 @@ established from the upstream source, cited by full commit hash.
 
 ### Target and compatibility contract
 
-- This document remains the normative syntax contract.
+- This document transcribes upstream syntax for ddlint. Where it and upstream
+  disagree, upstream wins.
 - If the current implementation diverges from this spec, record the delta in
   `docs/parser-conformance-register.md` and schedule resolution in
   `docs/roadmap.md`.
