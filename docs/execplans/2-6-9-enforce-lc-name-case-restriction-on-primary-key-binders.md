@@ -91,11 +91,10 @@ one-for-one edits. Plan 2.6.6.1 set 1,100 net Rust lines and finished at 2,062;
 
 ## Risks
 
-- Duplicate diagnostics. A rejected relation records no span, so the rule
-  scanner reads its tokens. By source trace (not yet executed), `x` in
-  `primary key (Foo) Foo.x` is scanned as a rule because it follows `.`, and a
-  second-line `primary` is scanned as a rule head. Severity: high. Likelihood:
-  high. `D11` fixes it; `EP-M0` confirms it first.
+- Duplicate diagnostics. A rejected or recoverable clause leaks tokens into the
+  rule scanner, which reports a second, uncoded error. Confirmed by the `EP-M0`
+  probe for already rejected forms. Severity: high. Likelihood: certain without
+  `D11`.
 - Expression on a later line. Upstream ignores newlines; ddlint reads an
   expression only on the same line as `)`. Requiring one would reject valid
   input unless the search crosses newlines (`D5`). Severity: medium.
@@ -112,7 +111,8 @@ Times are commit times in UTC, taken from git.
 - [x] (2026-11-24) User set the upstream-fidelity policy; plan redesigned from
   the upstream source.
 - [ ] Plan approved by the user.
-- [ ] `EP-M0` probe current behaviour.
+- [x] (2026-11-24) `EP-M0` first probe run during planning: go. Remaining rows
+  are listed under `EP-M0`.
 - [ ] `EP-M1` align the clause and accessor.
 - [ ] `EP-M2` property and fault evidence.
 - [ ] `EP-M3` align import aliases.
@@ -361,11 +361,13 @@ Scenario: A key without an expression is rejected
 
 ### `EP-M0` probe current behaviour
 
-With a deleted scratch example, record the whole `errors()` slice and all
-declarations for: each rejected form on the header's line and on the next line;
-later-line and continued expressions; scoped, incomplete, and `;`-terminated
-imports. Go if the results match the trace in `Risks`, or show no leak (then
-drop `D11`). Stop for any third outcome.
+Run during planning with a scratch example, since deleted; results are in
+`Artefacts and notes`. They match the trace, so the decision is go. Before
+`EP-M1`, also record incomplete imports (`as`, `a::`, `foo::`), `as type`, and
+an undelimited expression continued across a newline. Forms accepted today,
+such as `(Foo) Foo.x`, can only be checked for leaks once rejected; the
+contract table does that. Stop if any row shows a leak that `D11` does not
+cover.
 
 ### `EP-M1` align the clause and accessor
 
@@ -462,6 +464,23 @@ Upstream evidence, commit `ca5ded823dc2c01bc33aac44e526c12d2fed03a6`:
 360  key_expr = withPos $ KeyExpr nopos <$> (parens varIdent) <*> expr
 ```
 
+`EP-M0` probe, branch commit `7e240701` (code identical to `main` at
+`d8343aec`), showing `errors()` as code or kind at source text:
+
+```plaintext
+import foo as a::b                      no errors; alias "a" (truncated)
+import foo;   import foo as a;          no errors; `;` silently ignored
+R(..) primary key (Foo) Foo.x           no errors; accepted
+R(..) primary key (x)                   no errors; accepted
+R(..) primary key (x)\n  (x.id)         Unexpected at ")"; expression lost
+R(..) primary key (x) (x.a,\n  x.b)     no errors; whole tuple kept
+R(..)\nprimary key (x,)                 D-REL-007 at "("; Unexpected at "key"
+output R(..) primary key (x.y) x        D-REL-007 at "("; Unexpected at ")"
+output R(..) primary key (Foo) Foo.x    D-REL-006; Unexpected at "x"; R kept
+R[T] primary key (x) x.id               D-REL-004; Unexpected at "id"; R kept
+input stream R(..) primary key (x) x.id no errors; accepted (2.6.17)
+```
+
 ## Interfaces and dependencies
 
 No new dependencies. `ident_case` provides `is_lc_name(&str) -> bool` and
@@ -481,3 +500,5 @@ No new dependencies. `ident_case` provides `is_lc_name(&str) -> bool` and
 - 2026-11-24: applied an independent review of the redesign. Added `D11`,
   whole-slice assertions, a complete `D5` predicate, malformed-alias results,
   accessor prefix validation, larger budgets, and roadmap 2.6.18 to 2.6.20.
+- 2026-11-24: recorded the `EP-M0` probe. `D11` now rests on executed evidence;
+  the alias truncation and the lost later-line expression are confirmed.
