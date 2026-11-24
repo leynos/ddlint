@@ -45,10 +45,12 @@ order:
 8. resolved-graph capture (`cargo tree`)
 9. non-development package verification
 
-The run records do not each repeat all nine steps. Steps 1-7 are evidenced by
-the sequential-gates table, step 8 by the resolved-graph record, and step 9 by
-the package record. A run record covers the steps it names and claims nothing
-about the others.
+The run records do not each repeat all nine steps, and no single ordered run
+covers the whole route on one tree. Steps 1-2, 3, 4, 6, and 7 were run locally
+with exit `0`; step 5 was interrupted locally and is evidenced by the CI `Test`
+step on the same content; step 8 is evidenced by the resolved-graph record; and
+step 9 by the package record. A run record covers the steps it names and claims
+nothing about the others.
 
 The gates keep the shared caches the `Makefile` sets (`UV_CACHE_DIR=.uv-cache`,
 `UV_TOOL_DIR=.uv-tools`) and the existing `CARGO_HOME` and `target/` directory.
@@ -412,18 +414,29 @@ while the two `hashbrown 0.14.5` diagnostics remain under the
 
 ### Sequential gates
 
-The ordered route has two recorded forms for this candidate.
+No single ordered run executed all seven gates on one tree, so the evidence is
+recorded per step.
 
-The Rust gates ran on content tree `65f1e6519cd2acb94ee1770f16a00b516aa4cf91`
-with command exit `0`: `make typecheck`, `make lint` (interrogate, Clippy,
-Clippy policy, Whitaker, and spelling), and `make test`. The documentation
-gates ran locally on the same content and were re-run after later prose edits.
+- Step 1, `make fmt`: local run on content tree
+  `65f1e6519cd2acb94ee1770f16a00b516aa4cf91`, exit `0`.
+- Step 2, `make check-fmt`: local run on the same tree, exit `0`. The CI
+  `Format` step also runs this target.
+- Step 3, `make typecheck`: local run, exit `0`.
+- Step 4, `make lint`: local run, exit `0`. The CI `Lint` step also runs this
+  target, including the rolling Whitaker suite.
+- Step 5, `make test`: the local run was stopped by the harness time limit
+  while the trybuild user-interface suite was still running. The CI `Test` step
+  runs `make test` on the same content and succeeded, and that is the recorded
+  result. The interruption is not a test failure.
+- Step 6, `make markdownlint`: local run, exit `0`. The CI `Lint Markdown`
+  step runs the markdownlint action directly rather than this target.
+- Step 7, `make nixie`: local run, exit `0`. No CI step runs this target.
 
-The pull request's continuous integration (CI) run is the external, immutable
-binding for the steps CI runs. Run [45337172520][ci-run], on commit
-`8cd46985c9a7f95796174746c72842627636a9bc`, completed the seven steps in Table
-11 successfully. The run does not cover `make nixie`, the resolved-graph
-capture, or package verification; those steps rely on their own records above.
+The CI run below is the external, immutable reference for the steps CI runs.
+Run [45337172520][ci-run] on commit `8cd46985c9a7f95796174746c72842627636a9bc`
+completed seven steps successfully. It does not cover `make nixie`, the
+resolved-graph capture, or package verification; those rely on their own
+records above.
 
 Table 11. CI step results for run `45337172520`.
 
@@ -436,11 +449,6 @@ Table 11. CI step results for run `45337172520`.
 | Test                              | `success`  |
 | Workflow contract tests           | `success`  |
 | Generate coverage                 | `success`  |
-
-A local `make test` on the same tree was stopped by the harness time limit
-while the trybuild user-interface suite was still running. That is an
-interruption, not a failure, and the CI `Test` step on the identical content is
-the recorded result.
 
 ## Differences from the baseline
 
