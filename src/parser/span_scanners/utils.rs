@@ -82,6 +82,9 @@ where
 ///
 /// # Examples
 ///
+/// The parser sees the raw token stream, trivia included, so it must skip the
+/// whitespace between tokens itself.
+///
 /// ```rust,ignore
 /// use chumsky::prelude::*;
 /// use crate::{
@@ -91,9 +94,16 @@ where
 ///
 /// let src = "type Alpha type Beta";
 /// let tokens = crate::test_util::tokenize(src);
+/// let ws = || {
+///     filter(|kind: &SyntaxKind| *kind == SyntaxKind::T_WHITESPACE)
+///         .ignored()
+///         .repeated()
+/// };
 /// let parser = || {
 ///     just(SyntaxKind::K_TYPE)
+///         .padded_by(ws())
 ///         .ignore_then(just(SyntaxKind::T_IDENT))
+///         .padded_by(ws())
 ///         .map_with_span(|_, sp: Span| sp)
 /// };
 /// let (spans, errs) = collect_with_parser(&tokens, src, SyntaxKind::K_TYPE, parser);

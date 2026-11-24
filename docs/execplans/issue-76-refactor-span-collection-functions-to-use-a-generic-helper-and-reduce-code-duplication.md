@@ -113,7 +113,16 @@ module instead of growing it.
   compile (`cannot find function collect_with_parser`). Green: 100 focused
   tests passed, then 854 parser library tests passed with the `EP-M1` tables
   unchanged. `utils.rs` is 124 lines, `imports.rs` 50, and `apply.rs` 51.
-- [ ] `EP-M3` Documentation corrected, gates run, draft pull request opened.
+- [x] (2026-11-24) `EP-M3` Documentation corrected and full gates passed:
+  `make check-fmt`, `make typecheck`, `make lint` (Clippy, Rustdoc, Clippy
+  policy, Whitaker, spelling), `make test` (1607 passed, 0 failed),
+  `make markdownlint`, `make nixie`. The spelling gate rejected `-ise` forms in
+  two documents; those now use `-ize`.
+- [x] (2026-11-24) CodeRabbit review cleared. Two findings were fixed:
+  regression cases now pin each diagnostic's ordered span instead of only its
+  presence, and the `collect_with_parser` doc example pads trivia so it would
+  actually collect both declarations.
+- [ ] Draft pull request opened.
 
 ## Surprises & discoveries
 
@@ -153,6 +162,12 @@ module instead of growing it.
 - D4. Decision: put new tests in sibling modules under
   `src/parser/span_scanners/tests/` rather than growing `tests/mod.rs` past 400
   lines. Rationale: repository module-size ceiling. Date/Author: 2026-11-23.
+- D5. Decision: pin each malformed declaration's ordered diagnostic span, not
+  just its presence. Rationale: a CodeRabbit finding showed presence alone
+  would accept a diagnostic on the wrong token or a duplicated diagnostic.
+  Chumsky's final failure error names the offending token, so the pinned spans
+  are stable across the refactor while still failing on a wrong recovery path.
+  Date/Author: 2026-11-24.
 
 ## Outcomes & retrospective
 
