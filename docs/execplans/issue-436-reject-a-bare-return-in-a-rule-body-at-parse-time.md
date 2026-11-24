@@ -130,7 +130,10 @@ Pratt parser already carries the scoping state.
   proved that every named file is checked after an earlier failure. Added
   `every_named_file_is_checked_after_an_earlier_failure` and confirmed it fails
   against a seeded short-circuit mutation before reverting the mutation.
-- [ ] `EP-M3`: commit the second-round test, push, and re-run CodeRabbit.
+- [x] (2026-11-24 11:00Z) Second-round test committed as `4c678f07` and
+  pushed; CodeRabbit reports zero findings across all 23 changed files; CI
+  `build-test`, CodeScene, and Gecko Security pass on that head.
+- [x] `EP-M3`: complete.
 
 ## Surprises & discoveries
 
@@ -200,7 +203,24 @@ Pratt parser already carries the scoping state.
 
 ## Outcomes & retrospective
 
-To be completed after the gates pass and the pull request is opened.
+The parser now rejects `return` in a rule body at the keyword span, and both
+permitted positions still parse: a function body and a closure body, including
+a closure nested in a rule body. `Rule::body_terms()` agrees with the base
+parse instead of silently accepting the construct, and the interim CLI proves
+all three shapes through the binary.
+
+The reconnaissance finding changed the shape of the work: PR 408 had already
+added the Pratt scoping state, so this change was about consistency,
+diagnostics, tests, the CLI, and documentation rather than a new parser
+mechanism. Recording that in `Surprises & discoveries` early kept the estimate
+honest.
+
+Lessons: the Whitaker capability policy constrains file access even in a small
+CLI, and the narrowest ambient operation (opening the named file) preserved
+ordinary symlink behaviour that a directory capability broke. The CodeRabbit
+passes also earned their keep twice: the classification coordinates were
+inconsistent in a way no existing test covered, and the multi-file CLI path was
+one mutation away from silently skipping work.
 
 ## Context and orientation
 
