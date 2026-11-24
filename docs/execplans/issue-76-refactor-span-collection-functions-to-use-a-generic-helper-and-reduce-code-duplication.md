@@ -5,7 +5,8 @@ This ExecPlan (execution plan) is a living document. The sections `Constraints`,
 `Outcomes & retrospective`, `Conformance basis`, and `Verification plan` must
 be kept up to date as work proceeds.
 
-Status: IN PROGRESS
+Status: IMPLEMENTED; local validation passed; delivery tracked in
+[PR #481](https://github.com/leynos/ddlint/pull/481)
 
 Branch:
 `issue-76-refactor-span-collection-functions-to-use-a-generic-helper-and-reduce-code-duplication`
@@ -122,7 +123,9 @@ module instead of growing it.
   regression cases now pin each diagnostic's ordered span instead of only its
   presence, and the `collect_with_parser` doc example pads trivia so it would
   actually collect both declarations.
-- [ ] Draft pull request opened.
+- [x] (2026-11-24) Draft pull request opened:
+  [PR #481](https://github.com/leynos/ddlint/pull/481). Final CodeRabbit review
+  reported zero findings.
 
 ## Surprises & discoveries
 
