@@ -126,6 +126,11 @@ module instead of growing it.
 - [x] (2026-11-24) Draft pull request opened:
   [PR #481](https://github.com/leynos/ddlint/pull/481). Final CodeRabbit review
   reported zero findings.
+- [x] (2026-11-24) Hosted CodeScene failed the advisory code-health gate on one
+  duplication finding in `declaration_scanner_tests.rs`. The four test
+  functions were collapsed into two `rstest` tables driven by a `SpanScanner`
+  function pointer plus one `assert_scanned` helper. Local `cs check` reports
+  10.00, and the hosted check now passes.
 
 ## Surprises & discoveries
 
@@ -172,9 +177,31 @@ module instead of growing it.
   are stable across the refactor while still failing on a wrong recovery path.
   Date/Author: 2026-11-24.
 
+- Observation: a table of `#[case]` rows with one wrapper function per scanner
+  scores well below the duplication threshold, but four separate test functions
+  with the same three-line body trip CodeScene's advisory rule. Evidence: the
+  first hosted CodeScene run failed on `declaration_scanner_tests.rs` with "1
+  file with Code Duplication"; after collapsing the bodies, `cs check` reports
+  10.00 and the hosted check passes. Impact: prefer a scanner function pointer
+  plus one shared assertion helper over per-scanner copies when several
+  scanners share a test shape.
+
 ## Outcomes & retrospective
 
-To be completed at `EP-M3`.
+The change met its purpose: `collect_import_spans` and `collect_apply_spans`
+now share one collector implementation, and every scanner keeps its own grammar
+and policy. The issue's roughly 120-line estimate was not reachable because
+only those two scanners are policy-equal to `parse_and_record`; the real net
+change is 68 added helper lines and two scanner bodies replaced by one call
+each, offset by the regression tests that make the refactor safe.
+
+What went well: pinning behaviour before refactoring turned a
+behaviour-preserving change into an observable one, and the pinned tables
+passed unchanged across the refactor. What would be done differently: write the
+regression tests as one shared-body table from the start. Four separate test
+functions with the same body passed every local gate and still failed the
+hosted CodeScene duplication rule, costing a review cycle and a rebase-free
+rewrite of the test module.
 
 ## Context and orientation
 
@@ -449,3 +476,8 @@ guards, span filtering, or diagnostic replacement. No dependency changes.
 
 - 2026-11-23: Initial plan derived from the issue's coding plan and repository
   reconnaissance.
+- 2026-11-24: Recorded the CodeRabbit remediation (ordered diagnostic spans and
+  a corrected doc example) and the CodeScene duplication remediation (one
+  shared test body driven by a scanner function pointer). The API, obligations,
+  and remaining scope are unchanged; the plan is implemented and tracked in
+  [PR #481](https://github.com/leynos/ddlint/pull/481).
