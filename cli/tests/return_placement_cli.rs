@@ -120,6 +120,34 @@ fn a_symlink_to_a_target_outside_its_directory_is_read() -> Result<(), Box<dyn E
     Ok(())
 }
 
+/// A failure in an earlier file must not suppress later files.
+///
+/// The run accumulates status with `&=`, so every named path is checked. This
+/// test fails if the loop short-circuits, because the malformed file's
+/// diagnostic would never reach standard error.
+#[test]
+fn every_named_file_is_checked_after_an_earlier_failure() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::TempDir::new()?;
+    let missing = directory.path().join("missing.dl");
+    let malformed = write_source(&directory, "malformed.dl", "R(x) :- return x.")?;
+    let output = run_binary(&directory, &[&missing, &malformed])?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    ensure(
+        output.status.code() == Some(1),
+        format!("any failing file must exit non-zero, stderr: {stderr}"),
+    )?;
+    ensure(
+        stderr.contains(&format!("ddlint: {}: ", missing.display())),
+        format!("the unreadable file must be reported, got: {stderr}"),
+    )?;
+    ensure(
+        stderr.contains(&format!("{}:8..14: error: ", malformed.display())),
+        format!("the later file must still be parsed and reported, got: {stderr}"),
+    )?;
+    Ok(())
+}
+
 /// An unreadable path is reported with the tool's own error prefix.
 #[test]
 fn a_missing_file_is_reported() -> Result<(), Box<dyn Error>> {

@@ -124,7 +124,13 @@ Pratt parser already carries the scoping state.
   three were verified valid and fixed: register wording excludes nested closure
   bodies, `File::open_ambient` restores symlink resolution with a new process
   test, and classification spans now use file coordinates.
-- [ ] `EP-M3`: commit the review fixes, push, and open the draft pull request.
+- [x] (2026-11-24 06:10Z) Review fixes committed as `43b3936c`; branch pushed
+  and draft pull request 479 opened. CI `build-test` and CodeScene pass.
+- [x] (2026-11-24 08:30Z) Second CodeRabbit pass found one trivial gap: no test
+  proved that every named file is checked after an earlier failure. Added
+  `every_named_file_is_checked_after_an_earlier_failure` and confirmed it fails
+  against a seeded short-circuit mutation before reverting the mutation.
+- [ ] `EP-M3`: commit the second-round test, push, and re-run CodeRabbit.
 
 ## Surprises & discoveries
 
