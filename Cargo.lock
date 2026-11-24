@@ -474,7 +474,7 @@ dependencies = [
  "rstest-bdd",
  "rstest-bdd-macros",
  "smallvec",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
  "tracing",
  "trybuild",
 ]
