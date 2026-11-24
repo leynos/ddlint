@@ -5,11 +5,16 @@
 
 use chumsky::{Error, error::Simple};
 
-use crate::parser::diagnostics::DiagnosticCode;
-use crate::parser::lexer_helpers::token_display;
-use crate::{Span, SyntaxKind};
-
 use super::{ScanResult, custom_error};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        diagnostics::DiagnosticCode,
+        lexer_helpers::token_display,
+        token_stream::TokenStream,
+    },
+};
 
 /// Parse a balanced block opened by the delimiter matching `close`.
 ///
@@ -17,12 +22,13 @@ use super::{ScanResult, custom_error};
 /// close at the outermost block depth. Reaching EOF before the stack empties
 /// returns an unclosed-delimiter diagnostic anchored at EOF.
 pub(super) fn parse_balanced_block(
-    tokens: &[(SyntaxKind, Span)],
-    src: &str,
+    stream: &TokenStream<'_>,
     cursor: &mut usize,
     close: SyntaxKind,
     has_content: &mut bool,
 ) -> ScanResult<usize> {
+    let tokens = stream.tokens();
+    let src = stream.src();
     consume_open_for_close(tokens, src, cursor, close)?;
     let mut stack = vec![close];
     while let Some((kind, span)) = tokens.get(*cursor) {
@@ -132,20 +138,30 @@ pub(super) fn skip_trivia_end(
     end
 }
 
-/// Advance past whitespace and comments until a newline or non-trivia token.
+/// Return the cursor index just past inline whitespace and comments.
 ///
-/// Unlike [`skip_trivia`], this keeps newline-separated declarations distinct.
-pub(super) fn skip_inline_trivia(tokens: &[(SyntaxKind, Span)], src: &str, cursor: &mut usize) {
-    while let Some((kind, span)) = tokens.get(*cursor) {
+/// Unlike [`skip_trivia_end`], this stops at a newline-bearing token so a
+/// following declaration stays distinguishable. The index is returned instead
+/// of advancing a cursor because callers that find no following expression
+/// must leave the trivia for the relation span to own; advancing here would
+/// drop inline trivia from a keyed relation and make its span differ from the
+/// equivalent keyless relation.
+pub(super) fn inline_trivia_end(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    mut cursor: usize,
+) -> usize {
+    while let Some((kind, span)) = tokens.get(cursor) {
         if !is_trivia(*kind) || token_text(src, span).is_some_and(|text| text.contains('\n')) {
             break;
         }
-        *cursor += 1;
+        cursor += 1;
     }
+    cursor
 }
 
 /// Return whether a token kind is trivia for relation-scanner cursor movement.
-pub(super) fn is_trivia(kind: SyntaxKind) -> bool {
+pub(super) const fn is_trivia(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 
@@ -166,9 +182,7 @@ pub(super) fn token_text_at<'a>(
 /// Return the source text covered by `span`.
 ///
 /// Returns `None` when the span is outside the source text bounds.
-pub(super) fn token_text<'a>(src: &'a str, span: &Span) -> Option<&'a str> {
-    src.get(span.clone())
-}
+pub(super) fn token_text<'a>(src: &'a str, span: &Span) -> Option<&'a str> { src.get(span.clone()) }
 
 /// Return the current token span or an EOF span when the cursor is exhausted.
 pub(super) fn current_span(tokens: &[(SyntaxKind, Span)], src: &str, cursor: usize) -> Span {
@@ -187,10 +201,10 @@ pub(super) fn adjust_stack(kind: SyntaxKind, stack: &mut Vec<SyntaxKind>) {
         SyntaxKind::T_LPAREN => stack.push(SyntaxKind::T_RPAREN),
         SyntaxKind::T_LBRACKET => stack.push(SyntaxKind::T_RBRACKET),
         SyntaxKind::T_LBRACE => stack.push(SyntaxKind::T_RBRACE),
-        SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET | SyntaxKind::T_RBRACE => {
-            if stack.last().copied() == Some(kind) {
-                stack.pop();
-            }
+        SyntaxKind::T_RPAREN | SyntaxKind::T_RBRACKET | SyntaxKind::T_RBRACE
+            if stack.last().copied() == Some(kind) =>
+        {
+            stack.pop();
         }
         _ => {}
     }

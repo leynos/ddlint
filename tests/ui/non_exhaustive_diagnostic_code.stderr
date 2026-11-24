@@ -7,6 +7,9 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 note: `DiagnosticCode` defined here
   --> src/parser/diagnostics/code.rs
    |
+   |           pub enum DiagnosticCode {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+...
    | / define_diagnostic_codes! {
    | |     /// A relation kind appears before its role keyword.
    | |     RelationKindBeforeRole {
@@ -14,7 +17,7 @@ note: `DiagnosticCode` defined here
 ...  |
    | |     },
    | | }
-   | |_^
+   | |_- in this macro invocation
    = note: the matched value is of type `DiagnosticCode`
    = note: `DiagnosticCode` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively
    = note: this error originates in the macro `define_diagnostic_codes` (in Nightly builds, run with -Z macro-backtrace for more info)

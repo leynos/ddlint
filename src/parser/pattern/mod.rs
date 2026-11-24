@@ -6,10 +6,15 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::ast::{Pattern, PatternLiteral, StringLiteral};
-use crate::parser::expression::parse_numeric_literal;
-use crate::parser::token_stream::TokenStream;
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Pattern, PatternLiteral, StringLiteral},
+        expression::parse_numeric_literal,
+        token_stream::TokenStream,
+    },
+};
 
 mod type_expr;
 
@@ -20,20 +25,16 @@ struct PatternTokenStream<'a> {
 }
 
 impl<'a> PatternTokenStream<'a> {
-    fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
+    const fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str) -> Self {
         Self {
             stream: TokenStream::new(tokens, src),
             errors: Vec::new(),
         }
     }
 
-    fn peek_kind(&self) -> Option<SyntaxKind> {
-        self.stream.peek().map(|(k, _)| *k)
-    }
+    fn peek_kind(&self) -> Option<SyntaxKind> { self.stream.peek().map(|(k, _)| *k) }
 
-    fn peek_span(&self) -> Option<Span> {
-        self.stream.peek().map(|(_, sp)| sp.clone())
-    }
+    fn peek_span(&self) -> Option<Span> { self.stream.peek().map(|(_, sp)| sp.clone()) }
 
     fn next_tok(&mut self) -> Option<(SyntaxKind, Span)> {
         self.stream
@@ -57,25 +58,17 @@ impl<'a> PatternTokenStream<'a> {
         self.errors.push(Simple::custom(span, msg.into()));
     }
 
-    fn eof_span(&self) -> Span {
-        self.stream.src().len()..self.stream.src().len()
-    }
+    const fn eof_span(&self) -> Span { self.stream.src().len()..self.stream.src().len() }
 
     fn slice(&self, span: &Span) -> String {
         debug_assert!(
             span.end <= self.stream.src().len(),
             "invalid span for pattern source slice"
         );
-        self.stream
-            .src()
-            .get(span.clone())
-            .unwrap_or("")
-            .to_string()
+        self.stream.src().get(span.clone()).unwrap_or("").to_owned()
     }
 
-    fn take_errors(self) -> Vec<Simple<SyntaxKind>> {
-        self.errors
-    }
+    fn take_errors(self) -> Vec<Simple<SyntaxKind>> { self.errors }
 }
 
 /// Parse a pattern from a standalone string.

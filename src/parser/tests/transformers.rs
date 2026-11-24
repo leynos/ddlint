@@ -2,78 +2,87 @@
 //!
 //! Validates extern transformer syntax and edge cases.
 
-use super::helpers::parse_transformer;
-use crate::test_util::{
-    CAPITALIZED_TRANSFORMER_NAME_ERROR, ErrorPattern, MISSING_OUTPUT_SIGNATURE_ERROR,
-    assert_custom_parse_error_contains, assert_no_custom_parse_error_contains,
-    assert_no_parse_errors, assert_parse_error,
-};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+use super::helpers::parse_transformer;
+use crate::test_util::{
+    CAPITALIZED_TRANSFORMER_NAME_ERROR,
+    ErrorPattern,
+    MISSING_OUTPUT_SIGNATURE_ERROR,
+    assert_custom_parse_error_contains,
+    assert_no_custom_parse_error_contains,
+    assert_no_parse_errors,
+    assert_parse_error,
+};
+
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_single_io() -> &'static str {
     "extern transformer normalize(input: UnnormalizedData): NormalizedData"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_multi_io() -> &'static str {
     "extern transformer correlate(users: User, sessions: UserSession): UserActivity, SessionAlerts"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_invalid() -> &'static str {
     "extern transformer incomplete_transformer(input: SomeData)"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_invalid_inputs() -> &'static str {
-    "extern transformer malformed(input: SomeData"
-}
+fn transformer_invalid_inputs() -> &'static str { "extern transformer malformed(input: SomeData" }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_invalid_inputs_multiline() -> &'static str {
     "extern transformer broken(\n    transformer: Type"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_no_inputs() -> &'static str {
-    "extern transformer no_inputs(): OutputType"
-}
+fn transformer_no_inputs() -> &'static str { "extern transformer no_inputs(): OutputType" }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_no_outputs() -> &'static str {
-    "extern transformer no_outputs(input: InputType):"
-}
+fn transformer_no_outputs() -> &'static str { "extern transformer no_outputs(input: InputType):" }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_multiline_no_outputs() -> &'static str {
     "extern transformer multiline(\n    transformer: InputType\n):"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_extra_ws() -> &'static str {
     " extern   transformer   spaced  (  foo  :  Bar  ,  baz : Qux )  :  Out1 , Out2 "
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_dup_inputs() -> &'static str {
     "extern transformer dup_inputs(foo: Bar, foo: Baz): Out"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn transformer_reserved_names() -> &'static str {
     "extern transformer reserved(transformer: Type, extern: Type): out"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_non_extern() -> &'static str {
-    "transformer local(input: InputType): OutputType"
-}
+fn transformer_non_extern() -> &'static str { "transformer local(input: InputType): OutputType" }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn transformer_non_extern_malformed() -> &'static str {
-    "transformer local(input: InputType)"
-}
+fn transformer_non_extern_malformed() -> &'static str { "transformer local(input: InputType)" }
 
 #[rstest]
 #[case(transformer_single_io(), "normalize", vec![("input", "UnnormalizedData")], vec!["NormalizedData".into()])]
@@ -147,7 +156,7 @@ fn transformer_extra_whitespace_parsed(transformer_extra_ws: &str) {
         t.inputs(),
         vec![("foo".into(), "Bar".into()), ("baz".into(), "Qux".into())]
     );
-    assert_eq!(t.outputs(), vec!["Out1".to_string(), "Out2".to_string()]);
+    assert_eq!(t.outputs(), vec!["Out1".to_owned(), "Out2".to_owned()]);
 }
 
 #[rstest]

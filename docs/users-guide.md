@@ -11,7 +11,127 @@ user-facing behaviour.
 - The linter runner executes registered CST rules and produces
   `LintDiagnostic` values.
 - The built-in command-line entrypoint currently only prints a placeholder
-  message and exits with a non-zero status.
+  message and exits with a non-zero status. When the message cannot be written
+  to standard output, the command reports the failure on standard error and
+  still exits non-zero.
+
+### Const-capable APIs
+
+The following public methods can be called in a `const` item or other
+compile-time context:
+
+- `RuleConfigValue::as_bool`
+- `UseOrigin::is_relation_read`
+- `SymbolOrigin::is_warning_eligible_rule_binding`
+- `StringLiteral::is_interpolated`
+
+The compile fixture `tests/ui/const_api_pass.rs` guards these qualifications
+against regression.
+
+### Unreleased behaviour changes
+
+Three library changes are not yet in a release. None of them removes an API, so
+no code migration is required for them, but results observed through the
+previous release can change:
+
+- Public methods listed under [Const-capable APIs](#const-capable-apis) can now
+  be evaluated in `const` items. Existing calls are unaffected.
+- The `unused-variable` rule treats grouping parentheses and unary operators as
+  transparent when it resolves uses. A binding used only under a wrapper is now
+  counted as used, so a source that previously reported such a binding no
+  longer does. See [Unused-variable rule](#unused-variable-rule).
+- `Function::return_type` now returns the declared return type for parameter
+  lists containing nested parenthesized types. It previously stopped at the
+  first closing parenthesis and could return a truncated type. See
+  [Function signatures](#function-signatures).
+
+This list covers library behaviour only and is not a complete inventory of
+unreleased changes. The block and bracket literal rules in
+[Block expressions and collection literals](#block-expressions-and-collection-literals)
+describe the syntax this guide documents, including that `{k: v}` is a block
+ascription rather than a map literal.
+
+Braces in expression-prefix position now parse as `Expr::Block`, which adds an
+`Expr` variant and so affects code that matches `Expr` exhaustively. `Expr` has
+no `#[non_exhaustive]` attribute, so such a match must gain a `Block` arm to
+compile. No variant is removed: `Expr::Group` still carries parenthesized
+groups and statement sequences outside braces, and `Expr::MapLit` still carries
+bracket maps.
+
+## Planned CLI configuration
+
+The CLI remains a placeholder. Roadmap item 5.1.5 defines the configuration
+contract for the planned lint command; it becomes active when the command
+surface is implemented.
+
+The planned file is `ddlint.toml`, with TOML as the only enabled format. Lint
+settings live under `[cmds.lint]`, the configuration namespace for the default
+`ddlint <FILES...>` invocation:
+
+```toml
+[cmds.lint]
+format = "json"
+ignore_patterns = [".git/", "target/", "generated/"]
+
+[cmds.lint.rules]
+"unused-relation" = "warn"
+"unused-variable" = "error"
+```
+
+The default format is `rich`; the accepted formats are `rich`, `json`, and
+`compact`. The default ignore patterns are `.git/`, `build/`, and `target/`.
+Rule severities are `allow`, `hint`, `warn`, and `error`, and only the
+`unused-relation` and `unused-variable` rules accept overrides. `format`,
+ignore patterns, and rule severities can be supplied by the file and matching
+`DDLINT_*` environment variables; `--format` is the explicit command-line
+override. The precedence order is:
+
+```text
+defaults < files < environment < command line
+```
+
+Nested environment names use double underscores between configuration keys. For
+example, `DDLINT_CMDS__LINT__FORMAT=json` sets the lint format, while
+`DDLINT_CONFIG_PATH=/path/to/ddlint.toml` selects one required configuration
+file.
+
+The ignore-pattern setting is a list in TOML. Its environment value must be a
+JSON array of strings, for example
+`DDLINT_CMDS__LINT__IGNORE_PATTERNS='["target/", "build/"]'`.
+
+Automatic discovery checks the user and system directories from the XDG Base
+Directory Specification (XDG) and the platform's native configuration
+directories for `ddlint/ddlint.toml` and `.ddlint.toml`, then the home
+configuration locations, including `~/.ddlint.toml`, and finally `ddlint.toml`
+in the current working directory. Project discovery does not check
+`.ddlint.toml`, and discovery does not search parent directories. The
+`DDLINT_CONFIG_PATH` variable, `--config <PATH>`, or `-c <PATH>` selects one
+required file and suppresses automatic discovery. An absent automatic file
+leaves defaults in place; a missing selected file is an error.
+
+### Extend a configuration file
+
+A configuration file may name one parent file with a top-level `extends` key:
+
+```toml
+# ddlint.toml
+extends = "shared/base.toml"
+
+[cmds.lint]
+ignore_patterns = ["generated/"]
+```
+
+Relative paths resolve from the file that declares them. The parent is merged
+beneath the child, so the child overrides only the keys it restates. A
+`[cmds.lint.rules]` entry that only the parent declares survives, while a child
+`ignore_patterns` array replaces the parent array instead of extending it. A
+missing parent is an error that names the parent's absolute path and the file
+that referenced it.
+
+`--no-ignore` and file operands remain command-line-only. Unknown configuration
+fields and unknown rule names are rejected. The `rules` and `explain` commands
+have no settings and do not load configuration. Named profiles are not offered.
+These are planned interfaces, not current binary behaviour.
 
 ## Parse a program
 
@@ -30,6 +150,84 @@ assert_eq!(parsed.root().relations().len(), 1);
 
 `Parsed` also exposes parse-time semantic rules and the recovered parse-tree
 root so downstream stages can work with structured syntax data.
+
+### Function signatures
+
+`Function::return_type` returns the declared return type, and
+`Function::parameters` returns the declared parameter names and types. Both
+handle parameter lists that contain nested parenthesized types: the scan tracks
+parenthesis depth, so the closing parenthesis of a nested type does not end the
+parameter list early.
+
+```rust
+use ddlint::parse;
+
+let source = "function f(pair: ((u32,bool),string)): u32 { }";
+let parsed = parse(source);
+let function = parsed.root().functions().into_iter().next().expect("one function");
+
+assert_eq!(function.return_type().as_deref(), Some("u32"));
+assert_eq!(function.parameters().len(), 1);
+```
+
+## Block expressions and collection literals
+
+Outside a struct literal such as `Name { field: 1 }`, braces form a block
+expression; they are not a collection literal and not a parenthesized group.
+Items are separated by `;`. The last item is the block's value unless it is
+followed by `;`, and `{}` is the empty block.
+
+```rust
+use ddlint::parser::expression::parse_expression;
+
+let block = parse_expression("{ a; b }").expect("block parses");
+assert!(block.to_sexpr().starts_with("(block"));
+```
+
+### Inspecting a block
+
+`parse` keeps a block as `Expr::Block` wrapping a `BlockExpr`. The `statements`
+and `value` fields are public, and three helpers apply the block rules:
+
+- `BlockExpr::items()` and `BlockExpr::into_items()` yield the statements
+  followed by the value. This is the only traversal order consumers should use.
+- `BlockExpr::from_items(items, ends_with_semicolon)` applies the
+  trailing-separator rule. It returns `None` for the one unrepresentable input,
+  an empty item list with a trailing `;`.
+- `BlockExpr::ends_with_semicolon()` reports whether a non-empty block ends
+  with `;`, and therefore whether its value is unit.
+
+```rust
+use ddlint::parser::ast::Expr;
+use ddlint::parser::expression::parse_expression;
+
+let parsed = parse_expression("{ x; y + 1 }").expect("block parses");
+let Expr::Block(block) = parsed else {
+    panic!("braces must yield a block");
+};
+assert_eq!(block.statements.len(), 1, "`x;` is a statement");
+assert!(block.value.is_some(), "the final item is the block value");
+```
+
+Map and vector literals use brackets and must be non-empty:
+
+- `[a, b]` is a vector literal; `[]` is rejected with
+  `empty vector literals are not DDlog syntax; use vec_empty() instead`.
+- `[k -> v]` is a map literal; `->` separates an entry's key from its value.
+- A literal that mixes vector elements and map entries is rejected with
+  `cannot mix vector elements and map entries in one literal`.
+- A map entry cut short by end of input, as in `[a -> 1, b`, reports
+  `expected '->' in map entry`; the literal is an unfinished map, not a mixed
+  one.
+- `{k: v}` is not a map literal; it is a block whose single item is the
+  ascription `k : v`. Adding a second comma-separated entry, as in
+  `{a: 1, b: 2}`, reports `expected ';' or '}' after a block item`.
+
+A rule body is not a function body, so `return` is rejected anywhere inside
+one, including within a block: `y = { return x; x }` reports
+`return is not valid in a rule body; use a function or closure body`. `return`
+remains valid in a function body and in a closure body, including a closure
+nested in a rule body.
 
 ## Run lint rules
 
@@ -54,6 +252,19 @@ assert!(diagnostics.is_empty());
 When parsing produces errors, `Runner::run` returns no lint diagnostics and
 does not run rules against the recovered parse tree. Inspect and report the
 parser errors separately.
+
+### Unused-variable rule
+
+The `unused-variable` rule treats wrapper expressions as transparent when it
+resolves uses. A binding used only inside parentheses or under a unary operator
+still counts as used, so neither rule below reports `head_x`:
+
+```ddlog
+Output(head_x) :- Source((head_x)).
+Output(head_x) :- Source(-head_x).
+```
+
+Only a binding with no resolved use is reported.
 
 ## Rule authorship (high level)
 
@@ -155,8 +366,28 @@ The parser preserves spec-form clauses such as:
 input relation Book(row: BookRow) primary key (row) (row.author, row.title)
 ```
 
-The current typed AST exposes the binder/list names from `primary key (...)`.
-Typed access to the trailing expression is deferred to roadmap item `2.6.6.1`.
+The typed AST exposes the clause through `primary_key()`. `binder_names()`
+lists the identifiers, each binder and the whole clause carry spans, and
+`expression()` returns the optional spec-form expression. Parsing the
+expression is lazy: `PrimaryKeyExpression::parse()` reports errors at
+source-absolute spans, and a failed parse never hides the binders.
+
+Two scanner corrections accompany this. A `;` at depth zero now ends a
+primary-key clause instead of being absorbed into it, so a following
+declaration on the same line is still scanned, whether or not that declaration
+declares a primary key of its own; a semicolon inside nested delimiters stays
+part of the expression. A binder list that is not a comma-separated list of
+identifiers, such as `(x.y)` or `(x,)`, reports `D-REL-007` instead of being
+accepted.
+
+Relation spans are unaffected by a key clause. A keyed relation node owns the
+same trailing trivia as its keyless twin, so the two relation spans differ only
+by the length of the removed clause, and slicing the source with
+`Relation::span()` returns the same trailing text in both cases.
+
+The [v0.2.0 migration guide](./v0-2-0-migration-guide.md) shows the
+before-and-after call shapes for code that used the retired `Vec<String>`
+binder list.
 
 ## Relation diagnostics
 
@@ -184,23 +415,21 @@ Table 1. Relation diagnostics.
 
 ### Build standard
 
-Development builds (`make test`, `make lint`, `make typecheck` and the debug
-build) use the parallel `rustc` frontend (`-Zthreads=8`) and, on Linux, the
-`mold` linker. Install `mold` before building on Linux: the configuration names
-it, so a build without it fails at link time (on Debian or Ubuntu,
-`sudo apt-get install mold`). macOS keeps its platform linker, because mold
-ships for Linux only.
+Use `make` or `make build` for a debug build and `make release` for a release
+build. Each Make build entrypoint invokes Cargo, which decides whether work is
+already up to date. `build`, `test`, `typecheck` and `test-clippy-policy`
+preflight the selected Rust toolchain and required Linux linker. `lint` checks
+tools after `interrogate`. Formatting via `check-fmt` does not require linker
+preflight. If setup is missing, run `make install-build-tools` to install the
+pinned `mold` 2.41.0 release for supported Linux x86-64 and 64-bit ARM hosts.
+The installer does not support other Linux architectures. macOS and Windows
+keep their platform linker.
 
-The flags live in `.cargo/config.toml`, but Cargo applies exactly one
-`rustflags` source and an assigned `RUSTFLAGS` replaces every configuration
-source. The Makefile therefore restates the flags in each recipe and keeps any
-`RUSTFLAGS` you set, appending the standard flags after yours. Two builds are
-held out on purpose: the coverage build assigns its own flags, because a
-measurement should not depend on the fast flags, and the release build.
-`make release` keeps your `RUSTFLAGS` and names neither fast flag, so a shipped
-artefact links with the platform linker. A bare `cargo build --release` is
-different: it takes the configuration's flags unless you assign `RUSTFLAGS`
-yourself, for example `RUSTFLAGS="" cargo build --release`.
-
-Cranelift is not adopted; the developers' guide records the measurement and the
-reason. See [ADR 003](adr-003-rust-build-standard.md) for the reasoning.
+Development and test builds use the parallel `rustc` frontend (`-Zthreads=8`)
+and, on Linux, the `mold` linker. Make appends these standard flags after
+inherited `RUSTFLAGS`; any caller-supplied flags remain the caller's
+responsibility. Release and coverage builds assign flags explicitly and do not
+add these development defaults. Direct Cargo commands use the configuration in
+`.cargo/config.toml` unless an assigned `RUSTFLAGS` replaces it. Maintainers
+can find the full command and prerequisite contract in the
+[developer's guide](developers-guide.md#the-build-standard).

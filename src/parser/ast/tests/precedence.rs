@@ -2,10 +2,14 @@
 //!
 //! Ensures implication associates to the right.
 
-use crate::SyntaxKind;
-use crate::parser::ast::{BinaryOp, Expr, UnaryOp, infix_binding_power, prefix_binding_power};
-use crate::parser::expression::parse_expression;
-use crate::test_util::var;
+use crate::{
+    SyntaxKind,
+    parser::{
+        ast::{BinaryOp, Expr, UnaryOp, infix_binding_power, prefix_binding_power},
+        expression::parse_expression,
+    },
+    test_util::var,
+};
 
 #[test]
 fn implication_is_right_associative() {

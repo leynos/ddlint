@@ -43,11 +43,8 @@
 
 use chumsky::{Error, error::Simple};
 
-use crate::parser::diagnostics::DiagnosticCode;
-use crate::{Span, SyntaxKind};
-
-use super::cursor::skip_trivia;
-use super::{ScanResult, custom_error};
+use super::{ScanResult, cursor::skip_trivia, custom_error};
+use crate::{Span, SyntaxKind, parser::diagnostics::DiagnosticCode};
 
 /// Relation role annotation parsed from a relation preamble keyword.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,8 +60,8 @@ pub(in crate::parser::span_scanners) enum RelationRole {
 /// # Fields
 ///
 /// - `role` records an optional `input` or `output` preamble keyword.
-/// - `has_kind` records whether `relation`, `stream`, or `multiset` was
-///   present before the relation name.
+/// - `has_kind` records whether `relation`, `stream`, or `multiset` was present before the relation
+///   name.
 #[derive(Debug)]
 pub(super) struct Preamble {
     /// Optional `input` or `output` relation role.
@@ -107,6 +104,16 @@ pub(super) fn parse_preamble(
     state.consume_first(tokens, cursor)?;
     state.consume_remaining(tokens, cursor)?;
     Ok(state.finish())
+}
+
+/// A role keyword paired with the span it occupies.
+///
+/// The two values always travel together from the token match, so grouping
+/// them keeps [`PreambleState::consume_role`] within the argument budget.
+#[derive(Clone, Copy)]
+struct RoleToken<'a> {
+    role: RelationRole,
+    span: &'a Span,
 }
 
 #[derive(Debug, Default)]
@@ -153,7 +160,9 @@ impl PreambleState {
     ) -> ScanResult<()> {
         while let Some((kind, span)) = tokens.get(*cursor) {
             match preamble_part(*kind) {
-                PreamblePart::Role(role) => self.consume_role(role, span, tokens, cursor)?,
+                PreamblePart::Role(role) => {
+                    self.consume_role(RoleToken { role, span }, tokens, cursor)?;
+                }
                 PreamblePart::Kind => self.consume_kind(span, tokens, cursor)?,
                 PreamblePart::Name | PreamblePart::Ref | PreamblePart::Other(_) => break,
             }
@@ -163,24 +172,23 @@ impl PreambleState {
 
     fn consume_role(
         &mut self,
-        role: RelationRole,
-        span: &Span,
+        token: RoleToken<'_>,
         tokens: &[(SyntaxKind, Span)],
         cursor: &mut usize,
     ) -> ScanResult<()> {
         if self.saw_kind_first {
             return Err(Box::new(custom_error(
-                span,
+                token.span,
                 DiagnosticCode::RelationKindBeforeRole.message_text(),
             )));
         }
         if self.role.is_some() {
             return Err(Box::new(custom_error(
-                span,
+                token.span,
                 DiagnosticCode::RelationDuplicateRole.message_text(),
             )));
         }
-        self.role = Some(role);
+        self.role = Some(token.role);
         advance_preamble(tokens, cursor);
         Ok(())
     }
@@ -202,7 +210,7 @@ impl PreambleState {
         Ok(())
     }
 
-    fn finish(self) -> Preamble {
+    const fn finish(self) -> Preamble {
         Preamble {
             role: self.role,
             has_kind: self.has_kind,
@@ -218,7 +226,9 @@ enum PreamblePart {
     Other(SyntaxKind),
 }
 
-fn preamble_part(kind: SyntaxKind) -> PreamblePart {
+/// Classify a preamble token as a relation role, kind, reference, name, or
+/// other token.
+const fn preamble_part(kind: SyntaxKind) -> PreamblePart {
     match kind {
         SyntaxKind::K_INPUT => PreamblePart::Role(RelationRole::Input),
         SyntaxKind::K_OUTPUT => PreamblePart::Role(RelationRole::Output),

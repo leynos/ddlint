@@ -28,18 +28,16 @@ impl TelemetryObserver {
 }
 
 impl Default for TelemetryObserver {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl ParseObserver for TelemetryObserver {
     fn parse_attempt_started(&self, category: DiagnosticCategory) {
-        let category = category.as_str();
-        counter!(ATTEMPT_METRIC, "category" => category).increment(1);
+        let category_name = category.as_str();
+        counter!(ATTEMPT_METRIC, "category" => category_name).increment(1);
         tracing::debug!(
             target: "ddlint::parser",
-            category,
+            category = category_name,
             "parser attempt started"
         );
     }
@@ -87,13 +85,19 @@ impl ParseObserver for TelemetryObserver {
 mod tests {
     //! Tests for the optional metrics and tracing adapter.
 
-    use std::collections::BTreeMap;
-    use std::fmt;
-    use std::sync::{Arc, Mutex};
+    use std::{
+        collections::BTreeMap,
+        fmt,
+        sync::{Arc, Mutex},
+    };
 
+    use fixture_lints::allow_fixture_expansion_lints;
     use metrics_util::debugging::{DebugValue, DebuggingRecorder};
+    use rstest::{fixture, rstest};
     use tracing::{
-        Event, Metadata, Subscriber,
+        Event,
+        Metadata,
+        Subscriber,
         field::{Field, Visit},
         span::{Attributes, Id, Record},
     };
@@ -102,26 +106,48 @@ mod tests {
     use crate::parser::{
         diagnostics::{DiagnosticCategory, DiagnosticCode},
         observability::{
-            DiagnosticContext, DiagnosticSeverity, ParseAttemptContext, ParseObserver,
+            DiagnosticContext,
+            DiagnosticSeverity,
+            ParseAttemptContext,
+            ParseObserver,
         },
     };
 
-    #[test]
-    fn emits_attempt_and_diagnostic_counters_with_bounded_labels() {
+    /// Provides a dispatcher that reports interest in every callsite.
+    ///
+    /// `tracing` caches a callsite's interest the first time it is hit, and a
+    /// first hit with no dispatcher installed caches `Interest::never` for the
+    /// rest of the process. Several tests drive the same observer callsites, so
+    /// every one of them installs an interested dispatcher first; otherwise a
+    /// concurrent test can silence the tracing tests at random.
+    #[allow_fixture_expansion_lints]
+    #[fixture]
+    fn interested_dispatcher() -> tracing::Dispatch {
+        tracing::Dispatch::new(RecordingSubscriber::default())
+    }
+
+    #[rstest]
+    fn emits_attempt_and_diagnostic_counters_with_bounded_labels(
+        interested_dispatcher: tracing::Dispatch,
+    ) {
         let recorder = DebuggingRecorder::new();
         let snapshotter = recorder.snapshotter();
 
-        metrics::with_local_recorder(&recorder, || {
-            let observer = TelemetryObserver::new();
-            observer.parse_attempt_started(DiagnosticCategory::Relation);
-            observer
-                .parse_attempt_completed(ParseAttemptContext::new(DiagnosticCategory::Relation, 1));
-            observer.diagnostic_emitted(&DiagnosticContext {
-                code: Some(DiagnosticCode::RelationDuplicateRole),
-                category: DiagnosticCategory::Relation,
-                span: 6..12,
-                severity: DiagnosticSeverity::Error,
-                message: "D-REL-002: duplicate role",
+        tracing::dispatcher::with_default(&interested_dispatcher, || {
+            metrics::with_local_recorder(&recorder, || {
+                let observer = TelemetryObserver::new();
+                observer.parse_attempt_started(DiagnosticCategory::Relation);
+                observer.parse_attempt_completed(ParseAttemptContext::new(
+                    DiagnosticCategory::Relation,
+                    1,
+                ));
+                observer.diagnostic_emitted(&DiagnosticContext {
+                    code: Some(DiagnosticCode::RelationDuplicateRole),
+                    category: DiagnosticCategory::Relation,
+                    span: 6..12,
+                    severity: DiagnosticSeverity::Error,
+                    message: "D-REL-002: duplicate role",
+                });
             });
         });
 
@@ -130,7 +156,7 @@ mod tests {
 
         let attempt = snapshot
             .iter()
-            .find(|(key, _, _, _)| key.key().name() == ATTEMPT_METRIC);
+            .find(|(key, ..)| key.key().name() == ATTEMPT_METRIC);
         let (attempt_key, _, _, attempt_value) = attempt.expect("expected attempt counter");
         assert_eq!(*attempt_value, DebugValue::Counter(1));
         assert_eq!(
@@ -140,7 +166,7 @@ mod tests {
 
         let diagnostic = snapshot
             .iter()
-            .find(|(key, _, _, _)| key.key().name() == DIAGNOSTIC_METRIC);
+            .find(|(key, ..)| key.key().name() == DIAGNOSTIC_METRIC);
         let (diagnostic_key, _, _, diagnostic_value) =
             diagnostic.expect("expected diagnostic counter");
         assert_eq!(*diagnostic_value, DebugValue::Counter(1));
@@ -154,19 +180,21 @@ mod tests {
         );
     }
 
-    #[test]
-    fn labels_diagnostics_without_a_code_as_uncoded() {
+    #[rstest]
+    fn labels_diagnostics_without_a_code_as_uncoded(interested_dispatcher: tracing::Dispatch) {
         let recorder = DebuggingRecorder::new();
         let snapshotter = recorder.snapshotter();
 
-        metrics::with_local_recorder(&recorder, || {
-            let observer = TelemetryObserver::new();
-            observer.diagnostic_emitted(&DiagnosticContext {
-                code: None,
-                category: DiagnosticCategory::Rule,
-                span: 4..9,
-                severity: DiagnosticSeverity::Error,
-                message: "rule diagnostic without a stable code",
+        tracing::dispatcher::with_default(&interested_dispatcher, || {
+            metrics::with_local_recorder(&recorder, || {
+                let observer = TelemetryObserver::new();
+                observer.diagnostic_emitted(&DiagnosticContext {
+                    code: None,
+                    category: DiagnosticCategory::Rule,
+                    span: 4..9,
+                    severity: DiagnosticSeverity::Error,
+                    message: "rule diagnostic without a stable code",
+                });
             });
         });
 
@@ -200,12 +228,12 @@ mod tests {
                 .parse_attempt_completed(ParseAttemptContext::new(DiagnosticCategory::Relation, 2));
         });
 
-        let events = events
+        let recorded = events
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        assert_eq!(events.len(), 2);
+        assert_eq!(recorded.len(), 2);
         assert_eq!(
-            events
+            recorded
                 .iter()
                 .map(|event| event.fields.get("message").map(String::as_str))
                 .collect::<Vec<_>>(),
@@ -215,8 +243,8 @@ mod tests {
             ]
         );
 
-        let [started, completed] = events.as_slice() else {
-            panic!("expected start and completion tracing events, got {events:?}");
+        let [started, completed] = recorded.as_slice() else {
+            panic!("expected start and completion tracing events, got {recorded:?}");
         };
         for event in [started, completed] {
             assert_eq!(event.target, "ddlint::parser");
@@ -250,12 +278,12 @@ mod tests {
             });
         });
 
-        let events = events
+        let recorded = events
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        assert_eq!(events.len(), 1);
+        assert_eq!(recorded.len(), 1);
 
-        for event in events.iter() {
+        for event in recorded.iter() {
             assert_eq!(event.target, "ddlint::parser");
             assert_eq!(event.level, "WARN");
             assert_eq!(
@@ -288,13 +316,9 @@ mod tests {
     }
 
     impl Subscriber for RecordingSubscriber {
-        fn enabled(&self, _: &Metadata<'_>) -> bool {
-            true
-        }
+        fn enabled(&self, _: &Metadata<'_>) -> bool { true }
 
-        fn new_span(&self, _: &Attributes<'_>) -> Id {
-            Id::from_u64(1)
-        }
+        fn new_span(&self, _: &Attributes<'_>) -> Id { Id::from_u64(1) }
 
         fn record(&self, _: &Id, _: &Record<'_>) {}
 

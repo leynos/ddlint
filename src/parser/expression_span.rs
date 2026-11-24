@@ -8,11 +8,16 @@
 use chumsky::error::Simple;
 use thiserror::Error;
 
-use crate::parser::delimiter::find_top_level_eq_span;
-use crate::parser::expression::parse_expression;
-use crate::parser::pattern::parse_pattern;
-use crate::parser::span_utils::{shift_errors, trim_byte_range};
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        delimiter::find_top_level_eq_span,
+        expression::parse_rule_body_expression,
+        pattern::parse_pattern,
+        span_utils::{shift_errors, trim_byte_range},
+    },
+};
 
 /// Split a rule body into the spans of its comma-separated literals.
 ///
@@ -63,9 +68,8 @@ impl DelimiterDepths {
         }
     }
 
-    fn at_top_level(&self) -> bool {
-        self.paren == 0 && self.brace == 0 && self.bracket == 0
-    }
+    /// Return `true` when no parenthesis, brace, or bracket is open.
+    const fn at_top_level(&self) -> bool { self.paren == 0 && self.brace == 0 && self.bracket == 0 }
 }
 
 fn locate_body_bounds(
@@ -186,7 +190,7 @@ fn trim_literal_span(
     (start < end).then_some(start..end)
 }
 
-fn is_trivia(kind: SyntaxKind) -> bool {
+const fn is_trivia(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 
@@ -237,16 +241,18 @@ pub(crate) fn validate_expression(src: &str, span: Span) -> Result<(), Expressio
                 "expected expression after '=' in rule literal",
             )]));
         }
-        return parse_expression(rhs_trimmed).map(|_| ()).map_err(|errs| {
-            ExpressionError::Parse(shift_errors(
-                errs,
-                base_offset
-                    .saturating_add(eq_span.end)
-                    .saturating_add(rhs_start),
-            ))
-        });
+        return parse_rule_body_expression(rhs_trimmed)
+            .map(|_| ())
+            .map_err(|errs| {
+                ExpressionError::Parse(shift_errors(
+                    errs,
+                    base_offset
+                        .saturating_add(eq_span.end)
+                        .saturating_add(rhs_start),
+                ))
+            });
     }
-    parse_expression(text)
+    parse_rule_body_expression(text)
         .map(|_| ())
         .map_err(|errs| ExpressionError::Parse(shift_errors(errs, base_offset)))
 }

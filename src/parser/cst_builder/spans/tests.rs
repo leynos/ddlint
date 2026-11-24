@@ -1,7 +1,8 @@
 //! Tests for span validation in CST building helpers.
 
-use super::*;
 use rstest::rstest;
+
+use super::*;
 
 #[test]
 fn validate_spans_sorted_err_on_overlap() {

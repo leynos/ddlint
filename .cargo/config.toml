@@ -20,3 +20,17 @@ rustflags = ["-Zthreads=8"]
 # platform linker.
 [target.'cfg(target_os = "linux")']
 rustflags = ["-Zthreads=8", "-Clink-arg=-fuse-ld=mold"]
+
+# Native Cargo metadata setting for dated nightlies from 2026-07-31 (rule
+# `rust-dev-build-footprint`, DF-003): Cargo coordinates metadata output itself.
+# Never use raw rustc metadata flags; they broke build scripts.
+[unstable]
+embed-metadata = false
+codegen-backend = true
+
+# Development builds use LLVM, the estate standard. Stable Cargo refuses both
+# keys, so only the pinned nightly may read this file.
+# Cranelift disabled estate-wide on 14 November 2026 (concordat ADR; review 14 May 2027). Uncomment to opt back in.
+# [profile.dev]
+# codegen-backend = "cranelift"
+# One-off opt-in: --config 'profile.dev.codegen-backend="cranelift"'

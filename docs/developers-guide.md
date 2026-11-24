@@ -1,113 +1,39 @@
 # Developer guide
 
-This guide records the parser module structure introduced by issue `#223`. It
-is intentionally narrow and documents ownership boundaries rather than the full
-parsing pipeline.
+This guide records maintainer-facing conventions for the parser introduced by
+issue `#223`. File-by-file ownership and placement live in the
+[repository layout](repository-layout.md#parser-module-ownership); this guide
+records the conventions those modules share across the wider codebase.
 
-## Parser module structure
+## Parser module ownership
 
-### `src/parser/ast/expr/sexpr.rs`
-
-- Owns S-expression rendering helpers for `Expr`.
-- Supports test and fixture comparisons without coupling callers to debug
-  formatting.
-- Should remain presentation-only; parsing and semantic classification belong
-  elsewhere.
-
-### `src/parser/ast/rule/classification.rs`
-
-- Owns rule-body term classification for raw literals.
-- Handles assignment parsing, aggregation detection, and `for`-loop lowering
-  within the rule-body helper path.
-- Keeps rule-body classification separate from the public `Rule` wrapper so
-  `rule.rs` stays focused on the surface API.
-
-### `src/parser/ast/relation.rs`
-
-- Owns the typed relation declaration surface for role, kind, ref marker, and
-  body form.
-- Treats `role()` and `kind()` as the canonical APIs for new code.
-  `is_input()` and `is_output()` are derived helpers kept for callers that only
-  need role predicates.
-- Uses `role_keyword_present()` and `kind_keyword_present()` when callers need
-  source-fidelity rather than the defaulted semantic value.
-- Exposes declaration-level reference relations through `is_ref()`. Do not
-  infer ref status from raw `&` tokens in downstream callers.
-- Exposes `body()`, `element_type()`, `columns()`, and `primary_key()` as
-  fallible queries returning `Result<_, RelationParseErrors>`. A valid record
-  body yields `Ok(RelationBody::Fields(..))` with `element_type()` as
-  `Ok(None)`; a valid bracket body yields `Ok(RelationBody::ElementType(..))`
-  with `columns()` as `Ok(Vec::new())`. Malformed or missing bodies return
-  `Err(..)` rather than an empty `Fields` vector, so direct AST querying stays
-  reliable for malformed or synthetic nodes.
-- Keeps `primary_key()` focused on the binder/list names (`Ok(None)` when
-  absent). Spec-form trailing primary-key expressions are preserved in the CST
-  until roadmap follow-up `2.6.6.1` introduces typed access. `Parsed::errors()`
-  remains the parser-level diagnostic channel.
-
-### `src/parser/span_scanners/relations.rs`
-
-- Owns top-level relation-candidate discovery, declaration orchestration,
-  record and bracket body parsing, primary-key validation,
-  relation-versus-rule/fact disambiguation, span collection, and recovery.
-- Applies delimiter-depth-aware line-start filtering so only genuine top-level
-  declarations are treated as candidates, and emits the `D-REL-*` diagnostics.
-- Produces relation declaration spans for CST construction;
-  `src/parser/ast/relation.rs` then exposes the typed AST accessors over the
-  resulting nodes.
-
-### `src/parser/span_scanners/relations/cursor.rs`
-
-- Owns shared cursor movement, trivia handling, token inspection, and
-  balanced-delimiter traversal (including delimiter-stack maintenance) for the
-  relation scanner.
-- Holds no grammar decisions; those remain in `relations.rs`.
-
-### `src/parser/span_scanners/relations/preamble.rs`
-
-- Parses only the optional role/kind preamble keywords and enforces
-  `D-REL-001`, `D-REL-002`, and `D-REL-003`.
-- Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
-  and recovery in `relations.rs`.
-
-### `src/parser/span_scanners/typedefs.rs`
-
-- Collects spans for `type` and `extern type` declarations; it finds statement
-  boundaries rather than validating the complete type grammar. A top-level
-  semicolon or newline ends a span, while nested delimiters keep internal
-  newlines within it.
-- Reuses `TypeDepths` and `adjust_type_depths` from
-  `src/parser/span_scanners/indexes_support.rs` to track `()`, `[]`, `{}`, and
-  `<>`; `>>` closes two angle levels. This support is shared with the index
-  scanner. Legacy `typedef` diagnostics remain owned by
-  `src/parser/reserved_tokens.rs`.
-
-### `src/parser/expression/pratt/postfix.rs`
-
-- Owns postfix dispatch for the Pratt parser.
-- Routes function calls, bit slices, field access, tuple indexing, method
-  calls, and delay postfixes to the appropriate helper.
-- Coordinates the pending diff-marker state across the postfix chain.
-
-### `src/parser/expression/pratt/diff.rs`
-
-- Owns diff-marker tracking and validation.
-- Wraps completed postfix expressions in `Expr::AtomDiff` when a diff marker
-  is pending.
-- Emits the targeted diagnostics for duplicate, misplaced, or dangling diff
-  markers.
-
-### `src/parser/expression/pratt/delay.rs`
-
-- Owns `expr -<N>` postfix parsing.
-- Consumes the `-<` token pair, reads the delay literal, and returns
-  `Expr::AtomDelay` on success.
-- Keeps delay-specific validation separate from the generic postfix loop.
+File-by-file ownership, including the entries for `block.rs` and
+`rules_assign.rs`, lives in the repository layout's
+[parser module ownership](repository-layout.md#parser-module-ownership)
+section. The conventions those modules share are recorded below.
 
 ## Boundary rules
 
 - Keep formatting helpers in `sexpr.rs` rather than mixing them into the core
   expression parser.
+- `BlockExpr::items()` and `into_items()` are the only permitted traversal
+  order for blocks. `sema` and rule-body classification must handle
+  `Expr::Block` and `Expr::Group` in dedicated arms rather than unwrapping
+  either variant generically, because only the block carries statements.
+- `BLOCK_ITEM_MIN_BP` is owned by `precedence.rs` and is the sole minimum
+  binding power for block items. Block state is entered through
+  `with_block_item_scope` and restored through `with_nested_delimiter_scope`;
+  every new delimiter context must use the latter rather than reading the
+  ambient `;` flag. A `for` guard uses `with_guard_expression_scope`, which
+  clears the `;` state and keeps the struct-literal guard active, so `ident {`
+  there is not a struct literal.
+- `test_util::block` mirrors `BlockExpr` construction for tests. Keep it in
+  step with the AST rather than reimplementing block construction in a test.
+- Parse a rule-body literal with `parse_rule_body_expression`, never
+  `parse_expression`; only the former rejects `return`. Clear the rule-body
+  context for a closure body through `with_closure_body_scope` rather than
+  assigning `in_rule_body` directly, so the surrounding literal resumes the
+  restriction afterwards.
 - Keep rule-body classification in `classification.rs` rather than adding
   helper-stage logic to `rule.rs`.
 - Prefer `Relation::role()` and `Relation::kind()` for new relation-aware
@@ -118,8 +44,9 @@ parsing pipeline.
   when it needs shared chain state.
 - Keep diff-marker state and delay parsing in their dedicated submodules so
   `pratt.rs` remains the central parser entry point.
-- Keep scanner grammar and recovery decisions — candidate discovery, body and
-  suffix parsing, and span collection — in `relations.rs`.
+- Keep scanner grammar and recovery decisions — candidate discovery, body
+  parsing, and span collection — in `relations/mod.rs`; keep primary-key suffix
+  parsing in `relations/suffix.rs`.
 - Keep cursor movement and balanced-block mechanics in `relations/cursor.rs`.
 - Keep role/kind preamble parsing and its ordering/duplication diagnostics
   (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
@@ -171,6 +98,35 @@ reports errors, `Runner::run` skips registered rules and returns no lint
 diagnostics; recovery CST nodes are not linted. Callers must report parser
 errors separately from the returned lint diagnostics.
 
+## Lint baseline
+
+The workspace lint baseline is authoritative in two files:
+
+- `Cargo.toml` holds the `[workspace.lints.rust]`,
+  `[workspace.lints.rustdoc]`, and `[workspace.lints.clippy]` tables. Every
+  member opts in with `[lints] workspace = true`, so a rule added once applies
+  to the whole estate.
+- `clippy.toml` holds the numeric thresholds: cognitive complexity 9, too many
+  arguments 4, too many lines 70, and excessive nesting 4. They match
+  CodeScene's ceilings so the local and hosted gates agree about the same
+  function.
+
+The baseline denies the restriction lints it names. Fix a finding at its
+source: rename a shadowed binding, group related parameters in a struct, or
+extract a helper. A reasoned `#[expect(lint, reason = "...")]` is the only
+accepted exception, and it must be tightly scoped; `#[allow]` is not a backlog
+mechanism. An `#[expect]` for a lint that is still allow-by-default is itself
+an error under `-D warnings`, so a lint and its fixes land together.
+
+Environment-dependent behaviour is injected rather than read from the process
+environment: use the `mockable` crate, or a shared guard and mutex in a test
+helper crate. Direct environment mutation in tests is forbidden.
+
+The gate needs the pinned nightly toolchain with `rustfmt`, `clippy`, and
+`rust-analyzer` (see `rust-toolchain.toml`), plus `mold` on Linux. Run
+`make check-build-tools` to verify them and `make install-build-tools` to
+provision them.
+
 ## Contributor workflow
 
 Run these gates in order before committing:
@@ -186,14 +142,65 @@ This is the required pre-commit sequence, matching `AGENTS.md`.
 
 `make lint` first runs `make interrogate`, which needs `uv` and requires a
 docstring on every Python definition under `tests` (it fails on any `MISSED`
-row, because interrogate rounds its percentage to one decimal). It also
-includes the spelling gate, and `make markdownlint` also invokes the spelling
-gate for tracked Markdown. `make markdownlint` lints every Markdown source, and
-`make nixie` validates the Mermaid diagrams within them.
+row, because interrogate rounds its percentage to one decimal). It then runs
+Clippy, a Rustdoc build with `RUSTDOC_FLAGS` (`--cfg docsrs -D warnings` by
+default), the Clippy policy script, Whitaker, and the spelling gate.
+`make test` runs the workspace tests and then the doctests, both with warnings
+denied. Workspace crates take `RUSTFLAGS`, while rustdoc compiles each doctest
+snippet separately and takes `RUSTDOCFLAGS`; the recipe forwards `-Dwarnings`
+to those compilations through `--doctest-build-arg`. `make markdownlint` also
+invokes the spelling gate for tracked Markdown. `make markdownlint` lints every
+Markdown source, and `make nixie` validates the Mermaid diagrams within them.
 
 `make spelling` regenerates the `typos` configuration and checks tracked
 Markdown for en-GB-oxendict spelling. See `AGENTS.md` for the underlying
 command implementations; this guide does not duplicate them.
+
+## CLI configuration boundary
+
+The planned CLI application package is `cli/` (`ddlint-cli`). Its
+application-owned `AppConfig` derives `OrthoConfig` and contains the
+`cmds.lint` configuration namespace. A separate Clap data transfer object (DTO)
+carries CLI-only and explicit command-line values. The application loads
+defaults, files, and environment through source-aware OrthoConfig entry points,
+then applies only explicit CLI values. The root `ddlint` library remains free
+of OrthoConfig and CLI dependencies, and does not print or terminate on
+configuration errors.
+
+OrthoConfig v0.10.0 has a Rust 1.89 floor, which the pinned nightly exceeds; no
+package declares a `rust-version`. Keep the Clap `--format` value optional with
+no parser default; the configuration model supplies `rich`, so a file or
+environment value is not masked. Tests use injected `_with_sources` loaders,
+`MapEnv`, and explicit file sources without mutating the process environment.
+Validate settings before passing domain values such as
+`ddlint::linter::RuleLevel` into library operations. Keep the placeholder
+binary's current output and exit status until the command-line roadmap items
+replace it.
+
+Environment values for `ignore_patterns` use a JSON string array because
+process environment variables carry scalar strings. The generated `config_path`
+selector is internal to the OrthoConfig merge and is excluded from user-facing
+configuration keys.
+
+The derive declares `explicit_mode = "required_exclusive"`. Without that key,
+OrthoConfig v0.10.0's legacy candidate walk treats `DDLINT_CONFIG_PATH` as an
+optional candidate and silently falls back to defaults when the named file is
+missing, contradicting the documented required-and-exclusive contract.
+Declaring the key switches discovery onto the selector policy while automatic
+discovery keeps the first-wins order.
+
+## Module layout
+
+A module with child files uses a directory entrypoint, such as
+`src/parser/ast/rule/mod.rs`. Explicit test paths are relative to that
+entrypoint, so a move must preserve the file each path selects.
+
+Rule-body behavioural tests use `tests/rule_behaviour/main.rs`, with private
+for-loop and delimiter case modules in the same directory. These modules belong
+only to that integration target; the four existing assertion and parsing
+helpers remain at its root. The extracted tests retain their leaf names and
+bodies, while their harness names gain the child module prefix. Cargo discovers
+no additional integration targets from these child files.
 
 ## Parser test helpers
 
@@ -213,14 +220,15 @@ helper and says `item missing`, with nothing about which test wanted what.
 
 Two consequences follow.
 
-- `clippy::expect_used` remains denied outside recognized `#[test]` and
-  `#[rstest]` bodies. `clippy.toml` sets `allow-expect-in-tests = true`, which
-  permits reasoned `.expect("reason")` calls in those bodies. Fixtures, setup
-  code, ordinary helpers and behaviour-driven development (BDD) steps gain no
-  permission from `#[cfg(test)]`; keep them fallible. Whitaker's
-  `no_expect_outside_tests` lint provides the complementary check. Module-wide
-  lint allowances or expectations remain forbidden because they mask code
-  beyond the test body.
+- `clippy::expect_used` remains denied in production code. `clippy.toml` sets
+  `allow-expect-in-tests = true`, which permits reasoned `.expect("reason")`
+  calls in test code. Since `nightly-2026-10-30` Clippy treats every item in a
+  test crate as test code, so it no longer rejects an `expect` in a fixture,
+  setup helper or behaviour-driven development (BDD) step there (it used to);
+  `make test-clippy-policy` pins that. The restriction on those items now rests
+  on Whitaker's `no_expect_outside_tests` lint alone: keep them fallible.
+  Module-wide lint allowances or expectations remain forbidden because they
+  mask code beyond the test body.
 - Shared rule assertions are macros, not functions. `assert_body_assignment`,
   `assert_body_terms_error` and `assert_multiple_aggregation_error` expand at
   the call site, so a failure names the calling test rather than the helper,
@@ -232,13 +240,14 @@ Two consequences follow.
 Clippy and existing `rstest` dependency. It runs separately from `cargo test`
 to avoid a nested Cargo lock. `make lint`, and therefore CI's lint step, runs
 it sequentially. The integration target `tests/clippy_expect_policy.rs` owns
-the positive test bodies and deliberately rejected helper and fixture
-specimens. Only this contract activates `clippy_policy_negative`; ordinary test
-runs leave that module disabled. The Python runner under `scripts/` checks lint
-codes and primary source locations, refuses unrelated compiler errors, and
-removes the permission in a temporary configuration as a negative control.
-These specimens test the local invocation contract, rather than providing
-reusable setup helpers.
+the positive test bodies and the helper and fixture specimens, which the pinned
+Clippy accepts as test code. Only this contract activates
+`clippy_policy_negative`; ordinary test runs leave that module disabled. The
+Python runner under `scripts/` checks lint codes and primary source locations,
+refuses unrelated compiler errors, and removes the permission in a temporary
+configuration as a negative control, which rejects all of them. These specimens
+test the local invocation contract, rather than providing reusable setup
+helpers.
 
 The runner's private `_expect_locations` helper validates primary diagnostic
 spans only for its Cargo JSON reader. Keep that boundary local to this policy
@@ -255,6 +264,148 @@ two tests consume that fixture and retain their own assertions. Neither setup
 boundary asserts or panics. Other test families keep their existing fixtures;
 wider reuse requires an explicit ownership decision rather than extending this
 file-local setup implicitly.
+
+Within `tests/rule_behaviour/main.rs`, private
+`assert_flattened_expression_terms` is an assertion-only wrapper for the
+ordered S-expression checks used by
+`flattened_for_loops_expand_to_expected_components` and the other flattening
+tests in `tests/rule_behaviour/for_loops.rs`. It delegates each indexed
+comparison to `assert_expression_term_sexpr`; each test retains its own
+fallible setup and flattening-result extraction. Keep the helper confined to
+those call sites; wider reuse requires an explicit ownership decision.
+
+### Relation matrix case ownership
+
+The private `RelationFormCase` record belongs only to the 17 cases of
+`parses_relation_form_matrix` in `src/parser/tests/relations/mod.rs`. It groups
+source text with the relation metadata compared by that test; parsing and
+assertions remain in the test body. It is not a shared parser expectation type.
+Wider reuse requires a separate ownership decision.
+
+### Basic relation case ownership
+
+The private `ExpectedRelation<'a>` record belongs only to the `input`,
+`output`, and `internal` cases of `parses_relations` in
+`src/parser/tests/relations/mod.rs`. Direct named-field literals group the five
+expected outputs; each case supplies its source separately through the existing
+fixture. Parsing and comparisons remain in the test. The record has no
+constructor or parser API and is not shared with `RelationFormCase` or other
+test families; wider reuse requires a separate ownership decision.
+
+### Property-test ownership
+
+Primary-key property generators live in
+`src/parser/tests/relation_primary_key_strategies.rs` and the properties that
+consume them in `src/parser/tests/relation_primary_key_props.rs`. Generated
+cases carry a coverage class, so the fixed-seed test can assert that every
+class each strategy promises was actually produced. Property helpers return
+`Result<_, TestCaseError>` and propagate with `?`: a panic inside a proptest
+closure bypasses shrinking and hides which generated case failed.
+
+### googletest and rstest attributes
+
+Where a test uses both frameworks, `#[gtest]` sits above `#[rstest]` and the
+body returns `googletest::Result<()>`. The googletest matchers then report the
+observed values in the failure message, while `rstest` still supplies the table
+rows.
+
+### Behaviour-driven scenarios
+
+Feature files live in `tests/features/` and are bound by an integration test
+under `tests/` through
+`#[scenario(path = "tests/features/<name>.feature", name = "<scenario>")]`.
+Steps return `rstest_bdd::StepResult` and use `?`; a step that cannot fail
+returns `()`. String placeholders use the `:string` hint so the step takes
+`&str`, which matches quoted Gherkin values and leaves ownership with the
+feature text. Every `rstest` fixture carries `#[allow_fixture_expansion_lints]`.
+
+## Fixture expansion lint policy
+
+`crates/fixture-lints` owns `#[allow_fixture_expansion_lints]`, the only
+sanctioned helper for suppressing `unused_braces` in `rstest` fixture
+expansions. Apply it immediately above `#[fixture]`:
+
+```ignore
+#[allow_fixture_expansion_lints]
+#[fixture]
+fn source() -> &'static str { "input relation R(x: u32);" }
+```
+
+Permitted call-sites are `rstest` fixture items only. Do not apply the
+attribute to ordinary functions, modules, or non-fixture test helpers.
+
+`unused_braces` is a rustc lint, not a Clippy lint. A single-expression fixture
+written on one line — whether by hand or by a formatter configured with
+`fn_single_line` — is re-emitted by `rstest` as `{ { body } }`, and rustc
+reports the fixture's own braces as redundant. The diagnostic is a formatting
+artefact, so the helper emits
+`#[allow(unused_braces, reason = "rstest fixture expansion")]` for the
+annotated item.
+
+The suppression is narrowed to single-expression bodies, but it is item-wide
+for the items it qualifies. The helper parses the item as a function and emits
+the `allow` only when the body is exactly one expression statement without a
+trailing semicolon. That shape includes a semicolon-free `return { value }`,
+which is `syn::Stmt::Expr(_, None)`, so the item-wide `allow` can also suppress
+a genuine `unused_braces` finding in such a body. Multi-statement fixtures,
+fixtures whose single expression ends in a trailing semicolon, and items that
+do not parse as functions pass through unchanged, so genuine findings in those
+shapes still surface. The compile-fail case
+`tests/ui/fixture_expansion_masking.rs` binds the multi-statement pass-through,
+and `tests/ui/fixture_expansion_semicolon.rs` binds the trailing-semicolon
+pass-through.
+
+The helper uses `allow` rather than `expect` because `rstest` drops user-written
+`#[expect]` attributes, and a macro-emitted expectation is silently unchecked:
+`report_in_external_macro` is false. The reasoned `allow` also satisfies the
+repository's `allow_attributes` and `allow_attributes_without_reason` policy.
+
+The helper is independent of formatter configuration: it triggers on a function
+whose body is a single expression statement without a trailing semicolon, and
+is correct whether or not `fn_single_line` is enabled. Multi-statement bodies
+and items that do not parse as functions pass through unchanged, `#[expect]` is
+unusable for the reason above, and the helper neither inspects nor enforces the
+repository's formatter settings. The 2026-11-06 addendum in
+[ADR 005](adrs/adr-0005-fixture-expansion-lint-helper.md) records the scope and
+limitations.
+
+`tests/fixture_expansion_compile.rs` is the compile-test contract. Its pass
+cases prove the suppression works for a single-line, single-expression fixture
+and that the attribute is transparent for an item that is not a function; its
+four compile-fail cases prove the diagnostic appears without the attribute,
+that the narrowing does not mask a genuine finding, that a single statement
+with a trailing semicolon is not treated as a qualifying expression body, and
+that a non-function item keeps its own `unused_braces` diagnostic.
+
+### Build and dependency boundaries
+
+`crates/fixture-lints` is a workspace member and a default member, so a
+workspace-wide build compiles it alongside the root package and `cli`. The root
+package takes a path-only development dependency on it; with no registry
+version, `cargo package -p ddlint` does not try to resolve the unpublished
+helper from crates.io, so the publishable root crate stays packageable. The
+crate sets `publish = false` because it exists only for this repository's tests
+and has no external contract to maintain.
+
+The crate declares edition 2024 and no `rust-version`; the reference compiler
+for new syntax is the nightly pinned in `rust-toolchain.toml`. It denies
+`missing_docs`, `allow_attributes`, `allow_attributes_without_reason`,
+`unwrap_used` and `expect_used`, and enables the `pedantic` Clippy group at
+warning level, matching the repository lint baseline. Every public item carries
+Rustdoc covering its purpose, parameters, return value and an example.
+
+### Maintaining fixtures
+
+When adding an `rstest` fixture, place `#[allow_fixture_expansion_lints]`
+immediately above `#[fixture]` in the same change. A fixture that omits the
+attribute fails `make test` once the formatter collapses a single-expression
+body, because the test profile denies warnings and `unused_braces` then reports
+the `rstest` expansion. Update the compile-test contract when the qualification
+rule changes: a newly suppressed shape needs a matching pass case, and a newly
+rejected shape needs a compile-fail case with its `.stderr` baseline.
+
+The proc-macro boundary and its rationale are recorded in
+[ADR 005](adrs/adr-0005-fixture-expansion-lint-helper.md).
 
 ## Spelling policy
 
@@ -418,35 +569,156 @@ the CodeScene host, uploader, client, or token there. They also refuse
 and they read workflows strictly, so a duplicate key is refused rather than
 silently resolved.
 
+## Formatting standard
+
+`.rustfmt.toml` is the single source of truth for Rust formatting. Do not
+restate its settings elsewhere; describe intent here and let the file define
+the exact values.
+
+The profile sets `unstable_features = true`, so it requires the pinned nightly
+toolchain in `rust-toolchain.toml`; stable `rustfmt` cannot apply these options.
+
+`make fmt` applies Rust and Markdown formatting. `make check-fmt` validates
+without modifying files: it runs `cargo fmt --all -- --check` and also runs
+`mdtablefix` in check mode over Markdown. `make fmt` additionally runs
+`markdownlint-cli2 --fix`.
+
+The unstable settings that change code shape group as follows:
+
+- Imports use a vertical layout with crate granularity, grouped as standard
+  library, external crates, then crate-local imports.
+- Comments wrap at 100 columns.
+- Code inside doc comments is formatted.
+- String literals and macro matchers are formatted.
+- `fn_single_line` collapses single-expression functions onto one line.
+- `hex_literal_case = "Lower"` keeps hexadecimal literal digits lower case.
+- Shorthand and wildcard condensation apply: `?` replaces `try!`, field init
+  shorthand is used, and wildcard suffixes are condensed.
+
+`tests/ui` is excluded. Those files are trybuild compile-fail fixtures, and
+their `.stderr` goldens are byte-exact; reformatting a fixture would shift the
+spans the goldens assert.
+
+`format_strings = true` can wrap a long literal with a backslash continuation.
+`AGENTS.md` requires `concat!()` instead, so when a statement or expression
+needs a long literal, split it into `concat!` pieces that each fit the width.
+Three positions cannot use `concat!()`. The format string of a `thiserror`
+`#[error(...)]` attribute and the `reason` value of `#[expect(...)]` both
+require a literal, so keep those short enough to fit one line rather than
+adding a continuation. A `format!` or `format_args!` format string that uses
+inline captures (`{name}`) is rejected by the compiler when macro-expanded, so
+pass those values as explicit named arguments after the `concat!()` pieces.
+
+For the interaction between `fn_single_line` and `rstest` fixtures, see
+[Fixture expansion lint policy](#fixture-expansion-lint-policy).
+
 ## The build standard
 
-Development, test, lint, and typecheck builds use the parallel `rustc` frontend
+The local tool-provisioning checks belong in
+`tests/build_standard_support/provisioning.rs` and are called only by
+`tests/build_standard_contract.rs`; the Makefile-target cases belong in
+`tests/build_standard_support/make_contract_tests.rs`. That Rust test helper
+uses fallible, capability-rooted `cap_std::fs_utf8::Dir` staging for fake
+executables and an offline archive, so tests can observe installer ordering
+without network access or installation. It uses `camino` at process boundaries
+and adds no production API or dependency. Preflight, pinned-data and lint
+assertions live in `provisioning.rs`; the four installer assertions and their
+trace-position helper live in its private `provisioning_installation_tests.rs`
+child module. The shared `provisioning_fixtures.rs` module is private to these
+build-contract tests, not a reusable filesystem abstraction. The Python
+workflow consumer contract belongs to the
+`tests/workflow_contracts/build_provisioning*.py` family, with
+`build_provisioning.py` as its import surface. Its callers are the sibling
+`build_provisioning*_test.py` modules, and each implementation module stays
+below the 400-line file limit: `build_provisioning_common.py` holds the shared
+model and pinned values, `build_provisioning_matrix.py` resolves runner
+matrices, `build_provisioning_runners.py` classifies runner labels,
+`build_provisioning_cargo.py` classifies Cargo commands,
+`build_provisioning_make.py` evaluates Make, `build_provisioning_workflows.py`
+scans a job's steps, `build_provisioning_topology.py` walks the workflow
+topology and `build_provisioning_checks.py` asserts provisioning. That private
+helper follows Rust suite references through evaluated root-Make metadata and
+local workflow calls, then checks provisioning at those consumer edges. It
+accepts simple root `make` goal lists and finite single-axis runner matrices;
+Make options, variable overrides, multiple matrix axes and matrix
+`include`/`exclude` fail closed. It reuses the pinned public
+`cv005_contracts.loading` reader and leaves canonical workflow, secret, and
+coverage-publisher policy with the existing CV-005 package. It is not a general
+workflow or Make parser. Existing mutation and coverage helpers are
+policy-specific; this is the sole local suite-consumer reachability helper.
+
+Run `make` or `make build` for a debug build and `make release` for a release
+build. These are phony entrypoints: each request invokes Cargo, which decides
+whether compilation is needed. A direct `cargo build` also uses the repository
+configuration, but it bypasses Make's prerequisite checks.
+
+Development, test, lint and typecheck builds use the parallel `rustc` frontend
 (`-Zthreads=8`) and, on Linux, the `mold` linker (`-Clink-arg=-fuse-ld=mold`).
-These are defaults in `.cargo/config.toml`, which Cargo discovers on its own,
-so a bare `cargo build` gets them. `mold` ships for Linux only, so the linker
-flag lives in a Linux-only table and macOS and Windows keep their platform
-linker. Cargo selects one `rustflags` source rather than merging them, so every
-source repeats the same flags apart from the linker.
+Cargo discovers these defaults in `.cargo/config.toml`. Cargo selects one
+`rustflags` source rather than merging them, and an assigned `RUSTFLAGS`
+replaces every configuration source. Make's development recipes compose those
+defaults after inherited `RUSTFLAGS`, including values exported by CI's
+`setup-rust` action. Caller-supplied flags remain the caller's responsibility.
+Coverage and release builds assign flags explicitly and do not add the
+development defaults. A direct `cargo build --release` uses the configuration
+unless `RUSTFLAGS` is assigned.
 
-An assigned `RUSTFLAGS` replaces the configuration's flags, so the Makefile
-recipes that set it compose the standard's flags onto any inherited value (CI's
-`setup-rust` exports one). Two builds are deliberately excluded: coverage
-assigns `RUSTFLAGS` without the fast flags, because a measurement should not
-depend on them, and the release recipe and workflow keep the platform linker,
-because they assign `RUSTFLAGS` (even an empty value displaces the
-configuration). Cargo has no per-profile `rustflags`, so a direct
-`cargo build --release` takes the configuration's flags unless `RUSTFLAGS` is
-assigned too.
+The `build`, `test`, `typecheck`, `test-clippy-policy`, `lint-clippy` and
+`lint-whitaker` targets verify the selected Rust toolchain before invoking
+Cargo and, on Linux, check that `mold` has the pinned version. `lint` runs
+`interrogate` first, then the two Rust gates. `check-fmt` does not require
+linker preflight. `make check-build-tools` runs the tool check directly.
+`make install-build-tools` installs the selected pinned nightly if it is
+missing and ensures `rustfmt`, `clippy` and `rust-analyzer` are installed. It
+also prepares the supported linker. The installer downloads the trusted `mold`
+2.41.0 binary release for Linux x86-64 and 64-bit ARM, then checks its pinned
+digest before extraction. It installs the binary under
+`$HOME/.local/share/ddlint/build-tools/mold-2.41.0` and places its `bin`
+directory ahead of `PATH`. An already available `mold` is reused when it
+reports the pinned version. The installer does not build `mold` from source.
+Unsupported Linux architectures receive an actionable error. On macOS and
+Windows, the linker check leaves the platform linker in use. The CI workflows
+already provision the same `mold` version before their suites.
 
-On Linux, install `mold` before building: the configuration names it, so a
-build without it fails at link time. CI installs it through `setup-rust`'s
-`install-mold` input. `tests/build_standard_contract.rs` holds the standard. It
-reads the configuration sources, the commands `make -n` prints for each
-development target on a Linux host and a macOS host (each keeping the caller's
-own `RUSTFLAGS`) and for each coverage and release target on a Linux host, and
-the `setup-rust` steps of the CI workflows (each must pass `install-mold`), so
-a flag lost through a recipe or workflow edit fails there. The decision is
-recorded in [ADR 003](adr-003-rust-build-standard.md).
+`make check` runs `check-fmt`, `typecheck`, `lint` and `test` in order.
+`lint: interrogate lint-clippy lint-whitaker spelling` is a serial composite:
+`.NOTPARALLEL` keeps the prerequisites in that order even under `-j`, so a
+failing Clippy run stops Whitaker from starting and the first real failure is
+the one reported. `lint-clippy` runs Clippy, Rustdoc and the Clippy policy
+contract; `lint-whitaker` runs the Dylint suite over `$(WHITAKER_PACKAGES)`
+(`--workspace` by default). Both gates can be run, and proven to fail, on their
+own. CI also runs the full `make test` suite separately from coverage
+generation, which retains its measurement-specific feature selection and flag
+assignment.
+
+### Development build footprint
+
+The development profile sets `incremental = false` and `debug = 0` in
+`Cargo.toml`, so a dev build keeps no incremental state or debug information.
+To debug, set `CARGO_PROFILE_DEV_DEBUG=true`; to rebuild incrementally, set
+`CARGO_INCREMENTAL=1` (unset any `sccache` wrapper first, which refuses
+incremental builds). `.cargo/config.toml` also sets
+`[unstable] embed-metadata = false`, the native Cargo key for nightlies from
+2026-07-31, so Cargo coordinates metadata output itself. No raw rustc metadata
+flags are used, and the pin is not moved to suit the key.
+`tests/build_footprint_contract.rs` holds all three settings and reads them by
+parsing the repository's own configuration. It starts no Cargo process.
+
+### Whitaker isolation
+
+`make lint-whitaker`, and therefore `make lint`, runs Whitaker with the literal
+`RUSTFLAGS="-D warnings"`, after clearing an inherited
+`CARGO_ENCODED_RUSTFLAGS`, which Cargo ranks above `RUSTFLAGS`. Whitaker runs
+under the toolchain its installer manages, so it takes none of the development
+standard (no parallel frontend, no `mold` linker flag and no inherited
+`RUSTFLAGS`). The build-standard contract reads that isolated command as exempt
+from the restatement clauses, and ADR 003 records the exception. The command
+also selects the LLVM backend (`CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm`),
+because the installer-managed toolchain does not take a Cranelift opt-in, and
+puts `~/.local/bin` first on `PATH`. `tests/whitaker_gate_contract.rs` runs the
+gate and the aggregate with a controlled failing Whitaker, so neither can
+succeed while the suite fails. `tests/workflow_contracts/whitaker_gate_test.py`
+holds the splitting, ordering, packages variable and CI installer pin.
 
 Because a successful package build hides dependency diagnostics, the owners and
 dispositions of the warnings that package verification reports are qualified
@@ -460,11 +732,89 @@ does not cover.
 
 ### Cranelift
 
-Exception: Cranelift is not the development-profile backend. The repository pins
-`nightly-2025-09-16`, but the release workflow
-(`cross +stable build --release`) builds on a stable toolchain against
-`.cargo/config.toml`, and stable Cargo refuses a
-`[profile.dev] codegen-backend` key ("config profile `dev` is not valid"), so
-selecting the backend would break that build (recorded 2026-09-29). That build
-assigns `RUSTFLAGS`, so the nightly-only `-Zthreads` flag never reaches it.
-Revisit if that build moves to the pinned nightly.
+The estate standard is LLVM, so LLVM is the default backend here. The Cranelift
+selection in `.cargo/config.toml` is commented out; the
+`[unstable] codegen-backend` key and the `rustc-codegen-cranelift-preview`
+component stay for an opt-in. See the
+[concordat decision record](https://github.com/leynos/concordat/blob/main/docs/adrs/adr-0004-cranelift-is-not-part-of-the-rust-build-standard.md),
+with review due 14 May 2027. An inherited `CARGO_PROFILE_*_CODEGEN_BACKEND`
+variable can still select Cranelift, and Cranelift does not run destructors
+while unwinding, so under an opt-in no test may rely on a caught panic
+releasing a guard. The release workflow builds on the pinned nightly. The
+pinned coverage action clears the inherited dev and test backend variables
+(`CARGO_PROFILE_DEV_CODEGEN_BACKEND` and `CARGO_PROFILE_TEST_CODEGEN_BACKEND`)
+and keeps LLVM, selecting it explicitly when it detects an active Cranelift
+configuration, since Cranelift cannot instrument coverage. `make lint-whitaker`
+selects LLVM explicitly, because Whitaker's installer-managed toolchain does
+not take a Cranelift opt-in.
+
+The Rust build contract in `tests/build_standard_contract.rs` checks target
+routing, preflight ordering and installation behaviour. Its Makefile-target
+cases live in `tests/build_standard_support/make_contract_tests.rs`, which the
+contract root registers as a child module. The split moves those cases without
+changing them, so the existing Makefile-target assertions still run, and it
+keeps each module within the size budget. The workflow consumer contract in the
+`tests/workflow_contracts/build_provisioning*_test.py` modules verifies that CI
+suites are reached only after their required provisioning step. The development
+build flags and their rationale are recorded in
+[ADR 003](adrs/adr-0003-rust-build-standard.md).
+
+### Code-generation backend evidence
+
+The development profile no longer selects Cranelift, as recorded above. The
+measurement below was taken on the former `nightly-2025-09-16` pin, before the
+toolchain moved, and is kept as history.
+
+In a bounded Linux x86-64 GNU scratch comparison using `nightly-2025-09-16`,
+Cranelift passed the unwind `should_panic` case, failed the `catch_unwind`
+case, and aborted on the spawned-thread panic case. The matched LLVM run passed
+all three while retaining the development thread and linker flags. These
+results cover neither the full repository nor instrumented coverage or other
+hosts.
+
+## Formal verification
+
+Verus proofs live under `verus/` and stay outside the Cargo workspace: Verus
+compiles its own files, so a proof file cannot `use` a production module
+directly. Run the proofs with:
+
+```sh
+make install-verus   # once per machine: installs the pinned Verus release
+make verus
+```
+
+These commands target Linux x86-64. The pins name only the `x86-linux` Verus
+archive, and Z3 is resolved for the same target, so on another host or
+architecture `make install-verus` downloads a binary that cannot run and the Z3
+installer refuses outright. Supporting another host means adding target
+selection and matching checksums upstream, in `rust-prover-tools`, not here.
+
+`make verus` invokes `prover-tools verus run` from
+[`leynos/rust-prover-tools`](https://github.com/leynos/rust-prover-tools)
+through `uv tool run`. The revision is pinned once, in `PROVER_TOOLS_SOURCE` in
+the `Makefile`, and that literal is the only `rust-prover-tools` revision the
+repository names. Proof files are selected by `VERUS_FLAGS`, which names
+`verus/smoke/main.rs` until the scope-resolution kernel's proof lands.
+
+Verus needs an SMT solver. The pinned Verus release carries a matching Z3
+beside the `verus` binary, and `prover-tools verus run` invokes that installed
+prover, so a local `make verus` needs no further setup and no `prover-tools`
+command on `PATH`. Continuous integration installs Z3 separately through the
+pinned `install-prover-tools` action and passes its `z3-path` output as
+`VERUS_Z3_PATH`, which points Verus at that solver instead of the bundled one.
+
+The version and archive-digest pins live in `tools/verus/VERSION` and
+`tools/verus/SHA256SUMS`; bump them together after confirming that the existing
+proofs verify under the new release. Installation, download and checksum logic
+belong to `rust-prover-tools` and the shared action. This repository therefore
+carries no installer script and no test of prover installation: concordat's
+`rust-prover-tooling` rule (PT-001 to PT-006) audits the pins and the workflow
+wiring, and a test that pinned their text would break on a reformat instead of
+proving behaviour.
+
+`make verus` is deliberately outside `make test`, `make lint` and the
+pull-request build gate. `.github/workflows/proofs.yml` runs it on a change to
+`verus/`, `tools/verus/`, the `Makefile` or the workflow, on a weekly schedule,
+and on demand. When the scope-resolution kernel's proof lands, the workflow's
+path filters must also name the kernel's source so a change to it triggers the
+proof.

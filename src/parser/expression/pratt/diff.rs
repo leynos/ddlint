@@ -3,10 +3,8 @@
 //! Tracks a pending `'` diff-marker span across the postfix chain and wraps
 //! completed postfix expressions in [`Expr::AtomDiff`] via `apply_pending_diff`.
 
-use crate::parser::ast::Expr;
-use crate::{Span, SyntaxKind};
-
 use super::Pratt;
+use crate::{Span, SyntaxKind, parser::ast::Expr};
 
 impl<I> Pratt<'_, I>
 where
@@ -59,8 +57,9 @@ where
 #[cfg(test)]
 mod tests {
     //! Tests for token stream differencing.
-    use super::*;
     use chumsky::error::SimpleReason;
+
+    use super::*;
 
     #[test]
     fn apply_pending_diff_wraps_and_clears_marker() {

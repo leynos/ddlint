@@ -8,12 +8,11 @@
 
 use rowan::{SyntaxElement, TextRange, TextSize};
 
+use super::{
+    super::{super::skip_whitespace_and_comments, errors::ParseError, type_expr::parse_type_expr},
+    ParameterParsingState,
+};
 use crate::{DdlogLanguage, SyntaxKind};
-
-use super::super::super::skip_whitespace_and_comments;
-use super::super::errors::ParseError;
-use super::super::type_expr::parse_type_expr;
-use super::ParameterParsingState;
 
 /// Shared parsing context for parameter processing.
 pub(super) struct ProcessingContext<'a, I>
@@ -47,7 +46,7 @@ where
             end_pos,
         } = state;
         let span = create_text_span(start_pos, end_pos);
-        let name = name_buf.trim().to_string();
+        let name = name_buf.trim().to_owned();
         let ProcessingContext { iter, errors } = ctx;
         Self {
             name,
@@ -99,7 +98,7 @@ where
     fn report_missing_colon(&mut self) {
         if let Some(span) = self.span {
             self.errors.push(ParseError::MissingColon {
-                message: "Expected ':' after name, but found ',' or ')' instead".to_string(),
+                message: "Expected ':' after name, but found ',' or ')' instead".to_owned(),
                 span,
             });
         }

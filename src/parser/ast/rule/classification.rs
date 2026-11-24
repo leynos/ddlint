@@ -6,14 +6,24 @@
 use chumsky::error::Simple;
 
 use super::{
-    AggregationSource, AssignmentParts, RuleAggregation, RuleAssignment, RuleBodyTerm, RuleForLoop,
+    AggregationSource,
+    AssignmentParts,
+    RuleAggregation,
+    RuleAssignment,
+    RuleBodyTerm,
+    RuleForLoop,
     split_assignment,
 };
-use crate::parser::ast::{BinaryOp, Expr, Pattern};
-use crate::parser::expression::parse_expression;
-use crate::parser::pattern::parse_pattern;
-use crate::parser::span_utils::shift_errors;
-use crate::{Span, SyntaxKind};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{BinaryOp, Expr, Pattern},
+        expression::parse_expression,
+        pattern::parse_pattern,
+        span_utils::shift_errors,
+    },
+};
 
 /// Classify a raw rule-body literal into the structured rule-body term used by
 /// semantic consumers.
@@ -105,7 +115,7 @@ fn classify_expression(expr: Expr, ctx: &mut ClassificationContext<'_>) -> Optio
             ForLoopComponents {
                 pattern,
                 iterable: *iterable,
-                guard: guard.map(|guard| *guard),
+                guard: guard.map(|inner_guard| *inner_guard),
                 body: *body,
             },
             ctx,
@@ -252,19 +262,26 @@ fn classify_for_body_with_aggregation_tracking(
             pattern,
             iterable,
             guard,
-            body,
+            body: loop_body,
         } => {
             vec![classify_for_loop(
                 ForLoopComponents {
                     pattern,
                     iterable: *iterable,
-                    guard: guard.map(|guard| *guard),
-                    body: *body,
+                    guard: guard.map(|inner_guard| *inner_guard),
+                    body: *loop_body,
                 },
                 ctx,
             )]
         }
         Expr::Group(inner) => classify_for_body_with_aggregation_tracking(*inner, ctx),
+        Expr::Block(block) => {
+            let mut terms = Vec::new();
+            for item in block.into_items() {
+                terms.extend(classify_for_body_with_aggregation_tracking(item, ctx));
+            }
+            terms
+        }
         other => classify_expression(other, ctx).into_iter().collect(),
     }
 }
@@ -272,19 +289,18 @@ fn classify_for_body_with_aggregation_tracking(
 fn multiple_aggregations_error(_first_span: &Span, second_span: &Span) -> Simple<SyntaxKind> {
     Simple::custom(
         second_span.clone(),
-        "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_string(),
+        "at most one aggregation (group_by or Aggregate) is permitted per rule body".to_owned(),
     )
 }
 
 #[cfg(test)]
 mod tests {
     //! Tests for rule body classification.
-    use super::*;
     use chumsky::error::SimpleReason;
 
-    fn span_for(src: &str) -> Span {
-        0..src.len()
-    }
+    use super::*;
+
+    fn span_for(src: &str) -> Span { 0..src.len() }
 
     #[test]
     fn assignment_literal_becomes_assignment_term() {
@@ -301,7 +317,7 @@ mod tests {
         };
         assert_eq!(assignment.pattern.to_source(), "var item");
         assert_eq!(assignment.value.to_sexpr(), "(call FlatMap items)");
-        assert!(errors.is_empty());
+        assert_eq!(errors.len(), 0);
     }
 
     #[test]

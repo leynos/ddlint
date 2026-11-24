@@ -3,10 +3,15 @@
 use rstest::rstest;
 
 use super::super::helpers::parse_ok;
-use crate::parser::ast::{AggregationSource, Expr, RuleBodyTerm};
-use crate::test_util::{
-    assert_custom_parse_error_contains, assert_first_rule_without_parse_stage_aggregation_errors,
-    assert_parse_error, call, var,
+use crate::{
+    parser::ast::{AggregationSource, Expr, RuleBodyTerm},
+    test_util::{
+        assert_custom_parse_error_contains,
+        assert_first_rule_without_parse_stage_aggregation_errors,
+        assert_parse_error,
+        call,
+        var,
+    },
 };
 
 /// Assert that `body_terms()` reports an expected error for a literal found in `src`.
@@ -90,10 +95,8 @@ fn body_terms_detect_group_by_aggregation() {
 
 #[test]
 fn body_terms_detect_legacy_aggregate_aggregation() {
-    let src = "Totals(user, total) :- \
-               Orders(user, amt), \
-               Aggregate((user), sum(amt)), \
-               total = __group.";
+    let src =
+        "Totals(user, total) :- Orders(user, amt), Aggregate((user), sum(amt)), total = __group.";
     let parsed = parse_ok(src);
     let rule = parsed
         .root()
@@ -140,9 +143,7 @@ fn body_terms_error_on_group_by_wrong_arity() {
 
 #[test]
 fn body_terms_error_on_legacy_aggregate_wrong_arity() {
-    let src = "Totals(user, total) :- \
-               Orders(user, amt), \
-               Aggregate((user), sum(amt), extra_arg), \
+    let src = "Totals(user, total) :- Orders(user, amt), Aggregate((user), sum(amt), extra_arg), \
                total = __group.";
     assert_aggregation_arity_error!(
         src,

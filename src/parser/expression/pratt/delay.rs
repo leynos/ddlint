@@ -3,11 +3,12 @@
 //! Handles the `expr -<N>` construct, consuming the `-<` token pair and
 //! a decimal delay value to produce [`Expr::AtomDelay`].
 
-use crate::parser::ast::Expr;
-use crate::parser::span_utils::parse_u32_decimal;
-use crate::{Span, SyntaxKind};
-
 use super::Pratt;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{ast::Expr, span_utils::parse_u32_decimal},
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -59,10 +60,12 @@ mod tests {
     //! negative cases for malformed values and numeric boundary failures.
     use chumsky::error::SimpleReason;
 
-    use crate::parser::ast::Expr;
-    use crate::parser::expression::parse_expression;
-    use crate::tokenize_without_trivia;
-    use crate::{Span, SyntaxKind};
+    use crate::{
+        Span,
+        SyntaxKind,
+        parser::{ast::Expr, expression::parse_expression},
+        tokenize_without_trivia,
+    };
 
     #[test]
     fn parses_atom_delay_postfix() {

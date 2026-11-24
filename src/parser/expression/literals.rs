@@ -1,10 +1,11 @@
 //! Literal parsing helpers for prefix expressions.
 
-use crate::parser::ast::{Expr, Literal, StringLiteral};
-use crate::{Span, SyntaxKind};
-
-use super::numeric::parse_numeric_literal;
-use super::pratt::Pratt;
+use super::{numeric::parse_numeric_literal, pratt::Pratt};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::ast::{Expr, Literal, StringLiteral},
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -59,7 +60,7 @@ where
         match StringLiteral::parse(&self.ts.slice(span)) {
             Ok(s) => Some(Expr::Literal(Literal::String(s))),
             Err(msg) => {
-                self.ts.push_error(span.clone(), msg.to_string());
+                self.ts.push_error(span.clone(), msg.to_owned());
                 None
             }
         }

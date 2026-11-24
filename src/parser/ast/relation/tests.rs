@@ -1,8 +1,9 @@
 //! Tests for relation AST accessors.
 
+use rstest::rstest;
+
 use super::*;
 use crate::{parse, test_util::span_text};
-use rstest::rstest;
 
 #[test]
 fn relation_name() {
@@ -105,7 +106,7 @@ fn bracket_body_exposes_element_type() {
     assert_eq!(rel.columns(), Ok(Vec::<(String, String)>::new()));
     assert_eq!(
         rel.element_type(),
-        Ok(Some("Map<string, Vec<u32>>".to_string()))
+        Ok(Some("Map<string, Vec<u32>>".to_owned()))
     );
     assert_eq!(
         rel.body(),
@@ -143,10 +144,10 @@ fn record_relation_body_accessors_are_ok() {
 }
 
 #[rstest]
-#[case::single("input relation R(x: u32) primary key (x)", vec!["x".to_string()])]
+#[case::single("input relation R(x: u32) primary key (x)", vec!["x".to_owned()])]
 #[case::compound(
     "input relation R(x: u32, y: string) primary key (x, y)",
-    vec!["x".to_string(), "y".to_string()]
+    vec!["x".to_owned(), "y".to_owned()]
 )]
 fn input_record_primary_key_is_ok(#[case] src: &str, #[case] expected: Vec<String>) {
     let parsed = parse(src);
@@ -158,5 +159,13 @@ fn input_record_primary_key_is_ok(#[case] src: &str, #[case] expected: Vec<Strin
         .cloned()
         .expect("relation missing");
 
-    assert_eq!(rel.primary_key(), Ok(Some(expected)));
+    let binders = rel.primary_key().map(|clause| {
+        clause.map(|key| {
+            key.binder_names()
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+    });
+    assert_eq!(binders, Ok(Some(expected)));
 }

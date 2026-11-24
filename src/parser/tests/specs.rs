@@ -1,6 +1,9 @@
 //! Assertion builders for parser tests.
 
-use crate::ast::{Function, Index, Relation, RelationBody, RelationKind, RelationRole, Transformer};
+use crate::{
+    ast::{Function, Index, Relation, RelationBody, RelationKind, RelationRole, Transformer},
+    parser::tests::helpers::owned_binder_names,
+};
 
 fn pair_vec(items: &[(&str, &str)]) -> Vec<(String, String)> {
     items
@@ -9,7 +12,8 @@ fn pair_vec(items: &[(&str, &str)]) -> Vec<(String, String)> {
         .collect()
 }
 
-fn str_vec(items: &[&str]) -> Vec<String> {
+/// Copy string slices into owned strings for expected-value comparisons.
+pub(crate) fn str_vec(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| (*s).to_string()).collect()
 }
 
@@ -90,7 +94,7 @@ impl<'a> RelationSpec<'a> {
             r.is_output() => self.role == RelationRole::Output,
             self.body.as_ref().map(|_| r.body()) => self.body.clone().map(Ok),
             r.columns() => Ok(pair_vec(&self.columns)),
-            r.primary_key() => Ok(self.pk.map(|v| str_vec(&v)))
+            r.primary_key().map(|key| key.map(|key| owned_binder_names(&key))) => Ok(self.pk.map(|names| str_vec(&names)))
         );
     }
 }

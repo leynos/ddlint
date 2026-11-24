@@ -4,17 +4,28 @@ use std::collections::{HashMap, HashSet};
 
 use rowan::SyntaxNode;
 
-use crate::Span;
-use crate::SyntaxKind;
-use crate::parser::ast;
-use crate::parser::ast::SemanticRule;
-use crate::parser::ast::rule::text_range_to_span;
-use crate::sema::model::{
-    DeclarationKind, Resolution, Scope, ScopeId, ScopeKind, ScopeOrigin, SemanticModel, Symbol,
-    SymbolId, SymbolOrigin, UseKind,
-};
-
 use super::resolve::{collect_head_binding_names, collect_pattern_binding_names};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast,
+        ast::{Pattern, SemanticRule, rule::text_range_to_span},
+    },
+    sema::model::{
+        DeclarationKind,
+        Resolution,
+        Scope,
+        ScopeId,
+        ScopeKind,
+        ScopeOrigin,
+        SemanticModel,
+        Symbol,
+        SymbolId,
+        SymbolOrigin,
+        UseKind,
+    },
+};
 
 pub(crate) struct SymbolSpec {
     pub(crate) name: String,
@@ -68,23 +79,13 @@ impl SemanticModelBuilder {
             && matches!(use_site.resolution(), Resolution::Resolved(_))
     }
 
-    fn resolved_symbol_id(use_site: &crate::sema::UseSite) -> Option<SymbolId> {
+    /// Return the symbol id for a resolved use site, or `None` when it is
+    /// unresolved or ignored.
+    const fn resolved_symbol_id(use_site: &crate::sema::UseSite) -> Option<SymbolId> {
         match use_site.resolution() {
             Resolution::Resolved(symbol_id) => Some(symbol_id),
             Resolution::Unresolved | Resolution::Ignored => None,
         }
-    }
-
-    fn resolved_variable_symbol_id(use_site: &crate::sema::UseSite) -> SymbolId {
-        debug_assert!(
-            Self::is_resolved_variable_use(use_site),
-            "resolved_variable_symbol_id requires a resolved variable use"
-        );
-
-        let Resolution::Resolved(symbol_id) = use_site.resolution() else {
-            unreachable!("resolved variable uses must carry resolved symbol ids");
-        };
-        symbol_id
     }
 
     pub(crate) fn finish(self) -> SemanticModel {
@@ -109,7 +110,7 @@ impl SemanticModelBuilder {
             .uses
             .iter()
             .filter(|u| Self::is_resolved_variable_use(u))
-            .map(Self::resolved_variable_symbol_id)
+            .filter_map(Self::resolved_symbol_id)
             .collect();
 
         SemanticModel {
@@ -152,36 +153,41 @@ impl SemanticModelBuilder {
                 &rule,
             );
 
-            if let Ok(terms) = rule.body_terms() {
-                let body_nodes = rule.body_expression_nodes();
-                let body_nodes_len = body_nodes.len();
-                let counts_match = body_nodes_len == terms.len();
-                debug_assert_eq!(
-                    body_nodes_len,
-                    terms.len(),
-                    "rule body node/term count mismatch should stay visible during semantic collection"
-                );
+            self.collect_rule_body(rule_scope, &rule_span, &rule);
+        }
+    }
 
-                for (literal_index, term) in terms.into_iter().enumerate() {
-                    let maybe_node = if counts_match && literal_index < body_nodes_len {
-                        body_nodes.get(literal_index)
-                    } else {
-                        None
-                    };
-                    let span =
-                        maybe_node.map_or_else(|| rule_span.clone(), ast::RuleBodyExpression::span);
-                    self.collect_rule_term(
-                        super::variables::VariableUseContext::new(
-                            rule_scope,
-                            literal_index,
-                            &span,
-                            literal_index,
-                        ),
-                        maybe_node.map(ast::AstNode::syntax),
-                        &term,
-                    );
-                }
-            }
+    /// Collect variable uses from every term in a rule body.
+    fn collect_rule_body(&mut self, rule_scope: ScopeId, rule_span: &Span, rule: &ast::Rule) {
+        let Ok(terms) = rule.body_terms() else {
+            return;
+        };
+        let body_nodes = rule.body_expression_nodes();
+        let body_nodes_len = body_nodes.len();
+        let counts_match = body_nodes_len == terms.len();
+        debug_assert_eq!(
+            body_nodes_len,
+            terms.len(),
+            "rule body node/term count mismatch should stay visible during semantic collection"
+        );
+
+        for (literal_index, term) in terms.into_iter().enumerate() {
+            let maybe_node = if counts_match && literal_index < body_nodes_len {
+                body_nodes.get(literal_index)
+            } else {
+                None
+            };
+            let span = maybe_node.map_or_else(|| rule_span.clone(), ast::RuleBodyExpression::span);
+            self.collect_rule_term(
+                super::variables::VariableUseContext::new(
+                    rule_scope,
+                    literal_index,
+                    &span,
+                    literal_index,
+                ),
+                maybe_node.map(ast::AstNode::syntax),
+                &term,
+            );
         }
     }
 
@@ -224,20 +230,7 @@ impl SemanticModelBuilder {
             }
 
             for pattern in rule.patterns() {
-                // Parse-time semantic rules do not currently preserve CST token
-                // handles, so precise identifier spans are unavailable here.
-                for binding_name in collect_pattern_binding_names(pattern) {
-                    self.declare_symbol(SymbolSpec {
-                        name: binding_name,
-                        kind: DeclarationKind::RuleBinding,
-                        origin: SymbolOrigin::ForPattern,
-                        scope: rule_scope,
-                        span: rule_span.clone(),
-                        name_span: None,
-                        source_order: self.symbols.len(),
-                        visible_from_rule_order: 0,
-                    });
-                }
+                self.declare_pattern_bindings(rule_scope, &rule_span, pattern);
             }
 
             for (literal_index, expr) in rule.body().iter().enumerate() {
@@ -251,6 +244,30 @@ impl SemanticModelBuilder {
                     ),
                 );
             }
+        }
+    }
+
+    /// Declare the rule bindings introduced by one `for` pattern.
+    ///
+    /// Parse-time semantic rules do not currently preserve CST token handles,
+    /// so precise identifier spans are unavailable here.
+    fn declare_pattern_bindings(
+        &mut self,
+        rule_scope: ScopeId,
+        rule_span: &Span,
+        pattern: &Pattern,
+    ) {
+        for binding_name in collect_pattern_binding_names(pattern) {
+            self.declare_symbol(SymbolSpec {
+                name: binding_name,
+                kind: DeclarationKind::RuleBinding,
+                origin: SymbolOrigin::ForPattern,
+                scope: rule_scope,
+                span: rule_span.clone(),
+                name_span: None,
+                source_order: self.symbols.len(),
+                visible_from_rule_order: 0,
+            });
         }
     }
 
@@ -307,8 +324,8 @@ impl SemanticModelBuilder {
             _ => return None,
         };
 
-        name.map(|name| SymbolSpec {
-            name,
+        name.map(|declared_name| SymbolSpec {
+            name: declared_name,
             kind,
             origin,
             scope: self.program_scope,

@@ -1,10 +1,17 @@
 //! Parsing of control-flow expressions (`if`, `match`, `for`).
 
-use crate::parser::ast::{Expr, MatchArm};
-use crate::{Span, SyntaxKind};
-
-use super::pattern_collection::{DelimiterState, PatternContext, TerminationHandler};
-use super::pratt::Pratt;
+use super::{
+    pattern_collection::{DelimiterState, PatternContext, TerminationHandler},
+    pratt::Pratt,
+};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Expr, MatchArm},
+        error_messages::RETURN_IN_RULE_BODY_ERROR,
+    },
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -42,7 +49,7 @@ where
     fn parse_if_clause(&mut self, expectation: &str, fallback: Option<Span>) -> Option<Expr> {
         if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_ELSE)) {
             let span = self.ts.peek_span().unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(span, expectation.to_string());
+            self.ts.push_error(span, expectation.to_owned());
             return None;
         }
         let error_count = self.ts.error_count();
@@ -53,7 +60,7 @@ where
                 .peek_span()
                 .or(fallback)
                 .unwrap_or_else(|| self.ts.eof_span());
-            self.ts.push_error(span, expectation.to_string());
+            self.ts.push_error(span, expectation.to_owned());
         }
         expr
     }
@@ -63,7 +70,7 @@ where
             return None;
         }
 
-        let scrutinee = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let scrutinee = self.with_nested_delimiter_scope(|this| this.parse_expr(0))?;
 
         if !self.ts.expect(SyntaxKind::T_RPAREN) {
             return None;
@@ -85,15 +92,21 @@ where
         })
     }
 
-    pub(super) fn parse_break_expression() -> Expr {
-        Expr::Break
-    }
+    pub(super) const fn parse_break_expression() -> Expr { Expr::Break }
 
-    pub(super) fn parse_continue_expression() -> Expr {
-        Expr::Continue
-    }
+    pub(super) const fn parse_continue_expression() -> Expr { Expr::Continue }
 
-    pub(super) fn parse_return_expression(&mut self) -> Option<Expr> {
+    /// Parse `return` and its optional value.
+    ///
+    /// `keyword_span` is the `return` token, which is where the rule-body
+    /// diagnostic points. Parsing continues after the diagnostic so one
+    /// misplaced `return` does not also produce structural errors for the
+    /// surrounding block or call.
+    pub(super) fn parse_return_expression(&mut self, keyword_span: &Span) -> Option<Expr> {
+        if self.in_rule_body() {
+            self.ts
+                .push_error(keyword_span.clone(), RETURN_IN_RULE_BODY_ERROR);
+        }
         if Self::is_return_value_terminator(self.ts.peek_kind()) {
             return Some(Expr::Return {
                 value: Box::new(Expr::Tuple(Vec::new())),
@@ -116,7 +129,7 @@ where
         }
     }
 
-    fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
+    const fn is_return_value_terminator(kind: Option<SyntaxKind>) -> bool {
         matches!(
             kind,
             None | Some(
@@ -162,7 +175,7 @@ where
         if !self.ts.expect(SyntaxKind::T_ARROW) {
             return None;
         }
-        let body = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let body = self.with_nested_delimiter_scope(|this| this.parse_expr(0))?;
         Some(MatchArm { pattern, body })
     }
 
@@ -170,10 +183,7 @@ where
         match self.ts.peek_kind() {
             Some(SyntaxKind::T_COMMA) => {
                 self.ts.next_tok();
-                if matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)) {
-                    return Some(false);
-                }
-                Some(true)
+                Some(!matches!(self.ts.peek_kind(), Some(SyntaxKind::T_RBRACE)))
             }
             Some(SyntaxKind::T_RBRACE) => Some(false),
             None => {
@@ -221,7 +231,7 @@ where
         last_span: Option<&Span>,
         context: &PatternContext,
     ) -> Option<Span> {
-        if context.validate_on_eof
+        if context.validate_on_eof()
             && !self.validate_delimiter_balance(
                 (state.paren_depth, state.brace_depth, state.bracket_depth),
                 last_span,
@@ -232,7 +242,7 @@ where
 
         self.ts.push_error(
             self.ts.eof_span(),
-            context.missing_terminator_msg.to_string(),
+            context.missing_terminator_msg().to_owned(),
         );
         None
     }
@@ -279,14 +289,14 @@ where
 
         let (pattern, _pattern_span) = self.collect_for_pattern()?;
 
-        let iterable = self.with_struct_literals_suspended(|this| this.parse_expr(0))?;
+        let iterable = self.with_nested_delimiter_scope(|this| this.parse_expr(0))?;
 
         let guard = if matches!(self.ts.peek_kind(), Some(SyntaxKind::K_IF)) {
             let (_, if_span) = self
                 .ts
                 .next_tok()
                 .unwrap_or_else(|| (SyntaxKind::K_IF, self.ts.eof_span()));
-            let guard_expr = self.with_struct_literal_activation(|this| {
+            let guard_expr = self.with_guard_expression_scope(|this| {
                 this.parse_if_clause(
                     "expected guard expression after 'if' in for-loop header",
                     Some(if_span.clone()),

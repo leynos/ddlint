@@ -1,9 +1,10 @@
 //! Scope categories and provenance recorded by semantic analysis.
 //!
 //! [`ScopeKind`] says what sort of scope the semantic model recorded (the root
-//! program, one rule, or a nested `for`-loop body), and [`ScopeOrigin`] says
-//! where the scope came from: the program itself, an AST-backed rule, a
-//! parse-time semantic rule, or a `for` loop inside a rule body. The builder in
+//! program, one rule, a nested `for`-loop body, or a closure body), and
+//! [`ScopeOrigin`] says where the scope came from: the program itself, an
+//! AST-backed rule, a parse-time semantic rule, a `for` loop inside a rule
+//! body, or a closure inside a rule body. The builder in
 //! `sema::builder` and the traversal in `sema::traverse` create them, and
 //! `sema::model` re-exports both so existing imports keep working. They live
 //! here, apart from the model's symbol tables, to keep `sema::model` under
@@ -20,6 +21,8 @@ pub enum ScopeKind {
     Rule,
     /// Nested scope created for a `for`-loop body.
     ForLoop,
+    /// Nested scope created for a closure body.
+    Closure,
 }
 
 /// Provenance for one recorded scope.
@@ -42,6 +45,11 @@ pub enum ScopeOrigin {
     /// Scope for a nested `for`-loop body.
     ForLoop {
         /// Index of the enclosing rule's body literal that holds the loop.
+        literal_index: usize,
+    },
+    /// Scope for a closure body.
+    Closure {
+        /// Index of the enclosing rule body literal that holds the closure.
         literal_index: usize,
     },
 }

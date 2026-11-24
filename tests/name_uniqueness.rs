@@ -3,8 +3,7 @@
 //! Verifies that the full `ddlint::parse` pipeline rejects programs with
 //! duplicate top-level definitions and permits function arity overloading.
 
-use ddlint::parse;
-use ddlint::test_util::assert_no_parse_errors;
+use ddlint::{parse, test_util::assert_no_parse_errors};
 use rstest::rstest;
 
 #[test]
@@ -53,8 +52,14 @@ fn duplicate_detected(#[case] src: &str, #[case] expected_word: &str, #[case] ex
     });
     assert!(
         has_match,
-        "expected error containing '{expected_word}' and '{expected_name}' for: {src}\n  errors: {:?}",
-        parsed.errors()
+        concat!(
+            "expected error containing '{expected_word}' and '{expected_name}' for: {src}\n",
+            "  errors: {:?}"
+        ),
+        parsed.errors(),
+        expected_word = expected_word,
+        expected_name = expected_name,
+        src = src,
     );
 }
 

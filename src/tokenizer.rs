@@ -27,6 +27,10 @@ enum Token {
         priority = 2
     )]
     #[regex(r"[0-9][0-9_]*'[sS]?[bBoOdDhH][+-]?[0-9a-fA-F_]+", priority = 2)]
+    #[expect(
+        clippy::duplicated_attributes,
+        reason = "each `regex` attribute carries its own priority for its own pattern"
+    )]
     #[regex(r"0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|[0-9][0-9_]*(?:\.[0-9_]+)?(?:[eE][+-]?[0-9_]+)?")]
     Number,
     #[regex(r#"(?s)i?\$?\[\|(?:\]|[^|]|\|[^]])*\|\]"#, priority = 3)]
@@ -196,9 +200,7 @@ static KEYWORDS: phf::Map<&'static str, SyntaxKind> = phf_map! {
     "yield" => SyntaxKind::K_YIELD,
 };
 
-fn keyword_kind(ident: &str) -> Option<SyntaxKind> {
-    KEYWORDS.get(ident).copied()
-}
+fn keyword_kind(ident: &str) -> Option<SyntaxKind> { KEYWORDS.get(ident).copied() }
 
 #[must_use]
 fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
@@ -280,7 +282,7 @@ fn tokenize_impl(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::{tokenize_without_trivia, SyntaxKind};
+/// use ddlint::{SyntaxKind, tokenize_without_trivia};
 ///
 /// let tokens = tokenize_without_trivia("input R(x: u32);");
 /// assert!(!tokens.iter().any(|(k, _)| *k == SyntaxKind::T_WHITESPACE));
@@ -298,7 +300,7 @@ pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::{tokenize_with_trivia, SyntaxKind};
+/// use ddlint::{SyntaxKind, tokenize_with_trivia};
 ///
 /// let tokens = tokenize_with_trivia("input relation R(x: u32);");
 /// assert_eq!(tokens.len(), 12);
@@ -307,82 +309,8 @@ pub fn tokenize_without_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
 ///
 /// This variant retains whitespace and comment tokens.
 #[must_use]
-pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> {
-    tokenize_impl(src)
-}
+pub fn tokenize_with_trivia(src: &str) -> Vec<(SyntaxKind, Span)> { tokenize_impl(src) }
 
 #[cfg(test)]
-mod tests {
-    //! Tests for the tokenizer.
-    use super::*;
-    use rstest::rstest;
-
-    #[rstest]
-    #[case::internal_identifier("internal", SyntaxKind::T_IDENT)]
-    #[case::stream_keyword("stream", SyntaxKind::K_STREAM)]
-    #[case::multiset_keyword("multiset", SyntaxKind::K_MULTISET)]
-    fn tokenize_relation_role_and_kind_words(#[case] src: &str, #[case] expected: SyntaxKind) {
-        let tokens = tokenize_without_trivia(src);
-        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(kind, _)| *kind).collect();
-        assert_eq!(kinds, vec![expected]);
-    }
-
-    #[test]
-    fn tokenize_recognises_ampersand_tokens() {
-        let tokens = tokenize_without_trivia("&a & b");
-        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
-        assert_eq!(
-            kinds,
-            vec![
-                SyntaxKind::T_AMP,
-                SyntaxKind::T_IDENT,
-                SyntaxKind::T_AMP,
-                SyntaxKind::T_IDENT,
-            ]
-        );
-    }
-
-    #[test]
-    fn tokenize_recognises_ampersand_adjacency() {
-        let tokens = tokenize_without_trivia("&a&b");
-        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
-        assert_eq!(
-            kinds,
-            vec![
-                SyntaxKind::T_AMP,
-                SyntaxKind::T_IDENT,
-                SyntaxKind::T_AMP,
-                SyntaxKind::T_IDENT,
-            ]
-        );
-    }
-
-    #[test]
-    fn tokenize_recognises_dual_use_ampersand_sequence() {
-        let tokens = tokenize_without_trivia("a& &b");
-        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
-        assert_eq!(
-            kinds,
-            vec![
-                SyntaxKind::T_IDENT,
-                SyntaxKind::T_AMP,
-                SyntaxKind::T_AMP,
-                SyntaxKind::T_IDENT,
-            ]
-        );
-    }
-
-    #[test]
-    fn tokenize_recognises_caret_tokens() {
-        let tokens = tokenize_without_trivia("a ^ b");
-        let kinds: Vec<SyntaxKind> = tokens.iter().map(|(k, _)| *k).collect();
-        assert_eq!(
-            kinds,
-            vec![
-                SyntaxKind::T_IDENT,
-                SyntaxKind::T_CARET,
-                SyntaxKind::T_IDENT,
-            ]
-        );
-    }
-}
+#[path = "tokenizer_tests.rs"]
+mod tests;

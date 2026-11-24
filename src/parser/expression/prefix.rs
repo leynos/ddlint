@@ -1,10 +1,14 @@
 //! Parsing of prefix expressions for the Pratt parser.
 
-use crate::parser::ast::{Expr, prefix_binding_power};
-use crate::parser::reserved_tokens::rejection_for;
-use crate::{Span, SyntaxKind};
-
 use super::pratt::Pratt;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::{Expr, prefix_binding_power},
+        reserved_tokens::rejection_for,
+    },
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -18,44 +22,60 @@ where
         let (kind, span) = self.ts.next_tok()?;
         if let Some(lit) = self.parse_literal(kind, &span) {
             return Some(lit);
-        } else if matches!(kind, SyntaxKind::T_NUMBER | SyntaxKind::T_STRING) {
+        }
+        if matches!(kind, SyntaxKind::T_NUMBER | SyntaxKind::T_STRING) {
             // Literal parsing already emitted a precise diagnostic; avoid a
             // follow-up "unexpected token" error for the same span.
             return None;
         }
+        self.parse_prefix_by_kind(kind, span)
+    }
+
+    /// Dispatch a non-literal prefix token to its parser.
+    ///
+    /// `kind` and `span` come from the token that `parse_prefix` consumed.
+    /// Scope: called only from `parse_prefix`.
+    fn parse_prefix_by_kind(&mut self, kind: SyntaxKind, span: Span) -> Option<Expr> {
         match kind {
             SyntaxKind::T_IDENT => self.parse_identifier_or_struct(&span),
             SyntaxKind::K_FLATMAP | SyntaxKind::K_AGGREGATE => {
                 let name = self.ts.slice(&span);
                 self.parse_ident_expression(name, &span)
             }
-            SyntaxKind::K_UNDERSCORE => Some(Expr::Variable("_".to_string())),
+            SyntaxKind::K_UNDERSCORE => Some(Expr::Variable("_".to_owned())),
             SyntaxKind::T_LPAREN => self.parse_parenthesized_expr(),
             SyntaxKind::T_PIPE => self.parse_closure_literal(),
             SyntaxKind::T_LBRACKET => self.parse_vector_literal(),
-            SyntaxKind::T_LBRACE => self.parse_brace_or_map_literal(),
+            SyntaxKind::T_LBRACE => self.parse_block(),
             SyntaxKind::K_IF => self.parse_if_expression(),
             SyntaxKind::K_MATCH => self.parse_match_expression(),
             SyntaxKind::K_FOR => self.parse_for_expression(),
             SyntaxKind::K_BREAK => Some(Self::parse_break_expression()),
             SyntaxKind::K_CONTINUE => Some(Self::parse_continue_expression()),
-            SyntaxKind::K_RETURN => self.parse_return_expression(),
-            k => {
-                if let Some(message) = rejection_for(k) {
-                    self.ts.push_reserved_error(span.clone(), message);
-                    return None;
-                }
-                let Some((bp, op)) = prefix_binding_power(k) else {
-                    self.ts
-                        .push_error(span.clone(), format!("unexpected token: {k:?}"));
-                    return None;
-                };
-                let rhs = self.parse_expr(bp)?;
-                Some(Expr::Unary {
-                    op,
-                    expr: Box::new(rhs),
-                })
-            }
+            SyntaxKind::K_RETURN => self.parse_return_expression(&span),
+            k => self.parse_operator_prefix(k, span),
         }
+    }
+
+    /// Parse a prefix operator application, or reject the token.
+    ///
+    /// Reserved tokens emit their shared policy diagnostic; tokens with no
+    /// prefix binding power emit an "unexpected token" error. Either way the
+    /// result is `None`. Scope: called only from `parse_prefix_by_kind`.
+    fn parse_operator_prefix(&mut self, kind: SyntaxKind, span: Span) -> Option<Expr> {
+        if let Some(message) = rejection_for(kind) {
+            self.ts.push_reserved_error(span, message);
+            return None;
+        }
+        let Some((bp, op)) = prefix_binding_power(kind) else {
+            self.ts
+                .push_error(span, format!("unexpected token: {kind:?}"));
+            return None;
+        };
+        let rhs = self.parse_expr(bp)?;
+        Some(Expr::Unary {
+            op,
+            expr: Box::new(rhs),
+        })
     }
 }

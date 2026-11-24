@@ -12,8 +12,7 @@
 use rowan::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use self::parse_utils::is_trivia;
-use crate::parser::ast::rule::text_range_to_span;
-use crate::{DdlogLanguage, Span, SyntaxKind, SyntaxToken};
+use crate::{DdlogLanguage, Span, SyntaxKind, SyntaxToken, parser::ast::rule::text_range_to_span};
 
 /// Common interface for AST wrappers.
 pub(crate) trait AstNode {
@@ -84,21 +83,19 @@ fn is_matching_ident(token: &SyntaxToken<DdlogLanguage>, name: &str) -> bool {
 }
 
 /// Whether two byte ranges intersect.
-fn ranges_overlap(left: &Span, right: &Span) -> bool {
+const fn ranges_overlap(left: &Span, right: &Span) -> bool {
     left.start < right.end && right.start < left.end
 }
 
 /// Whether the candidate span sits entirely within the container span.
-fn span_contains(container: &Span, candidate: &Span) -> bool {
+const fn span_contains(container: &Span, candidate: &Span) -> bool {
     container.start <= candidate.start && candidate.end <= container.end
 }
 
 macro_rules! impl_ast_node {
     ($ty:ty) => {
         impl AstNode for $ty {
-            fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> {
-                &self.syntax
-            }
+            fn syntax(&self) -> &rowan::SyntaxNode<DdlogLanguage> { &self.syntax }
         }
     };
 }
@@ -190,7 +187,7 @@ fn take_first_ident(
     iter.into_iter()
         .find(|e| !is_trivia(e))
         .and_then(|e| match e {
-            NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_string()),
+            NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_owned()),
             _ => None,
         })
 }
@@ -232,17 +229,31 @@ mod type_def;
 /// Re-exports [`MatchArm`], allowing callers to assemble match expressions
 /// without reaching into private modules.
 pub use apply::Apply;
-pub use expr::{BinaryOp, Expr, Literal, MatchArm, UnaryOp};
+pub use expr::{BinaryOp, BlockExpr, Expr, Literal, MatchArm, UnaryOp};
 pub use function::Function;
 pub use import::Import;
 pub use index::Index;
 pub use number::{FloatLiteral, IntBase, IntLiteral, NumberLiteral};
 pub use pattern::{Pattern, PatternLiteral};
-pub(crate) use precedence::{infix_binding_power, prefix_binding_power};
-pub use relation::{Relation, RelationBody, RelationKind, RelationParseErrors, RelationRole};
+pub(crate) use precedence::{BLOCK_ITEM_MIN_BP, infix_binding_power, prefix_binding_power};
+pub use relation::{
+    PrimaryKey,
+    PrimaryKeyBinder,
+    PrimaryKeyExpression,
+    Relation,
+    RelationBody,
+    RelationKind,
+    RelationParseErrors,
+    RelationRole,
+};
 pub use root::Root;
 pub use rule::{
-    AggregationSource, Rule, RuleAggregation, RuleAssignment, RuleBodyExpression, RuleBodyTerm,
+    AggregationSource,
+    Rule,
+    RuleAggregation,
+    RuleAssignment,
+    RuleBodyExpression,
+    RuleBodyTerm,
     RuleForLoop,
 };
 pub use rule_head::RuleHead;

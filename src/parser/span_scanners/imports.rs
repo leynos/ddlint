@@ -5,10 +5,12 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::lexer_helpers::{ident, inline_ws};
-use crate::{Span, SyntaxKind};
-
 use super::utils::{State, parse_and_record};
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::lexer_helpers::{ident, inline_ws},
+};
 
 pub(crate) fn collect_import_spans(
     tokens: &[(SyntaxKind, Span)],
@@ -16,7 +18,7 @@ pub(crate) fn collect_import_spans(
 ) -> (Vec<Span>, Vec<Simple<SyntaxKind>>) {
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
-    let handle_import = |st: &mut State<'_>, span: Span| {
+    let handle_import = |state: &mut State<'_>, span: Span| {
         let ws = inline_ws().repeated();
 
         let ident_parser = ident();
@@ -42,7 +44,7 @@ pub(crate) fn collect_import_spans(
             .padded_by(ws)
             .map_with_span(|_, sp: Span| sp);
 
-        parse_and_record(st, span.start, parser);
+        parse_and_record(state, span.start, parser);
     };
 
     token_dispatch!(st, {

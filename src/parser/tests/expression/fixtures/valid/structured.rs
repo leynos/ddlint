@@ -4,9 +4,13 @@
 //! expressions inside compound forms and parameter lists used by the parent
 //! expression suite.
 
-use crate::parser::ast::{BinaryOp, Expr};
-use crate::parser::tests::expression::fixtures::ExpressionCase;
-use crate::test_util::{closure, field, lit_num, struct_expr, tuple, var};
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        tests::expression::fixtures::ExpressionCase,
+    },
+    test_util::{closure, field, lit_num, struct_expr, tuple, var},
+};
 
 /// Returns structured expression fixtures as [`Vec<ExpressionCase>`].
 ///

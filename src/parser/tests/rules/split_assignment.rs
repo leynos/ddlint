@@ -21,10 +21,10 @@ fn split_assignment_ignores_equals_in_brackets_and_braces() {
     assert_eq!(parts.value, r#"map["a=b"]"#);
 
     let src_braces = "foo = { key = value }";
-    let parts = split_assignment(src_braces)
+    let brace_parts = split_assignment(src_braces)
         .expect("expected split_assignment to split at the top-level =");
-    assert_eq!(parts.pattern, "foo");
-    assert_eq!(parts.value, "{ key = value }");
+    assert_eq!(brace_parts.pattern, "foo");
+    assert_eq!(brace_parts.value, "{ key = value }");
 }
 
 #[test]
@@ -37,8 +37,8 @@ fn split_assignment_trims_pattern_and_value_whitespace() {
     assert_eq!(parts.value, "bar(baz)");
 
     let src_mixed = "foo=   bar   ";
-    let parts =
+    let mixed_parts =
         split_assignment(src_mixed).expect("expected split_assignment to split at the top-level =");
-    assert_eq!(parts.pattern, "foo");
-    assert_eq!(parts.value, "bar");
+    assert_eq!(mixed_parts.pattern, "foo");
+    assert_eq!(mixed_parts.value, "bar");
 }

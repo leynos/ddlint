@@ -196,11 +196,16 @@ macro_rules! declare_lint {
 #[cfg(test)]
 mod tests {
     //! Tests for the linter rule macros.
+    use fixture_lints::allow_fixture_expansion_lints;
     use rowan::NodeOrToken;
     use rstest::{fixture, rstest};
 
-    use crate::linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel};
-    use crate::{Parsed, SyntaxKind, parse};
+    use crate::{
+        Parsed,
+        SyntaxKind,
+        linter::{CstRule, LintDiagnostic, Rule, RuleConfig, RuleCtx, RuleLevel},
+        parse,
+    };
 
     crate::declare_lint! {
         /// ## What it does
@@ -256,11 +261,12 @@ mod tests {
         ctx: RuleCtx,
     }
 
+    #[allow_fixture_expansion_lints]
     #[fixture]
     fn macro_rule_fixture() -> MacroRuleFixture {
         let source = "input relation R(x: u32);";
         let parsed = parse(source);
-        assert!(parsed.errors().is_empty());
+        assert_eq!(parsed.errors().len(), 0);
         let ctx = RuleCtx::from_parsed(source, &parsed, RuleConfig::new());
 
         MacroRuleFixture {
@@ -270,18 +276,22 @@ mod tests {
         }
     }
 
+    /// Runs `rule` over every node and token in the fixture that matches one
+    /// of its target kinds, returning the diagnostics it emitted.
+    ///
+    /// This mirrors the linter's dispatch so the macro-generated handlers can
+    /// be exercised without constructing a full lint run.
     fn run_rule_over_cst(fixture: &MacroRuleFixture, rule: &dyn CstRule) -> Vec<LintDiagnostic> {
         let mut diagnostics = Vec::new();
 
         for element in fixture.parsed.root().syntax().descendants_with_tokens() {
-            if rule.target_kinds().contains(&element.kind()) {
-                match &element {
-                    NodeOrToken::Node(node) => {
-                        rule.check_node(node, &fixture.ctx, &mut diagnostics);
-                    }
-                    NodeOrToken::Token(token) => {
-                        rule.check_token(token, &fixture.ctx, &mut diagnostics);
-                    }
+            if !rule.target_kinds().contains(&element.kind()) {
+                continue;
+            }
+            match &element {
+                NodeOrToken::Node(node) => rule.check_node(node, &fixture.ctx, &mut diagnostics),
+                NodeOrToken::Token(token) => {
+                    rule.check_token(token, &fixture.ctx, &mut diagnostics);
                 }
             }
         }
@@ -317,7 +327,7 @@ mod tests {
             node_hits.first().map(LintDiagnostic::rule_name),
             Some("documented-rule")
         );
-        assert!(!token_hits.is_empty());
+        assert_ne!(token_hits.len(), 0);
         assert!(
             token_hits
                 .iter()
@@ -329,7 +339,7 @@ mod tests {
     fn omitted_handlers_remain_no_op(macro_rule_fixture: MacroRuleFixture) {
         assert_eq!(macro_rule_fixture.source, "input relation R(x: u32);");
         let diagnostics = run_rule_over_cst(&macro_rule_fixture, &NoOpRule);
-        assert!(diagnostics.is_empty());
+        assert_eq!(diagnostics.len(), 0);
     }
 
     #[test]

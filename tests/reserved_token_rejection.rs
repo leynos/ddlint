@@ -3,9 +3,14 @@
 //! These cases exercise the public `parse()` entrypoint so parser-policy
 //! diagnostics remain visible to downstream linter and semantic-model callers.
 
-use ddlint::linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleCtx, Runner};
-use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
-use ddlint::{DdlogLanguage, SyntaxKind, SyntaxToken, parse};
+use ddlint::{
+    DdlogLanguage,
+    SyntaxKind,
+    SyntaxToken,
+    linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleConfig, RuleCtx, Runner},
+    parse,
+    test_util::{assert_custom_parse_error_contains, assert_no_parse_errors},
+};
 use rstest::rstest;
 
 const RESERVED_TYPEDEF_ERROR: &str = "`typedef` is a legacy DDlog keyword; use `type` instead";
@@ -100,8 +105,8 @@ fn runner_skips_rules_for_any_parse_error(
         !parsed.errors().is_empty(),
         "generic syntax error should prevent lint rule execution"
     );
-    if let Some(message) = message {
-        assert_custom_parse_error_contains(parsed.errors(), message);
+    if let Some(expected_message) = message {
+        assert_custom_parse_error_contains(parsed.errors(), expected_message);
     }
     assert!(
         parsed
@@ -123,17 +128,11 @@ fn runner_skips_rules_for_any_parse_error(
 struct ParseErrorSentinelRule;
 
 impl Rule for ParseErrorSentinelRule {
-    fn name(&self) -> &'static str {
-        "parse-error-sentinel"
-    }
+    fn name(&self) -> &'static str { "parse-error-sentinel" }
 
-    fn group(&self) -> &'static str {
-        "test"
-    }
+    fn group(&self) -> &'static str { "test" }
 
-    fn docs(&self) -> &'static str {
-        "Panics if a parser error permits lint rule execution."
-    }
+    fn docs(&self) -> &'static str { "Panics if a parser error permits lint rule execution." }
 }
 
 impl CstRule for ParseErrorSentinelRule {

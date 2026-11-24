@@ -3,7 +3,7 @@
 //! Tests use these compact renderings to compare parsed structure without
 //! coupling to debug formatting.
 
-use super::{Expr, Literal, MatchArm, Pattern};
+use super::{BlockExpr, Expr, Literal, MatchArm, Pattern};
 
 impl Expr {
     /// Display the expression as a simple S-expression for tests.
@@ -35,11 +35,9 @@ impl Expr {
             }
             Self::Struct { name, fields } => format_nary(
                 "struct",
-                std::iter::once(name.clone()).chain(
-                    fields
-                        .iter()
-                        .map(|(name, expr)| format_field(name, &expr.to_sexpr())),
-                ),
+                std::iter::once(name.clone()).chain(fields.iter().map(
+                    |(field_name, field_expr)| format_field(field_name, &field_expr.to_sexpr()),
+                )),
             ),
             Self::Tuple(items) => format_nary("tuple", items.iter().map(Self::to_sexpr)),
             Self::Closure { params, body } => format_nary(
@@ -60,6 +58,7 @@ impl Expr {
                 format_nary(op.symbol(), [lhs.to_sexpr(), rhs.to_sexpr()])
             }
             Self::Group(expr) => format_nary("group", std::iter::once(expr.to_sexpr())),
+            Self::Block(block) => format_block(block),
             Self::ForLoop {
                 pattern,
                 iterable,
@@ -67,8 +66,8 @@ impl Expr {
                 body,
             } => format_for_loop(pattern, iterable, guard.as_deref(), body),
             Self::Match { scrutinee, arms } => format_match(scrutinee, arms),
-            Self::Break => "(break)".to_string(),
-            Self::Continue => "(continue)".to_string(),
+            Self::Break => "(break)".to_owned(),
+            Self::Continue => "(continue)".to_owned(),
             Self::Return { value } => format_nary("return", [value.to_sexpr()]),
             Self::VecLit(items) => format_nary("vec", items.iter().map(Self::to_sexpr)),
             Self::MapLit(entries) => format_nary(
@@ -92,22 +91,48 @@ fn format_field(name: &str, value: &str) -> String {
 
 #[inline]
 fn format_kv(key: &Expr, value: &Expr) -> String {
-    let key = key.to_sexpr();
-    let value = value.to_sexpr();
-    let mut rendered = String::with_capacity(key.len() + value.len() + 10);
+    let key_text = key.to_sexpr();
+    let value_text = value.to_sexpr();
+    let mut rendered = String::with_capacity(key_text.len() + value_text.len() + 10);
     rendered.push_str("(entry ");
-    rendered.push_str(&key);
+    rendered.push_str(&key_text);
     rendered.push(' ');
-    rendered.push_str(&value);
+    rendered.push_str(&value_text);
     rendered.push(')');
     rendered
 }
 
-fn format_nary<I>(label: &str, parts: I) -> String
+/// Render a block as `(block ...)`.
+///
+/// `{}` renders as `(block)`, a block whose final item supplies its value as
+/// `(block (value e))`, and a block ending in `;` as `(block (stmts e...))`.
+/// A block with both renders the statements group before the value group.
+fn format_block(block: &BlockExpr) -> String {
+    // `items()` is the single traversal order; the statement count splits its
+    // leading statements from the optional trailing value.
+    let statement_count = block.statements.len();
+    let mut parts = Vec::new();
+    if statement_count > 0 {
+        parts.push(format_nary(
+            "stmts",
+            block.items().take(statement_count).map(Expr::to_sexpr),
+        ));
+    }
+    if block.value.is_some() {
+        parts.push(format_nary(
+            "value",
+            block.items().skip(statement_count).map(Expr::to_sexpr),
+        ));
+    }
+    format_nary("block", parts)
+}
+
+/// Render a space-separated n-ary S-expression `(label item...)`.
+fn format_nary<I>(label: &str, items: I) -> String
 where
     I: IntoIterator<Item = String>,
 {
-    let parts: Vec<String> = parts.into_iter().collect();
+    let parts: Vec<String> = items.into_iter().collect();
     let capacity = 2 + label.len() + parts.iter().map(|part| 1 + part.len()).sum::<usize>();
     let mut rendered = String::with_capacity(capacity);
     rendered.push('(');
@@ -161,9 +186,7 @@ mod tests {
     use super::*;
     use crate::parser::ast::{BinaryOp, Literal};
 
-    fn var(name: &str) -> Expr {
-        Expr::Variable(name.into())
-    }
+    fn var(name: &str) -> Expr { Expr::Variable(name.into()) }
 
     #[test]
     fn snapshots_nested_expression_format() {

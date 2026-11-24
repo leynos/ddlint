@@ -5,19 +5,24 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::{
-    ast::rule_head::parse_rule_heads,
-    expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
-    lexer_helpers::{atom, balanced_block, inline_ws},
-    top_level_for::is_top_level_for_statement_terminator_dot,
-};
-use crate::{Span, SyntaxKind};
-
 use super::utils::State;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        ast::rule_head::parse_rule_heads,
+        expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
+        lexer_helpers::{atom, balanced_block, inline_ws},
+        top_level_for::is_top_level_for_statement_terminator_dot,
+    },
+};
 
+#[path = "rules_assign.rs"]
+mod assign;
 #[path = "rules_support.rs"]
 mod support;
 
+use assign::assignment_statement;
 use support::is_at_line_start;
 
 fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
@@ -85,15 +90,14 @@ fn rule_decl() -> impl Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>> {
 }
 
 pub(super) fn rule_statement(
-    ws: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
+    ws_parser: impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone + 'static,
 ) -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> + Clone {
     recursive(|stmt| {
-        let ws = ws.clone();
+        let ws = ws_parser.clone();
         let pad = |p: BoxedParser<'static, SyntaxKind, (), Simple<SyntaxKind>>| {
             p.padded_by(ws.clone()).boxed()
         };
 
-        let block = balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE).boxed();
         let skip_stmt = just(SyntaxKind::K_SKIP).ignored().boxed();
         let atom_stmt = atom().boxed();
 
@@ -129,6 +133,11 @@ pub(super) fn rule_statement(
             balanced_block(SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN),
             balanced_block(SyntaxKind::T_LBRACE, SyntaxKind::T_RBRACE),
             balanced_block(SyntaxKind::T_LBRACKET, SyntaxKind::T_RBRACKET),
+            // Keywords that begin or continue statement structure end an
+            // expression statement. `else` belongs here with `if`: if the
+            // general loop consumed it, `if (c) a else b` would swallow its
+            // else branch into the then-branch expression, leaving the
+            // enclosing `if` with nothing to bind.
             filter(|kind: &SyntaxKind| {
                 !matches!(
                     kind,
@@ -137,6 +146,7 @@ pub(super) fn rule_statement(
                         | SyntaxKind::K_IF
                         | SyntaxKind::K_FOR
                         | SyntaxKind::K_SKIP
+                        | SyntaxKind::K_ELSE
                 )
             })
             .ignored()
@@ -144,13 +154,27 @@ pub(super) fn rule_statement(
         ));
         let expr_stmt = expr_token.repeated().at_least(1).ignored();
 
+        let assign_stmt = assignment_statement(ws.clone(), stmt.clone().boxed());
+
         // Keep `expr_stmt` before `atom_stmt` so general expressions (including
-        // assignments/aggregations) win over the more restrictive atom grammar.
-        // This ordering guards future refactors from silently changing rule-body
+        // aggregations) win over the more restrictive atom grammar. This
+        // ordering guards future refactors from silently changing rule-body
         // semantics.
-        choice((for_stmt, if_stmt, block, skip_stmt, expr_stmt, atom_stmt))
-            .padded_by(ws.clone())
-            .ignored()
+        //
+        // A statement that starts with `{` is an expression statement, not a
+        // separate block alternative: `expr_stmt` keeps consuming operators
+        // after the brace group, so `{ x } + 2` stays one term instead of
+        // ending the rule body at `}`.
+        choice((
+            for_stmt,
+            if_stmt,
+            skip_stmt,
+            assign_stmt,
+            expr_stmt,
+            atom_stmt,
+        ))
+        .padded_by(ws.clone())
+        .ignored()
     })
 }
 
@@ -212,10 +236,10 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
 
     let start_idx = st.stream.cursor();
     let parser = rule_decl();
-    let (rule_span, err) = st.parse_span(parser, span.start);
+    let (maybe_rule_span, parse_errors) = st.parse_span(parser, span.start);
 
-    let Some(rule_span) = rule_span else {
-        st.extra.extend(err);
+    let Some(rule_span) = maybe_rule_span else {
+        st.extra.extend(parse_errors);
         let end = st.stream.line_end(st.stream.cursor());
         st.stream.skip_until(end);
         return;
@@ -230,8 +254,8 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
         st.extra.extend(errs);
     }
 
-    for span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
-        if let Err(err) = validate_expression(st.stream.src(), span.clone()) {
+    for literal_span in rule_body_literal_spans(st.stream.tokens(), start_idx, end) {
+        if let Err(err) = validate_expression(st.stream.src(), literal_span.clone()) {
             match err {
                 ExpressionError::Parse(errs) => {
                     st.extra.extend(errs);
@@ -242,7 +266,7 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
                 }
             }
         }
-        exprs.push(span);
+        exprs.push(literal_span);
     }
 
     st.stream.skip_until(end);
@@ -250,6 +274,10 @@ fn parse_rule_at_line_start(st: &mut State<'_>, span: Span, exprs: &mut Vec<Span
 
 /// Skip a top-level `for` statement span so multiline bodies do not leak into
 /// standalone rule spans.
+#[expect(
+    clippy::result_large_err,
+    reason = "chumsky's `Simple` error is large and `filter_map` fixes the closure's error type"
+)]
 fn skip_top_level_for_statement(
     st: &mut State<'_>,
     for_span: Span,

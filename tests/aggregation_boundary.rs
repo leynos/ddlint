@@ -5,10 +5,13 @@
 //! callers must request `Rule::body_terms()` to trigger aggregation
 //! classification and validation.
 
-use ddlint::parse;
-use ddlint::parser::ast::Rule;
-use ddlint::test_util::{
-    assert_custom_parse_error_contains, assert_first_rule_without_parse_stage_aggregation_errors,
+use ddlint::{
+    parse,
+    parser::ast::Rule,
+    test_util::{
+        assert_custom_parse_error_contains,
+        assert_first_rule_without_parse_stage_aggregation_errors,
+    },
 };
 
 fn assert_body_terms_error_contains(rule: &Rule, expected_message: &str) {
@@ -32,10 +35,8 @@ fn parse_defers_duplicate_group_by_error_until_body_terms() {
 #[test]
 fn parse_defers_legacy_aggregate_arity_error_until_body_terms() {
     let parsed = parse(
-        "Totals(user, total) :- \
-         Orders(user, amt), \
-         Aggregate((user), sum(amt), extra_arg), \
-         total = __group.",
+        "Totals(user, total) :- Orders(user, amt), Aggregate((user), sum(amt), extra_arg), total \
+         = __group.",
     );
     let rule = assert_first_rule_without_parse_stage_aggregation_errors(&parsed);
     assert_body_terms_error_contains(&rule, "Aggregate expects exactly two arguments");

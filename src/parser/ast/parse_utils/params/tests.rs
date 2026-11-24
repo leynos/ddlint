@@ -1,13 +1,25 @@
 //! Tests for parameter parsing helpers.
 
-use super::super::errors::{Delim, ParseError};
-use super::*;
-use crate::SyntaxKind;
-use crate::parser::ast::AstNode;
-use crate::parser::parse;
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::{SyntaxElement, TextRange};
 use rstest::{fixture, rstest};
 
+use super::{
+    super::errors::{Delim, ParseError},
+    *,
+};
+use crate::{
+    SyntaxKind,
+    parser::{ast::AstNode, parse},
+};
+
+/// Collect the syntax elements beneath the item selected from `src`.
+///
+/// The fixture prefers the first function, then the first relation, and
+/// otherwise falls back to the root's children. That order matches the item
+/// kinds exercised by the parameter-parsing cases, so each case can place its
+/// parameters in whichever position it needs.
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
     let parsed = parse(src);
@@ -137,7 +149,7 @@ fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case
     let opener_kind = match opener {
         "(" => SyntaxKind::T_LPAREN,
         "[" => SyntaxKind::T_LBRACKET,
-        _ => unreachable!("unsupported opener"),
+        _ => panic!("unsupported opener"),
     };
     let spans: Vec<TextRange> = elements
         .iter()
@@ -165,7 +177,7 @@ fn unclosed_other_delims(#[case] src: &str, #[case] expected_delim: char, #[case
         ParseError::UnclosedDelimiter { span, .. } => {
             assert_eq!(*span, open_span);
         }
-        _ => unreachable!(),
+        other => panic!("unexpected error: {other:?}"),
     }
 }
 
@@ -232,74 +244,82 @@ fn parse_error_cases(
     expectation.assert_matches(err);
 }
 
+/// One parameter-parsing scenario.
+struct ParameterScenario {
+    src: &'static str,
+    expected_pairs: usize,
+    expected_count: Option<usize>,
+    error_validator: fn(&[ParseError]) -> bool,
+}
+
+/// Check parameter name/type pairs and diagnostics across parsing scenarios.
 #[rstest]
-#[case(
-    "function f(x:, y:) {}",
-    0,
-    Some(2),
-    |errors: &[ParseError]| errors
+#[case(ParameterScenario {
+    src: "function f(x:, y:) {}",
+    expected_pairs: 0,
+    expected_count: Some(2),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingType { .. }))
-)]
-#[case(
-    "function f(:u32, :u64) {}",
-    0,
-    Some(2),
-    |errors: &[ParseError]| errors
+        .all(|e| matches!(e, ParseError::MissingType { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(:u32, :u64) {}",
+    expected_pairs: 0,
+    expected_count: Some(2),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingName { .. }))
-)]
-#[case(
-    "function f(x: {) {}",
-    0,
-    None,
-    |errors: &[ParseError]| errors
+        .all(|e| matches!(e, ParseError::MissingName { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(x: {) {}",
+    expected_pairs: 0,
+    expected_count: None,
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .any(|e| matches!(e, ParseError::MissingType { .. }))
-)]
-#[case(
-    "function f(x:) {}",
-    0,
-    Some(1),
-    |errors: &[ParseError]| errors
+        .any(|e| matches!(e, ParseError::MissingType { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(x:) {}",
+    expected_pairs: 0,
+    expected_count: Some(1),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingType { .. }))
-)]
-#[case(
-    "function f(:u32) {}",
-    0,
-    Some(1),
-    |errors: &[ParseError]| errors
+        .all(|e| matches!(e, ParseError::MissingType { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f(:u32) {}",
+    expected_pairs: 0,
+    expected_count: Some(1),
+    error_validator: |errors: &[ParseError]| errors
         .iter()
-        .all(|e| matches!(e, ParseError::MissingName { .. }))
-)]
-#[case(
-    "function f() {}",
-    0,
-    Some(0),
-    |errors: &[ParseError]| errors.is_empty()
-)]
-#[case(
-    "function f(x: u32) {}",
-    1,
-    Some(0),
-    |errors: &[ParseError]| errors.is_empty()
-)]
-#[case(
-    "",
-    0,
-    Some(0),
-    |errors: &[ParseError]| errors.is_empty()
-)]
-fn parameter_parsing_scenarios(
-    #[case] src: &str,
-    #[case] expected_pairs: usize,
-    #[case] expected_count: Option<usize>,
-    #[case] error_validator: fn(&[ParseError]) -> bool,
-    #[with(src)] tokens_for: Vec<SyntaxElement<DdlogLanguage>>,
-) {
-    let _ = src;
-    let (pairs, errors) = parse_name_type_pairs(tokens_for.into_iter());
+        .all(|e| matches!(e, ParseError::MissingName { .. })),
+})]
+#[case(ParameterScenario {
+    src: "function f() {}",
+    expected_pairs: 0,
+    expected_count: Some(0),
+    error_validator: |errors: &[ParseError]| errors.is_empty(),
+})]
+#[case(ParameterScenario {
+    src: "function f(x: u32) {}",
+    expected_pairs: 1,
+    expected_count: Some(0),
+    error_validator: |errors: &[ParseError]| errors.is_empty(),
+})]
+#[case(ParameterScenario {
+    src: "",
+    expected_pairs: 0,
+    expected_count: Some(0),
+    error_validator: |errors: &[ParseError]| errors.is_empty(),
+})]
+fn parameter_parsing_scenarios(#[case] case: ParameterScenario) {
+    let ParameterScenario {
+        src,
+        expected_pairs,
+        expected_count,
+        error_validator,
+    } = case;
+    let (pairs, errors) = parse_name_type_pairs(tokens_for(src).into_iter());
     assert_eq!(pairs.len(), expected_pairs);
 
     if let Some(count) = expected_count {
@@ -314,7 +334,7 @@ fn missing_colon_does_not_consume_closing_paren() {
     let src = "function f(x y) {}";
     let elements = tokens_for(src);
     let (pairs, errors) = parse_name_type_pairs(elements.clone().into_iter());
-    assert!(pairs.is_empty());
+    assert_eq!(pairs.len(), 0);
     assert_eq!(errors.len(), 1);
     let err = errors.first().expect("missing error");
     assert!(matches!(err, ParseError::MissingColon { .. }));

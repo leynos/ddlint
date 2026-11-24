@@ -2,37 +2,45 @@
 //!
 //! These tests cover single and multi-column indexes and error cases.
 
-use super::helpers::{normalize_whitespace, parse_index, pretty_print};
-use crate::test_util::{
-    assert_custom_parse_error_contains, assert_no_parse_errors, assert_parse_error,
-};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+use super::helpers::{normalize_whitespace, parse_index, pretty_print};
+use crate::test_util::{
+    assert_custom_parse_error_contains,
+    assert_no_parse_errors,
+    assert_parse_error,
+};
+
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_single_column() -> &'static str {
     "index Idx_User_username(username: string) on User[username]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_multi_column() -> &'static str {
     "index Idx_Session_user_time(user_id: u32, start_time: u64) on UserSession[user_id, start_time]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_invalid_missing_on() -> &'static str {
     "index Idx_Invalid(username: string) User[username]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_bracket_target() -> &'static str {
     "index Idx_lower_username(username: string) on User[lower(username)]"
 }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn index_legacy_shorthand() -> &'static str {
-    "index Idx_Legacy on User(username)"
-}
+fn index_legacy_shorthand() -> &'static str { "index Idx_Legacy on User(username)" }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn index_whitespace_variations() -> &'static str {
     "  index  Idx_User_ws (\n    username: string\n  ) \t on\n  User [\n    username  ]  "
@@ -42,22 +50,22 @@ fn index_whitespace_variations() -> &'static str {
 #[case(
     index_single_column(),
     "Idx_User_username",
-    vec![("username".to_string(), "string".to_string())],
+    vec![("username".to_owned(), "string".to_owned())],
     "User[username]"
 )]
 #[case(
     index_multi_column(),
     "Idx_Session_user_time",
     vec![
-        ("user_id".to_string(), "u32".to_string()),
-        ("start_time".to_string(), "u64".to_string())
+        ("user_id".to_owned(), "u32".to_owned()),
+        ("start_time".to_owned(), "u64".to_owned())
     ],
     "UserSession[user_id,start_time]"
 )]
 #[case(
     index_bracket_target(),
     "Idx_lower_username",
-    vec![("username".to_string(), "string".to_string())],
+    vec![("username".to_owned(), "string".to_owned())],
     "User[lower(username)]"
 )]
 fn parses_indexes(

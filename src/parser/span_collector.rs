@@ -5,9 +5,8 @@
 //! Each collector owns a `SpanCollector` with additional state as
 //! required by the parsing logic.
 
-use crate::{Span, SyntaxKind};
-
 use super::token_stream::TokenStream;
+use crate::{Span, SyntaxKind};
 
 /// Common state used when scanning the token stream.
 #[derive(Debug)]
@@ -41,7 +40,7 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
     /// let collector = SpanCollector::new(tokens, src, extra);
     /// ```
     #[must_use]
-    pub(crate) fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str, extra: Extra) -> Self {
+    pub(crate) const fn new(tokens: &'a [(SyntaxKind, Span)], src: &'a str, extra: Extra) -> Self {
         Self {
             stream: TokenStream::new(tokens, src),
             spans: Vec::new(),
@@ -51,9 +50,7 @@ impl<'a, Extra> SpanCollector<'a, Extra> {
 
     /// Split the collector into the recorded spans and extra data.
     #[must_use]
-    pub(crate) fn into_parts(self) -> (Vec<Span>, Extra) {
-        (self.spans, self.extra)
-    }
+    pub(crate) fn into_parts(self) -> (Vec<Span>, Extra) { (self.spans, self.extra) }
 
     /// Skip tokens up to the end of the current line without recording a span.
     pub(crate) fn skip_line(&mut self) {
@@ -89,9 +86,10 @@ mod tests {
     //! These tests validate that the collector exposes its token stream
     //! correctly, and that extra state can be retrieved without consuming the
     //! collected spans.
+    use rstest::rstest;
+
     use super::*;
     use crate::test_util::tokenize;
-    use rstest::rstest;
 
     #[rstest]
     fn new_initialises_state() {
@@ -101,7 +99,7 @@ mod tests {
         assert_eq!(collector.stream.cursor(), 0);
         assert_eq!(collector.stream.tokens(), tokens.as_slice());
         assert_eq!(collector.stream.src(), src);
-        assert!(collector.spans.is_empty());
+        assert_eq!(collector.spans.len(), 0);
     }
 
     #[test]

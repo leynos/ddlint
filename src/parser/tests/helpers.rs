@@ -3,9 +3,18 @@
 //! Utilities here support concise feature-focused parser tests.
 
 use crate::{
-    SyntaxKind, parse,
-    parser::ast::{Function, Import, Index, Relation, Transformer},
+    SyntaxKind,
+    parse,
+    parser::ast::{AstNode, Function, Import, Index, PrimaryKey, Relation, Transformer},
 };
+
+/// Binder names of a primary-key clause as owned strings.
+///
+/// `PrimaryKey::binder_names` borrows from the key, so comparisons that keep
+/// the names alive past the key need owned copies.
+pub(super) fn owned_binder_names(key: &PrimaryKey) -> Vec<String> {
+    key.binder_names().into_iter().map(str::to_owned).collect()
+}
 
 type SyntaxNode = rowan::SyntaxNode<crate::DdlogLanguage>;
 type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
@@ -19,21 +28,15 @@ type SyntaxElement = rowan::SyntaxElement<crate::DdlogLanguage>;
 pub(super) struct SourceText(String);
 
 impl From<&str> for SourceText {
-    fn from(src: &str) -> Self {
-        Self(src.to_string())
-    }
+    fn from(src: &str) -> Self { Self(src.to_owned()) }
 }
 
 impl From<String> for SourceText {
-    fn from(src: String) -> Self {
-        Self(src)
-    }
+    fn from(src: String) -> Self { Self(src) }
 }
 
 impl AsRef<str> for SourceText {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
+    fn as_ref(&self) -> &str { &self.0 }
 }
 
 /// Collect the text of a syntax subtree.
@@ -59,6 +62,37 @@ pub(super) fn pretty_print(node: &SyntaxNode) -> String {
     }
 
     out
+}
+
+/// End offset of the first relation declaration node in `parsed`.
+///
+/// `None` means the source produced no relation, which lets callers decide
+/// whether that is a test failure or a skipped case.
+pub(super) fn first_relation_end(parsed: &crate::Parsed) -> Option<u32> {
+    parsed
+        .root()
+        .relations()
+        .into_iter()
+        .next()
+        .map(|relation| u32::from(relation.syntax().text_range().end()))
+}
+
+/// CST kinds and token texts for elements that start at or after `start`.
+///
+/// Comparing this sequence is how `INV-TERM` checks that a key clause changes
+/// nothing after the relation. Token text is included so a difference in
+/// trivia ownership is visible rather than hidden by a kinds-only comparison.
+pub(super) fn structure_after(parsed: &crate::Parsed, start: u32) -> Vec<String> {
+    parsed
+        .root()
+        .syntax()
+        .descendants_with_tokens()
+        .filter(|element| u32::from(element.text_range().start()) >= start)
+        .map(|element| match element {
+            rowan::NodeOrToken::Node(node) => format!("{:?}", node.kind()),
+            rowan::NodeOrToken::Token(token) => format!("{:?} {:?}", token.kind(), token.text()),
+        })
+        .collect()
 }
 
 /// Count descendant nodes of a given `SyntaxKind`.
@@ -93,8 +127,8 @@ pub(super) fn normalize_whitespace(text: &str) -> String {
 /// Parse `src`, and assert that the program is well formed.
 #[track_caller]
 pub(super) fn parse_ok(src: impl Into<SourceText>) -> crate::Parsed {
-    let src = src.into();
-    let parsed = parse(src.as_ref());
+    let source = src.into();
+    let parsed = parse(source.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     parsed
@@ -103,8 +137,8 @@ pub(super) fn parse_ok(src: impl Into<SourceText>) -> crate::Parsed {
 /// Parse `src` expecting at least one error.
 #[track_caller]
 pub(super) fn parse_err(src: impl Into<SourceText>) -> crate::Parsed {
-    let src = src.into();
-    let parsed = parse(src.as_ref());
+    let source = src.into();
+    let parsed = parse(source.as_ref());
     assert!(
         !parsed.errors().is_empty(),
         "expected parse to fail but it succeeded"
@@ -117,9 +151,9 @@ pub(super) fn parse_err(src: impl Into<SourceText>) -> crate::Parsed {
 /// Parse and ensure the source round-trips via `pretty_print`.
 #[track_caller]
 pub(super) fn round_trip(src: impl Into<SourceText>) {
-    let src = src.into();
-    let parsed = parse_ok(src.as_ref());
-    assert_eq!(pretty_print(parsed.root().syntax()), src.as_ref());
+    let source = src.into();
+    let parsed = parse_ok(source.as_ref());
+    assert_eq!(pretty_print(parsed.root().syntax()), source.as_ref());
 }
 
 /// Parse a program and extract the first item produced by `extractor`.
@@ -133,8 +167,8 @@ fn parse_single_item<T: Clone, F: FnOnce(&crate::parser::ast::Root) -> Vec<T>>(
     src: impl Into<SourceText>,
     extractor: F,
 ) -> Option<T> {
-    let src = src.into();
-    let parsed = parse(src.as_ref());
+    let source = src.into();
+    let parsed = parse(source.as_ref());
     crate::test_util::assert_no_parse_errors(parsed.errors());
     assert_eq!(parsed.root().kind(), SyntaxKind::N_DATALOG_PROGRAM);
     let items = extractor(parsed.root());

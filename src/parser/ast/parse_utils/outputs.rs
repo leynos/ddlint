@@ -5,9 +5,8 @@
 
 use rowan::SyntaxElement;
 
-use crate::{DdlogLanguage, SyntaxKind};
-
 use super::super::skip_whitespace_and_comments;
+use crate::{DdlogLanguage, SyntaxKind};
 
 pub(crate) fn skip_to_top_level_colon<I>(iter: &mut std::iter::Peekable<I>)
 where
@@ -32,9 +31,7 @@ where
 
     skip_whitespace_and_comments(iter);
     match iter.next() {
-        Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => {
-            Some(t.text().to_string())
-        }
+        Some(NodeOrToken::Token(t)) if t.kind() == SyntaxKind::T_IDENT => Some(t.text().to_owned()),
         _ => None,
     }
 }
@@ -56,11 +53,11 @@ where
     }
 }
 
-pub(crate) fn parse_output_list<I>(iter: I) -> Vec<String>
+pub(crate) fn parse_output_list<I>(elements: I) -> Vec<String>
 where
     I: Iterator<Item = SyntaxElement<DdlogLanguage>>,
 {
-    let mut iter = iter.peekable();
+    let mut iter = elements.peekable();
     skip_to_top_level_colon(&mut iter);
     collect_comma_separated_identifiers(&mut iter)
 }
@@ -83,8 +80,7 @@ where
 mod tests {
     //! Tests for parse output helpers.
     use super::*;
-    use crate::parser::ast::AstNode;
-    use crate::parser::parse;
+    use crate::parser::{ast::AstNode, parse};
 
     #[test]
     fn collects_output_names() {
@@ -97,7 +93,7 @@ mod tests {
             .cloned()
             .expect("transformer missing");
         let names = parse_output_list(tr.syntax().children_with_tokens());
-        assert_eq!(names, vec!["Out1".to_string(), "Out2".to_string()]);
+        assert_eq!(names, vec!["Out1".to_owned(), "Out2".to_owned()]);
     }
 
     #[test]
@@ -111,7 +107,7 @@ mod tests {
             .cloned()
             .expect("transformer missing");
         let names = parse_output_list(tr.syntax().children_with_tokens());
-        assert_eq!(names, vec!["Out1".to_string()]);
+        assert_eq!(names, vec!["Out1".to_owned()]);
     }
 
     #[test]
@@ -121,7 +117,7 @@ mod tests {
         // Malformed output lists do not yield a transformer node, so we parse
         // against the root token stream to ensure empty outputs are handled.
         let names = parse_output_list(parsed.root().syntax().children_with_tokens());
-        assert!(names.is_empty());
+        assert_eq!(names.len(), 0);
     }
 
     #[test]
@@ -131,6 +127,6 @@ mod tests {
         // Trailing commas invalidate the declaration, so parse the root tokens
         // to confirm we return no outputs from malformed input.
         let names = parse_output_list(parsed.root().syntax().children_with_tokens());
-        assert!(names.is_empty());
+        assert_eq!(names.len(), 0);
     }
 }

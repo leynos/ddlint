@@ -2,14 +2,14 @@
 //!
 //! Covers standard and aliased imports along with basic error recovery.
 
+use rstest::rstest;
+
+use super::helpers::parse_import;
 use crate::{
     ast::Import,
     parse,
     test_util::{assert_no_parse_errors, assert_parse_error},
 };
-use rstest::rstest;
-
-use super::helpers::parse_import;
 
 #[rstest]
 #[case::standard("import standard_library", "standard_library", None)]
@@ -39,10 +39,10 @@ fn import_statement_invalid_missing_path() {
 fn import_invalid_then_valid() {
     let src = "import as\nimport foo";
     let parsed = parse(src);
-    assert!(!parsed.errors().is_empty());
+    assert_ne!(parsed.errors().len(), 0);
     let imports = parsed.root().imports();
     assert_eq!(imports.len(), 1);
-    assert_eq!(imports.first().map(Import::path), Some("foo".to_string()));
+    assert_eq!(imports.first().map(Import::path), Some("foo".to_owned()));
 }
 
 #[rstest]

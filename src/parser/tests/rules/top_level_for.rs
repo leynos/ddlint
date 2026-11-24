@@ -1,52 +1,82 @@
 //! Tests for top-level `for` desugaring into semantic rules.
 
-use super::super::helpers::{parse_err, parse_ok};
-use crate::parser::ast::{Expr, SemanticRuleOrigin};
-use crate::parser::top_level_for::{
-    UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD,
-};
-use crate::test_util::{ErrorPattern, find_matching_error};
 use rstest::rstest;
 
+use super::super::helpers::{parse_err, parse_ok};
+use crate::{
+    parser::{
+        ast::{Expr, SemanticRuleOrigin},
+        top_level_for::{UNSUPPORTED_TOP_LEVEL_FOR_BODY, UNSUPPORTED_TOP_LEVEL_FOR_HEAD},
+    },
+    test_util::{ErrorPattern, find_matching_error},
+};
+
+/// One top-level `for` desugaring case.
+///
+/// Cases that only assert rule counts start from [`DesugarCase::counts`] and
+/// override the optional sexpr expectations they care about.
+struct DesugarCase {
+    src: &'static str,
+    expected_semantic_rules: usize,
+    expected_cst_rules: usize,
+    expected_heads: &'static [&'static str],
+    expected_body: &'static [&'static str],
+}
+
+impl DesugarCase {
+    /// Builds a case that asserts only the rule counts.
+    const fn counts(
+        src: &'static str,
+        expected_semantic_rules: usize,
+        expected_cst_rules: usize,
+    ) -> Self {
+        Self {
+            src,
+            expected_semantic_rules,
+            expected_cst_rules,
+            expected_heads: &[],
+            expected_body: &[],
+        }
+    }
+}
+
+/// Exercise top-level `for` desugaring across rule and tuple-index shapes.
 #[rstest]
-#[case(
-    "for (x in Items(x)) Process(x).",
-    1,
-    0,
-    &["(call Process x)"],
-    &["(call Items x)"],
-)]
-#[case(
-    "A(x) :- B(x). for (y in C(y)) D(y).",
-    1,
-    1,
-    &["(call D y)"],
-    &[],
-)]
-#[case(
-    "for (x in Items(x)) Process(x).\nfor (y in More(y)) Process2(y).",
-    2,
-    0,
-    &["(call Process x)", "(call Process2 y)"],
-    &[],
-)]
+#[case(DesugarCase {
+    expected_heads: &["(call Process x)"],
+    expected_body: &["(call Items x)"],
+    ..DesugarCase::counts("for (x in Items(x)) Process(x).", 1, 0)
+})]
+#[case(DesugarCase {
+    expected_heads: &["(call D y)"],
+    ..DesugarCase::counts("A(x) :- B(x). for (y in C(y)) D(y).", 1, 1)
+})]
+#[case(DesugarCase {
+    expected_heads: &["(call Process x)", "(call Process2 y)"],
+    ..DesugarCase::counts(
+        "for (x in Items(x)) Process(x).\nfor (y in More(y)) Process2(y).",
+        2,
+        0,
+    )
+})]
 // Intentionally omits `expected_heads`/`expected_body`; this harness still checks
 // `SemanticRuleOrigin::TopLevelFor` plus desugared rule counts for tuple-index heads.
-#[case("for (x in Items(x)) pair.0(x).", 1, 0, &[], &[])]
+#[case(DesugarCase::counts("for (x in Items(x)) pair.0(x).", 1, 0))]
 // Intentionally omits `expected_heads`/`expected_body`; this harness still checks
 // `SemanticRuleOrigin::TopLevelFor` plus desugared rule counts for spaced tuple-index heads.
-#[case("for (x in Items(x)) pair. 0(x).", 1, 0, &[], &[])]
+#[case(DesugarCase::counts("for (x in Items(x)) pair. 0(x).", 1, 0))]
 // Intentionally omits `expected_heads`/`expected_body`; this harness still checks
 // `SemanticRuleOrigin::TopLevelFor` plus desugared rule counts for indented top-level `for`.
-#[case("    for (x in Items(x)) Process(x).", 1, 0, &[], &[])]
-#[case("R(x) :- for (item in Items(item)) Process(item).", 0, 1, &[], &[])]
-fn top_level_for_desugaring_cases(
-    #[case] src: &str,
-    #[case] expected_semantic_rules: usize,
-    #[case] expected_cst_rules: usize,
-    #[case] expected_heads: &[&str],
-    #[case] expected_body: &[&str],
-) {
+#[case(DesugarCase::counts("    for (x in Items(x)) Process(x).", 1, 0))]
+#[case(DesugarCase::counts("R(x) :- for (item in Items(item)) Process(item).", 0, 1,))]
+fn top_level_for_desugaring_cases(#[case] case: DesugarCase) {
+    let DesugarCase {
+        src,
+        expected_semantic_rules,
+        expected_cst_rules,
+        expected_heads,
+        expected_body,
+    } = case;
     let parsed = parse_ok(src);
     assert_eq!(parsed.root().rules().len(), expected_cst_rules);
     assert_eq!(parsed.semantic_rules().len(), expected_semantic_rules);
@@ -69,7 +99,7 @@ fn top_level_for_desugaring_cases(
             .collect::<Vec<_>>();
         let expected = expected_heads
             .iter()
-            .map(|head| (*head).to_string())
+            .map(|head| (*head).to_owned())
             .collect::<Vec<_>>();
         assert_eq!(heads, expected);
     }
@@ -81,7 +111,7 @@ fn top_level_for_desugaring_cases(
         let body = rule.body().iter().map(Expr::to_sexpr).collect::<Vec<_>>();
         let expected = expected_body
             .iter()
-            .map(|item| (*item).to_string())
+            .map(|item| (*item).to_owned())
             .collect::<Vec<_>>();
         assert_eq!(body, expected);
     }
@@ -102,9 +132,9 @@ fn top_level_for_with_guard_and_nested_loop_desugars_in_order() {
     assert_eq!(
         body,
         vec![
-            "(call A a)".to_string(),
-            "(call ready a)".to_string(),
-            "(call B b)".to_string(),
+            "(call A a)".to_owned(),
+            "(call ready a)".to_owned(),
+            "(call B b)".to_owned(),
         ]
     );
 }
@@ -138,7 +168,7 @@ fn unsupported_top_level_for_body_reports_diagnostic() {
         index == 0,
         "expected unsupported-body diagnostic to be first, got index {index}"
     );
-    assert!(parsed.semantic_rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 0);
     assert!(parsed.root().rules().is_empty());
 }
 
@@ -157,6 +187,6 @@ fn unsupported_top_level_for_head_reports_head_specific_diagnostic() {
         panic!("expected top-level for head diagnostic, got: {errors:?}");
     };
     assert_eq!(index, 0);
-    assert!(parsed.semantic_rules().is_empty());
+    assert_eq!(parsed.semantic_rules().len(), 0);
     assert!(parsed.root().rules().is_empty());
 }

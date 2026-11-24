@@ -151,14 +151,61 @@ Prefixing any string form with `i` yields an **interned string**, desugared to
 
 ### 3.3 Collections
 
-- **Vector literals:** `[e1, e2, …]` are parsed as collection literals today.
-  Builder-sequence lowering such as `vec_with_capacity(n); push(e)…` is
-  scheduled work; see `docs/parser-conformance-register.md` item 10 and
-  `docs/roadmap.md` item `2.6.3`.
-- **Map literals:** `{k1: v1, k2: v2, …}` are also preserved as collection
-  literals today. Lowering to forms such as `map_empty(); insert(k, v)…` is
-  likewise scheduled work; see `docs/parser-conformance-register.md` item 10 and
-  `docs/roadmap.md` item `2.6.3`.
+Upstream Differential Datalog (DDlog) has exactly two collection literal forms,
+both bracket-delimited and both non-empty. Braces are never collection syntax;
+they introduce a block expression (section 3.4).
+
+- **Vector literals:** `[e1, e2, …]` with at least one element and an optional
+  trailing comma. The empty spelling `[]` is not DDlog syntax; `vec_empty()`
+  from the standard library is the upstream way to build an empty vector. The
+  parser reports a deterministic diagnostic for `[]`. Vector literals are
+  preserved as `Expr::VecLit` today; builder-sequence lowering such as
+  `vec_with_capacity(n); push(e)…` is scheduled work. See
+  `docs/parser-conformance-register.md` item 10 and `docs/roadmap.md` item
+  `2.6.3`.
+- **Map literals:** `[k1 -> v1, k2 -> v2, …]` with at least one entry and an
+  optional trailing comma. `->` is not an operator, so it separates an entry's
+  key from its value only. A literal that mixes vector elements and map entries
+  is rejected. Map literals are preserved as `Expr::MapLit` today; lowering to
+  forms such as `map_empty(); insert(k, v)…` is likewise scheduled work. See
+  `docs/parser-conformance-register.md` item 10 and `docs/roadmap.md` item
+  `2.6.3`.
+- **No brace map literals:** the earlier ddlint extension `{k: v, …}` is
+  withdrawn with no compatibility path. See
+  [ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md).
+
+### 3.4 Block expressions
+
+In expression-prefix position, braces introduce a block expression, never a
+collection literal and never a parenthesized group. A `{` directly after an
+identifier in a context that permits struct literals still opens a struct
+literal, so `C { f: 1 }` remains a struct expression; register item 17 covers
+the remaining struct syntax work. A block is a `;`-separated sequence of items.
+The final item is the block's value unless it is followed by `;`, and `{}` is
+the empty block, whose value is unit.
+
+```ebnf
+BlockExpr  ::= '{' BlockBody? '}'
+BlockBody  ::= Expr (';' Expr)* ';'?
+```
+
+- `;` separates items only inside braces. Commas are not block separators; a
+  comma between items reports `expected ';' or '}' after a block item`.
+- A doubled separator (`{ a;; b }`) and a block whose first token is `;`
+  (`{ ; }`) report `empty statement in block: remove the extra ';'`.
+- An unterminated block reports `expected '}' to close block`.
+- A block item is parsed above the sequencing binding power, so a control-flow
+  tail cannot swallow the following `;`. Outside braces, `;` remains an infix
+  sequencing expression until roadmap item `2.6.10` (register item 16).
+- The block is represented as `Expr::Block(BlockExpr)`. `statements` holds the
+  items followed by `;`, and `value` holds the final item when it is not.
+  Consequently `{ e }` is a block whose value is `e`, while `( e )` remains the
+  parenthesized group.
+- The earlier ddlint brace map literals `{k: v, …}` and brace type syntax are
+  withdrawn; maps are bracket-delimited (section 3.3).
+- Implementation status: `implemented`. See
+  `docs/parser-conformance-register.md` item 15 and
+  [ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md).
 
 ______________________________________________________________________
 
@@ -196,6 +243,11 @@ type-ascription operator, and `as` is the implemented expression cast operator;
 both use the type-operator binding level between shifts and bitwise operators.
 `as` is also the import alias keyword.
 
+`;` is not an operator in the table. Inside braces it separates block items
+(section 3.4). Outside braces, ddlint still accepts `;` as an infix sequencing
+expression in any expression position; that surface is tracked by register item
+16 and roadmap item `2.6.10`.
+
 ______________________________________________________________________
 
 ## 5. Grammar (mini‑Extended Backus–Naur Form (EBNF))
@@ -224,8 +276,8 @@ Typedef  ::= 'type' UcName TypeParams? '=' Type ';'
 Type     ::= UcName TypeArgs? | TupleType | MapType | VecType | Primitive
 
 TupleType ::= '(' (Type (',' Type)*)? ')'
-MapType   ::= '{' Type ':' Type '}'
-VecType   ::= '[' Type ']'
+MapType   ::= 'Map' '<' Type ',' Type '>'
+VecType   ::= 'Vec' '<' Type '>'
 Primitive ::= 'bool' | 'i8' | 'u8' | 'i16' | … | 'u128'
             | 'f32' | 'f64' | 'string' | 'interned'
 ```
@@ -233,6 +285,12 @@ Primitive ::= 'bool' | 'i8' | 'u8' | 'i16' | … | 'u128'
 The import alias uses the documented `LcName` category. The current parser
 accepts the generic identifier token here and does not enforce that case
 restriction.
+
+`Map<K, V>` and `Vec<T>` are the upstream standard-library type constructors;
+the brace and bracket type syntaxes of earlier ddlint drafts are withdrawn (see
+[ADR 006](adrs/adr-0006-block-expressions-and-collection-syntax.md)).
+ddlint stores type text without analysing it, so this decision changes the
+specification rather than parser behaviour.
 
 ### 5.3 Functions and closures
 
@@ -292,10 +350,17 @@ Notes:
 - `PrimaryKey` is valid only on `input` relations with record bodies.
 - The `PrimaryKey` binder list accepts one or more comma-separated `LcName`
   binders. Upstream DDlog accepts a single lambda-style binder; this grammar
-  additionally accepts compound binders.
+  additionally accepts compound binders. Any other form is rejected with
+  `D-REL-007`. The current parser accepts the generic identifier token here and
+  does not enforce that case restriction, so `primary key (Foo)` is accepted;
+  the gap is recorded in the conformance register and tracked as roadmap item
+  `2.6.9`.
 - The trailing `PrimaryKey` expression is optional. When present, the parser
-  preserves it as CST text; typed access is deferred, and AST helpers currently
-  expose the binder/list names from the parenthesized portion.
+  preserves it as CST text; `PrimaryKeyExpression` bounds the non-trivia hull
+  after the binder list and parses it lazily with source-absolute error spans.
+  Binder names never depend on whether the expression parses.
+- A `;` at the declaring nesting level ends the primary-key clause, so text
+  after it is scanned as a new statement.
 - Bracket-wrapped primary-key clauses (`[primary key ...]`) are rejected.
 - `&UcName` in declarations marks a reference relation. `&UcName` in rule
   **heads** triggers special semantics (see §7.3).
@@ -369,10 +434,14 @@ IfStmt          ::= 'if' '(' Expr ')' Statement ('else' Statement)?
 MatchStmt       ::= 'match' '(' Expr ')' '{' MatchArm (',' MatchArm)* '}'
 MatchArm        ::= Pattern '->' Statement
 Skip            ::= 'skip'
-Block           ::= '{' Statement* '}'
+Block           ::= BlockExpr            // section 3.4
 ExprInStmt      ::= LhsAssign '=' Expr   // see note below
 LhsAssign       ::= Pattern | Expr       // implementation permits pattern LHS
 ```
+
+Block items are expressions, not only statement forms, so `Block` reuses
+`BlockExpr` from section 3.4: items are separated by `;`, a trailing `;`
+discards the value, and `{}` is empty. A comma is not a block separator.
 
 **Top‑level `for`:** A top‑level `for` statement is **converted into one or
 more rules** during parsing (desugaring). This affects scoping, and it governs
@@ -452,8 +521,9 @@ ______________________________________________________________________
 
 ### 6.4 Collection literal lowering ownership
 
-- Vector and map literals `[e1, e2, ...]` and `{k: v, ...}` are preserved as
+- Vector and map literals `[e1, e2, ...]` and `[k -> v, ...]` are preserved as
   raw `Expr::VecLit` and `Expr::MapLit` nodes in the current parser generation.
+  Braces are block expressions, not collection literals.
 - `parse()` and `parse_expression()` do not lower collection literals into
   builder-call sequences.
 - `Parsed::semantic_rules()` remains limited to top-level `for` desugaring and
@@ -537,6 +607,57 @@ ______________________________________________________________________
   emit an error.
 - **Keywords:** identifiers cannot be any reserved keyword or operator token.
 
+### 8.1 Variable scoping (target)
+
+This section is the normative target for variable scoping. The semantic layer
+does not implement it yet; the gap is tracked as
+`docs/parser-conformance-register.md` item 21 and scheduled as
+`docs/roadmap.md` items `3.3.5` and `3.3.6`. The rules follow the upstream
+DDlog compiler (`vmware-archive/differential-datalog`: `ctxVars'` in `NS.hs`,
+`ruleRHSVars'` in `Rule.hs`, `exprVarDecls` in `Expr.hs`, and the pattern
+grammars in `Parse.hs`). Where the upstream language reference and compiler
+disagree, the compiler is followed.
+
+**Rules.**
+
+- **Clause order:** rule-body clauses are ordered. A clause sees the
+  declarations of earlier clauses only. The head and its `@` location see every
+  body declaration, after any `group_by` barrier. Heads declare nothing.
+- **Positive atoms:** a positive atom declares every pattern-position
+  occurrence of a name that is not visible before the clause. Pattern positions
+  are the atom's value and, recursively, struct fields, tuple components, typed
+  operands, `@` bindings, and `&` operands; parentheses are transparent.
+  Occurrences in one atom do not see each other, so in `R(x, x)` with `x` fresh
+  both occurrences declare (an error upstream), and in `R(x, x + 1)` the second
+  `x` is unknown. A clause wrapped in parentheses, `(R(x))`, is a condition
+  rather than an atom.
+- **Other clauses:** negated atoms, conditions, and `Inspect` declare nothing.
+  `Inspect` additionally sees `ddlog_weight` and `ddlog_timestamp`; primary-key
+  and index expressions see their key and index variables.
+- **Assignments:** an assignment clause declares only the `var` names on its
+  left-hand side; a bare name there is a use. A FlatMap pattern declares only
+  `var` names. Redeclaring a visible name in a rule condition, FlatMap pattern,
+  or `@` binding is an error.
+- **`group_by`:** a clause containing `group_by` (method or function form) or
+  `Aggregate` splits into a group-by clause, whose project and key see earlier
+  variables and which binds a hidden group variable, and the remainder. After
+  the split, only the key's variables, the group variable, and later
+  declarations are visible; hidden names may be declared again.
+- **Sequences:** inside an expression, a declaration made by one `;`-separated
+  item of a block is visible to the later items of that block only, and shadows
+  outer names. Declarations propagate out of a sub-expression only through
+  struct fields, tuple components, an assignment's left-hand side, `@`
+  bindings, typed operands, and `&` operands. A single-item block `{ e }` and a
+  group `( e )` behave as `e`. In rule bodies, only a top-level assignment's
+  left-hand side declares for later clauses.
+- **Nested scopes:** an `if` condition does not declare into its branches.
+  Match patterns declare bare and `var` names, which shadow outer names in the
+  arm. A `for` pattern declares into the loop body and shadows outer names; the
+  iterable is evaluated outside the loop scope. Closure parameters shadow
+  captured variables. A function body sees only its parameters.
+- **Shadowing:** shadowing by a `var` declaration is permitted inside
+  expressions and never inside rule clauses.
+
 ______________________________________________________________________
 
 ## 9. Errors and diagnostics (normative samples)
@@ -561,6 +682,14 @@ clear diagnostic that includes a span:
 - **Delay out of range:** delay not in `0..=2^32-1`.
 - **Illegal placement of location:** `@` used outside a rule head.
 - **Use of reserved words as identifiers.**
+- **Malformed block:** an item followed by another item without `;` reports
+  `expected ';' or '}' after a block item`; an empty item reports
+  `empty statement in block: remove the extra ';'`; a block without its closing
+  brace reports `expected '}' to close block`.
+- **Malformed collection literal:** `[]` reports
+  `empty vector literals are not DDlog syntax; use vec_empty() instead`; a
+  literal mixing vector elements and map entries reports
+  `cannot mix vector elements and map entries in one literal`.
 
 ______________________________________________________________________
 
@@ -664,6 +793,9 @@ copy/paste. -->
 - **Apply:** `Apply { transformer, inputs, outputs }`.
 - **RelationDecl:**
   `Relation { role, kind, ref?, name, body: Fields | ElementType, primaryKey? }`.
+- **PrimaryKey:** `PrimaryKey { binders: [PrimaryKeyBinder], span, expr? }`,
+  where `PrimaryKeyBinder { name, span }` and `expr` carries the preserved
+  source text and a source-absolute span.
 - **IndexDecl:** `Index { name, fields: [(name, type)], on: Atom }`.
 - **Rule:** `Rule { heads: [RuleLHS], body: [RhsTerm] }`.
 - **RuleLHS:** `RuleLHS { atom: Atom, location?: Expr }`.
@@ -673,8 +805,10 @@ copy/paste. -->
 - **Statement:** `SFor`, `SIf`, `SMatch`, `SSkip`, `SBlock`, `SExpr` (with
   top-level `SFor` lowered to rules).
 - **Pattern:** `PVar`, `PTuple`, `PStruct`, `PTyped`, `PLit`, `PWildcard`.
-- **Expr:** `ECall`, `EIndex`, `EField`, `EUnary`, `EBinary`, `EIf`, `EMapLit`,
-  `EVecLit`, `ERef`, `EFunc` (fully qualified only).
+- **Expr:** `ECall`, `EIndex`, `EField`, `EUnary`, `EBinary`, `EIf`,
+  `EBlock { statements: [Expr], value?: Expr }`, `EMapLit`, `EVecLit`, `ERef`,
+  `EFunc` (fully qualified only). `EBlock`'s `statements` are the items
+  followed by `;`; `value` is the final item when it is not.
 
 ______________________________________________________________________
 
@@ -686,9 +820,9 @@ ______________________________________________________________________
 // Two heads; first has a delay and location; second is a diff fact
 A(a)@site(x) -<10>, B'(b) :-
     for (t in tasks()) if ready(t) {
-        x = site_of(t),
-        a = project_a(t),
-        b = project_b(t)
+        x = site_of(t);
+        a = project_a(t);
+        b = project_b(t);
     }.
 ```
 
@@ -738,11 +872,14 @@ let m1 = 16'sd-1;    // signed decimal width 16
 let f  = 3.14159'f64; // permitted widths: 32 or 64
 ```
 
-### 11.6 Collections
+### 11.6 Collections and blocks
 
 ```ddlog
-let v = [a, b, c];   // parsed today; lowering is scheduled
-let m = {k1: v1, k2: v2}; // parsed today; lowering is scheduled
+let v = [a, b, c];        // parsed today; lowering is scheduled
+let m = [k1 -> v1, k2 -> v2]; // parsed today; lowering is scheduled
+let b = { a; b };         // parsed today as Expr::Block whose value is `b`
+let c = { a + b };        // parsed today as Expr::Block whose value is `a + b`
+let d = {};               // the empty block, whose value is unit
 ```
 
 ### 11.7 Index
@@ -803,6 +940,31 @@ A() -<4294967296> :- B(). // error: delay must fit u32
 match s { i"X_${n}" -> skip } // error: patterns require constant strings
 ```
 
+- **Comma inside a block:**
+
+```ddlog
+let b = { a, b }; // error: expected ';' or '}' after a block item
+```
+
+- **Empty block item:**
+
+```ddlog
+let b = { a;; b }; // error: empty statement in block: remove the extra ';'
+```
+
+- **Unclosed block:**
+
+```ddlog
+let b = { a; // error: expected '}' to close block
+```
+
+- **Empty vector literal and mixed collection literal:**
+
+```ddlog
+let v = [];          // error: empty vector literals are not DDlog syntax; use vec_empty() instead
+let m = [a, b -> c]; // error: cannot mix vector elements and map entries in one literal
+```
+
 ______________________________________________________________________
 
 ## 13. Portability notes for implementers
@@ -847,6 +1009,17 @@ ______________________________________________________________________
   parsing.
 - Added validation/error section with concrete examples.
 - Added AST crosswalk to guide ports and test fixture authorship.
+- Added the upstream variable-scoping rules as a scheduled target (section
+  8.1).
+- Added section 3.4: braces are block expressions with `;`-separated items, an
+  optional trailing separator, and `{}` as the empty block; brace groups, brace
+  maps, and the colon-terminating map-key mode are withdrawn.
+- Made bracket map literals `[k -> v, …]` the only map form, required both
+  collection literal forms to be non-empty, and recorded their diagnostics.
+- Replaced the statement grammar's `Block` production with `BlockExpr` and
+  noted that `;` separates block items rather than acting as an operator.
+- Added block, collection-literal, and malformed-collection examples to the
+  error and validation sections, and `EBlock` to the AST crosswalk.
 
 ______________________________________________________________________
 

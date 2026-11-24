@@ -6,11 +6,16 @@ use super::{DeclarationKind, SymbolOrigin, build, parse_ok, symbols_named};
 use crate::sema::SymbolId;
 
 fn rule_binding_symbol_id(model: &super::super::SemanticModel, name: &str) -> SymbolId {
-    let bindings = symbols_named(model, name, DeclarationKind::RuleBinding);
+    // Closure parameters are rule bindings too, but the unused-variable rule
+    // only reports on warning-eligible bindings, so select that one.
+    let bindings: Vec<_> = symbols_named(model, name, DeclarationKind::RuleBinding)
+        .into_iter()
+        .filter(|symbol| symbol.origin().is_warning_eligible_rule_binding())
+        .collect();
     assert_eq!(
         bindings.len(),
         1,
-        "expected exactly one rule binding named `{name}`",
+        "expected exactly one warning-eligible rule binding named `{name}`",
     );
 
     let maybe_symbol_id = model
@@ -26,6 +31,24 @@ fn rule_binding_symbol_id(model: &super::super::SemanticModel, name: &str) -> Sy
 #[rstest]
 #[case("Output(head_x) :- Source(head_x).", "head_x", true)]
 #[case("Output(head_x) :- Source(_).", "head_x", false)]
+// Wrapper expressions must still record the uses of their children.
+#[case("Output(head_x) :- Source((head_x)).", "head_x", true)]
+#[case("Output(head_x) :- Source(-head_x).", "head_x", true)]
+#[case("Output(head_x) :- Source(head_x.field).", "head_x", true)]
+#[case("Output(head_x) :- Source(head_x.0).", "head_x", true)]
+// A diff marker must bind to a postfix atom, so the wrapper carries a field
+// access whose child is the variable.
+#[case("Output(head_x) :- Source(head_x'.field).", "head_x", true)]
+#[case("Output(head_x) :- Source(head_x-<5>).", "head_x", true)]
+// A closure parameter shadows the rule-head binding of the same name, so the
+// head binding stays unused even though the closure body mentions it.
+#[case("Output(head_x) :- Source(|head_x| head_x).", "head_x", false)]
+// A capture in the closure body still resolves to the enclosing binding.
+#[case("Output(head_x) :- Source(|ignored| head_x).", "head_x", true)]
+// `return` is only legal in function or closure bodies, never in a rule body,
+// so the wrapper is exercised through a closure while `head_x` stays a rule
+// binding.
+#[case("Output(head_x) :- Source(|ignored| return head_x).", "head_x", true)]
 #[case(
     "Output(result) :- Source(result), var assigned_x = Seed(result), Use(assigned_x).",
     "assigned_x",

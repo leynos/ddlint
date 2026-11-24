@@ -6,8 +6,11 @@
 //! binding symbol's precise identifier span when semantic collection captured
 //! one, falling back to the existing coarse provenance otherwise.
 
-use crate::linter::{LintDiagnostic, Rule};
-use crate::{SyntaxKind, declare_lint};
+use crate::{
+    SyntaxKind,
+    declare_lint,
+    linter::{LintDiagnostic, Rule},
+};
 
 declare_lint! {
     /// Detects rule-local bindings that are defined but never used.
@@ -51,8 +54,9 @@ declare_lint! {
 #[cfg(test)]
 mod tests {
     //! Tests for the unused variable rule.
-    use crate::linter::testing::run_rule;
     use rstest::rstest;
+
+    use crate::linter::testing::run_rule;
 
     #[rstest]
     fn warns_for_unused_head_binding() {

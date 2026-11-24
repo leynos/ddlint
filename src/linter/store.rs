@@ -5,11 +5,12 @@
 //! queries the store during CST traversal to identify which rules apply to
 //! each node or token.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
-use crate::SyntaxKind;
-use crate::linter::CstRule;
+use crate::{SyntaxKind, linter::CstRule};
 
 /// Central registry mapping syntax kinds to their interested lint rules.
 ///
@@ -26,8 +27,10 @@ use crate::linter::CstRule;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::linter::{CstRuleStore, CstRule, Rule, LintDiagnostic, RuleCtx};
-/// use ddlint::SyntaxKind;
+/// use ddlint::{
+///     SyntaxKind,
+///     linter::{CstRule, CstRuleStore, LintDiagnostic, Rule, RuleCtx},
+/// };
 ///
 /// struct MyRule;
 ///
@@ -38,9 +41,7 @@ use crate::linter::CstRule;
 /// }
 ///
 /// impl CstRule for MyRule {
-///     fn target_kinds(&self) -> &'static [SyntaxKind] {
-///         &[SyntaxKind::N_RULE]
-///     }
+///     fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RULE] }
 /// }
 ///
 /// let mut store = CstRuleStore::new();
@@ -74,17 +75,17 @@ impl CstRuleStore {
     /// multiple kind entries without duplication.  Returns `&mut Self` for
     /// chaining.
     pub fn register(&mut self, rule: Box<dyn CstRule>) -> &mut Self {
-        let rule: Arc<dyn CstRule> = Arc::from(rule);
+        let shared_rule: Arc<dyn CstRule> = Arc::from(rule);
         let mut seen = HashSet::new();
-        for &kind in rule.target_kinds() {
+        for &kind in shared_rule.target_kinds() {
             if seen.insert(kind) {
                 self.by_kind
                     .entry(kind)
                     .or_default()
-                    .push(Arc::clone(&rule));
+                    .push(Arc::clone(&shared_rule));
             }
         }
-        self.rules.push(rule);
+        self.rules.push(shared_rule);
         self
     }
 
@@ -98,32 +99,25 @@ impl CstRuleStore {
 
     /// Return all registered rules in insertion order.
     #[must_use]
-    pub fn all_rules(&self) -> &[Arc<dyn CstRule>] {
-        &self.rules
-    }
+    pub fn all_rules(&self) -> &[Arc<dyn CstRule>] { &self.rules }
 
     /// Return the total number of registered rules.
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.rules.len()
-    }
+    pub fn len(&self) -> usize { self.rules.len() }
 
     /// Return `true` when no rules have been registered.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.rules.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.rules.is_empty() }
 }
 
 impl Default for CstRuleStore {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]
 mod tests {
     //! Tests for the lint store.
+    use fixture_lints::allow_fixture_expansion_lints;
     use rstest::{fixture, rstest};
 
     use super::*;
@@ -137,23 +131,15 @@ mod tests {
     }
 
     impl Rule for StubRule {
-        fn name(&self) -> &'static str {
-            self.name
-        }
+        fn name(&self) -> &'static str { self.name }
 
-        fn group(&self) -> &'static str {
-            "test"
-        }
+        fn group(&self) -> &'static str { "test" }
 
-        fn docs(&self) -> &'static str {
-            "Stub rule for testing."
-        }
+        fn docs(&self) -> &'static str { "Stub rule for testing." }
     }
 
     impl CstRule for StubRule {
-        fn target_kinds(&self) -> &'static [SyntaxKind] {
-            self.kinds
-        }
+        fn target_kinds(&self) -> &'static [SyntaxKind] { self.kinds }
     }
 
     // -- helpers / fixtures ---------------------------------------------------
@@ -164,10 +150,9 @@ mod tests {
         Box::new(StubRule { name, kinds })
     }
 
+    #[allow_fixture_expansion_lints]
     #[fixture]
-    fn store() -> CstRuleStore {
-        CstRuleStore::new()
-    }
+    fn store() -> CstRuleStore { CstRuleStore::new() }
 
     // -- tests ----------------------------------------------------------------
 
@@ -251,9 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn store_is_send_and_sync() {
-        assert_send_sync::<CstRuleStore>();
-    }
+    fn store_is_send_and_sync() { assert_send_sync::<CstRuleStore>(); }
 
     #[rstest]
     fn rules_for_kind_preserves_insertion_order(mut store: CstRuleStore) {

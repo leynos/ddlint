@@ -7,6 +7,8 @@
 
 - [Changelog](../CHANGELOG.md): User-facing release notes and migration
   highlights.
+- [v0.2.0 migration guide](./v0-2-0-migration-guide.md): Replacing the
+  `Vec<String>` primary-key binder list with the typed `PrimaryKey` API.
 - [Repository layout](./repository-layout.md): Map of the repository tree,
   path responsibilities, and placement rules for contributors.
 - [Users' guide](./users-guide.md): User-visible syntax support and parser
@@ -23,6 +25,15 @@
 - [Dependency warning qualification](./dependency-warning-qualification.md):
   Owners, dispositions, migration tickets, and run records for the compiler
   diagnostics that package verification reports from Cargo registry sources.
+- [OrthoConfig documentation provenance](./ortho-config-provenance.md): Source
+  identity and checksums for the imported v0.10.0 guides.
+
+## External tool references
+
+- [OrthoConfig user's guide, v0.10.0](./ortho-config-users-guide.md): Imported
+  application guide for the exact dependency version used by the planned CLI.
+- [OrthoConfig v0.10.0 migration guide][ortho-config-migration-guide]:
+  Compatibility wrapper for the byte-preserved v0.10.0 migration guide.
 
 ## Parser and linter references
 
@@ -65,11 +76,22 @@
 
 ## Decision records
 
-- [Architectural decision record 001: parser crate split for multi-consumer use](./adr-001-parser-crate-split.md):
+- [Architectural decision record 001: parser crate split for multi-consumer use](./adrs/adr-0001-parser-crate-split.md):
   Proposed decision record for parser crate boundaries and implementation
   structure.
-- [Architectural decision record 002: relation role and kind modelling](./adr-002-relation-role-kind-modelling.md):
+- [Architectural decision record 002: relation role and kind modelling](./adrs/adr-0002-relation-role-kind-modelling.md):
   Decision record for typed relation role, kind, ref, and body accessors.
+- [Architectural decision record 004: OrthoConfig CLI
+  boundary][ortho-config-cli-adr]: Decision record for the application-owned
+  configuration layer and library boundary.
+- [Architectural decision record 005: fixture expansion lint
+  helper](./adrs/adr-0005-fixture-expansion-lint-helper.md): Decision record
+  for the `fixture-lints` proc-macro boundary and its `unused_braces`
+  suppression.
+- [Architectural decision record 006: block expressions and collection
+  syntax](./adrs/adr-0006-block-expressions-and-collection-syntax.md): Decision
+  record for `{ … }` block expressions, `[k -> v]` map literals, the rejection
+  of `[]`, and the scoped block-separator parser state.
 
 ## Execution plans
 
@@ -89,10 +111,18 @@
   Plan for transformer declaration grammar alignment.
 - [2.6.6 resolve relation form coverage](./execplans/2-6-6-resolve-relation-form-coverage.md):
   Plan for relation form coverage and modelling alignment.
+- [2.6.6.1 typed AST access for spec-form primary-key expressions](./execplans/2-6-6-1-ast-access-for-spec-form-primary-key-exprs.md):
+  Plan for typed primary-key clause and expression access.
 - [2.6.7 finalize legacy token compatibility policy](./execplans/2-6-7-finalize-legacy-token-compatibility-policy.md):
   Plan for closing the legacy-token compatibility policy.
 - [2.6.7 legacy token policy diagnostic follow-up](./execplans/2-6-7-finalize-legacy-token-compatibility-policy-replacement.md):
   Continuation for diagnostic-path acceptance and validation follow-up.
+- [2.6.8 decide the brace-group extension policy](./execplans/2-6-8-decide-brace-group-extension-policy.md):
+  Plan for upstream block expressions, bracket map literals, and the scheduled
+  lexical-scope alignment.
+- [Issue 411 OrthoConfig CLI configuration
+  spine][issue-411-ortho-config-plan]: Plan for the v0.10.0 configuration
+  package, source-aware tests, and draft pull request (PR).
 - [3.1.1 core rule and CST rule traits](./execplans/3-1-1-core-rule-and-cst-rule-traits.md):
   Plan for lint rule trait foundations.
 - [3.1.2 rule context struct](./execplans/3-1-2-rule-context-struct.md):
@@ -130,3 +160,8 @@
   plan.
 - [Parser documentation analysis](./archive/documentation-analysis-parser-design.md):
   Historical analysis of parser documentation structure.
+
+[ortho-config-migration-guide]: ./v0-10-0-migration-guide.md
+[ortho-config-cli-adr]: ./adrs/adr-0004-ortho-config-cli-boundary.md
+[issue-411-ortho-config-plan]:
+  ./execplans/issue-411-adopt-ortho-config-v0-10-0-for-the-ddlint-cli.md

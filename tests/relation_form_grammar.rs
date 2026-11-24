@@ -3,11 +3,20 @@
 //! Verifies that the public `ddlint::parse` entrypoint accepts the canonical
 //! role/kind/body/ref forms and rejects invalid primary-key combinations.
 
-use ddlint::ast::{Relation, RelationBody, RelationKind, RelationRole};
-use ddlint::parse;
-use ddlint::test_util::{assert_custom_parse_error_contains, assert_no_parse_errors};
+use ddlint::{
+    ast::{PrimaryKey, Relation, RelationBody, RelationKind, RelationRole},
+    parse,
+    test_util::{assert_custom_parse_error_contains, assert_no_parse_errors},
+};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+/// Binder names of a primary-key clause as owned strings.
+fn owned_binder_names(key: &PrimaryKey) -> Vec<String> {
+    key.binder_names().into_iter().map(str::to_owned).collect()
+}
+
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parsed_relation(#[default("")] source: &str) -> Relation {
     let parsed = parse(source);
@@ -31,11 +40,16 @@ fn canonical_record_relation_preserves_role_kind_and_primary_key(
     assert_eq!(
         relation.body(),
         Ok(RelationBody::Fields(vec![(
-            "id".to_string(),
-            "OrderId".to_string()
+            "id".to_owned(),
+            "OrderId".to_owned()
         )]))
     );
-    assert_eq!(relation.primary_key(), Ok(Some(vec!["id".to_string()])));
+    assert_eq!(
+        relation
+            .primary_key()
+            .map(|clause| clause.map(|key| owned_binder_names(&key))),
+        Ok(Some(vec!["id".to_owned()]))
+    );
 }
 
 #[rstest]
@@ -50,7 +64,7 @@ fn canonical_bracket_relation_preserves_role_kind_and_ref(
     assert!(relation.is_ref());
     assert_eq!(
         relation.body(),
-        Ok(RelationBody::ElementType("Event".to_string()))
+        Ok(RelationBody::ElementType("Event".to_owned()))
     );
 }
 

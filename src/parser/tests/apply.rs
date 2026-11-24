@@ -1,23 +1,21 @@
 //! Apply statement parsing tests.
 
-use super::helpers::parse_apply;
-use super::helpers::{parse_err, parse_ok};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
-#[fixture]
-fn apply_single() -> &'static str {
-    "apply normalise(User) -> (Normalised)"
-}
+use super::helpers::{parse_apply, parse_err, parse_ok};
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn apply_multi() -> &'static str {
-    "apply pipeline(User, enrich) -> (Out1, Out2)"
-}
+fn apply_single() -> &'static str { "apply normalise(User) -> (Normalised)" }
 
+#[allow_fixture_expansion_lints]
 #[fixture]
-fn apply_empty_lists() -> &'static str {
-    "apply empty() -> ()"
-}
+fn apply_multi() -> &'static str { "apply pipeline(User, enrich) -> (Out1, Out2)" }
+
+#[allow_fixture_expansion_lints]
+#[fixture]
+fn apply_empty_lists() -> &'static str { "apply empty() -> ()" }
 
 #[rstest]
 #[case(apply_single(), "normalise", vec!["User"], vec!["Normalised"])]
@@ -36,8 +34,8 @@ fn parses_apply_statements(
 ) {
     let apply = parse_apply(src).expect("expected a single apply");
     assert_eq!(apply.transformer_name().as_deref(), Some(name));
-    let inputs_expected: Vec<String> = inputs.into_iter().map(str::to_string).collect();
-    let outputs_expected: Vec<String> = outputs.into_iter().map(str::to_string).collect();
+    let inputs_expected: Vec<String> = inputs.into_iter().map(str::to_owned).collect();
+    let outputs_expected: Vec<String> = outputs.into_iter().map(str::to_owned).collect();
     assert_eq!(apply.inputs(), inputs_expected);
     assert_eq!(apply.outputs(), outputs_expected);
 }

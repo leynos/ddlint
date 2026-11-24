@@ -81,7 +81,7 @@ fn relation_diagnostics_emit_stable_code_and_span(
     assert_eq!(*span, expected_span);
     assert_eq!(*severity, DiagnosticSeverity::Error);
     assert!(message.starts_with(expected_code.as_str()));
-    assert!(!parsed.errors().is_empty());
+    assert_ne!(parsed.errors(), []);
     assert_eq!(
         observer
             .events()
@@ -105,7 +105,7 @@ fn valid_parse_attempts_cover_every_parser_category_in_order() {
 
     let parsed = parse_with_observer(source, &observer);
 
-    assert!(parsed.errors().is_empty());
+    assert_eq!(parsed.errors(), []);
     let started: Vec<_> = observer
         .events()
         .into_iter()

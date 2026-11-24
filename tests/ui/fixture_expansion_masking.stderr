@@ -1,0 +1,16 @@
+error: unnecessary braces around `return` value
+  --> tests/ui/fixture_expansion_masking.rs:16:12
+   |
+16 |     return { value };
+   |            ^^     ^^
+   |
+note: the lint level is defined here
+  --> tests/ui/fixture_expansion_masking.rs:7:9
+   |
+ 7 | #![deny(unused_braces)]
+   |         ^^^^^^^^^^^^^
+help: remove these braces
+   |
+16 -     return { value };
+16 +     return value;
+   |

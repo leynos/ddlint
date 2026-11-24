@@ -4,10 +4,11 @@
 //! and closing tokens, ensuring diagnostics remain precise without bloating the
 //! control-flow parsing module.
 
+use super::{
+    pattern_collection::{DelimiterKind, DelimiterState, DelimiterToken, PatternContext},
+    pratt::Pratt,
+};
 use crate::{Span, SyntaxKind};
-
-use super::pattern_collection::{DelimiterState, DelimiterToken, PatternContext};
-use super::pratt::Pratt;
 
 impl<I> Pratt<'_, I>
 where
@@ -82,8 +83,14 @@ where
         }
 
         let (depth, message) = match kind {
-            SyntaxKind::T_RBRACE => (&mut state.brace_depth, context.unmatched_brace_msg),
-            SyntaxKind::T_RBRACKET => (&mut state.bracket_depth, context.unmatched_bracket_msg),
+            SyntaxKind::T_RBRACE => (
+                &mut state.brace_depth,
+                context.unmatched_delimiter_msg(DelimiterKind::Brace),
+            ),
+            SyntaxKind::T_RBRACKET => (
+                &mut state.bracket_depth,
+                context.unmatched_delimiter_msg(DelimiterKind::Bracket),
+            ),
             _ => unreachable!("process_closing_delimiter called with non-closing delimiter"),
         };
         let new_end = self.handle_close_delimiter(span, depth, message)?;
@@ -99,7 +106,7 @@ where
         state: &mut DelimiterState,
         context: &PatternContext,
     ) -> Option<()> {
-        if context.use_for_paren {
+        if context.use_for_paren() {
             let other_open = state.brace_depth > 0 || state.bracket_depth > 0;
             let (new_depth, new_end) =
                 self.handle_close_paren(span, state.paren_depth, other_open)?;
@@ -109,7 +116,7 @@ where
             let new_end = self.handle_close_delimiter(
                 span,
                 &mut state.paren_depth,
-                context.unmatched_paren_msg,
+                context.unmatched_delimiter_msg(DelimiterKind::Paren),
             )?;
             state.end = Some(new_end);
         }
@@ -120,7 +127,7 @@ where
         let literal = match crate::parser::ast::StringLiteral::parse(&self.ts.slice(span)) {
             Ok(lit) => lit,
             Err(msg) => {
-                self.ts.push_error(span.clone(), msg.to_string());
+                self.ts.push_error(span.clone(), msg.to_owned());
                 return false;
             }
         };
@@ -132,7 +139,7 @@ where
         if literal.is_interpolated() {
             self.ts.push_error(
                 span.clone(),
-                "interpolated strings are not allowed in patterns".to_string(),
+                "interpolated strings are not allowed in patterns".to_owned(),
             );
             return false;
         }

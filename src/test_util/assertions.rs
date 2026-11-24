@@ -1,43 +1,11 @@
 //! Assertion helpers for verifying parser errors in tests.
 
-use super::{ErrorPattern, normalise_tokens};
-use crate::SyntaxKind;
-use chumsky::error::{Simple, SimpleReason};
 use std::ops::Range;
 
-/// Assert that `f` panics and return its panic message.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// # #[cfg(feature = "test-support")]
-/// # {
-/// use ddlint::test_util::assert_panic_with_message;
-/// let message = assert_panic_with_message(|| panic!("boom"));
-/// assert!(message.contains("boom"));
-/// # }
-/// ```
-///
-/// # Panics
-/// Panics if `f` does not panic.
-#[track_caller]
-pub fn assert_panic_with_message<F>(f: F) -> String
-where
-    F: FnOnce() + std::panic::UnwindSafe,
-{
-    let result = std::panic::catch_unwind(f);
-    let Err(err) = result else {
-        panic!("expected panic");
-    };
-    let Some(message) = err
-        .downcast_ref::<String>()
-        .cloned()
-        .or_else(|| err.downcast_ref::<&str>().map(|s| (*s).to_string()))
-    else {
-        panic!("expected panic payload to be String or &str, got unknown type");
-    };
-    message
-}
+use chumsky::error::{Simple, SimpleReason};
+
+use super::{ErrorPattern, normalise_tokens};
+use crate::SyntaxKind;
 
 /// Assert that a parser produced no errors.
 ///
@@ -99,7 +67,7 @@ pub fn assert_first_rule_without_parse_stage_aggregation_errors(
 ///
 /// ```
 /// use chumsky::error::Simple;
-/// use ddlint::{test_util::assert_parse_error, SyntaxKind};
+/// use ddlint::{SyntaxKind, test_util::assert_parse_error};
 ///
 /// let err: Simple<SyntaxKind> = Simple::custom(0..1, "oops");
 /// assert_parse_error(&[err], "oops", 0, 1);
@@ -129,7 +97,11 @@ pub fn assert_parse_error(
         rendered_normalised.contains(&pattern_normalised),
         "expected error to contain pattern '{pattern:?}', got '{rendered}'",
     );
-    assert_eq!(error.span(), start..end);
+    assert_eq!(
+        error.span(),
+        start..end,
+        "error span should cover the expected range"
+    );
 }
 
 /// Return `true` if any error in `errors` is a [`SimpleReason::Custom`] whose
@@ -214,7 +186,10 @@ pub fn assert_no_custom_parse_error_contains(
 ///
 /// ```
 /// use chumsky::error::Simple;
-/// use ddlint::{SyntaxKind, test_util::{ErrorPattern, find_matching_error}};
+/// use ddlint::{
+///     SyntaxKind,
+///     test_util::{ErrorPattern, find_matching_error},
+/// };
 ///
 /// let errors = vec![
 ///     Simple::custom(0..1, "other error"),
@@ -253,7 +228,11 @@ fn assert_delimiter_error_impl<'a>(
         rendered_normalised.contains(&pattern_normalised),
         "expected error to contain pattern '{expected_pattern:?}', got '{rendered}'",
     );
-    assert_eq!(error.span(), span);
+    assert_eq!(
+        error.span(),
+        span,
+        "error span should cover the expected range"
+    );
     error
 }
 
@@ -333,7 +312,7 @@ delimiter_error_assertion!(
 delimiter_error_assertion!(
     assert_unclosed_delimiter_error,
     DelimiterErrorKind::Unclosed,
-    "Assert that a parser error indicates an unclosed delimiter.\n\n\
-     This verifies the error span points to the opening delimiter, and that no\n\
-     closing token was found whilst matching the expected pattern."
+    "Assert that a parser error indicates an unclosed delimiter.\n\nThis verifies the error span \
+     points to the opening delimiter, and that no\nclosing token was found whilst matching the \
+     expected pattern."
 );

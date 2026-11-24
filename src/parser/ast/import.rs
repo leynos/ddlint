@@ -25,10 +25,10 @@ impl Import {
             .take_while(|e| !matches!(e.kind(), SyntaxKind::K_AS))
             .filter_map(|e| match e {
                 rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                    Some(t.text().to_string())
+                    Some(t.text().to_owned())
                 }
                 rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_COLON_COLON => {
-                    Some("::".to_string())
+                    Some("::".to_owned())
                 }
                 _ => None,
             })
@@ -44,7 +44,7 @@ impl Import {
             .skip(1)
             .find_map(|e| match e {
                 rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                    Some(t.text().to_string())
+                    Some(t.text().to_owned())
                 }
                 _ => None,
             })
@@ -81,7 +81,7 @@ mod tests {
             .cloned()
             .expect("import missing");
         assert_eq!(first.path(), "foo::bar");
-        assert_eq!(first.alias(), Some("baz".to_string()));
+        assert_eq!(first.alias(), Some("baz".to_owned()));
     }
 
     #[test]

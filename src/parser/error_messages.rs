@@ -3,6 +3,52 @@
 //! Centralizing parser-facing message text keeps scanner code and test helpers
 //! aligned when diagnostics are intentionally part of the parser contract.
 
+/// Diagnostic emitted for a literal that mixes vector elements and map
+/// entries.
+///
+/// Upstream `DDlog` decides between `evec_literal` and `emap_literal` from the
+/// first item, so a literal cannot be both.
+pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
+    "cannot mix vector elements and map entries in one literal";
+
+/// Diagnostic emitted when a bracket map entry ends without its `->`.
+///
+/// The literal began as a map, so a key followed by end of input is an
+/// unfinished entry rather than a vector element: the entry is missing its
+/// value.
+pub const MISSING_MAP_ARROW_ERROR: &str = "expected '->' in map entry";
+
+/// Diagnostic emitted for the empty vector literal `[]`.
+///
+/// Upstream `evec_literal` uses `commaSepEnd1`, so the empty form is not
+/// syntax; the standard library provides the constructors instead.
+pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
+    "empty vector literals are not DDlog syntax; use vec_empty() instead";
+
+/// Diagnostic emitted when a block item is not followed by `;` or `}`.
+///
+/// Inside braces `;` separates block items; it is not the sequencing operator,
+/// so an adjacent expression is a missing separator rather than a
+/// continuation.
+pub const BLOCK_ITEM_SEPARATOR_ERROR: &str = "expected ';' or '}' after a block item";
+
+/// Diagnostic emitted for an empty block item, as in `{ ; }` or `{ a;; b }`.
+///
+/// A separator with no item on one side would make the block's item order
+/// ambiguous, so it is rejected rather than skipped.
+pub const EMPTY_BLOCK_ITEM_ERROR: &str = "empty statement in block: remove the extra ';'";
+
+/// Diagnostic emitted when a block reaches end of input before its `}`.
+pub const UNCLOSED_BLOCK_ERROR: &str = "expected '}' to close block";
+
+/// Diagnostic emitted for `return` in a rule-body literal.
+///
+/// `return` supplies a value to a function or closure body. A rule body has no
+/// return value, so the keyword is rejected wherever it appears in one,
+/// including inside a block, `if`, or loop nested in the body.
+pub const RETURN_IN_RULE_BODY_ERROR: &str =
+    "return is not valid in a rule body; use a function or closure body";
+
 /// Diagnostic emitted when a transformer declaration omits `:` or its first
 /// output identifier.
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =

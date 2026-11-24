@@ -54,10 +54,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/setup-rust@ab489303d8b0f0175bd334335b696ca48e0e7586
         with:
           expect-cache: any
           install-mold: 'true'
+          mold-version: '2.41.0'
       # The selection is the baseline every pull request's ratchet is measured
       # against, so ci.yml's must match it field for field.
       - name: Generate coverage
@@ -67,7 +68,7 @@ jobs:
           # linker. Assigning RUSTFLAGS displaces every `rustflags` table in
           # .cargo/config.toml.
           RUSTFLAGS: -D warnings
-        uses: leynos/shared-actions/.github/actions/generate-coverage@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/generate-coverage@ab489303d8b0f0175bd334335b696ca48e0e7586
         with:
           output-path: lcov.info
           format: lcov
@@ -85,7 +86,7 @@ jobs:
         # The ref check is what stops a dispatch from a branch uploading that
         # branch's coverage as the trunk's.
         if: steps.codescene-token.outputs.available == 'true' && github.ref == 'refs/heads/main'
-        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@ab489303d8b0f0175bd334335b696ca48e0e7586
         with:
           format: lcov
           path: lcov.info

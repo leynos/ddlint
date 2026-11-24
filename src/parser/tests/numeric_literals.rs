@@ -1,9 +1,14 @@
 //! Tests for width-qualified numeric literal parsing and validation.
 
-use crate::parser::ast::{Expr, IntBase, Literal, NumberLiteral};
-use crate::parser::expression::{parse_expression, parse_numeric_literal};
-use crate::test_util::{assert_parse_error, lit_num};
 use rstest::rstest;
+
+use crate::{
+    parser::{
+        ast::{Expr, IntBase, Literal, NumberLiteral},
+        expression::{parse_expression, parse_numeric_literal},
+    },
+    test_util::{assert_parse_error, lit_num},
+};
 
 fn unwrap_int(expr: Expr) -> (Option<u32>, bool, IntBase, String) {
     match expr {

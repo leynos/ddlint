@@ -30,7 +30,7 @@ pub(crate) const RESERVED_SIGNED_ERROR: &str =
 /// The supported `as` keyword is intentionally absent because it remains
 /// valid for casts and import aliases. Bare `#` needs token context and is
 /// classified by `reserved_message_for_token` instead.
-pub(crate) fn rejection_for(kind: SyntaxKind) -> Option<&'static str> {
+pub(crate) const fn rejection_for(kind: SyntaxKind) -> Option<&'static str> {
     match kind {
         SyntaxKind::K_TYPEDEF => Some(RESERVED_TYPEDEF_ERROR),
         SyntaxKind::T_SPACESHIP => Some(RESERVED_SPACESHIP_ERROR),
@@ -60,7 +60,7 @@ pub(crate) fn complete_reserved_token_errors(
     let mut seen = HashSet::new();
     errors.retain(|error| match error.reason() {
         SimpleReason::Custom(message) => {
-            reserved_message(message).is_none_or(|message| seen.insert((error.span(), message)))
+            reserved_message(message).is_none_or(|text| seen.insert((error.span(), text)))
         }
         _ => true,
     });
@@ -95,7 +95,7 @@ fn emitted_reserved_errors(errors: &[Simple<SyntaxKind>]) -> HashSet<(Span, &'st
         .iter()
         .filter_map(|error| match error.reason() {
             SimpleReason::Custom(message) => {
-                reserved_message(message).map(|message| (error.span().clone(), message))
+                reserved_message(message).map(|text| (error.span().clone(), text))
             }
             _ => None,
         })

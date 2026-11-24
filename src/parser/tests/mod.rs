@@ -2,6 +2,8 @@
 
 mod apply;
 mod attributes;
+mod block_expression_snapshots;
+mod block_expressions;
 mod collections;
 mod control_flow;
 mod cst_integration;
@@ -14,7 +16,10 @@ mod imports;
 mod indexes;
 mod numeric_literals;
 mod operator_precedence;
+mod relation_primary_key_props;
+mod relation_primary_key_strategies;
 mod relation_proptest;
+mod relation_terminators;
 mod relations;
 mod reserved_tokens;
 mod round_trip;
@@ -22,10 +27,13 @@ mod rules;
 mod transformers;
 mod types;
 
-use super::token_stream::TokenStream;
-use crate::{Span, SyntaxKind, test_util::tokenize};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::{fixture, rstest};
 
+use super::token_stream::TokenStream;
+use crate::{Span, SyntaxKind, test_util::tokenize};
+
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn typedef_stream() -> (String, Vec<(SyntaxKind, Span)>) {
     let src = String::from("typedef A = string\nnext");

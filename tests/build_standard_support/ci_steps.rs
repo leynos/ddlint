@@ -67,9 +67,7 @@ struct Step<'a> {
 
 impl Step<'_> {
     /// Returns where the step is, for a complaint.
-    fn location(&self) -> String {
-        format!("{}:{}", self.file, self.line)
-    }
+    fn location(&self) -> String { format!("{}:{}", self.file, self.line) }
 
     /// Returns whether the step passes `install-mold: 'true'` (quoted or bare).
     fn passes_the_install_input(&self) -> bool {
@@ -138,14 +136,10 @@ fn squeezed(line: &str) -> String {
 }
 
 /// Returns the number of leading spaces on a line.
-fn indent(line: &str) -> usize {
-    line.len() - line.trim_start().len()
-}
+fn indent(line: &str) -> usize { line.len() - line.trim_start().len() }
 
 /// Returns whether a line opens a step: a `- ` list item.
-fn opens_step(line: &str) -> bool {
-    line.trim_start().starts_with("- ")
-}
+fn opens_step(line: &str) -> bool { line.trim_start().starts_with("- ") }
 
 /// Returns the lines of the step holding the line at `at`: from the step's own
 /// list item to the line before the next step, or to the end of the job.

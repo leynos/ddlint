@@ -5,10 +5,8 @@
 //! token traversal. They stop before a body delimiter when a malformed node
 //! lacks a name, preventing body identifiers from becoming synthetic names.
 
+use super::{super::parse_utils::is_trivia, RelationKind, RelationRole};
 use crate::{DdlogLanguage, SyntaxKind};
-
-use super::super::parse_utils::is_trivia;
-use super::{RelationKind, RelationRole};
 
 /// Parsed metadata from the leading tokens of a relation declaration.
 ///
@@ -72,7 +70,7 @@ pub(super) fn inspect_preamble(syntax: &rowan::SyntaxNode<DdlogLanguage>) -> Rel
             }
             SyntaxKind::T_AMP => preamble.is_ref = true,
             SyntaxKind::T_IDENT => {
-                preamble.name = Some(token.text().to_string());
+                preamble.name = Some(token.text().to_owned());
                 break;
             }
             SyntaxKind::T_LPAREN | SyntaxKind::T_LBRACKET => break,
@@ -185,10 +183,16 @@ mod tests {
     //! column lists, malformed primary-key binder lists, and missing body
     //! delimiters.
 
-    use super::super::Relation;
-    use super::{BodyInspection, elements_after_name, inspect_body, inspect_preamble};
-    use crate::{DdlogLanguage, SyntaxKind};
     use rowan::{GreenNodeBuilder, Language as _, SyntaxNode};
+
+    use super::{
+        super::Relation,
+        BodyInspection,
+        elements_after_name,
+        inspect_body,
+        inspect_preamble,
+    };
+    use crate::{DdlogLanguage, SyntaxKind};
 
     /// Build a synthetic `N_RELATION_DECL` node from raw `(kind, text)` tokens.
     ///

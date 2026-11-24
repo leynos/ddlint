@@ -1,8 +1,10 @@
 //! Tests for rule body term classification.
 
 use super::super::helpers::parse_err;
-use crate::parser::ast::{Expr, Pattern, RuleBodyTerm};
-use crate::test_util::{call, var};
+use crate::{
+    parser::ast::{Expr, Pattern, RuleBodyTerm},
+    test_util::{call, var},
+};
 
 macro_rules! assert_body_assignment {
     ($src:expr, $expected_terms_count:expr, $assignment_index:expr $(,)?) => {{
@@ -43,7 +45,7 @@ fn body_terms_capture_flatmap_assignments() {
         pattern,
         Pattern::Var {
             declared: true,
-            name: "ip".to_string()
+            name: "ip".to_owned()
         }
     );
     assert_eq!(
@@ -61,11 +63,11 @@ fn body_terms_capture_tuple_bind_assignments() {
         Pattern::Tuple(vec![
             Pattern::Var {
                 declared: false,
-                name: "key".to_string(),
+                name: "key".to_owned(),
             },
             Pattern::Var {
                 declared: false,
-                name: "value".to_string(),
+                name: "value".to_owned(),
             },
         ])
     );

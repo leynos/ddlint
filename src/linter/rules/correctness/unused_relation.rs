@@ -9,9 +9,12 @@
 //! This rule uses `SemanticModel::has_resolved_relation_read()` to check
 //! whether a relation has at least one resolved read-like use.
 
-use crate::linter::{LintDiagnostic, Rule};
-use crate::parser::ast::rule::text_range_to_span;
-use crate::{SyntaxKind, declare_lint};
+use crate::{
+    SyntaxKind,
+    declare_lint,
+    linter::{LintDiagnostic, Rule},
+    parser::ast::rule::text_range_to_span,
+};
 
 declare_lint! {
     /// Detects relations declared but with no resolved read-like uses.
@@ -53,8 +56,9 @@ declare_lint! {
 #[cfg(test)]
 mod tests {
     //! Tests for the unused relation rule.
-    use crate::linter::testing::run_rule;
     use rstest::rstest;
+
+    use crate::linter::testing::run_rule;
 
     #[rstest]
     fn warns_for_declared_relation_with_no_reads() {

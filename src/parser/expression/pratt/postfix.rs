@@ -3,11 +3,12 @@
 //! `parse_postfix` dispatches `(`, `[`, `.`, `-<`, and `'` postfix forms to
 //! dedicated helpers, coordinating diff-marker tracking across the full chain.
 
-use crate::parser::ast::Expr;
-use crate::parser::expression::qualified::is_qualified_function_callee;
-use crate::{Span, SyntaxKind};
-
 use super::Pratt;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{ast::Expr, expression::qualified::is_qualified_function_callee},
+};
 
 impl<I> Pratt<'_, I>
 where
@@ -62,7 +63,7 @@ where
 
     fn parse_bit_slice_postfix(&mut self, lhs: Expr) -> Option<Expr> {
         let (_, _slice_span) = self.ts.next_tok()?;
-        self.with_struct_literals_suspended(move |this| {
+        self.with_nested_delimiter_scope(move |this| {
             let hi = this.parse_expr(0)?;
             if !this.ts.expect(SyntaxKind::T_COMMA) {
                 return None;
@@ -122,7 +123,7 @@ where
     fn parse_parenthesized_args(&mut self) -> Option<Vec<Expr>> {
         // token is consumed to advance past '('
         let (_, _open_span) = self.ts.next_tok()?;
-        self.with_struct_literals_suspended(|this| {
+        self.with_nested_delimiter_scope(|this| {
             let args = this.parse_args()?;
             if !this.ts.expect(SyntaxKind::T_RPAREN) {
                 return None;
@@ -164,9 +165,10 @@ mod tests {
     //! Tests for postfix expression parsing.
     use chumsky::error::SimpleReason;
 
-    use crate::SyntaxKind;
-    use crate::parser::ast::Expr;
-    use crate::parser::expression::parse_expression;
+    use crate::{
+        SyntaxKind,
+        parser::{ast::Expr, expression::parse_expression},
+    };
 
     #[test]
     fn qualified_callee_uses_call_postfix() {
@@ -193,10 +195,10 @@ mod tests {
         let expr = parse_expression("S'(x)").expect("diff postfix should parse");
 
         assert_eq!(expr.to_sexpr(), "(diff (call S x))");
-        let Expr::AtomDiff { expr } = expr else {
+        let Expr::AtomDiff { expr: inner } = expr else {
             panic!("expected diff postfix to wrap the completed call");
         };
-        assert_eq!(expr.to_sexpr(), "(call S x)");
+        assert_eq!(inner.to_sexpr(), "(call S x)");
     }
 
     #[test]

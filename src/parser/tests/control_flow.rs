@@ -4,17 +4,31 @@
 //! to guarantee that the Pratt parser produces the expected AST nodes even
 //! before the broader integration suite exercises them inside loops.
 
-use crate::parser::ast::{BinaryOp, Expr};
-use crate::parser::expression::parse_expression;
-use crate::test_util::{
-    assert_parse_error, break_expr, continue_expr, for_loop, match_arm, match_expr, return_expr,
-    tuple, var,
-};
 use rstest::rstest;
+
+use crate::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        expression::parse_expression,
+    },
+    test_util::{
+        UNCLOSED_BLOCK_ERROR,
+        assert_parse_error,
+        block,
+        break_expr,
+        continue_expr,
+        for_loop,
+        match_arm,
+        match_expr,
+        return_expr,
+        tuple,
+        var,
+    },
+};
 
 #[rstest]
 #[case("break", break_expr())]
-#[case("{ break }", Expr::Group(Box::new(break_expr())))]
+#[case("{ break }", block(vec![], Some(break_expr())))]
 #[case("(break)", Expr::Group(Box::new(break_expr())))]
 fn parses_break_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
@@ -23,7 +37,7 @@ fn parses_break_expressions(#[case] src: &str, #[case] expected: Expr) {
 
 #[rstest]
 #[case("continue", continue_expr())]
-#[case("{ continue }", Expr::Group(Box::new(continue_expr())))]
+#[case("{ continue }", block(vec![], Some(continue_expr())))]
 #[case("(continue)", Expr::Group(Box::new(continue_expr())))]
 fn parses_continue_expressions(#[case] src: &str, #[case] expected: Expr) {
     let expr = parse_expression(src).unwrap_or_else(|e| panic!("source {src:?} errors: {e:?}"));
@@ -42,7 +56,7 @@ fn parses_continue_expressions(#[case] src: &str, #[case] expected: Expr) {
         rhs: Box::new(var("x")),
     },
 )]
-#[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
+#[case("{ return }", block(vec![], Some(return_expr(None))))]
 #[case("(return)", Expr::Group(Box::new(return_expr(None))))]
 #[case("(return,)", tuple(vec![return_expr(None)]))]
 // Returning before a terminator (`)`, `}`, `,`, `;`, or `->`) synthesizes unit
@@ -57,11 +71,13 @@ fn parses_return_expressions(#[case] src: &str, #[case] expected: Expr) {
 }
 
 #[test]
-fn return_reports_missing_value_error() {
+fn return_with_unclosed_block_reports_block_error() {
+    // `{` now opens a block expression rather than a brace map, so the
+    // unterminated operand is diagnosed by the block parser.
     let Err(errors) = parse_expression("return {") else {
         panic!("expected parse failure");
     };
-    assert_parse_error(&errors, "expected expression after 'return'", 8, 8);
+    assert_parse_error(&errors, UNCLOSED_BLOCK_ERROR, 8, 8);
 }
 
 #[rstest]

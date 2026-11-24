@@ -4,15 +4,18 @@
 //! conditions in the private helper functions: balanced-paren skipping,
 //! identifier validation, error-span computation, and recovery.
 
-use super::super::collect_transformer_spans;
-use crate::parser::error_messages::{
-    CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR,
-};
-use crate::test_util::{
-    assert_custom_parse_error_contains, assert_no_custom_parse_error_contains,
-    assert_no_parse_errors, tokenize,
-};
 use rstest::rstest;
+
+use super::super::collect_transformer_spans;
+use crate::{
+    parser::error_messages::{CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR},
+    test_util::{
+        assert_custom_parse_error_contains,
+        assert_no_custom_parse_error_contains,
+        assert_no_parse_errors,
+        tokenize,
+    },
+};
 
 // ── Valid declarations ──────────────────────────────────────────────
 
@@ -20,7 +23,7 @@ use rstest::rstest;
 fn empty_source_produces_no_spans_or_errors() {
     let tokens = tokenize("");
     let (spans, errors) = collect_transformer_spans(&tokens, "");
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
     assert_no_parse_errors(&errors);
 }
 
@@ -29,7 +32,7 @@ fn source_without_transformer_produces_no_spans() {
     let src = "input relation R(x: u32)\n";
     let tokens = tokenize(src);
     let (spans, errors) = collect_transformer_spans(&tokens, src);
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
     assert_no_parse_errors(&errors);
 }
 
@@ -92,7 +95,7 @@ fn capitalized_name_emits_diagnostic_and_no_span() {
     let src = "extern transformer Foo(a: T): Out\n";
     let tokens = tokenize(src);
     let (spans, errors) = collect_transformer_spans(&tokens, src);
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
     assert_custom_parse_error_contains(&errors, CAPITALIZED_TRANSFORMER_NAME_ERROR);
 }
 
@@ -118,7 +121,7 @@ fn unbalanced_open_paren_produces_error_not_panic() {
     let src = "extern transformer t(a: T\n";
     let tokens = tokenize(src);
     let (spans, errors) = collect_transformer_spans(&tokens, src);
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
     assert!(!errors.is_empty(), "expected error for unclosed paren");
 }
 
@@ -129,7 +132,7 @@ fn non_extern_transformer_emits_must_be_extern_error() {
     let src = "transformer local(a: T): Out\n";
     let tokens = tokenize(src);
     let (spans, errors) = collect_transformer_spans(&tokens, src);
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
     assert_custom_parse_error_contains(&errors, "must be extern");
 }
 

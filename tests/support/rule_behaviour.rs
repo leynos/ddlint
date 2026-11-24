@@ -1,7 +1,7 @@
 //! Fallible setup shared by rule-behaviour integration tests.
 
-use ddlint::parse;
-use ddlint::parser::ast::Rule;
+use ddlint::{parse, parser::ast::Rule};
+use fixture_lints::allow_fixture_expansion_lints;
 use rstest::fixture;
 
 /// Parse source and return its first rule, reporting syntax and lookup failures.
@@ -43,7 +43,7 @@ fn rule_setup_reports_parse_errors() {
     );
     assert_eq!(tail, "Some(T_DOT), label: None }]");
     let actual_tokens: BTreeSet<_> = expected_tokens.split(", ").collect();
-    let expected_tokens = BTreeSet::from([
+    let expected_token_set = BTreeSet::from([
         "Some(T_IDENT)",
         "Some(T_LBRACKET)",
         "Some(K_SKIP)",
@@ -53,7 +53,7 @@ fn rule_setup_reports_parse_errors() {
         "Some(K_FOR)",
         "Some(T_AMP)",
     ]);
-    assert_eq!(actual_tokens, expected_tokens);
+    assert_eq!(actual_tokens, expected_token_set);
 }
 
 #[test]
@@ -70,7 +70,6 @@ const MIXED_RULE_SOURCE: &str = "R(x, y) :- Pre(x), for (y in Items(y)) Process(
 /// For example, `#[from(mixed_rule)]` supplies a body with a pre-loop
 /// expression, a for-loop term, and a post-loop expression; flattening yields
 /// `Pre`, `Items`, `Process`, then `Post`.
+#[allow_fixture_expansion_lints]
 #[fixture]
-pub(super) fn mixed_rule() -> Result<Rule, String> {
-    parse_and_extract_rule(MIXED_RULE_SOURCE)
-}
+pub(super) fn mixed_rule() -> Result<Rule, String> { parse_and_extract_rule(MIXED_RULE_SOURCE) }

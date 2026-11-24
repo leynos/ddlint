@@ -65,7 +65,7 @@ navigable CST and typed AST.
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
   - [x] 1.5.2.2. Implement `TypeDef` (`src/parser/ast/type_def.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.2.
-  - [x] 1.5.2.3. Implement `Relation` (`src/parser/ast/relation.rs`).
+  - [x] 1.5.2.3. Implement `Relation` (`src/parser/ast/relation/mod.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.5.
   - [x] 1.5.2.4. Implement `Index` (`src/parser/ast/index.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.6.
@@ -73,7 +73,7 @@ navigable CST and typed AST.
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.3.
   - [x] 1.5.2.6. Implement `Transformer` (`src/parser/ast/transformer.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.4.
-  - [x] 1.5.2.7. Implement `Rule` (`src/parser/ast/rule.rs`).
+  - [x] 1.5.2.7. Implement `Rule` (`src/parser/ast/rule/mod.rs`).
     See docs/differential-datalog-parser-syntax-spec-updated.md §5.8.
 - [x] 1.5.3. Add and test parsing utilities for nested structures such as
   parameter and type lists (`src/parser/ast/parse_utils/`). See
@@ -83,7 +83,8 @@ navigable CST and typed AST.
 
 The parser now identifies top-level statements, but this phase completes
 expression parsing, resolves remaining syntax-spec deltas, and prepares the
-split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
+split parser library surfaces defined in
+`docs/adrs/adr-0001-parser-crate-split.md`.
 
 ### 2.1. Detailed expression parsing
 
@@ -225,15 +226,56 @@ split parser library surfaces defined in `docs/adr-001-parser-crate-split.md`.
 - [x] 2.6.6. Resolve relation form coverage (role/kind/bracket variants) and
   document supported forms explicitly. See docs/parser-conformance-register.md
   item 13.
-- [ ] 2.6.6.1. Add typed AST access for spec-form relation primary-key
-  expressions. The parser currently preserves the expression as opaque CST text
-  and `Relation::primary_key()` exposes only the binder/list names.
+- [x] 2.6.6.1. Add typed AST access for spec-form relation primary-key
+  expressions through `PrimaryKey`, `PrimaryKeyBinder`, and
+  `PrimaryKeyExpression`, including lazy expression parsing with
+  source-absolute error spans. See docs/parser-conformance-register.md item 13.
 - [x] 2.6.7. Finalize legacy token compatibility policy (`typedef`, `as`,
   legacy type names, `#`, `<=>`) with deterministic diagnostics. See
   docs/parser-conformance-register.md item 14.
-- [ ] 2.6.8. Decide brace-group extension policy (`{ expr }`): codify or
-  remove with migration diagnostics. See docs/parser-conformance-register.md
-  item 15.
+- [x] 2.6.8. Codify `{ … }` as upstream block expressions and replace brace map
+  literals with upstream `[k -> v, …]` map literals, rejecting `[]` in favour of
+  `vec_empty()`. Done: braces parse as `Expr::Block(BlockExpr)` with `;` item
+  separators, an optional trailing separator, and `{}` as the empty block;
+  brace groups, brace maps, and the colon-terminating map-key mode are gone;
+  bracket map literals are the only map form and `[]` is rejected. See
+  docs/parser-conformance-register.md items 10 and 15 and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md.
+- [ ] 2.6.9. Enforce the `LcName` case restriction on primary-key binders, and
+  decide the same question for import aliases, so `primary key (Foo)` reports
+  `D-REL-007` the way transformer names already do, or record an intentional
+  superset in the syntax specification. See docs/parser-conformance-register.md
+  item 13 and the section 5.2 import-alias note.
+- [ ] 2.6.10. Decide how `;` sequencing and rule-level `for` align with
+  upstream: `;` appears only inside block expressions upstream, a top-level
+  `for` header is an atom with an optional `v in` binder (so `for (a in A(a))`
+  is rejected upstream), and a rule-body `for` is an expression loop over a
+  collection. See docs/parser-conformance-register.md items 8 and 16 and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
+- [ ] 2.6.11. Decide whether to adopt upstream struct-literal and struct-pattern
+  syntax (`C{.f = e}` and positional `C{e}`) in place of `C { f: e }`,
+  including the struct-literal guard's `{ ident :` heuristic. See
+  docs/parser-conformance-register.md item 17.
+- [ ] 2.6.12. Parse the expression forms that upstream scoping depends on:
+  `var` expressions, `function(…)` closures with typed and `mut` parameters and
+  optional return types, `${…}` interpolation segments on a dedicated
+  expression node, a type grammar for ascriptions and parameters, and
+  source-absolute spans on identifier-bearing nodes. Requires 2.6.8. See
+  docs/parser-conformance-register.md item 18 and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
+- [ ] 2.6.13. Parse function bodies (`{ … }` and `= expr`) through a lazy typed
+  accessor with source-absolute spans, fixing the function scanner for
+  `function(…)` closures and `= expr` bodies, gated by a vendored upstream
+  conformance corpus normalized to the specification's dialect. Requires
+  2.6.12. See docs/parser-conformance-register.md item 19.
+- [ ] 2.6.14. Decide the remaining upstream expression forms: `x @ pat`
+  bindings, `v in R(…)` atom binders, the `?` operator, `e[h:l]` bit slices
+  (ddlint uses `e[h, l]`), and adjacent string-literal concatenation. See
+  docs/parser-conformance-register.md item 20.
+- [ ] 2.6.15. Decide whether to align type syntax with upstream (`typedef`,
+  `bit<N>`, `signed<N>`, `bigint`, `double`, `float`), which the 2.6.7 policy
+  rejects in favour of `type`, sized integers, and `f32`/`f64`. See
+  docs/parser-conformance-register.md items 14 and 22.
 
 ### 2.7. Split parser crate foundation
 
@@ -243,9 +285,9 @@ that shape public contracts are closed or explicitly bounded.
 - [ ] 2.7.1. Create workspace crates `ddlog-syntax`, `ddlog-sema`, and
   `ddlog-parser` with explicit acyclic dependencies, crate READMEs, and
   `CODEOWNERS` coverage for each public surface. See
-  docs/adr-001-parser-crate-split.md §Decision outcome / proposed direction,
-  docs/adr-001-parser-crate-split.md §Ownership and cross-crate coordination,
-  and docs/ddlint-design.md §2.4.
+  docs/adrs/adr-0001-parser-crate-split.md §Decision outcome / proposed
+  direction, docs/adrs/adr-0001-parser-crate-split.md §Ownership and
+  cross-crate coordination, and docs/ddlint-design.md §2.4.
   - [ ] Move tokenizer, `SyntaxKind`, token-stream helpers, CST construction,
     and span-scanning modules into `ddlog-syntax`.
   - [ ] Document each crate's owning maintainers, supported consumers, and
@@ -253,7 +295,7 @@ that shape public contracts are closed or explicitly bounded.
 - [ ] 2.7.2. Introduce a `ddlog-parser` compatibility facade that preserves
   current top-level parse entrypoints and keeps parser unit and integration
   suites green with no skipped tests. Requires 2.7.1. See
-  docs/adr-001-parser-crate-split.md §Migration plan / Phase 1 and
+  docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 1 and
   docs/parser-implementation-notes.md §ADR-001 split-crate migration mapping.
   - [ ] Route existing `parse()` and `Parsed`-style entrypoints through
     `ddlog-parser`.
@@ -263,15 +305,15 @@ that shape public contracts are closed or explicitly bounded.
 
 - [ ] 2.8.1. Define stable public diagnostic types covering `code`, `message`,
   `span`, `severity`, and `stage`, and document the compatibility policy for
-  those fields. Requires 2.7.1. See docs/adr-001-parser-crate-split.md
-  §Requirements, docs/adr-001-parser-crate-split.md §Migration plan / Phase 2,
-  and docs/ddlint-design.md §2.5.
+  those fields. Requires 2.7.1. See docs/adrs/adr-0001-parser-crate-split.md
+  §Requirements, docs/adrs/adr-0001-parser-crate-split.md §Migration plan /
+  Phase 2, and docs/ddlint-design.md §2.5.
   - [ ] Distinguish parse-stage and semantic-stage diagnostics without leaking
     internal error enums into the public contract.
   - [ ] Freeze diagnostic code naming, deprecation, and approval rules.
 - [ ] 2.8.2. Add parser contract tests that assert diagnostic stage, span, and
   severity behaviour across parser unit and integration scopes. Requires 2.8.1.
-  See docs/adr-001-parser-crate-split.md §Migration plan / Phase 2 and
+  See docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 2 and
   docs/parser-implementation-notes.md §Migration invariants.
   - [ ] Cover both parse-stage and semantic-stage diagnostics.
   - [ ] Assert span provenance for at least one rule-head, one body-term, and
@@ -282,15 +324,15 @@ that shape public contracts are closed or explicitly bounded.
 - [ ] 2.9.1. Introduce an owned `ddlog-sema` program model covering rules, head
   adornments, body terms, aggregations, attributes, and provenance needed by
   compiler consumers. Requires 2.7.1 and 2.8.1. See
-  docs/adr-001-parser-crate-split.md §Requirements,
-  docs/adr-001-parser-crate-split.md §Migration plan / Phase 3, and
+  docs/adrs/adr-0001-parser-crate-split.md §Requirements,
+  docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 3, and
   docs/ddlint-design.md §2.5.
   - [ ] Expose typed semantic fields instead of CST-string reparsing.
   - [ ] Preserve deterministic traversal order for planner-relevant
     collections.
 - [ ] 2.9.2. Add semantic validation and dependency extraction entrypoints that
   replace compiler-facing reparsing paths with typed reads. Requires 2.9.1. See
-  docs/adr-001-parser-crate-split.md §Migration plan / Phase 3 and
+  docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 3 and
   docs/parser-implementation-notes.md §Migration invariants.
   - [ ] Add at least 12 categorized fixture programs under
     `tests/fixtures/phase3/`: 4 non-recursive, 4 single-strongly connected
@@ -299,28 +341,29 @@ that shape public contracts are closed or explicitly bounded.
     stability.
 - [ ] 2.9.3. Publish the planner-handoff interface note with invariants,
   provenance rules, ordering guarantees, and at least one worked rule-lowering
-  example. Requires 2.9.1. See docs/adr-001-parser-crate-split.md §Forward
-  compatibility for pliron and egg adoption and docs/ddlint-design.md §2.5.
+  example. Requires 2.9.1. See docs/adrs/adr-0001-parser-crate-split.md
+  §Forward compatibility for pliron and egg adoption and docs/ddlint-design.md
+  §2.5.
 
 ### 2.10. Consumer migration and cleanup
 
 - [ ] 2.10.1. Migrate `ddlint` to `ddlog-syntax` and `ddlog-parser`, removing
   direct imports from legacy in-crate parser modules. Requires 2.7.2 and 2.8.2.
-  See docs/adr-001-parser-crate-split.md §Migration plan / Phase 4 and
+  See docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 4 and
   docs/ddlint-design.md §2.4.
   - [ ] Keep CST-facing lint and autofix flows on lossless syntax APIs.
 - [ ] 2.10.2. Migrate `telephone` to `ddlog-sema` and `ddlog-parser`,
   eliminating compiler dependence on CST-string reparsing. Requires 2.9.2 and
-  2.9.3. See docs/adr-001-parser-crate-split.md §Migration plan / Phase 4 and
-  docs/ddlint-design.md §2.5.
+  2.9.3. See docs/adrs/adr-0001-parser-crate-split.md §Migration plan / Phase 4
+  and docs/ddlint-design.md §2.5.
   - [ ] Limit compatibility shims to `ddlog-parser`, each with a deprecation
     target release and tracked removal issue.
 - [ ] 2.10.3. Remove or formally mark deprecated shims as exceptions, finalize
   versioning and change-management policy, and update crate READMEs plus
   architecture documentation with long-term ownership expectations. Requires
-  2.10.1 and 2.10.2. See docs/adr-001-parser-crate-split.md §Migration plan /
-  Phase 5, docs/adr-001-parser-crate-split.md §Outstanding decisions, and
-  docs/ddlint-design.md §2.5.
+  2.10.1 and 2.10.2. See docs/adrs/adr-0001-parser-crate-split.md §Migration
+  plan / Phase 5, docs/adrs/adr-0001-parser-crate-split.md §Outstanding
+  decisions, and docs/ddlint-design.md §2.5.
 
 ## 3. Linter engine and semantic analysis
 
@@ -359,6 +402,19 @@ implementations.
 - [x] 3.3.4. Record usage sites for variables and relations.
   Done: relation and variable uses are recorded for AST rules and parse-time
   semantic rules, ready for phase 4 lint queries.
+- [ ] 3.3.5. Model upstream DDlog lexical scope in the semantic layer: body
+  clauses declare and heads use; implicit declaration in positive atoms;
+  `var`-only declaration in assignments; `group_by` barriers; sequence, match,
+  `for`, closure, and function scopes; implicit `Inspect`, primary-key, and
+  index variables. Re-base `unused-variable` on body declarations. Requires
+  2.6.12 and 2.6.13. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §8.1,
+  docs/parser-conformance-register.md item 21, and
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
+- [ ] 3.3.6. Prove the scope-resolution kernel in Verus against a declarative
+  specification, add the pinned Verus toolchain and the `make verus` proof
+  lane, and bridge the proved and production kernel texts. Requires 3.3.5. See
+  docs/execplans/2-6-8-decide-brace-group-extension-policy.md Appendix A.
 
 ## 4. Lint rule implementation
 
@@ -373,11 +429,16 @@ catalogue.
 - [x] 4.1.2. Implement `unused-variable` diagnostics for variables defined but
   not used within a rule, treating `_` as explicit ignore. Requires 3.3.3 and
   3.3.4. See docs/ddlint-design.md §3.3.
-- [ ] 4.1.3. Implement `shadowed-variable` diagnostics for same-scope rebinding
-  in later literals. Requires 3.3.3. See docs/ddlint-design.md §3.3.
+- [ ] 4.1.3. Implement `shadowed-variable` diagnostics for nested-scope
+  shadowing (match arms, `for` loops, closures, and block sequences shadowing
+  an outer binding). Requires 3.3.5. See docs/ddlint-design.md §3.3.
 - [ ] 4.1.4. Implement `recursive-negation` detection via relation dependency
   graphs that track negated edges and reject cycles containing negation. See
   docs/ddlint-design.md §3.3.
+- [ ] 4.1.5. Report upstream scope errors: unknown variables, redeclarations the
+  upstream compiler rejects (rule conditions, FlatMap patterns, `@` bindings),
+  and variables declared and used in one atom. Requires 3.3.5. See
+  docs/differential-datalog-parser-syntax-spec-updated.md §8.1.
 
 ### 4.2. Performance rules
 
@@ -412,8 +473,11 @@ This phase delivers the end-user command-line interface and diagnostic output.
   See docs/ddlint-design.md §4.1.
 - [ ] 5.1.4. Implement `ddlint explain <RULE_NAME>`.
   See docs/ddlint-design.md §4.1.
-- [ ] 5.1.5. Implement `ddlint.toml` loading via `config-rs`.
-  See docs/ddlint-design.md §4.2 and docs/ddlint-design.md §4.3.
+- [x] 5.1.5. Implement the OrthoConfig v0.10.0 settings model and
+  source-aware `ddlint.toml` loader in the application-owned `ddlint-cli`
+  package. Keep command parsing and execution in 5.1.1–5.1.4. See
+  docs/ddlint-design.md §4.1–4.3 and
+  [ADR 004](adrs/adr-0004-ortho-config-cli-boundary.md).
 
 ### 5.2. Rich diagnostics
 

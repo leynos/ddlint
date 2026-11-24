@@ -1,14 +1,29 @@
 //! Tests for type expression parsing.
 
-use super::super::errors::{Delim, ParseError};
-use super::super::outputs::skip_to_top_level_colon;
-use super::*;
-use crate::SyntaxKind;
-use crate::parser::ast::AstNode;
-use crate::parser::parse;
+use fixture_lints::allow_fixture_expansion_lints;
+use proptest::{prelude::*, test_runner::TestCaseError};
 use rowan::SyntaxElement;
 use rstest::{fixture, rstest};
 
+use super::{
+    super::{
+        errors::{Delim, ParseError},
+        outputs::skip_to_top_level_colon,
+    },
+    *,
+};
+use crate::{
+    SyntaxKind,
+    parser::{ast::AstNode, parse},
+};
+
+/// Collect the syntax elements beneath the item selected from `src`.
+///
+/// The fixture prefers the first function, then the first relation, and
+/// otherwise falls back to the root's children. That order matches the item
+/// kinds exercised by the type-expression cases, so each case can place its
+/// annotation in whichever position it needs.
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<DdlogLanguage>> {
     let parsed = parse(src);
@@ -25,6 +40,14 @@ fn tokens_for(#[default("function t() {}")] src: &str) -> Vec<SyntaxElement<Ddlo
     )
 }
 
+/// Return the trailing return type of the first function in `src`.
+///
+/// The fixture walks past the parameter list, tracking parenthesis depth so a
+/// nested tuple in a parameter does not end the scan early, and then parses
+/// the type after the colon. It returns `None` when the function declares no
+/// trailing type, letting cases distinguish that from a parse failure. A source
+/// without a function panics, because every case is expected to declare one.
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn return_type_for(#[default("function t() {}")] src: &str) -> Option<String> {
     let parsed = parse(src);
@@ -107,7 +130,7 @@ fn stray_closing_paren_terminates_without_error() {
     }
     let (ty, errors) = parse_type_expr(&mut iter);
     assert_eq!(ty, "u32");
-    assert!(errors.is_empty());
+    assert_eq!(errors.len(), 0);
     assert_eq!(
         iter.peek().map(SyntaxElement::kind),
         Some(SyntaxKind::T_RPAREN)
@@ -115,24 +138,24 @@ fn stray_closing_paren_terminates_without_error() {
 }
 
 #[rstest]
-#[case("function f(): u32 {}", Some("u32".to_string()))]
-#[case("extern function f(): bool;", Some("bool".to_string()))]
+#[case("function f(): u32 {}", Some("u32".to_owned()))]
+#[case("extern function f(): bool;", Some("bool".to_owned()))]
 #[case("function f() {}", None)]
-#[case("function f():\n    u32 {}", Some("u32".to_string()))]
-#[case("function f(): /* c */ u32 {}", Some("u32".to_string()))]
+#[case("function f():\n    u32 {}", Some("u32".to_owned()))]
+#[case("function f(): /* c */ u32 {}", Some("u32".to_owned()))]
 #[case("function f(): {}", None)]
 #[case(
     "extern function f(): Map<string, Vec<(u32, Option<bool>)>>;",
-    Some("Map<string,Vec<(u32,Option<bool>)>>".to_string()),
+    Some("Map<string,Vec<(u32,Option<bool>)>>".to_owned()),
 )]
 #[case(
     "extern function f(): Map<Vec<u32>, (bool, [string])>;",
-    Some("Map<Vec<u32>,(bool,[string])>".to_string()),
+    Some("Map<Vec<u32>,(bool,[string])>".to_owned()),
 )]
 #[case(
     "extern function f(): Map<Vec<Map<string, (u32, [Option<bool>])>>,(bool,[Map<string,u8>])>;",
     Some(
-        "Map<Vec<Map<string,(u32,[Option<bool>])>>,(bool,[Map<string,u8>])>".to_string(),
+        "Map<Vec<Map<string,(u32,[Option<bool>])>>,(bool,[Map<string,u8>])>".to_owned(),
     ),
 )]
 fn trailing_type(
@@ -142,4 +165,75 @@ fn trailing_type(
 ) {
     let _ = src;
     assert_eq!(return_type_for, expected);
+}
+
+/// Builds a balanced type expression nested `depth` parentheses deep, such as
+/// `((u32,bool),bool)`.
+///
+/// The grammar declares return types with a colon and has no `fn(..) -> ..`
+/// type form, so tuple types supply the nested parentheses that the
+/// parameter-list scan must skip. Type text is emitted without spaces because
+/// `return_type` and `parameters` normalise whitespace away.
+fn nested_parameter_type(depth: u32) -> String {
+    match depth {
+        0 => "u32".to_owned(),
+        remaining => format!("({},bool)", nested_parameter_type(remaining - 1)),
+    }
+}
+
+/// Builds a function with `parameter_count` parameters whose types nest to
+/// `depth`, returning the source, expected parameters, and return type.
+fn generated_function(
+    depth: u32,
+    parameter_count: usize,
+) -> (String, Vec<(String, String)>, String) {
+    let parameter_type = nested_parameter_type(depth);
+    let return_type = nested_parameter_type(depth + 1);
+    let parameters: Vec<(String, String)> = (1..=parameter_count)
+        .map(|index| (format!("p{index}"), parameter_type.clone()))
+        .collect();
+    let parameter_list = parameters
+        .iter()
+        .map(|(name, ty)| format!("{name}: {ty}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let source = format!("function t({parameter_list}): {return_type} {{ }}");
+    (source, parameters, return_type)
+}
+
+proptest! {
+    /// A generated balanced parameter list must not be cut short by a nested
+    /// type: the declared return type survives, and every parameter is read.
+    #[test]
+    fn nested_parameter_types_keep_the_declared_signature(
+        depth in 0u32..=3,
+        parameter_count in 1usize..=4,
+    ) {
+        let (source, expected_parameters, expected_return) =
+            generated_function(depth, parameter_count);
+        let parsed = parse(&source);
+        prop_assert!(
+            parsed.errors().is_empty(),
+            "parse errors in `{}`: {:?}",
+            source,
+            parsed.errors(),
+        );
+        let Some(function) = parsed.root().functions().first().cloned() else {
+            return Err(TestCaseError::fail(format!(
+                "missing function in `{source}`"
+            )));
+        };
+        prop_assert_eq!(
+            function.return_type(),
+            Some(expected_return),
+            "source: {}",
+            source,
+        );
+        prop_assert_eq!(
+            function.parameters(),
+            expected_parameters,
+            "source: {}",
+            source,
+        );
+    }
 }

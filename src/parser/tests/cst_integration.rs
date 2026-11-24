@@ -1,9 +1,7 @@
 //! CST integration checks for mixed statement programs.
 
-use crate::test_util::assert_no_parse_errors;
-use crate::{SyntaxKind, parse};
-
 use super::helpers::{count_nodes_by_kind, pretty_print};
+use crate::{SyntaxKind, parse, test_util::assert_no_parse_errors};
 
 #[test]
 fn parse_builds_cst_for_all_top_level_categories() {

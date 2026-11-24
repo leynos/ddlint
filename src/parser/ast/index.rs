@@ -5,8 +5,7 @@
 //! enabling structured access to the optional name, typed field list, and
 //! `on` target used to build the index.
 
-use super::AstNode;
-use super::parse_utils::is_trivia;
+use super::{AstNode, parse_utils::is_trivia};
 use crate::{DdlogLanguage, SyntaxKind};
 
 /// Public error surface for malformed index field lists.
@@ -21,9 +20,7 @@ pub struct Index {
 impl Index {
     /// Name of the index if present.
     #[must_use]
-    pub fn name(&self) -> Option<String> {
-        self.find_identifier_after_keyword(SyntaxKind::K_INDEX)
-    }
+    pub fn name(&self) -> Option<String> { self.find_identifier_after_keyword(SyntaxKind::K_INDEX) }
 
     /// Typed field list declared for the index.
     ///
@@ -43,9 +40,7 @@ impl Index {
 
     /// Normalized `on` target text with trivia removed.
     #[must_use]
-    pub fn on_target(&self) -> Option<String> {
-        self.target_text_after_keyword(SyntaxKind::K_ON)
-    }
+    pub fn on_target(&self) -> Option<String> { self.target_text_after_keyword(SyntaxKind::K_ON) }
 
     fn find_identifier_after_keyword(&self, keyword: SyntaxKind) -> Option<String> {
         let mut iter = self.syntax.children_with_tokens();
@@ -184,7 +179,7 @@ fn token_kind(element: Option<&rowan::SyntaxElement<DdlogLanguage>>) -> Option<S
 
 fn element_text(element: &rowan::SyntaxElement<DdlogLanguage>) -> String {
     match element {
-        rowan::NodeOrToken::Token(token) => token.text().to_string(),
+        rowan::NodeOrToken::Token(token) => token.text().to_owned(),
         rowan::NodeOrToken::Node(node) => node.text().to_string(),
     }
 }
@@ -210,7 +205,7 @@ mod tests {
         assert_eq!(idx.name().as_deref(), Some("I"));
         assert_eq!(
             idx.fields(),
-            Ok(vec![("name".to_string(), "string".to_string())])
+            Ok(vec![("name".to_owned(), "string".to_owned())])
         );
         assert_eq!(idx.on_target().as_deref(), Some("R[lower(name)]"));
     }

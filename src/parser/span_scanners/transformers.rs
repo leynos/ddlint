@@ -6,13 +6,15 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::error_messages::{
-    CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR,
-};
-use crate::parser::lexer_helpers::{balanced_block, ident, inline_ws};
-use crate::{Span, SyntaxKind};
-
 use super::utils::State;
+use crate::{
+    Span,
+    SyntaxKind,
+    parser::{
+        error_messages::{CAPITALIZED_TRANSFORMER_NAME_ERROR, MISSING_OUTPUT_SIGNATURE_ERROR},
+        lexer_helpers::{balanced_block, ident, inline_ws},
+    },
+};
 
 const NON_EXTERN_TRANSFORMER_ERROR: &str = "transformer declarations must be extern";
 
@@ -50,11 +52,11 @@ pub(crate) fn collect_transformer_spans(
     let mut st: State<'_> = State::new(tokens, src, Vec::new());
 
     while let Some(&(token_kind, ref span)) = st.stream.peek() {
-        let span = span.clone();
+        let token_span = span.clone();
         if token_kind == SyntaxKind::K_EXTERN {
-            handle_extern_transformer(&mut st, span);
+            handle_extern_transformer(&mut st, token_span);
         } else if token_kind == SyntaxKind::K_TRANSFORMER {
-            handle_non_extern_transformer(&mut st, span);
+            handle_non_extern_transformer(&mut st, token_span);
         } else {
             st.stream.advance();
         }
@@ -246,9 +248,7 @@ fn skip_balanced_parens(tokens: &[(SyntaxKind, Span)], start: usize) -> Option<(
     None
 }
 
-fn declaration_error_end(src: &str, fallback_end: usize) -> usize {
-    line_end_at(src, fallback_end)
-}
+fn declaration_error_end(src: &str, fallback_end: usize) -> usize { line_end_at(src, fallback_end) }
 
 fn line_end_at(src: &str, start: usize) -> usize {
     src.as_bytes()
@@ -269,7 +269,7 @@ fn skip_trivia(tokens: &[(SyntaxKind, Span)], mut idx: usize) -> usize {
     idx
 }
 
-fn should_stop_skipping_trivia(kind: SyntaxKind) -> bool {
+const fn should_stop_skipping_trivia(kind: SyntaxKind) -> bool {
     !matches!(kind, SyntaxKind::T_WHITESPACE | SyntaxKind::T_COMMENT)
 }
 

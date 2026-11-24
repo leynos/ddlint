@@ -1,11 +1,25 @@
+.DEFAULT_GOAL := build
+
 .PHONY: help all clean test build release check lint typecheck fmt check-fmt \
         markdownlint spelling nixie tools \
-        test-workflow-contracts test-clippy-policy interrogate
+        test-workflow-contracts test-clippy-policy interrogate \
+        lint-clippy lint-whitaker check-build-tools install-build-tools \
+        install-verus verus
 
 APP ?= ddlint
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(HOME)/.cargo/bin/cargo)
+RUSTUP ?= $(or $(shell command -v rustup 2>/dev/null),$(HOME)/.cargo/bin/rustup)
 BUILD_JOBS ?=
 CLIPPY_FLAGS ?= --all-targets --all-features -- -D warnings
+# Rustdoc denies warnings so a broken intra-doc link or a malformed code block
+# fails the gate rather than scrolling past. `--cfg docsrs` matches the
+# configuration docs.rs builds under.
+RUSTDOC_FLAGS ?= --cfg docsrs -D warnings
+# Rustdoc compiles every doctest snippet as its own crate and reads
+# RUSTDOCFLAGS, not RUSTFLAGS, so the warning policy must be forwarded
+# explicitly. `--doctest-build-arg` is unstable; the toolchain is pinned to
+# nightly and `test` preflights it through `check-build-tools`.
+DOCTEST_RUSTDOCFLAGS := -Zunstable-options --doctest-build-arg=-Dwarnings
 MDLINT ?= $(shell command -v markdownlint-cli2 2>/dev/null || printf '%s' "$$HOME/.bun/bin/markdownlint-cli2")
 # `make fmt` and `make check-fmt` call mdtablefix directly. `--git` selects the
 # Markdown files Git tracks and `--include-untracked` adds the untracked files
@@ -21,15 +35,31 @@ TYPOS_CONFIG_BUILDER = uv tool run --python 3.14 --from \
 	"git+https://github.com/leynos/typos-config-builder.git@$(TYPOS_CONFIG_BUILDER_VERSION)" \
 	typos-config-builder
 WHITAKER ?= whitaker
+# Whitaker delegates to `cargo check`, so it takes Cargo's package selection.
+# `--workspace` keeps the suite over every workspace member, matching
+# `$(CARGO) clippy --all-targets --all-features`.
+WHITAKER_PACKAGES ?= --workspace
 
 UV ?= uv
 UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
+# The estate prover toolchain: one installer and runner, pinned by commit, so
+# every repository obtains Verus the same way. This literal is the only
+# `rust-prover-tools` revision the repository names; concordat's
+# `rust-prover-tooling` rule (PT-001) requires it to equal the estate pin.
+# `make verus` stays out of `make test` and `make lint`; the `Proofs` workflow
+# and an explicit local run are its only callers.
+PROVER_TOOLS_SOURCE ?= git+https://github.com/leynos/rust-prover-tools@592558f7183b554fc749696246984c5d7300d029
+PROVER_TOOLS ?= $(UV_ENV) $(UV) tool run --python 3.14 \
+	--from "$(PROVER_TOOLS_SOURCE)" prover-tools
+VERUS_FLAGS ?= --proof-file verus/smoke/main.rs
+VERUS_INSTALL_FLAGS ?=
 # The CV-005 CodeScene contracts live in shared-actions and run from a full
 # commit, so a fix is a pin bump. `.github/cv005.toml` holds this repository's
 # only parameters.
 CV005_CONTRACTS_REF ?= 88977798a5c3bae1549afb99642529488c665276
+CV005_CONTRACTS_REQUIREMENT = git+https://github.com/leynos/shared-actions@$(CV005_CONTRACTS_REF)\#subdirectory=packages/cv005-contracts
 CV005_CONTRACTS = $(UV_ENV) $(UV) tool run --python 3.13 \
-	--from 'git+https://github.com/leynos/shared-actions@$(CV005_CONTRACTS_REF)\#subdirectory=packages/cv005-contracts' \
+	--from '$(CV005_CONTRACTS_REQUIREMENT)' \
 	cv005-contracts
 
 # The development build standard (concordat rule `rust-build-defaults`):
@@ -39,33 +69,144 @@ CV005_CONTRACTS = $(UV_ENV) $(UV) tool run --python 3.13 \
 # setup-rust exports one), except coverage, which stays on LLVM and the
 # platform linker.
 BUILD_HOST_OS := $(shell uname -s)
+BUILD_HOST_ARCH := $(shell uname -m)
 STANDARD_RUSTFLAGS := -Zthreads=8$(if $(filter Linux,$(BUILD_HOST_OS)), -Clink-arg=-fuse-ld=mold)
+RUST_TOOLCHAIN := $(shell sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)
+MOLD_VERSION := $(shell sed -n '1p' tools/mold/VERSION)
+MOLD_INSTALL_DIR = $(HOME)/.local/share/ddlint/build-tools/mold-$(MOLD_VERSION)
+MOLD_INSTALL_BIN = $(MOLD_INSTALL_DIR)/bin
+export PATH := $(MOLD_INSTALL_BIN):$(PATH)
 
-build: target/debug/$(APP) ## Build debug binary
-release: target/release/$(APP) ## Build release binary
+check-build-tools: ## Check the pinned local development build tools
+	@set -eu; \
+	  toolchain="$(RUST_TOOLCHAIN)"; \
+	  if ! command -v "$(RUSTUP)" >/dev/null 2>&1; then \
+	    printf '%s\n' 'rustup is required; install Rustup, then run make install-build-tools' >&2; \
+	    exit 1; \
+	  fi; \
+	  if ! "$(RUSTUP)" run "$$toolchain" rustc --version >/dev/null 2>&1; then \
+	    printf 'Rust toolchain %s is unavailable; run make install-build-tools\n' "$$toolchain" >&2; \
+	    exit 1; \
+	  fi; \
+	  if [ "$(BUILD_HOST_OS)" = Linux ]; then \
+	    if ! command -v mold >/dev/null 2>&1; then \
+	      printf 'mold %s is required on Linux; run make install-build-tools\n' "$(MOLD_VERSION)" >&2; \
+	      exit 1; \
+	    fi; \
+	    if ! mold_output=$$(mold --version 2>/dev/null); then \
+	      printf 'mold %s version check failed; run make install-build-tools\n' "$(MOLD_VERSION)" >&2; \
+	      exit 1; \
+	    fi; \
+	    mold_version=$$(printf '%s\n' "$$mold_output" | \
+	      sed -n 's/^mold \([0-9][0-9.]*\).*/\1/p'); \
+	    if [ "$$mold_version" != "$(MOLD_VERSION)" ]; then \
+	      printf 'mold %s is required on Linux (found %s); run make install-build-tools\n' \
+	        "$(MOLD_VERSION)" "$$mold_version" >&2; \
+	      exit 1; \
+	    fi; \
+	  fi
 
-all: release ## Default target builds release binary
+install-build-tools: ## Install the pinned local Rust and Linux linker tools
+	@set -eu; \
+	  toolchain="$(RUST_TOOLCHAIN)"; \
+	  if ! command -v "$(RUSTUP)" >/dev/null 2>&1; then \
+	    printf '%s\n' 'rustup is required; install Rustup before provisioning repository tools' >&2; \
+	    exit 1; \
+	  fi; \
+	  if [ "$(BUILD_HOST_OS)" = Linux ]; then \
+	    case "$(BUILD_HOST_ARCH)" in \
+	      x86_64|aarch64) ;; \
+	      *) \
+	        printf 'mold %s provisioning supports Linux x86_64 and aarch64 (found %s)\n' \
+	          "$(MOLD_VERSION)" "$(BUILD_HOST_ARCH)" >&2; \
+	        exit 1 ;; \
+	    esac; \
+	    mold_version=; \
+	    if command -v mold >/dev/null 2>&1; then \
+	      if mold_output=$$(mold --version 2>/dev/null); then \
+	        mold_version=$$(printf '%s\n' "$$mold_output" | \
+	          sed -n 's/^mold \([0-9][0-9.]*\).*/\1/p'); \
+	      fi; \
+	    fi; \
+	    if [ "$$mold_version" != "$(MOLD_VERSION)" ]; then \
+	      temporary_root=$${TMPDIR:-/tmp}; \
+	      workdir=$$(mktemp -d "$$temporary_root/ddlint-build-tools.XXXXXX"); \
+	      trap 'rm -rf "$$workdir"' 0; \
+	      trap 'exit 1' HUP INT TERM; \
+	      repository_root="$(CURDIR)"; \
+	      archive_name="mold-$(MOLD_VERSION)-$(BUILD_HOST_ARCH)-linux.tar.gz"; \
+	      install_dir="$(MOLD_INSTALL_DIR)"; \
+	      mkdir -p "$$install_dir"; \
+	      cd "$$workdir"; \
+	      curl --fail --location --silent --show-error \
+	        --output "$$workdir/$$archive_name" \
+	        "https://github.com/rui314/mold/releases/download/v$(MOLD_VERSION)/$$archive_name"; \
+	      checksum_entry=$$(awk -v archive="$$archive_name" \
+	        '$$2 == archive { if (++matches == 1) print; else exit 1 } \
+	          END { if (matches != 1) exit 1 }' \
+	        "$$repository_root/tools/mold/SHA256SUMS"); \
+	      printf '%s\n' "$$checksum_entry" | sha256sum --check -; \
+	      tar -xzf "$$archive_name" --directory "$$install_dir" --strip-components=1; \
+	      if [ ! -f "$$install_dir/bin/ld.mold" ]; then \
+	        ln -s mold "$$install_dir/bin/ld.mold"; \
+	      fi; \
+	      if installed_output=$$("$${install_dir}/bin/mold" --version 2>/dev/null); then \
+	        installed_version=$$(printf '%s\n' "$$installed_output" | \
+	          sed -n 's/^mold \([0-9][0-9.]*\).*/\1/p'); \
+	      else \
+	        printf 'installed mold %s could not report its version\n' \
+	          "$(MOLD_VERSION)" >&2; \
+	        exit 1; \
+	      fi; \
+	      if [ "$$installed_version" != "$(MOLD_VERSION)" ]; then \
+	        printf 'installed mold must report version %s (found %s)\n' \
+	          "$(MOLD_VERSION)" "$$installed_version" >&2; \
+	        exit 1; \
+	      fi; \
+	    fi; \
+	  fi; \
+	  installed_toolchains=$$("$(RUSTUP)" toolchain list); \
+	  if printf '%s\n' "$$installed_toolchains" | \
+	    awk -v channel="$$toolchain" \
+	      '$$1 == channel || index($$1, channel "-") == 1 { found = 1 } END { exit !found }'; then \
+	    "$(RUSTUP)" component add rustfmt clippy rust-analyzer --toolchain "$$toolchain"; \
+	  else \
+	    "$(RUSTUP)" toolchain install "$$toolchain" --profile minimal \
+	      --component rustfmt --component clippy --component rust-analyzer; \
+	  fi
+	+$(MAKE) check-build-tools
 
-check: check-fmt typecheck lint test
+build: | check-build-tools ## Build debug binary
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) build -p ddlint-cli $(BUILD_JOBS) --bin $(APP)
+
+release: ## Build release binary
+	RUSTFLAGS="$${RUSTFLAGS-}" $(CARGO) build -p ddlint-cli $(BUILD_JOBS) --release --bin $(APP)
+
+all: release ## Build release binary
+
+check:
+	+$(MAKE) check-fmt
+	+$(MAKE) typecheck
+	+$(MAKE) lint
+	+$(MAKE) test
 
 clean: ## Remove build artifacts
 	$(CARGO) clean
 	rm -rf .coverage .pytest_cache
 	rm -f .typos-oxendict-base.json .typos-oxendict-base.toml
 
-test: ## Run tests with warnings treated as errors
+test: | check-build-tools ## Run tests and doctests with warnings treated as errors
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$${RUSTDOCFLAGS:+$$RUSTDOCFLAGS }$(DOCTEST_RUSTDOCFLAGS)" $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
 
 test-workflow-contracts: ## Validate the mutation-testing and CodeScene coverage workflow contracts
 	$(CV005_CONTRACTS) check --repository .
-	uv run --with 'pytest>=8' --with 'pyyaml>=6' pytest tests/workflow_contracts -q
+	uv run --with 'pytest>=8' --with 'pyyaml>=6' --with '$(CV005_CONTRACTS_REQUIREMENT)' pytest tests/workflow_contracts -q
 
 # Run outside cargo test: a nested Cargo process could wait on its parent's lock.
-test-clippy-policy: ## Prove Clippy accepts test bodies and rejects panicking helpers
+test-clippy-policy: | check-build-tools ## Prove Clippy accepts test bodies and rejects panicking helpers
 	CLIPPY_POLICY_CARGO="$(CARGO)" RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(UV) run --with 'pytest>=8' --with 'plumbum>=1.9,<2' pytest scripts/clippy_expect_policy_test.py -q
 
-target/%/$(APP): ## Build binary in debug or release mode
-	$(if $(filter release,$*),RUSTFLAGS="$${RUSTFLAGS-}",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(filter release,$*),--release) --bin $(APP)
 
 # Interrogate measures docstring presence over every Python file the repository
 # owns. Add a new Python directory to INTERROGATE_TARGETS. No `--python` pin: a
@@ -90,13 +231,29 @@ interrogate: ## Enforce complete Python docstring coverage
 	    exit 1; \
 	  fi
 
-lint: interrogate ## Run Clippy and the Whitaker Dylint suite with warnings denied
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
-	+$(MAKE) test-clippy-policy
-	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(WHITAKER) --all -- --all-targets --all-features
-	+$(MAKE) spelling
+# `lint` is a serial composite: `.NOTPARALLEL` keeps these prerequisites in the
+# listed order even under `-j`, so a failing Clippy run stops Whitaker from
+# starting and the gate reports the first real failure. The Rust gates are
+# separate targets so each can be run, and proven to fail, on its own.
+.NOTPARALLEL: lint lint-clippy lint-whitaker
 
-typecheck: ## Typecheck all workspace targets and features
+lint: interrogate lint-clippy lint-whitaker spelling ## Run every lint gate with warnings denied
+
+lint-clippy: | check-build-tools ## Run Clippy, Rustdoc and the Clippy policy contract with warnings denied
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
+	+$(MAKE) test-clippy-policy
+
+# Whitaker runs under the toolchain its installer manages, so it takes none of
+# the development standard: its literal `RUSTFLAGS` displaces the `rustflags`
+# tables (no frontend flag, no `mold`) and inherits nothing from the caller. An
+# inherited `CARGO_ENCODED_RUSTFLAGS` outranks `RUSTFLAGS`, so it is cleared first.
+# The LLVM override keeps it off any Cranelift opt-in, and the
+# installer's directory leads `PATH` so the installed `whitaker` is the one that runs.
+lint-whitaker: | check-build-tools ## Run the Whitaker Dylint suite with warnings denied
+	unset CARGO_ENCODED_RUSTFLAGS && PATH="$${XDG_BIN_HOME:-$(HOME)/.local/bin}:$(PATH)" CARGO_UNSTABLE_CODEGEN_BACKEND=true CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm RUSTFLAGS="-D warnings" $(WHITAKER) --all $(WHITAKER_PACKAGES) -- --all-targets --all-features
+
+typecheck: | check-build-tools ## Typecheck all workspace targets and features
 	CARGO_CACHE_RUSTC_INFO=0 RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) check --workspace --all-targets \
 		--all-features $(BUILD_JOBS)
 # Macro ensuring a tool exists in PATH
@@ -128,6 +285,20 @@ spelling: ## Enforce en-GB-oxendict spelling in Markdown prose
 
 nixie: ## Validate Mermaid diagrams
 	find . -type f -name '*.md' -not -path './target/*' -not -path './.uv-cache/*' -not -path './.uv-tools/*' -print0 | xargs -0 $(NIXIE)
+
+# Prover provisioning and proof runs delegate to the pinned `prover-tools`
+# CLI. Installation, checksum verification and toolchain selection live there,
+# not in this repository, so these targets stay thin. Diagnostics go to
+# standard error; the proof's own output and exit status pass through.
+install-verus: ## Install the pinned Verus release for local proof runs
+	@printf 'prover-tools: source=%s\n' '$(PROVER_TOOLS_SOURCE)' >&2
+	@printf 'prover-tools: target=install-verus\n' >&2
+	@$(PROVER_TOOLS) verus install $(VERUS_INSTALL_FLAGS)
+
+verus: ## Run the Verus proofs (outside test and lint)
+	@printf 'prover-tools: source=%s\n' '$(PROVER_TOOLS_SOURCE)' >&2
+	@printf 'prover-tools: target=verus\n' >&2
+	@$(PROVER_TOOLS) verus run $(VERUS_FLAGS)
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \

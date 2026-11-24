@@ -112,8 +112,9 @@ The following invariants must hold throughout the crate split:
 - Compatibility shims must live only in `ddlog-parser`, and each shim needs a
   deprecation target release plus a tracked removal issue.
 - Phase exits must use the validation scopes defined in
-  `docs/adr-001-parser-crate-split.md`: parser unit scope, integration scope,
-  and the `tests/fixtures/phase3/` corpus introduced for semantic extraction.
+  `docs/adrs/adr-0001-parser-crate-split.md`: parser unit scope, integration
+  scope, and the `tests/fixtures/phase3/` corpus introduced for semantic
+  extraction.
 
 ## Expression parser invariants
 
@@ -126,7 +127,7 @@ The following invariants must hold throughout the crate split:
 
 Primary implementation points:
 
-- `src/parser/expression/pratt.rs`
+- `src/parser/expression/pratt/mod.rs`
 - `src/parser/expression/pratt/postfix.rs`
 - `src/parser/expression/pratt/diff.rs`
 - `src/parser/expression/pratt/delay.rs`
@@ -138,15 +139,47 @@ Primary implementation points:
 struct-literal guard while parsing `if` conditions and similar prefixes to
 avoid consuming branch braces as struct fields.
 
+While the guard is active, `IDENT {` is read as a variable followed by a block.
+The parser reports a forbidden struct literal only when the lookahead suggests
+one: `ident {}` followed by another `{`, as in `if x == Foo{} { a }`, or
+`ident {` followed by an identifier and `:`, as in `if ready { x: T }`. Without
+either lookahead `if ready {} else { go() }` parses as intended. The
+`{ ident :` heuristic wrongly rejects the valid `if ready { x: T }`; the known
+false positive is recorded in register item 17. Outside the guard, `IDENT {`
+still parses a struct literal, which is why `Name { field: 1 }` keeps its
+current meaning until roadmap 2.6.11.
+
 Guard suspension points are explicit:
 
 - parenthesized sub-expressions,
-- brace groups,
+- block expressions,
 - closure bodies,
 - contexts where struct literals are expected.
 
 This behaviour is an implementation extension; policy status is tracked in the
 conformance register.
+
+### Block expressions and the `;` state
+
+- `T_LBRACE` always dispatches to `parse_block`. `parse_block_items` reads each
+  item at `BLOCK_ITEM_MIN_BP` (`BP_SEQ + 1`), so an item cannot absorb the
+  following `;` through the sequencing operator.
+- `classify_block_follow` maps the item position (`Opening`, `AfterItem`,
+  `AfterSeparator`) and the next token to the next action, which keeps the
+  empty-item and missing-separator diagnostics in one place.
+- `;`-terminating is a scoped Pratt flag set only while parsing block items.
+  `with_nested_delimiter_scope` wraps every nested delimiter context -
+  parentheses, brackets, braces, call arguments, and match arms - so a `;`
+  inside those delimiters keeps its sequencing meaning. A `for` guard uses
+  `with_guard_expression_scope`, which clears the `;` state and keeps the
+  struct-literal guard active, so `ident {` there is not a struct literal. This
+  is the `BG-D11` invariant and the subject of `V-B2` to `V-B4`.
+- `BlockExpr::from_items` returns `None` exactly for an empty item list that
+  ends with `;`, which is the `{ ; }`-style empty item already rejected by
+  `classify_block_follow`.
+- `BlockExpr::items()` and `into_items()` are the only accepted traversal
+  orders; `sema` and rule-body classification use them rather than reading
+  `statements` and `value` independently.
 
 ### Recursion and delimiter safety
 
@@ -199,7 +232,7 @@ The `Rule` AST wrapper exposes helpers that classify terms into:
 Implementation points:
 
 - `src/parser/span_scanners/rules.rs`
-- `src/parser/ast/rule.rs`
+- `src/parser/ast/rule/mod.rs`
 - `src/parser/ast/rule/classification.rs`
 
 Aggregation and lowering stage boundaries are tracked in the conformance
@@ -254,10 +287,10 @@ Implementation points:
 - `src/parser/ast/mod.rs` exposes `find_identifier_span(...)` and
   `find_identifier_span_in_range(...)`, which locate the first matching
   `T_IDENT` token within a syntax subtree or span-bounded search window.
-- `src/parser/ast/function.rs`, `src/parser/ast/relation.rs`, and
+- `src/parser/ast/function.rs`, `src/parser/ast/relation/mod.rs`, and
   `src/parser/ast/type_def.rs` use that helper to expose `name_span()` for
   top-level declaration identifiers.
-- `src/parser/ast/rule_head.rs` computes `RuleHead::binding_spans` while
+- `src/parser/ast/rule_head/mod.rs` computes `RuleHead::binding_spans` while
   parsing head text. `collect_head_binding_spans(...)` tokenizes the head atom
   slice, filters out structural identifiers such as relation callees and field
   labels, and records only declaration-like binding identifiers with absolute
@@ -305,6 +338,10 @@ Important invariants:
   cases.
 - Optional return type parsing (`parse_type_after_colon`) reuses the same type
   expression logic and trivia skipping.
+- `Function::return_type` advances past the parameter list with a
+  parenthesis-depth scan. A nested tuple type such as `((u32, bool), bool)` in
+  the parameter list therefore does not end the scan early, and the declared
+  return type is still returned.
 - Index declarations now use the canonical spec-form grammar
   `index Name(field: Type, ...) on Atom`. The span scanner rejects the legacy
   shorthand `index Name on Relation(columns)` with a targeted diagnostic, and
@@ -318,13 +355,15 @@ Important invariants:
   Existing `is_input()` and `is_output()` helpers are retained as derived
   compatibility conveniences.
 - Relation declarations preserve spec-form primary-key clauses such as
-  `primary key (row) (row.id)` as opaque CST text after the binder list.
-
-  `Relation::primary_key()` intentionally exposes only the names inside the
-  parenthesized binder/list for compatibility with existing callers.
-
-  Typed access to the trailing expression is deferred to roadmap follow-up
-  `2.6.6.1`.
+  `primary key (row) (row.id)` as CST text after the binder list.
+  `Relation::primary_key()` returns
+  `Result<Option<PrimaryKey>, RelationParseErrors>`, and `PrimaryKey` exposes
+  `binders()`, `binder_names()`, `span()`, and `expression()`.
+  `PrimaryKeyExpression` bounds the non-trivia hull after the binder list and
+  parses it lazily, shifting chumsky errors by the expression start so they
+  address source-absolute spans. The binder parser binds the identifier token
+  alone, so surrounding trivia never enters a name or a span, and a depth-zero
+  `;` ends the clause.
 - Transformer declarations require
   `extern transformer <lowercase-name>(params...): output(, output)*`.
   Transformer identifiers must be lowercase (start with a lowercase letter or
@@ -396,6 +435,14 @@ Constants currently defined:
   omits `:` or has no output identifier after it.
 - `CAPITALIZED_TRANSFORMER_NAME_ERROR` — emitted when a transformer name
   starts with an uppercase letter instead of a lowercase letter or underscore.
+- `BLOCK_ITEM_SEPARATOR_ERROR` — emitted when a block item is not followed by
+  `;` or `}`.
+- `EMPTY_BLOCK_ITEM_ERROR` — emitted for `{ ; }` and `{ a;; b }`.
+- `UNCLOSED_BLOCK_ERROR` — emitted when a block reaches end of input before
+  its closing brace.
+- `MIXED_COLLECTION_ENTRY_ERROR` — emitted when one literal mixes vector
+  elements and map entries.
+- `EMPTY_VECTOR_LITERAL_ERROR` — emitted for `[]`.
 
 Test utilities that match these messages:
 
@@ -415,10 +462,12 @@ token names or their human-readable equivalents.
 - Stable diagnostic taxonomy: `src/parser/diagnostics/*`
 - Backend-neutral observer and optional adapter:
   `src/parser/observability/*`
-- Pratt parser: `src/parser/expression/pratt.rs`
+- Pratt parser: `src/parser/expression/pratt/mod.rs`
 - Pratt postfix helpers:
   `src/parser/expression/pratt/{postfix,diff,delay}.rs`
 - Prefix/infix helpers: `src/parser/expression/*.rs`
+- Block expression parsing: `src/parser/expression/block.rs`
+- Block AST node: `src/parser/ast/expr/block.rs`
 - Feature-specific diagnostic messages: `src/parser/error_messages.rs`
 - Reserved-token compatibility diagnostics: `src/parser/reserved_tokens.rs`
 - Rule span scanning: `src/parser/span_scanners/rules.rs`

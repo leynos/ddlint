@@ -6,8 +6,7 @@
 
 use chumsky::prelude::*;
 
-use crate::parser::span_collector::SpanCollector;
-use crate::{Span, SyntaxKind};
+use crate::{Span, SyntaxKind, parser::span_collector::SpanCollector};
 
 /// Convenience alias for scanners that accumulate `Simple` errors.
 pub(crate) type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;

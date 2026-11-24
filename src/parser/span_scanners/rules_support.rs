@@ -3,9 +3,8 @@
 //! Determines whether a token begins a new logical line so the `rules`
 //! scanner only treats line-initial tokens as rule or `for` statement starts.
 
-use crate::{Span, SyntaxKind};
-
 use super::super::utils::State;
+use crate::{Span, SyntaxKind};
 
 /// Return `true` if `span` begins a new logical line in the source.
 ///

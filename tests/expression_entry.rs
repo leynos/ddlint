@@ -3,9 +3,13 @@
 //! These cases ensure token drainage, precedence, and error collection work
 //! as expected when calling the public API.
 
-use ddlint::parser::ast::{BinaryOp, Expr};
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{assert_parse_error, lit_num};
+use ddlint::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        expression::parse_expression,
+    },
+    test_util::{assert_parse_error, lit_num},
+};
 use rstest::rstest;
 
 #[rstest]

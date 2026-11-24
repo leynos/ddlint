@@ -17,10 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/setup-rust@ab489303d8b0f0175bd334335b696ca48e0e7586
         with:
           expect-cache: any
           install-mold: 'true'
+          mold-version: '2.41.0'
       - name: Setup uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
@@ -36,7 +37,7 @@ jobs:
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@ab489303d8b0f0175bd334335b696ca48e0e7586
         with:
           version: "0.6.1"
       - name: Format
@@ -51,9 +52,14 @@ jobs:
         with:
           globs: '**/*.md'
       - name: Install the Whitaker Dylint suite
-        uses: leynos/shared-actions/.github/actions/install-whitaker@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/install-whitaker@ab489303d8b0f0175bd334335b696ca48e0e7586
+        with:
+          cranelift: true
       - name: Lint
         run: make lint
+      # The full-feature suite is independent of the coverage feature selection.
+      - name: Test
+        run: make test
       - name: Workflow contract tests
         run: make test-workflow-contracts
       # Pull requests only: main's push is measured by coverage-main.yml, the
@@ -67,7 +73,7 @@ jobs:
           # linker. Assigning RUSTFLAGS displaces every `rustflags` table in
           # .cargo/config.toml.
           RUSTFLAGS: -D warnings
-        uses: leynos/shared-actions/.github/actions/generate-coverage@8e6a325765ba382691d1b1c65fcccf1fc1d1b00c
+        uses: leynos/shared-actions/.github/actions/generate-coverage@ab489303d8b0f0175bd334335b696ca48e0e7586
         with:
           output-path: lcov.info
           format: lcov

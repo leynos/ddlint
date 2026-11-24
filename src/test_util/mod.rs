@@ -1,7 +1,8 @@
 //! Helpers for constructing expression nodes and asserting parser errors in
 //! tests.
 //!
-//! These functions reduce boilerplate when asserting over [`Expr`] nodes and
+//! These functions reduce boilerplate when asserting over
+//! [`Expr`](crate::parser::ast::Expr) nodes and
 //! verifying that parsing failures surface precise spans and messages.
 
 mod assertions;
@@ -9,23 +10,77 @@ mod expressions;
 mod literals;
 
 pub use assertions::{
-    assert_custom_parse_error_contains, assert_delimiter_error,
+    assert_custom_parse_error_contains,
+    assert_delimiter_error,
     assert_first_rule_without_parse_stage_aggregation_errors,
-    assert_no_custom_parse_error_contains, assert_no_parse_errors, assert_panic_with_message,
-    assert_parse_error, assert_unclosed_delimiter_error, find_matching_error,
+    assert_no_custom_parse_error_contains,
+    assert_no_parse_errors,
+    assert_parse_error,
+    assert_unclosed_delimiter_error,
+    find_matching_error,
 };
+/// Diagnostic emitted when an output relation omits its signature.
 pub const MISSING_OUTPUT_SIGNATURE_ERROR: &str =
     crate::parser::error_messages::MISSING_OUTPUT_SIGNATURE_ERROR;
+/// Diagnostic emitted for a transformer whose name starts with an uppercase
+/// letter.
 pub const CAPITALIZED_TRANSFORMER_NAME_ERROR: &str =
     crate::parser::error_messages::CAPITALIZED_TRANSFORMER_NAME_ERROR;
+/// Diagnostic emitted when one bracket literal mixes vector elements and map
+/// entries.
+pub const MIXED_COLLECTION_ENTRY_ERROR: &str =
+    crate::parser::error_messages::MIXED_COLLECTION_ENTRY_ERROR;
+/// Diagnostic emitted when a bracket map entry ends before its `->`.
+pub const MISSING_MAP_ARROW_ERROR: &str = crate::parser::error_messages::MISSING_MAP_ARROW_ERROR;
+/// Diagnostic emitted for `[]`, which `DDlog` spells `vec_empty()`.
+pub const EMPTY_VECTOR_LITERAL_ERROR: &str =
+    crate::parser::error_messages::EMPTY_VECTOR_LITERAL_ERROR;
+/// Diagnostic emitted when two block items lack the `;` between them.
+pub const BLOCK_ITEM_SEPARATOR_ERROR: &str =
+    crate::parser::error_messages::BLOCK_ITEM_SEPARATOR_ERROR;
+/// Diagnostic emitted for an empty item between two `;` separators.
+pub const EMPTY_BLOCK_ITEM_ERROR: &str = crate::parser::error_messages::EMPTY_BLOCK_ITEM_ERROR;
+/// Diagnostic emitted when a block reaches a delimiter without its `}`.
+pub const UNCLOSED_BLOCK_ERROR: &str = crate::parser::error_messages::UNCLOSED_BLOCK_ERROR;
 pub use expressions::{
-    atom_delay, atom_diff, bit_slice, break_expr, call, call_expr, closure, continue_expr, field,
-    field_access, for_loop, if_expr, map_entry, map_lit, match_arm, match_expr, method_call, pat,
-    qualified_call, return_expr, struct_expr, tuple, tuple_index, var, vec_lit,
+    atom_delay,
+    atom_diff,
+    bit_slice,
+    block,
+    break_expr,
+    call,
+    call_expr,
+    closure,
+    continue_expr,
+    field,
+    field_access,
+    for_loop,
+    if_expr,
+    map_entry,
+    map_lit,
+    match_arm,
+    match_expr,
+    method_call,
+    pat,
+    qualified_call,
+    return_expr,
+    struct_expr,
+    tuple,
+    tuple_index,
+    var,
+    vec_lit,
 };
 pub use literals::{
-    NumericText, StringBody, lit_bool, lit_interned_raw_interpolated_str, lit_interned_raw_str,
-    lit_interned_str, lit_interpolated_str, lit_num, lit_raw_interpolated_str, lit_raw_str,
+    NumericText,
+    StringBody,
+    lit_bool,
+    lit_interned_raw_interpolated_str,
+    lit_interned_raw_str,
+    lit_interned_str,
+    lit_interpolated_str,
+    lit_num,
+    lit_raw_interpolated_str,
+    lit_raw_str,
     lit_str,
 };
 
@@ -44,9 +99,7 @@ use crate::{Span, SyntaxKind, tokenize_with_trivia};
 /// # }
 /// ```
 #[must_use]
-pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> {
-    tokenize_with_trivia(src)
-}
+pub fn tokenize(src: &str) -> Vec<(SyntaxKind, Span)> { tokenize_with_trivia(src) }
 
 /// Slice `source` by a validated byte span for test assertions.
 ///
@@ -76,15 +129,11 @@ pub fn span_text<'a>(source: &'a str, span: &Span) -> &'a str {
 pub struct Name(pub(crate) String);
 
 impl From<&str> for Name {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_owned()) }
 }
 
 impl From<String> for Name {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 /// Common error message patterns for parser assertions.
@@ -94,9 +143,7 @@ pub enum ErrorPattern {
 }
 
 impl From<&str> for ErrorPattern {
-    fn from(s: &str) -> Self {
-        Self::Custom(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self::Custom(s.to_owned()) }
 }
 
 /// Replace internal token names with human-readable forms.
@@ -119,7 +166,7 @@ pub(crate) fn normalise_tokens(s: &str) -> String {
         (K::T_IDENT, "identifier"),
         (K::T_NUMBER, "number"),
     ];
-    let mut out = s.to_string();
+    let mut out = s.to_owned();
     for (k, human) in keys {
         let raw = format!("{k:?}");
         out = out.replace(&raw, human);

@@ -5,7 +5,7 @@ use ddlint::{parse, parser::ParsedSpans};
 #[test]
 fn parse_builds_with_valid_spans() {
     let parsed = parse("import foo::bar;");
-    assert!(parsed.errors().is_empty());
+    assert_eq!(parsed.errors(), []);
     assert_eq!(parsed.root().imports().len(), 1);
 }
 

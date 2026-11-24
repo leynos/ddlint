@@ -25,7 +25,7 @@ use crate::SyntaxKind;
 ///     "expected '{}'", token_display(SyntaxKind::T_RPAREN)
 /// ));
 /// ```
-pub(super) fn token_display(kind: SyntaxKind) -> &'static str {
+pub(super) const fn token_display(kind: SyntaxKind) -> &'static str {
     match kind {
         SyntaxKind::T_LPAREN => "(",
         SyntaxKind::T_RPAREN => ")",
@@ -165,6 +165,10 @@ pub(super) fn atom() -> impl Parser<SyntaxKind, (), Error = Simple<SyntaxKind>> 
 /// matching closing delimiter while tracking nested pairs. Whitespace, and
 /// comments, are permitted between tokens. An error is produced if a closing
 /// token appears without a corresponding opener.
+#[expect(
+    clippy::result_large_err,
+    reason = "chumsky's `Simple` error is large and `filter_map` fixes the closure's error type"
+)]
 fn balanced_block_with_min(
     open: SyntaxKind,
     close: SyntaxKind,
@@ -221,10 +225,11 @@ pub(super) fn balanced_block_nonempty(
 #[cfg(test)]
 mod tests {
     //! Unit tests for the lexer helper utilities.
-    use super::*;
-    use crate::{Span, parser::token_stream::TokenStream, test_util::tokenize};
     use chumsky::Stream;
     use rstest::rstest;
+
+    use super::*;
+    use crate::{Span, parser::token_stream::TokenStream, test_util::tokenize};
 
     #[rstest]
     #[case(SyntaxKind::T_LPAREN, "(")]

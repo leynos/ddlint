@@ -2,12 +2,14 @@
 
 mod rules;
 
+use ddlint::{
+    Parsed,
+    linter::{CstRuleStore, LintDiagnostic, RuleConfig, RuleConfigValue, RuleCtx, Runner},
+    parse,
+};
+use fixture_lints::allow_fixture_expansion_lints;
 use rowan::NodeOrToken;
 use rstest::{fixture, rstest};
-
-use ddlint::linter::{CstRuleStore, LintDiagnostic, RuleConfig, RuleConfigValue, RuleCtx, Runner};
-use ddlint::{Parsed, parse};
-
 use rules::{ConfigAwareRule, CountingRule, EmptyTargetsRule, IdentTokenRule};
 
 // -- helpers ------------------------------------------------------------------
@@ -45,6 +47,7 @@ fn sequential_dispatch(
 
 // -- fixtures -----------------------------------------------------------------
 
+#[allow_fixture_expansion_lints]
 #[fixture]
 fn parsed_fixture(
     #[default(include_str!("../../examples/hello_join.dl"))] source: &str,
@@ -83,8 +86,8 @@ fn runner_matches_sequential_dispatch(
     assert_eq!(
         expected.len(),
         actual.len(),
-        "runner should produce the same number of diagnostics as sequential \
-         dispatch for `{fixture_name}`",
+        "runner should produce the same number of diagnostics as sequential dispatch for \
+         `{fixture_name}`",
     );
     assert_eq!(
         expected, actual,
@@ -185,8 +188,8 @@ fn runner_respects_config(parsed_fixture: Parsed) {
 
     // With "enabled" = false the same rule emits nothing.
     let disabled_config = RuleConfig::from([("enabled".to_owned(), RuleConfigValue::Bool(false))]);
-    let runner = Runner::new(&store, source.as_str(), &parsed_fixture, disabled_config);
-    let disabled_diagnostics = runner.run();
+    let disabled_runner = Runner::new(&store, source.as_str(), &parsed_fixture, disabled_config);
+    let disabled_diagnostics = disabled_runner.run();
 
     assert!(
         disabled_diagnostics.is_empty(),
@@ -238,8 +241,8 @@ fn runner_diagnostics_sorted_by_span_then_rule_name(parsed_fixture: Parsed) {
             .then_with(|| a.rule_name().cmp(b.rule_name()));
         assert!(
             order.is_le(),
-            "diagnostics should be sorted: ({:?}, {:?}, {:?}) should come \
-             before ({:?}, {:?}, {:?})",
+            "diagnostics should be sorted: ({:?}, {:?}, {:?}) should come before ({:?}, {:?}, \
+             {:?})",
             a.span().start(),
             a.span().end(),
             a.rule_name(),

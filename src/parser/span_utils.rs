@@ -3,8 +3,10 @@
 //! These utilities support shifting parser diagnostics produced against
 //! substring slices back into the coordinate space of the full source text.
 
-use chumsky::Error as ChumskyError;
-use chumsky::error::{Simple, SimpleReason};
+use chumsky::{
+    Error as ChumskyError,
+    error::{Simple, SimpleReason},
+};
 
 use crate::{Span, SyntaxKind};
 
@@ -48,12 +50,14 @@ fn shift_error(error: &Simple<SyntaxKind>, offset: usize) -> Simple<SyntaxKind> 
     };
 
     match label {
-        Some(label) => shifted.with_label(label),
+        Some(text) => shifted.with_label(text),
         None => shifted,
     }
 }
 
-fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
+/// Return the closing token paired with `delimiter`, or `delimiter` itself
+/// when it has no paired closer.
+const fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
     match delimiter {
         SyntaxKind::T_LPAREN => SyntaxKind::T_RPAREN,
         SyntaxKind::T_LBRACE => SyntaxKind::T_RBRACE,
@@ -62,7 +66,7 @@ fn matching_closer(delimiter: SyntaxKind) -> SyntaxKind {
     }
 }
 
-fn shift_span(span: Span, offset: usize) -> Span {
+const fn shift_span(span: Span, offset: usize) -> Span {
     span.start.saturating_add(offset)..span.end.saturating_add(offset)
 }
 
@@ -90,3 +94,7 @@ pub(crate) fn parse_u32_decimal(text: &str) -> Result<u32, &'static str> {
         .map_err(|_| "delay must be an unsigned 32-bit integer")?;
     u32::try_from(value).map_err(|_| "delay must fit u32")
 }
+
+#[cfg(test)]
+#[path = "span_utils_tests.rs"]
+mod tests;

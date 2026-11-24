@@ -39,9 +39,7 @@ impl Host {
     }
 
     /// Returns whether the host takes mold, which ships for Linux alone.
-    pub const fn takes_linker_flag(self) -> bool {
-        matches!(self, Self::Linux)
-    }
+    pub const fn takes_linker_flag(self) -> bool { matches!(self, Self::Linux) }
 }
 
 /// What one `make -n` command assigns to `RUSTFLAGS`.
@@ -125,9 +123,62 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
         .filter(|command| command.contains("cargo") || command.contains("whitaker"))
         .map(|command| match assigned_rustflags(&command)? {
             Assignment::Unassigned if compiles(&command) => Ok(Assignment::Bare(command)),
+            // Whitaker runs under the toolchain its installer manages, so it takes none of the
+            // development standard. Its literal `RUSTFLAGS="-D warnings"` is the isolation boundary
+            // the build-defaults rule (BD-008) asks for, not a missing assignment.
+            Assignment::Flags(..) if is_isolated_whitaker(&command) => Ok(Assignment::Unassigned),
             other => Ok(other),
         })
         .collect()
+}
+
+/// Returns whether a command is Whitaker under the literal warning-only `RUSTFLAGS` boundary, with
+/// an explicit LLVM backend so it does not inherit a Cranelift opt-in.
+///
+/// Both settings must be leading `NAME=value` assignments, so they are environment settings and
+/// not arguments, and the first word after them must be the `whitaker` executable. Each quoted
+/// span is dropped first, because a quoted value may hold spaces.
+fn is_isolated_whitaker(command: &str) -> bool {
+    let words = ShellLine(command).words();
+    let leading = words.iter().take_while(|word| {
+        word.split_once('=').is_some_and(|(name, _)| {
+            !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        })
+    });
+    let (assigned, rest) = words.split_at(leading.count());
+    let rustflags: Vec<&&str> = assigned
+        .iter()
+        .filter(|word| word.starts_with("RUSTFLAGS="))
+        .collect();
+    rest.first()
+        .is_some_and(|word| word.rsplit('/').next() == Some("whitaker"))
+        && rustflags == [&"RUSTFLAGS=\"-D warnings\""]
+        && assigned.contains(&"CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm")
+}
+
+/// A shell command line, read word by word with each double-quoted span kept whole.
+struct ShellLine<'a>(&'a str);
+
+impl<'a> ShellLine<'a> {
+    /// Returns the words of the line, split on whitespace outside double quotes.
+    fn words(&self) -> Vec<&'a str> {
+        let mut words = Vec::new();
+        let mut start = None;
+        let mut quoted = false;
+        for (index, c) in self.0.char_indices() {
+            quoted ^= c == '"';
+            match (c.is_whitespace() && !quoted, start) {
+                (true, Some(begin)) => {
+                    words.extend(self.0.get(begin..index));
+                    start = None;
+                }
+                (false, None) => start = Some(index),
+                _ => {}
+            }
+        }
+        words.extend(start.and_then(|begin| self.0.get(begin..)));
+        words
+    }
 }
 
 /// A Makefile target name, typed so a runner takes a target and not just any text.
@@ -144,9 +195,7 @@ impl<'a> Target<'a> {
     /// # Returns
     ///
     /// The Makefile target's name, as the text `make` takes.
-    pub const fn name(self) -> &'a str {
-        self.0
-    }
+    pub const fn name(self) -> &'a str { self.0 }
 }
 
 /// Runs `make -n` for a target on a host and returns what it printed. The tests
@@ -192,8 +241,8 @@ pub fn development_problem(
 }
 
 /// Returns the complaint when the `test` target assigns `RUSTFLAGS` in no command, or
-/// keeps `-D warnings` in none of its assigned commands: a recipe may run other commands (a version probe, a
-/// prerequisite build) that never carried the policy, but dropping `$(RUST_FLAGS)`
+/// keeps `-D warnings` in none of its assigned commands: a recipe may run other commands (a version
+/// probe, a prerequisite build) that never carried the policy, but dropping `$(RUST_FLAGS)`
 /// from the command that runs the tests drops it from all of them.
 pub fn test_policy_problem(target: &str, host: Host, commands: &[Assignment]) -> Option<String> {
     let assigned = commands.iter().filter_map(|command| match command {
@@ -259,8 +308,8 @@ fn held_out_command_problems(target: &str, assignment: &Assignment) -> Problems 
         .filter(|(is_named, _)| *is_named)
         .map(|(_, flag)| format!("`make {target}` takes {flag}"))
         .collect();
-    // A release build keeps the caller's own flags (a sanitizer, a target feature) while it drops the
-    // standard's; only the coverage build, a measurement, ignores them.
+    // A release build keeps the caller's own flags (a sanitizer, a target feature) while it drops
+    // the standard's; only the coverage build, a measurement, ignores them.
     if target == "release" && !inherits {
         problems.push(format!("`make {target}` drops the caller's RUSTFLAGS"));
     }
@@ -313,6 +362,4 @@ pub fn held_out_problems_for(
 }
 
 /// Returns the number of held-out targets the repository defines.
-pub const fn held_out_target_count() -> usize {
-    HELD_OUT_TARGETS.len()
-}
+pub const fn held_out_target_count() -> usize { HELD_OUT_TARGETS.len() }

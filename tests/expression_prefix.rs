@@ -4,20 +4,34 @@
 //! struct literals, and literal parsing through the public `parse_expression`
 //! API.
 
-use ddlint::parser::ast::Expr;
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_delimiter_error, assert_parse_error, closure, field, lit_bool, lit_interned_str,
-    lit_num, lit_raw_interpolated_str, lit_raw_str, lit_str, map_lit, match_arm, match_expr,
-    return_expr, struct_expr, tuple, var, vec_lit,
+use ddlint::{
+    parser::{ast::Expr, expression::parse_expression},
+    test_util::{
+        assert_delimiter_error,
+        assert_parse_error,
+        block,
+        closure,
+        field,
+        lit_bool,
+        lit_interned_str,
+        lit_num,
+        lit_raw_interpolated_str,
+        lit_raw_str,
+        lit_str,
+        match_arm,
+        match_expr,
+        return_expr,
+        struct_expr,
+        tuple,
+        var,
+    },
 };
 use rstest::rstest;
 
 #[rstest]
-#[case("{}", map_lit(vec![]))]
-#[case("{1}", Expr::Group(Box::new(lit_num("1"))))]
+#[case("{}", block(vec![], None))]
+#[case("{1}", block(vec![], Some(lit_num("1"))))]
 #[case("(1)", Expr::Group(Box::new(lit_num("1"))))]
-#[case("[]", vec_lit(vec![]))]
 #[case("(1,)", tuple(vec![lit_num("1")]))]
 #[case("|x| x", closure(vec!["x"], var("x")))]
 #[case("|a,b| a", closure(vec!["a", "b"], var("a")))]
@@ -25,7 +39,7 @@ use rstest::rstest;
     "Point { x: 1, y: 2 }",
     struct_expr("Point", vec![field("x", lit_num("1")), field("y", lit_num("2"))]),
 )]
-#[case("{ x }", Expr::Group(Box::new(var("x"))))]
+#[case("{ x }", block(vec![], Some(var("x"))))]
 #[case("\"hi\"", lit_str("hi"))]
 #[case("[|raw|]", lit_raw_str("raw"))]
 #[case("$[|raw ${x}|]", lit_raw_interpolated_str("raw ${x}"))]
@@ -89,7 +103,7 @@ fn parses_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     "return (x, y)",
     return_expr(Some(tuple(vec![var("x"), var("y")]))),
 )]
-#[case("{ return }", Expr::Group(Box::new(return_expr(None))))]
+#[case("{ return }", block(vec![], Some(return_expr(None))))]
 #[case("(return)", Expr::Group(Box::new(return_expr(None))))]
 // Return with no explicit value before a terminator (`)`, `}`, `,`, `;`, or
 // `->`) yields unit `()` so match arms, loop bodies, and grouped expressions can
@@ -103,28 +117,51 @@ fn parses_return_prefix_forms(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+/// One prefix-form error case.
+struct PrefixErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    is_unclosed: bool,
+}
+
+/// Check the diagnostic reported for each malformed prefix expression.
 #[rstest]
 // Note: `{}` is now a valid empty map literal, so it's not an error.
-#[case("|x x", "expected pipe", 3, 4, false)]
-#[case("match (x) {}", "expected at least one match arm", 11, 12, false)]
-#[case(
-    "match (x) { _ -> x",
-    "expected ',' or '}' after match arm",
-    18,
-    18,
-    false
-)]
-fn prefix_form_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] unclosed: bool,
-) {
+#[case(PrefixErrorCase {
+    src: "|x x",
+    msg: "expected pipe",
+    start: 3,
+    end: 4,
+    is_unclosed: false,
+})]
+#[case(PrefixErrorCase {
+    src: "match (x) {}",
+    msg: "expected at least one match arm",
+    start: 11,
+    end: 12,
+    is_unclosed: false,
+})]
+#[case(PrefixErrorCase {
+    src: "match (x) { _ -> x",
+    msg: "expected ',' or '}' after match arm",
+    start: 18,
+    end: 18,
+    is_unclosed: false,
+})]
+fn prefix_form_errors(#[case] case: PrefixErrorCase) {
+    let PrefixErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        is_unclosed,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };
-    if unclosed {
+    if is_unclosed {
         assert_delimiter_error(&errors, msg, start, end);
     } else {
         let Some(error) = errors.first() else {

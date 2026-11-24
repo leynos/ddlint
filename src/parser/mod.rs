@@ -22,8 +22,7 @@ mod span_collector;
 mod span_scanners;
 
 mod span_scanner;
-use span_scanner::merge_spans;
-use span_scanner::parse_tokens;
+use span_scanner::{merge_spans, parse_tokens};
 mod cst_builder;
 use cst_builder::build_green_tree;
 mod delimiter;
@@ -34,11 +33,11 @@ pub mod observability;
 pub mod pattern;
 mod top_level_for;
 pub use cst_builder::{Parsed, ParsedSpans};
+use diagnostics::DiagnosticCategory;
+use observability::{NoopParseObserver, ParseAttemptContext, ParseObserver, complete_attempt};
 use top_level_for::collect_desugared_top_level_for_rules;
 
 use crate::Span;
-use diagnostics::DiagnosticCategory;
-use observability::{NoopParseObserver, ParseAttemptContext, ParseObserver, complete_attempt};
 
 /// Parse the provided source string.
 ///
@@ -68,9 +67,7 @@ use observability::{NoopParseObserver, ParseAttemptContext, ParseObserver, compl
 /// assert_eq!(parsed.root().relations().len(), 1);
 /// ```
 #[must_use]
-pub fn parse(src: &str) -> Parsed {
-    parse_with_observer(src, &NoopParseObserver)
-}
+pub fn parse(src: &str) -> Parsed { parse_with_observer(src, &NoopParseObserver) }
 
 /// Parse source while reporting attempts and diagnostics to `observer`.
 ///
@@ -81,10 +78,7 @@ pub fn parse(src: &str) -> Parsed {
 ///
 /// ```rust,no_run
 /// # use ddlint::{NoopParseObserver, parse_with_observer};
-/// let parsed = parse_with_observer(
-///     "input relation R(x: u32);",
-///     &NoopParseObserver,
-/// );
+/// let parsed = parse_with_observer("input relation R(x: u32);", &NoopParseObserver);
 /// assert!(parsed.errors().is_empty());
 /// ```
 #[must_use]

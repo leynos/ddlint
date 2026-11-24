@@ -2,10 +2,10 @@
 
 use rstest::rstest;
 
-use crate::parser::expression_span::{
-    ExpressionError, rule_body_literal_spans, validate_expression,
+use crate::{
+    parser::expression_span::{ExpressionError, rule_body_literal_spans, validate_expression},
+    test_util::tokenize,
 };
-use crate::test_util::tokenize;
 
 #[test]
 fn validate_expression_reports_out_of_bounds() {
@@ -15,6 +15,39 @@ fn validate_expression_reports_out_of_bounds() {
         Err(ExpressionError::OutOfBounds { span: sp }) => assert_eq!(sp, span),
         _ => panic!("expected out-of-bounds error"),
     }
+}
+
+/// A block is the case that hides `return` from term-level scanning: the
+/// diagnostic must point at the keyword inside the block, not at the literal.
+#[test]
+fn validate_expression_rejects_return_in_a_rule_body_block() {
+    let src = "y = { return x; x }";
+    let Err(ExpressionError::Parse(errors)) = validate_expression(src, 0..src.len()) else {
+        panic!("a rule-body block with `return` must be rejected");
+    };
+    let Some(error) = errors.first() else {
+        panic!("the block `return` must report a diagnostic");
+    };
+    assert_eq!(
+        error.span().clone(),
+        6..12,
+        "the diagnostic must point at `return`"
+    );
+    assert!(
+        format!("{:?}", error.reason()).contains("not valid in a rule body"),
+        "the diagnostic must explain the rule-body restriction, got {error:?}"
+    );
+}
+
+/// A closure body is a function body for this purpose, so `return` stays
+/// legal even when the closure itself sits in a rule body.
+#[test]
+fn validate_expression_allows_return_in_a_rule_body_closure() {
+    let src = "|v| return v";
+    assert!(
+        validate_expression(src, 0..src.len()).is_ok(),
+        "a closure body must keep `return` legal inside a rule body"
+    );
 }
 
 #[test]
@@ -42,7 +75,7 @@ fn fact_rules_have_no_body_spans() {
     let src = "SystemAlert(\"ok\").";
     let tokens = tokenize(src);
     let spans = rule_body_literal_spans(&tokens, 0, src.len());
-    assert!(spans.is_empty());
+    assert_eq!(spans.len(), 0);
 }
 
 /// Tests that `T_IMPLIES` and `T_DOT` inside nested delimiters are not treated as

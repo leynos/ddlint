@@ -13,11 +13,15 @@ use std::sync::Arc;
 use rayon::prelude::*;
 use rowan::{GreenNode, NodeOrToken};
 
-use crate::Parsed;
-use crate::linter::rule::{CstRule, LintDiagnostic, RuleConfig, RuleCtx};
-use crate::linter::store::CstRuleStore;
-use crate::parser::ast::Root;
-use crate::sema::SemanticModel;
+use crate::{
+    Parsed,
+    linter::{
+        rule::{CstRule, LintDiagnostic, RuleConfig, RuleCtx},
+        store::CstRuleStore,
+    },
+    parser::ast::Root,
+    sema::SemanticModel,
+};
 
 /// Visitor-based parallel rule runner.
 ///
@@ -40,8 +44,10 @@ use crate::sema::SemanticModel;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ddlint::linter::{CstRuleStore, RuleConfig, Runner};
-/// use ddlint::parse;
+/// use ddlint::{
+///     linter::{CstRuleStore, RuleConfig, Runner},
+///     parse,
+/// };
 ///
 /// let source = "input relation R(x: u32);";
 /// let parsed = parse(source);
@@ -126,15 +132,12 @@ impl<'a> Runner<'a> {
         let mut diagnostics = Vec::new();
 
         for element in root.syntax().descendants_with_tokens() {
-            if target_kinds.contains(&element.kind()) {
-                match &element {
-                    NodeOrToken::Node(node) => {
-                        rule.check_node(node, &ctx, &mut diagnostics);
-                    }
-                    NodeOrToken::Token(token) => {
-                        rule.check_token(token, &ctx, &mut diagnostics);
-                    }
-                }
+            if !target_kinds.contains(&element.kind()) {
+                continue;
+            }
+            match &element {
+                NodeOrToken::Node(node) => rule.check_node(node, &ctx, &mut diagnostics),
+                NodeOrToken::Token(token) => rule.check_token(token, &ctx, &mut diagnostics),
             }
         }
 
@@ -156,12 +159,12 @@ fn sort_diagnostics(diagnostics: &mut [LintDiagnostic]) {
 #[cfg(test)]
 mod tests {
     //! Tests for the lint runner.
+    use fixture_lints::allow_fixture_expansion_lints;
     use rowan::TextRange;
     use rstest::{fixture, rstest};
 
     use super::*;
-    use crate::linter::Rule;
-    use crate::{SyntaxKind, parse};
+    use crate::{SyntaxKind, linter::Rule, parse};
 
     // -- stub rules -----------------------------------------------------------
 
@@ -171,15 +174,9 @@ mod tests {
     }
 
     impl Rule for StubRule {
-        fn name(&self) -> &'static str {
-            self.name
-        }
-        fn group(&self) -> &'static str {
-            "test"
-        }
-        fn docs(&self) -> &'static str {
-            "Stub rule for testing."
-        }
+        fn name(&self) -> &'static str { self.name }
+        fn group(&self) -> &'static str { "test" }
+        fn docs(&self) -> &'static str { "Stub rule for testing." }
     }
 
     impl StubRule {
@@ -194,9 +191,7 @@ mod tests {
     }
 
     impl CstRule for StubRule {
-        fn target_kinds(&self) -> &'static [SyntaxKind] {
-            self.kinds
-        }
+        fn target_kinds(&self) -> &'static [SyntaxKind] { self.kinds }
 
         fn check_node(
             &self,
@@ -223,19 +218,16 @@ mod tests {
 
     // -- fixtures -------------------------------------------------------------
 
+    #[allow_fixture_expansion_lints]
     #[fixture]
-    fn store() -> CstRuleStore {
-        CstRuleStore::new()
-    }
+    fn store() -> CstRuleStore { CstRuleStore::new() }
 
     // -- tests ----------------------------------------------------------------
 
     fn assert_send_sync<T: Send + Sync>() {}
 
     #[test]
-    fn runner_is_send_and_sync() {
-        assert_send_sync::<Runner<'_>>();
-    }
+    fn runner_is_send_and_sync() { assert_send_sync::<Runner<'_>>(); }
 
     #[rstest]
     fn empty_store_produces_no_diagnostics(store: CstRuleStore) {
@@ -243,7 +235,7 @@ mod tests {
         let parsed = parse(source);
         let runner = Runner::new(&store, source, &parsed, RuleConfig::new());
         let diagnostics = runner.run();
-        assert!(diagnostics.is_empty());
+        assert_eq!(diagnostics.len(), 0);
     }
 
     #[rstest]

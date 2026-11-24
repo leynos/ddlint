@@ -3,11 +3,24 @@
 //! These tests cover struct literals, tuple literals and closure expressions
 //! through the public `parse_expression` API.
 
-use ddlint::parser::ast::{BinaryOp, Expr};
-use ddlint::parser::expression::parse_expression;
-use ddlint::test_util::{
-    assert_parse_error, assert_unclosed_delimiter_error, closure, field, if_expr, lit_bool,
-    lit_num, struct_expr, tuple, var,
+use ddlint::{
+    parser::{
+        ast::{BinaryOp, Expr},
+        expression::parse_expression,
+    },
+    test_util::{
+        assert_parse_error,
+        assert_unclosed_delimiter_error,
+        block,
+        closure,
+        field,
+        if_expr,
+        lit_bool,
+        lit_num,
+        struct_expr,
+        tuple,
+        var,
+    },
 };
 use rstest::rstest;
 
@@ -38,23 +51,64 @@ fn parses_compound_expressions(#[case] src: &str, #[case] expected: Expr) {
     assert_eq!(expr, expected);
 }
 
+/// One compound-expression error case.
+struct CompoundErrorCase {
+    src: &'static str,
+    msg: &'static str,
+    start: usize,
+    end: usize,
+    is_unclosed: bool,
+}
+
+/// Check the diagnostic reported for each malformed compound expression.
 #[rstest]
-#[case("Point { x: 1", "expected", 12, 12, true)]
-#[case("(1, 2", "expected", 5, 5, true)]
-#[case("|x|", "invalid expression", 3, 3, false)]
-#[case("|x x", "expected pipe", 3, 4, false)]
-#[case("||", "invalid expression", 2, 2, false)]
-fn compound_expression_errors(
-    #[case] src: &str,
-    #[case] msg: &str,
-    #[case] start: usize,
-    #[case] end: usize,
-    #[case] unclosed: bool,
-) {
+#[case(CompoundErrorCase {
+    src: "Point { x: 1",
+    msg: "expected",
+    start: 12,
+    end: 12,
+    is_unclosed: true,
+})]
+#[case(CompoundErrorCase {
+    src: "(1, 2",
+    msg: "expected",
+    start: 5,
+    end: 5,
+    is_unclosed: true,
+})]
+#[case(CompoundErrorCase {
+    src: "|x|",
+    msg: "invalid expression",
+    start: 3,
+    end: 3,
+    is_unclosed: false,
+})]
+#[case(CompoundErrorCase {
+    src: "|x x",
+    msg: "expected pipe",
+    start: 3,
+    end: 4,
+    is_unclosed: false,
+})]
+#[case(CompoundErrorCase {
+    src: "||",
+    msg: "invalid expression",
+    start: 2,
+    end: 2,
+    is_unclosed: false,
+})]
+fn compound_expression_errors(#[case] case: CompoundErrorCase) {
+    let CompoundErrorCase {
+        src,
+        msg,
+        start,
+        end,
+        is_unclosed,
+    } = case;
     let Err(errors) = parse_expression(src) else {
         panic!("expected error");
     };
-    if unclosed {
+    if is_unclosed {
         assert_unclosed_delimiter_error(&errors, msg, start, end);
     } else {
         assert_parse_error(&errors, msg, start, end);
@@ -66,8 +120,8 @@ fn compound_expression_errors(
     "if x { y } else { z }",
     if_expr(
         var("x"),
-        Expr::Group(Box::new(var("y"))),
-        Some(Expr::Group(Box::new(var("z")))),
+        block(vec![], Some(var("y"))),
+        Some(block(vec![], Some(var("z")))),
     )
 )]
 #[case(
@@ -77,19 +131,19 @@ fn compound_expression_errors(
             "Point",
             vec![field("x", lit_num("1"))],
         ))),
-        Expr::Group(Box::new(var("y"))),
-        Some(Expr::Group(Box::new(var("z")))),
+        block(vec![], Some(var("y"))),
+        Some(block(vec![], Some(var("z")))),
     )
 )]
 #[case(
     "if flag { Point { x: 1 } } else { z }",
     if_expr(
         var("flag"),
-        Expr::Group(Box::new(struct_expr(
-            "Point",
-            vec![field("x", lit_num("1"))],
-        ))),
-        Some(Expr::Group(Box::new(var("z")))),
+        block(
+            vec![],
+            Some(struct_expr("Point", vec![field("x", lit_num("1"))])),
+        ),
+        Some(block(vec![], Some(var("z")))),
     )
 )]
 #[case(
@@ -100,8 +154,8 @@ fn compound_expression_errors(
             lhs: Box::new(var("a")),
             rhs: Box::new(var("b")),
         },
-        Expr::Group(Box::new(var("x"))),
-        Some(Expr::Group(Box::new(var("y")))),
+        block(vec![], Some(var("x"))),
+        Some(block(vec![], Some(var("y")))),
     )
 )]
 #[case("if flag value", if_expr(var("flag"), var("value"), None))]
@@ -115,7 +169,7 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
     "if cond { Outer { inner: Inner { a: 1, b: 2 }, flag: true } } else { fallback }",
     if_expr(
         var("cond"),
-        Expr::Group(Box::new(struct_expr(
+        block(vec![], Some(struct_expr(
             "Outer",
             vec![
                 field(
@@ -131,14 +185,14 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
                 field("flag", lit_bool(true)),
             ],
         ))),
-        Some(Expr::Group(Box::new(var("fallback")))),
+        Some(block(vec![], Some(var("fallback")))),
     )
 )]
 #[case(
     "if ok { S { f: T { x: 1, y: U { z: 2 } }, g: 3 } } else { alt }",
     if_expr(
         var("ok"),
-        Expr::Group(Box::new(struct_expr(
+        block(vec![], Some(struct_expr(
             "S",
             vec![
                 field(
@@ -160,7 +214,7 @@ fn parses_if_expressions(#[case] src: &str, #[case] expected: Expr) {
                 field("g", lit_num("3")),
             ],
         ))),
-        Some(Expr::Group(Box::new(var("alt")))),
+        Some(block(vec![], Some(var("alt")))),
     )
 )]
 fn parses_if_then_with_struct_literal(#[case] src: &str, #[case] expected: Expr) {

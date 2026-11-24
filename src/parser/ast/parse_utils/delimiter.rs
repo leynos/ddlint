@@ -54,11 +54,8 @@ impl std::error::Error for UnclosedDelimiterError {}
 /// #     .syntax()
 /// #     .children_with_tokens()
 /// #     .peekable();
-/// let text = extract_delimited(
-///     &mut elems,
-///     SyntaxKind::T_LPAREN,
-///     SyntaxKind::T_RPAREN,
-/// ).expect("expected matching closing delimiter");
+/// let text = extract_delimited(&mut elems, SyntaxKind::T_LPAREN, SyntaxKind::T_RPAREN)
+///     .expect("expected matching closing delimiter");
 /// assert_eq!(text, "nested (content)");
 /// ```
 ///
@@ -112,7 +109,7 @@ struct DelimiterParseContext<'a> {
 }
 
 impl<'a> DelimiterParseContext<'a> {
-    fn new(
+    const fn new(
         depth: &'a mut usize,
         buf: &'a mut String,
         open_kind: SyntaxKind,

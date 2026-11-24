@@ -6,8 +6,7 @@
 
 use chumsky::error::Simple;
 
-use crate::parser::span_collector::SpanCollector;
-use crate::{Span, SyntaxKind};
+use crate::{Span, SyntaxKind, parser::span_collector::SpanCollector};
 
 type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 
@@ -20,7 +19,7 @@ type State<'a> = SpanCollector<'a, Vec<Simple<SyntaxKind>>>;
 /// Note: `extern` is **not** included here — it requires a lookahead to
 /// confirm the following keyword is `type` or `function`. That check is
 /// performed separately in [`is_valid_attribute_target`].
-fn is_simple_attribute_target(kind: SyntaxKind) -> bool {
+const fn is_simple_attribute_target(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::K_TYPE
@@ -35,7 +34,7 @@ fn is_simple_attribute_target(kind: SyntaxKind) -> bool {
 
 /// Whether the keyword following `extern` is a permitted extern-prefixed
 /// attribute target (`type` or `function`).
-fn is_permitted_extern_continuation(kind: SyntaxKind) -> bool {
+const fn is_permitted_extern_continuation(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::K_TYPE | SyntaxKind::K_FUNCTION)
 }
 

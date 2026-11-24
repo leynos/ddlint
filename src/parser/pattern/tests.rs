@@ -9,7 +9,7 @@ fn parses_var_and_wildcard_patterns() {
         parse_pattern("var x").expect("pattern should parse"),
         Pattern::Var {
             declared: true,
-            name: "x".to_string()
+            name: "x".to_owned()
         }
     );
     assert_eq!(
@@ -25,11 +25,11 @@ fn parses_tuple_patterns() {
         Pattern::Tuple(vec![
             Pattern::Var {
                 declared: false,
-                name: "x".to_string()
+                name: "x".to_owned()
             },
             Pattern::Var {
                 declared: false,
-                name: "y".to_string()
+                name: "y".to_owned()
             }
         ])
     );
@@ -38,13 +38,13 @@ fn parses_tuple_patterns() {
 #[test]
 fn parses_struct_patterns() {
     let pat = parse_pattern("Point { x: var a, y: _ }").expect("pattern should parse");
-    assert_eq!(pat.to_source(), "Point { x: var a, y: _ }".to_string());
+    assert_eq!(pat.to_source(), "Point { x: var a, y: _ }".to_owned());
 }
 
 #[test]
 fn parses_typed_patterns() {
     let pat = parse_pattern("var x: Vec<u32>").expect("pattern should parse");
-    assert_eq!(pat.to_source(), "var x: Vec<u32>".to_string());
+    assert_eq!(pat.to_source(), "var x: Vec<u32>".to_owned());
 }
 
 #[test]

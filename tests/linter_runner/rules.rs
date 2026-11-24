@@ -1,7 +1,9 @@
 //! Shared test rule stubs for linter runner behavioural tests.
 
-use ddlint::SyntaxKind;
-use ddlint::linter::{CstRule, LintDiagnostic, Rule, RuleCtx};
+use ddlint::{
+    SyntaxKind,
+    linter::{CstRule, LintDiagnostic, Rule, RuleCtx},
+};
 
 pub const NODE_HIT: &str = "node hit";
 pub const TOKEN_HIT: &str = "token hit";
@@ -20,15 +22,9 @@ impl CountingRule {
 }
 
 impl Rule for CountingRule {
-    fn name(&self) -> &'static str {
-        "counting-rule"
-    }
-    fn group(&self) -> &'static str {
-        "correctness"
-    }
-    fn docs(&self) -> &'static str {
-        "Counts matching node and token visits."
-    }
+    fn name(&self) -> &'static str { "counting-rule" }
+    fn group(&self) -> &'static str { "correctness" }
+    fn docs(&self) -> &'static str { "Counts matching node and token visits." }
 }
 
 impl CstRule for CountingRule {
@@ -59,21 +55,13 @@ impl CstRule for CountingRule {
 pub struct EmptyTargetsRule;
 
 impl Rule for EmptyTargetsRule {
-    fn name(&self) -> &'static str {
-        "empty-targets-rule"
-    }
-    fn group(&self) -> &'static str {
-        "test"
-    }
-    fn docs(&self) -> &'static str {
-        "Rule with empty target_kinds; must never be dispatched."
-    }
+    fn name(&self) -> &'static str { "empty-targets-rule" }
+    fn group(&self) -> &'static str { "test" }
+    fn docs(&self) -> &'static str { "Rule with empty target_kinds; must never be dispatched." }
 }
 
 impl CstRule for EmptyTargetsRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[] }
 
     fn check_node(
         &self,
@@ -98,21 +86,13 @@ impl CstRule for EmptyTargetsRule {
 pub struct ConfigAwareRule;
 
 impl Rule for ConfigAwareRule {
-    fn name(&self) -> &'static str {
-        "config-aware-rule"
-    }
-    fn group(&self) -> &'static str {
-        "test"
-    }
-    fn docs(&self) -> &'static str {
-        "Only emits diagnostics when 'enabled' is true."
-    }
+    fn name(&self) -> &'static str { "config-aware-rule" }
+    fn group(&self) -> &'static str { "test" }
+    fn docs(&self) -> &'static str { "Only emits diagnostics when 'enabled' is true." }
 }
 
 impl CstRule for ConfigAwareRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::N_RELATION_DECL]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::N_RELATION_DECL] }
 
     fn check_node(
         &self,
@@ -133,21 +113,13 @@ impl CstRule for ConfigAwareRule {
 pub struct IdentTokenRule;
 
 impl Rule for IdentTokenRule {
-    fn name(&self) -> &'static str {
-        "ident-token-rule"
-    }
-    fn group(&self) -> &'static str {
-        "style"
-    }
-    fn docs(&self) -> &'static str {
-        "Flags every identifier token."
-    }
+    fn name(&self) -> &'static str { "ident-token-rule" }
+    fn group(&self) -> &'static str { "style" }
+    fn docs(&self) -> &'static str { "Flags every identifier token." }
 }
 
 impl CstRule for IdentTokenRule {
-    fn target_kinds(&self) -> &'static [SyntaxKind] {
-        &[SyntaxKind::T_IDENT]
-    }
+    fn target_kinds(&self) -> &'static [SyntaxKind] { &[SyntaxKind::T_IDENT] }
 
     fn check_token(
         &self,

@@ -23,7 +23,7 @@ impl Function {
             .skip(1)
             .find_map(|e| match e {
                 rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::T_IDENT => {
-                    Some(t.text().to_string())
+                    Some(t.text().to_owned())
                 }
                 _ => None,
             })
@@ -59,21 +59,28 @@ impl Function {
     #[must_use]
     pub fn return_type(&self) -> Option<String> {
         let mut iter = self.syntax.children_with_tokens().peekable();
-        let mut depth = 0usize;
-        for e in &mut iter {
-            match e.kind() {
-                SyntaxKind::T_LPAREN => depth += 1,
-                SyntaxKind::T_RPAREN => {
-                    depth -= 1;
-                    if depth == 0 {
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-
+        skip_parameter_list(&mut iter);
         super::parse_utils::parse_type_after_colon(&mut iter)
+    }
+}
+
+/// Advance `iter` past the parameter list, leaving it after the closing
+/// parenthesis.
+///
+/// The scan tracks parenthesis depth so a nested type such as
+/// `fn(u32) -> u32` inside the parameter list does not end the scan early.
+fn skip_parameter_list<I>(iter: &mut std::iter::Peekable<I>)
+where
+    I: Iterator<Item = rowan::SyntaxElement<DdlogLanguage>>,
+{
+    let mut depth = 0usize;
+    for element in iter.by_ref() {
+        match element.kind() {
+            SyntaxKind::T_LPAREN => depth += 1,
+            SyntaxKind::T_RPAREN if depth == 1 => break,
+            SyntaxKind::T_RPAREN => depth -= 1,
+            _ => {}
+        }
     }
 }
 
