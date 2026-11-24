@@ -56,14 +56,19 @@ The gates keep the shared caches the `Makefile` sets (`UV_CACHE_DIR=.uv-cache`,
 Package verification is explicit and non-development:
 
 ```plaintext
-RUSTFLAGS="-D warnings" cargo package -vv
+env -u CARGO_ENCODED_RUSTFLAGS RUSTFLAGS="-D warnings" \
+  cargo package -p ddlint -vv
 ```
 
 Assigning the `RUSTFLAGS` environment variable replaces the
 `.cargo/config.toml` rustflags table, so the warning denial is stated in full
-instead of being inherited. `-vv` is required because dependency `rustc`
-invocations and their `--cap-lints warn` diagnostics are only visible in very
-verbose output.
+instead of being inherited. `CARGO_ENCODED_RUSTFLAGS` is cleared because Cargo
+selects it ahead of `RUSTFLAGS` when both are present, which would otherwise
+silently drop the denial. `-p ddlint` selects the package this ledger
+qualifies; the workspace-wide form is blocked by the separate `cli`
+package-metadata defect recorded below. `-vv` is required because dependency
+`rustc` invocations and their `--cap-lints warn` diagnostics are only visible
+in very verbose output.
 
 Table 1. Toolchain and tool identity.
 
@@ -133,7 +138,7 @@ Table 3. Diagnostics, sites, owners, and dispositions.
 
 | Crate            | Version  | Lint                                   | Count | Site (first of group)                                                     | Path and constraint                                   | Upstream owner                | Disposition                          |
 | ---------------- | -------- | -------------------------------------- | ----- | ------------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------- | ------------------------------------ |
-| `num-traits`     | `0.2.19` | `deprecated` (constants and modules)   | 364   | `src/bounds.rs:3`, `src/cast.rs:4`, `src/lib.rs:243`, `src/float.rs:803`  | direct dependency; `ddlint ^0.2`                      | `rust-num/num-traits`         | awaiting upstream release            |
+| `num-traits`     | `0.2.19` | `deprecated` (constants and modules)   | 365   | `src/bounds.rs:3`, `src/cast.rs:4`, `src/lib.rs:243`, `src/float.rs:803`  | direct dependency; `ddlint ^0.2`                      | `rust-num/num-traits`         | awaiting upstream release            |
 | `rayon`          | `1.12.0` | `unused_imports`                       | 44    | `src/iter/blocks.rs:1`, `src/iter/chain.rs:1`, `src/iter/empty.rs:1`      | direct dependency; `ddlint ^1.10`                     | `rayon-rs/rayon`              | awaiting upstream release            |
 | `rayon`          | `1.12.0` | `deprecated` (`fetch_update`)          | 4     | `src/iter/par_bridge.rs:113`, `src/iter/skip_any.rs:105`                  | direct dependency; `ddlint ^1.10`                     | `rayon-rs/rayon`              | awaiting upstream release            |
 | `num-integer`    | `0.1.47` | `deprecated` (constants and functions) | 42    | `src/roots.rs:259`, `src/lib.rs:512`                                      | `num-bigint -> num-integer`; `num-bigint ^0.1`        | `rust-num/num-integer`        | awaiting upstream release            |
@@ -157,8 +162,9 @@ Table 4. Groups that appeared with the newer compiler.
 
 | Crate                 | Gained | Class            | Explanation                                                                     |
 | --------------------- | ------ | ---------------- | ------------------------------------------------------------------------------- |
-| `num-traits`          | 364    | `deprecated`     | `core::<int>::MAX`/`MIN` and `std::u32`-style paths that the compiler now flags |
-| `rayon`               | 48     | `unused_imports` | `use super::plumbing::*` in files that no longer reference it                   |
+| `num-traits`          | 365    | `deprecated`     | `core::<int>::MAX`/`MIN` and `std::u32`-style paths that the compiler now flags |
+| `rayon`               | 44     | `unused_imports` | `use super::plumbing::*` in files that no longer reference it                   |
+| `rayon`               | 4      | `deprecated`     | `Atomic::fetch_update` renamed to `try_update`                                  |
 | `num-integer`         | 42     | `deprecated`     | the same numeric-constant and `min_value` deprecations                          |
 | `regex-syntax 0.6.29` | +9     | `deprecated`     | `std::u8`/`std::u32` module and constant paths                                  |
 | `logos-codegen`       | +4     | `deprecated`     | `usize::max_value` replaced by the `MAX` associated constant                    |
@@ -298,6 +304,10 @@ Table 7. Package verification record.
 | `tee` exit            | `0`                                                                |
 | `package.log` SHA-256 | `9cd7bbcada15bf507bd199892153ca8e6414b3c104c05c9c244ef6cbc81326d7` |
 | Declared warnings     | `513`                                                              |
+
+`CARGO_ENCODED_RUSTFLAGS` was unset in the shell that produced this record; the
+documented form clears it explicitly so the denial cannot be dropped by an
+inherited value.
 
 The workspace-wide `cargo package` form is blocked on this tree by the separate
 `cli` package-metadata defect: its `ddlint` dependency declares a `path` with
@@ -461,10 +471,12 @@ Every original group survives at the same count. `ahash` resolves to `0.8.13`
 in place, so its four diagnostics are unchanged in number.
 
 The `+469` is not a dependency regression and must not be waived. It is
-recorded as 469 diagnostics from five crates that are each at their newest
-in-range release, with "awaiting upstream release" as the disposition. A
-compiler-date rollback would hide them again; that would be exactly the kind of
-suppression the ticket forbids.
+recorded as 469 diagnostics across six crates. Four of them (`num-traits`,
+`rayon`, `num-integer`, and `text-size`) are each at their newest in-range
+release and carry "awaiting upstream release". The other two are the 9
+`regex-syntax` and 4 `logos-codegen` additions, already covered by their
+separate major migrations. A compiler-date rollback would hide all of them
+again; that would be exactly the kind of suppression the ticket forbids.
 
 [ci-run]: https://github.com/leynos/ddlint/actions/runs/45337172520
 [issue-400]: https://github.com/leynos/ddlint/issues/400
