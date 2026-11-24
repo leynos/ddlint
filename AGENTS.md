@@ -260,9 +260,9 @@ project:
 
     ```sh
     RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" \
-      $(CARGO) clippy $(CLIPPY_FLAGS)
+      $(CARGO) clippy --locked $(CLIPPY_FLAGS)
     RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" \
-      RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps
+      RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --workspace --no-deps --locked
     $(MAKE) test-clippy-policy
     ```
 
