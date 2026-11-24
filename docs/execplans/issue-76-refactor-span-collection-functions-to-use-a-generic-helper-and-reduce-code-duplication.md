@@ -53,7 +53,7 @@ request instead of forcing unrelated scanners through one shape.
   diagnostic replacement, or custom recovery.
 - The grammars in `imports.rs` and `apply.rs` must not change. Accepted syntax
   and produced diagnostics stay identical.
-- `lexer_helpers.rs`, `span_collector.rs`, the specialised scanners, and
+- `lexer_helpers.rs`, `span_collector.rs`, the specialized scanners, and
   completed ExecPlans must not be modified.
 - Public API: none changes. The helper is `pub(super)`.
 - Dependencies: none added. Chumsky 0.9 is already a dependency.
@@ -108,8 +108,11 @@ module instead of growing it.
   `parse_and_record` behaviour. Focused run: 93 passed, 0 failed. Full gates
   passed: `make check-fmt`, `make typecheck`, `make lint`, `make test` (1600
   passed across 53 result lines), `make markdownlint`, `make nixie`.
-- [ ] `EP-M2` `collect_with_parser` added; imports and apply refactored onto it;
-  helper tests added.
+- [x] (2026-11-24) `EP-M2` `collect_with_parser` added; imports and apply
+  refactored onto it; helper tests added. Red: the helper tests failed to
+  compile (`cannot find function collect_with_parser`). Green: 100 focused
+  tests passed, then 854 parser library tests passed with the `EP-M1` tables
+  unchanged. `utils.rs` is 124 lines, `imports.rs` 50, and `apply.rs` 51.
 - [ ] `EP-M3` Documentation corrected, gates run, draft pull request opened.
 
 ## Surprises & discoveries
@@ -124,6 +127,11 @@ module instead of growing it.
   `parse_recovery_inner` keeps `Ok((out, _))` and appends emitted errors.
   Impact: the success-with-diagnostics test can assert both a recorded span and
   an appended diagnostic.
+- Observation: the minimal test grammar's trailing trivia padding absorbs a
+  newline, so a "recovered then collected the next line" fixture records a span
+  ending past the newline. Evidence: an initial expectation of `"type alpha"`
+  failed against the actual `"type alpha\n"`. Impact: the fixture expectation
+  documents the trailing-trivia contract instead of trimming it away.
 
 ## Decision log
 
@@ -154,7 +162,7 @@ To be completed at `EP-M3`.
 
 `parse` builds a `Parsed` by scanning top-level statement spans before building
 the concrete syntax tree. `src/parser/span_scanner.rs` orchestrates the
-specialised collectors, merges their spans, and hands the result to rule
+specialized collectors, merges their spans, and hands the result to rule
 scanning and CST construction.
 
 Every collector receives `tokens: &[(SyntaxKind, Span)]` (the tokenized source,
@@ -375,6 +383,29 @@ test result: ok. 93 passed; 0 failed; 0 ignored; 0 measured; 849 filtered out
 
 The pinned ranges agreed with the pre-refactor collectors on the first run,
 including whole-source spans that absorb the trailing newline.
+
+`EP-M2` red evidence:
+
+```plaintext
+cargo test -p ddlint --lib span_scanners::tests::utils_tests --no-run
+error[E0432]: unresolved import `super::super::utils::collect_with_parser`
+```
+
+`EP-M2` green evidence after the refactor:
+
+```plaintext
+cargo test -p ddlint --lib span_scanners
+test result: ok. 100 passed; 0 failed
+
+cargo test -p ddlint --lib parser::
+test result: ok. 854 passed; 0 failed; 95 filtered out
+```
+
+The `EP-M1` tables ran unchanged, so the refactor preserved import and apply
+spans, diagnostics, and recovery. Net change: 259 insertions and 74 deletions
+across four files, of which the helper itself is 68 added lines and the two
+scanner bodies shrink to one call each. Only imports and apply were converted,
+so the issue's roughly 120-line estimate was not reachable.
 
 ## Interfaces and dependencies
 

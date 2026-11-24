@@ -54,3 +54,71 @@ where
     st.extra.extend(errs.clone());
     (res, errs)
 }
+
+/// Collect the spans of every statement introduced by one keyword.
+///
+/// The scanner walks the token stream once. Each token whose kind equals
+/// `keyword` starts a candidate statement: `make_parser()` builds a fresh
+/// parser, which runs from that token. Every other token is skipped one at a
+/// time, so a keyword that does not begin a statement is still examined as the
+/// start of the next token's statement.
+///
+/// The parser **must** consume its entire statement and return a `Span`
+/// covering it, including any trailing inline whitespace. Recording,
+/// advancement, and recovery are exactly
+/// [`parse_and_record`]'s: a parsed span is recorded and the stream advances to
+/// its end, a failed parse appends its diagnostics and skips the rest of the
+/// line, and every diagnostic is appended to the returned vector. Success
+/// therefore keeps non-terminal diagnostics that a validating parser emits.
+///
+/// The factory is called per match rather than once, because the production
+/// grammars build non-`Clone` combinator values.
+///
+/// This helper owns mechanics only. It suits a scanner that matches a single
+/// keyword, applies no guard to the token after it, accepts the whole parsed
+/// span, and reports no diagnostics beyond its parser's. A scanner that needs
+/// candidate discovery, span filtering, diagnostic replacement, or custom
+/// recovery keeps its own orchestration.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use chumsky::prelude::*;
+/// use crate::{
+///     Span, SyntaxKind,
+///     parser::span_scanners::utils::collect_with_parser,
+/// };
+///
+/// let src = "type Alpha type Beta";
+/// let tokens = crate::test_util::tokenize(src);
+/// let parser = || {
+///     just(SyntaxKind::K_TYPE)
+///         .ignore_then(just(SyntaxKind::T_IDENT))
+///         .map_with_span(|_, sp: Span| sp)
+/// };
+/// let (spans, errs) = collect_with_parser(&tokens, src, SyntaxKind::K_TYPE, parser);
+/// assert_eq!(spans.len(), 2);
+/// assert!(errs.is_empty());
+/// ```
+pub(super) fn collect_with_parser<P, F>(
+    tokens: &[(SyntaxKind, Span)],
+    src: &str,
+    keyword: SyntaxKind,
+    mut make_parser: F,
+) -> (Vec<Span>, Vec<Simple<SyntaxKind>>)
+where
+    F: FnMut() -> P,
+    P: Parser<SyntaxKind, Span, Error = Simple<SyntaxKind>>,
+{
+    let mut st: State<'_> = State::new(tokens, src, Vec::new());
+
+    while let Some((kind, span)) = st.stream.peek().cloned() {
+        if kind == keyword {
+            parse_and_record(&mut st, span.start, make_parser());
+        } else {
+            st.stream.advance();
+        }
+    }
+
+    st.into_parts()
+}
