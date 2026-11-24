@@ -197,6 +197,11 @@ clean: ## Remove build artifacts
 
 test: | check-build-tools ## Run tests and doctests with warnings treated as errors
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) fetch --locked
+	# Pay for the nested builds before the timed run: build the test binaries with
+	# the flags the run uses, then run the three trybuild tests once, because a
+	# plain `--no-run` leaves trybuild's own build tree empty.
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-targets --all-features --no-run $(BUILD_JOBS)
+	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-features --test parser_api_compile_fail --test const_api_compile --test fixture_expansion_compile $(BUILD_JOBS)
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" $(CARGO) test --all-targets --all-features $(BUILD_JOBS)
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }-D warnings $(STANDARD_RUSTFLAGS)" RUSTDOCFLAGS="$${RUSTDOCFLAGS:+$$RUSTDOCFLAGS }$(DOCTEST_RUSTDOCFLAGS)" $(CARGO) test --workspace --doc --all-features $(BUILD_JOBS)
 
