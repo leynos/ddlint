@@ -131,6 +131,10 @@ module instead of growing it.
   functions were collapsed into two `rstest` tables driven by a `SpanScanner`
   function pointer plus one `assert_scanned` helper. Local `cs check` reports
   10.00, and the hosted check now passes.
+- [x] (2026-11-24) Hosted delivery green on head `f5083e0a`: `build-test`
+  passed (6m26s), CodeScene passed, Gecko passed, and the pull request reports
+  `mergeStateStatus: CLEAN`. The final CodeRabbit review on that head reported
+  zero findings.
 
 ## Surprises & discoveries
 
