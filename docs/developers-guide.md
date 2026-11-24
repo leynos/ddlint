@@ -106,10 +106,15 @@ The workspace lint baseline is authoritative in two files:
   `[workspace.lints.rustdoc]`, and `[workspace.lints.clippy]` tables. Every
   member opts in with `[lints] workspace = true`, so a rule added once applies
   to the whole estate.
-- `clippy.toml` holds the numeric thresholds: cognitive complexity 9, too many
-  arguments 4, too many lines 70, and excessive nesting 4. They match
-  CodeScene's ceilings so the local and hosted gates agree about the same
-  function.
+- `clippy.toml` holds the numeric thresholds: too many arguments 4, too many
+  lines 70, and excessive nesting 4. They match CodeScene's ceilings so the
+  local and hosted gates agree about the same function.
+- Cognitive complexity is not gated by Clippy, which scores after macro
+  expansion and so counts branching a macro generated. Whitaker's experimental
+  `macro_aware_cognitive_complexity` gates it at `max_complexity = 9`,
+  CodeScene's ceiling; `dylint.toml` opts in with
+  `[whitaker] experimental = ["macro_aware_cognitive_complexity"]`. Fix a
+  finding by extracting named helpers, never by raising the threshold.
 
 The baseline denies the restriction lints it names. Fix a finding at its
 source: rename a shadowed binding, group related parameters in a struct, or
@@ -145,8 +150,14 @@ docstring on every Python definition under `tests` (it fails on any `MISSED`
 row, because interrogate rounds its percentage to one decimal). It then runs
 Clippy, a Rustdoc build with `RUSTDOC_FLAGS` (`--cfg docsrs -D warnings` by
 default), the Clippy policy script, Whitaker, and the spelling gate.
-`make test` runs the workspace tests and then the doctests, both with warnings
-denied. Workspace crates take `RUSTFLAGS`, while rustdoc compiles each doctest
+`make test` first runs `cargo fetch --locked`, so nested builds that tests
+start find the package cache warm, and then runs the workspace tests and the
+doctests, both with warnings denied. `Cargo.lock` is tracked because ddlint
+ships a binary. `make lint` runs Clippy and the Rustdoc build with `--locked`
+too, so a stale lockfile fails lint instead of being rewritten silently, and
+`make test` fails at the fetch before any test runs. The fix is to refresh the
+lockfile (`cargo update -w` or a plain build) and commit it with the manifest
+change. Workspace crates take `RUSTFLAGS`, while rustdoc compiles each doctest
 snippet separately and takes `RUSTDOCFLAGS`; the recipe forwards `-Dwarnings`
 to those compilations through `--doctest-build-arg`. `make markdownlint` also
 invokes the spelling gate for tracked Markdown. `make markdownlint` lints every

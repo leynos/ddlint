@@ -2,7 +2,9 @@
 # than Clippy's default so a function that trips it is also one CodeScene would
 # flag; keeping the two in step stops the local gate and the hosted gate from
 # disagreeing about the same function.
-cognitive-complexity-threshold = 9
+# Cognitive complexity is not gated by Clippy: it scores code after macro
+# expansion, so it counts branching a macro generated. Whitaker's
+# `macro_aware_cognitive_complexity` gates it at 9 (see `dylint.toml`).
 too-many-arguments-threshold = 4
 too-many-lines-threshold = 70
 excessive-nesting-threshold = 4
