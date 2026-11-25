@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from build_provisioning_common import (
+    DELAYED_PR_COMMENT,
     DEPENDABOT_AUTOMERGE,
     MUTATION_CARGO,
     BuildProvisioningError,
@@ -58,8 +59,8 @@ def _reusable_job_routes(
                 f"{workflow_name}:{job_name} must pass install-mold: true"
             )
         return (SuiteConsumer(workflow_name, job_name, "mutation-cargo", None),)
-    if uses == DEPENDABOT_AUTOMERGE:
-        # This immutable shared workflow calls the GitHub API and has no consumer checkout.
+    if uses in {DEPENDABOT_AUTOMERGE, DELAYED_PR_COMMENT}:
+        # These immutable shared workflows call the GitHub API and have no consumer checkout.
         return ()
     raise BuildProvisioningError(
         f"{workflow_name}:{job_name} has an unknown reusable workflow {uses!r}"
