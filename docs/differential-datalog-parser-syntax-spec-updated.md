@@ -17,9 +17,19 @@ contract, including validation/error cases.
 - `docs/parser-implementation-notes.md` documents non-normative implementation
   details and invariants.
 
+### Upstream authority
+
+ddlint is a linter for the existing VMware implementation of DDlog
+(`vmware/differential-datalog`); it does not define a dialect. For the mainline
+profile, a construct this document accepts and upstream rejects, or rejects and
+upstream accepts, is a bug in this document. Such a difference is corrected,
+not recorded as an intentional superset or subset. Upstream behaviour is
+established from the upstream source, cited by full commit hash.
+
 ### Target and compatibility contract
 
-- This document remains the normative syntax contract.
+- This document transcribes upstream syntax for ddlint. Where it and upstream
+  disagree, upstream wins.
 - If the current implementation diverges from this spec, record the delta in
   `docs/parser-conformance-register.md` and schedule resolution in
   `docs/roadmap.md`.

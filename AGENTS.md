@@ -75,6 +75,18 @@
   retroactively update completed execplan documents to reflect subsequent
   changes in API, structures, or behaviour.
 
+## Upstream fidelity
+
+- ddlint lints the existing VMware implementation of DDlog
+  (`vmware/differential-datalog`). It does not implement its own dialect.
+- For the mainline profile, treat every deviation from upstream, whether it
+  accepts more or less, as a bug in the syntax specification. Plan to align; do
+  not record an intentional superset. No installed user base depends on earlier
+  ddlint behaviour.
+- Establish upstream behaviour from the upstream source and cite the full
+  commit hash. See
+  [the specification's policy](docs/differential-datalog-parser-syntax-spec-updated.md#upstream-authority).
+
 ## Planning and verification
 
 - For non-trivial work, prepare or update a self-contained ExecPlan using the
