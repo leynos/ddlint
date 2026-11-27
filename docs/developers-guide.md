@@ -731,6 +731,16 @@ gate and the aggregate with a controlled failing Whitaker, so neither can
 succeed while the suite fails. `tests/workflow_contracts/whitaker_gate_test.py`
 holds the splitting, ordering, packages variable and CI installer pin.
 
+Because a successful package build hides dependency diagnostics, the owners and
+dispositions of the warnings that package verification reports are qualified
+separately in the
+[dependency warning qualification](dependency-warning-qualification.md) ledger.
+That ledger also indexes the review ticket for each major dependency migration.
+A ticket tracks the review; it does not qualify the new graph. Any dependency
+change that alters the resolved set requires a fresh inventory in the same
+form, because a migration can introduce warnings that the recorded inventory
+does not cover.
+
 ### Cranelift
 
 The estate standard is LLVM, so LLVM is the default backend here. The Cranelift

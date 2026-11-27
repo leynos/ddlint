@@ -22,6 +22,9 @@
   parser, semantic analysis, and linter architecture.
 - [Roadmap](./roadmap.md): Phase-based delivery plan and task sequencing for
   parser foundations, linting, and editor integration.
+- [Dependency warning qualification](./dependency-warning-qualification.md):
+  Owners, dispositions, migration tickets, and run records for the compiler
+  diagnostics that package verification reports from Cargo registry sources.
 - [OrthoConfig documentation provenance](./ortho-config-provenance.md): Source
   identity and checksums for the imported v0.10.0 guides.
 
