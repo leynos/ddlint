@@ -187,7 +187,13 @@ fn lint_keeps_interrogate_cargo_whitaker_and_spelling_order() {
     let sandbox = Sandbox::new(ToolScenario::Development)
         .expect("isolated fake tools should be staged successfully");
     let output = sandbox
-        .run_make(Some("lint"), &[], PathPolicy::IncludeSystemTools)
+        // The YAML lint prerequisites need the estate tools, which the sandbox
+        // does not stage, and are not under test: `-o` treats both as up to date.
+        .run_make(
+            Some("lint"),
+            &["-o", "yamllint", "-o", "actionlint"],
+            PathPolicy::IncludeSystemTools,
+        )
         .expect("GNU make should run in the repository");
     let transcript = output_text(&output);
     assert!(
