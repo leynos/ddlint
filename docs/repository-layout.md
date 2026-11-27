@@ -239,6 +239,17 @@ modules share, including delimiter and block-state rules, live in the
 - Keeps relation names, ref markers, bodies, primary keys, candidate discovery,
   and recovery in `relations/mod.rs`.
 
+### `src/parser/span_scanners/utils.rs`
+
+- Owns the shared span-collection mechanics: the `State` alias,
+  `parse_and_record`, and `collect_with_parser`.
+- `collect_with_parser` adds a single-keyword token walk on top of
+  `parse_and_record`; it holds no grammar, and callers pass their grammar as a
+  per-match parser factory.
+- Only scanners whose policy equals `parse_and_record` may call it. See the
+  [boundary rules](developers-guide.md#boundary-rules) for the excluded
+  scanners and their reasons.
+
 ### `src/parser/span_scanners/typedefs.rs`
 
 - Collects spans for `type` and `extern type` declarations; it finds statement

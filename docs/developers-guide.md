@@ -12,6 +12,11 @@ File-by-file ownership, including the entries for `block.rs` and
 [parser module ownership](repository-layout.md#parser-module-ownership)
 section. The conventions those modules share are recorded below.
 
+`src/parser/span_scanners/utils.rs` owns the shared span-collection mechanics:
+`State`, `parse_and_record`, and `collect_with_parser`. It owns those mechanics
+and nothing else; each scanner still owns its grammar, candidate discovery,
+span acceptance, and recovery policy.
+
 ## Boundary rules
 
 - Keep formatting helpers in `sexpr.rs` rather than mixing them into the core
@@ -52,6 +57,19 @@ section. The conventions those modules share are recorded below.
   (`D-REL-001` through `D-REL-003`) in `relations/preamble.rs`.
 - Keep typed consumer-facing relation metadata in `ast/relation.rs`, and
   inspection-only CST traversal in `ast/relation/inspect.rs`.
+- `collect_with_parser` in `src/parser/span_scanners/utils.rs` is for
+  scanners that match one keyword, apply no guard to the following token,
+  accept the whole parsed span, and use recovery exactly as `parse_and_record`
+  defines it. Shared mechanics must not transfer grammar, span acceptance,
+  diagnostic replacement, or recovery policy: those stay with the scanner that
+  owns them, because folding them into a shared helper hides which contract a
+  scanner actually honours.
+- Keep scanners with a different contract on their own orchestration.
+  `functions.rs` matches two keywords, guards `extern` with a lookahead, and
+  maps the span from a match-dependent start. `transformers.rs` validates
+  names, omits spans for invalid names, and replaces diagnostics. `indexes.rs`,
+  `relations/`, `rules.rs`, `attributes.rs`, and `typedefs.rs` use cursor-based
+  or line-based scanners rather than Chumsky parsers.
 - Route reserved-token diagnostics through `src/parser/reserved_tokens.rs`.
   That module owns the parser-internal messages and the `rejection_for`
   predicate for unsupported legacy tokens. The canonical public policy table

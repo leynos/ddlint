@@ -384,15 +384,29 @@ Important invariants:
 These helpers are shared intentionally to keep declaration parsing consistent
 across top-level constructs.
 
-Declaration recovery is intentionally line-oriented. Shared scanner utilities
-call `SpanCollector::skip_line()` when a declaration head does not match the
-expected grammar or when `parse_and_record()` cannot consume a full
-declaration. Transformer declarations therefore enforce their required output
-signature through the `transformer_decl()` chumsky grammar itself, with
-`.at_least(1)` on the output list; there is no separate token-walking heuristic
-for missing outputs to keep in sync. Function and other top-level declaration
-scanners follow the same newline-bounded recovery pattern for malformed
-declaration heads.
+Span scanners that match a single keyword and accept the whole parsed span
+compose `src/parser/span_scanners/utils.rs::collect_with_parser`, which is
+`parse_and_record` plus the token walk: it compares each token's kind with a
+runtime keyword, builds a fresh parser for each match, and advances one token
+otherwise. `imports.rs` and `apply.rs` are its only callers. The helper is
+composition over `parse_and_record`, so recording, advancement, and recovery
+keep exactly one definition.
+
+Declaration recovery is line-oriented for scanners built on
+`collect_with_parser` and `parse_and_record`. Those helpers call
+`SpanCollector::skip_line()` when a declaration head does not match the
+expected grammar or when the parser cannot consume a full declaration. Other
+top-level scanners are not all newline-bounded, so do not generalize this to
+every declaration.
+
+Transformer declarations enforce their required output signature through the
+`transformer_decl()` chumsky grammar with `.at_least(1)` on the output list.
+Recovery is not purely grammar-driven, though:
+`missing_output_signature_span_unchecked` reclassifies a failed parse into the
+targeted missing-output diagnostic when the declaration prefix and parameter
+list are well formed. A failed extern transformer advances the cursor to the
+recovery span's end, or to the maximum parser-error end when no such span
+exists, rather than always calling `skip_line()`.
 
 ### Relation suffix ownership
 

@@ -142,6 +142,9 @@
   Plan for enforcing qualified call syntax rules.
 - [Phase 2: parse apply items](./execplans/phase-2-parse-apply-items.md): Plan
   for apply item parsing.
+- [Issue 76: share single-keyword span collection](./execplans/issue-76-refactor-span-collection-functions-to-use-a-generic-helper-and-reduce-code-duplication.md):
+  Plan for the `collect_with_parser` helper and the imports and apply scanner
+  refactor.
 
 ## Archived parser history
 
