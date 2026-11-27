@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
+        uses: leynos/shared-actions/.github/actions/setup-rust@f137c257b9150a0aa829272c934198333542dcee
         with:
           expect-cache: any
           install-mold: 'true'
@@ -41,7 +41,7 @@ jobs:
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@f137c257b9150a0aa829272c934198333542dcee
         with:
           version: "0.6.1"
       - name: Format
@@ -56,11 +56,11 @@ jobs:
         with:
           globs: '**/*.md'
       - name: Install the Whitaker Dylint suite
-        uses: leynos/shared-actions/.github/actions/install-whitaker@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
+        uses: leynos/shared-actions/.github/actions/install-whitaker@f137c257b9150a0aa829272c934198333542dcee
         with:
           cranelift: true
       - name: Install the YAML lint tools
-        uses: leynos/shared-actions/.github/actions/install-yaml-lint@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
+        uses: leynos/shared-actions/.github/actions/install-yaml-lint@f137c257b9150a0aa829272c934198333542dcee
       - name: Lint
         run: make lint
       # The full-feature suite is independent of the coverage feature selection.
@@ -79,7 +79,7 @@ jobs:
           # linker. Assigning RUSTFLAGS displaces every `rustflags` table in
           # .cargo/config.toml.
           RUSTFLAGS: -D warnings
-        uses: leynos/shared-actions/.github/actions/generate-coverage@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
+        uses: leynos/shared-actions/.github/actions/generate-coverage@f137c257b9150a0aa829272c934198333542dcee
         with:
           output-path: lcov.info
           format: lcov

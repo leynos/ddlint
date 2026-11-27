@@ -51,7 +51,7 @@ jobs:
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
       - name: Install Verus and Z3
         id: prover
-        uses: leynos/shared-actions/.github/actions/install-prover-tools@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
+        uses: leynos/shared-actions/.github/actions/install-prover-tools@f137c257b9150a0aa829272c934198333542dcee
         with:
           tools: verus
           runner-image: ubuntu2404
