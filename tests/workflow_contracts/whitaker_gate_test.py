@@ -128,6 +128,8 @@ def test_lint_is_a_serial_composite_of_the_gates(makefile_text: str) -> None:
         "lint-clippy",
         "lint-whitaker",
         "spelling",
+        "yamllint",
+        "actionlint",
     ], "`make lint` must keep the ordered gate prerequisites"
 
 

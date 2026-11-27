@@ -59,6 +59,8 @@ jobs:
         uses: leynos/shared-actions/.github/actions/install-whitaker@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
         with:
           cranelift: true
+      - name: Install the YAML lint tools
+        uses: leynos/shared-actions/.github/actions/install-yaml-lint@8091b7cb5f9bab2d4a76ced2e749fd4c1bccdb02
       - name: Lint
         run: make lint
       # The full-feature suite is independent of the coverage feature selection.
