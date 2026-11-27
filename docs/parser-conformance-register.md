@@ -79,8 +79,18 @@ This register tracks parser behaviour against the syntax specification.
 
 - Topic: host keyword reservation, control-flow statements, entrypoint docs.
 - Current behaviour (code): lexer keyword policy and parser support align with
-  spec sections 1.1.1, 2.3.1, and 5.10.
+  spec sections 1.1.1, 2.3.1, and 5.10. The base parse validates every
+  rule-body literal, so `return` is reported at its keyword span with
+  `RETURN_IN_RULE_BODY_ERROR` wherever the rule body itself owns the
+  expression, including nested blocks, `if` branches, and loops. A closure body
+  nested in the rule body is a function body for this purpose and keeps
+  `return` legal. `Rule::body_terms()` applies the same restriction through the
+  shared rule-body expression entry point.
 - Spec/target behaviour: migration gaps are closed.
+- Known gaps: placement is not checked in rule heads, in top-level `for`
+  iterables and guards, or in opaque scanned regions such as unparsed function
+  bodies, and `break` and `continue` loop placement is not enforced. Each gap
+  stays with the construct that owns it and is scheduled there.
 - Decision status: `implemented`.
 - Roadmap item: closed under phase 2 conformance tasks.
 

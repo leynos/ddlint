@@ -10,10 +10,13 @@ user-facing behaviour.
   returns parser diagnostics.
 - The linter runner executes registered CST rules and produces
   `LintDiagnostic` values.
-- The built-in command-line entrypoint currently only prints a placeholder
-  message and exits with a non-zero status. When the message cannot be written
-  to standard output, the command reports the failure on standard error and
-  still exits non-zero.
+- The built-in command-line entrypoint parses every file path it is given and
+  reports parse diagnostics. With no arguments it prints the placeholder
+  message and exits with a non-zero status. When a message cannot be written to
+  standard output or standard error, the command reports the failure on
+  standard error and still exits non-zero. Linting, configuration loading, and
+  directory walking are not implemented yet; see
+  [the interim command-line behaviour](#interim-command-line-behaviour).
 
 ### Const-capable APIs
 
@@ -58,11 +61,31 @@ compile. No variant is removed: `Expr::Group` still carries parenthesized
 groups and statement sequences outside braces, and `Expr::MapLit` still carries
 bracket maps.
 
+## Interim command-line behaviour
+
+`ddlint <FILES...>` parses each named file and reports final parse diagnostics;
+it does not lint, load configuration, or walk directories yet. Each diagnostic
+is written to standard error as:
+
+```text
+<path>:<start>..<end>: error: <message>
+```
+
+The offsets are half-open byte ranges into the file, and the message is the
+same text `parse_error_message` returns for a `Parsed::errors()` item. A file
+that cannot be read is reported on standard error as `ddlint: <path>: <error>`.
+The exit status is `0` only when every named file was read and parsed without
+diagnostics, and `1` otherwise.
+
+Run without arguments, the command still prints
+`ddlint: CLI not yet implemented. Run with --help for planned options.` on
+standard output and exits `1`.
+
 ## Planned CLI configuration
 
-The CLI remains a placeholder. Roadmap item 5.1.5 defines the configuration
-contract for the planned lint command; it becomes active when the command
-surface is implemented.
+The full command surface is not implemented. Roadmap item 5.1.5 defines the
+configuration contract for the planned lint command; it becomes active when the
+command surface is implemented.
 
 The planned file is `ddlint.toml`, with TOML as the only enabled format. Lint
 settings live under `[cmds.lint]`, the configuration namespace for the default
@@ -223,11 +246,32 @@ Map and vector literals use brackets and must be non-empty:
   ascription `k : v`. Adding a second comma-separated entry, as in
   `{a: 1, b: 2}`, reports `expected ';' or '}' after a block item`.
 
+### `return` placement
+
 A rule body is not a function body, so `return` is rejected anywhere inside
-one, including within a block: `y = { return x; x }` reports
-`return is not valid in a rule body; use a function or closure body`. `return`
-remains valid in a function body and in a closure body, including a closure
-nested in a rule body.
+one, including within a block. Both `y = { return x; x }` and
+`Source(return x)` report this message:
+
+```text
+'return' is not permitted in a rule body; use it only in a function or closure body
+```
+
+The diagnostic span is the `return` keyword itself, not the surrounding
+literal, so an editor can underline the offending word.
+
+`return` remains valid in a function body and in a closure body, including a
+closure nested in a rule body:
+
+```rust
+use ddlint::parse;
+
+let parsed = parse("Output(head_x) :- Source(|ignored| return head_x).");
+assert!(parsed.errors().is_empty(), "a closure body keeps `return` legal");
+```
+
+Rule-head expressions, top-level `for` headers, and opaque scanned regions are
+not checked for `return` placement yet; the parser-conformance register records
+the remaining gaps.
 
 ## Run lint rules
 

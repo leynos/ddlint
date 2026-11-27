@@ -44,10 +44,12 @@ pub const UNCLOSED_BLOCK_ERROR: &str = "expected '}' to close block";
 /// Diagnostic emitted for `return` in a rule-body literal.
 ///
 /// `return` supplies a value to a function or closure body. A rule body has no
-/// return value, so the keyword is rejected wherever it appears in one,
-/// including inside a block, `if`, or loop nested in the body.
+/// return value, so the keyword is rejected wherever the body owns the
+/// expression, including inside a block, `if`, or loop nested in it. A closure
+/// body nested in the rule body is a function body for this purpose and keeps
+/// the keyword legal.
 pub const RETURN_IN_RULE_BODY_ERROR: &str =
-    "return is not valid in a rule body; use a function or closure body";
+    "'return' is not permitted in a rule body; use it only in a function or closure body";
 
 /// Diagnostic emitted when a transformer declaration omits `:` or its first
 /// output identifier.

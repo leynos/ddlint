@@ -6,6 +6,7 @@ use crate::{
     SyntaxKind,
     parser::{
         ast::{Expr, prefix_binding_power},
+        error_messages::RETURN_IN_RULE_BODY_ERROR,
         reserved_tokens::rejection_for,
     },
 };
@@ -52,8 +53,24 @@ where
             SyntaxKind::K_FOR => self.parse_for_expression(),
             SyntaxKind::K_BREAK => Some(Self::parse_break_expression()),
             SyntaxKind::K_CONTINUE => Some(Self::parse_continue_expression()),
-            SyntaxKind::K_RETURN => self.parse_return_expression(&span),
+            SyntaxKind::K_RETURN => {
+                self.reject_return_without_body(&span);
+                self.parse_return_expression()
+            }
             k => self.parse_operator_prefix(k, span),
+        }
+    }
+
+    /// Report a `return` that no function or closure body encloses.
+    ///
+    /// `keyword_span` is the `return` token, so the diagnostic names the exact
+    /// keyword rather than the whole rule literal. Scope: called only from
+    /// `parse_prefix_by_kind`, before the value is parsed, so the message is
+    /// pushed exactly once per keyword and recovery proceeds normally.
+    fn reject_return_without_body(&mut self, keyword_span: &Span) {
+        if !self.is_return_permitted() {
+            self.ts
+                .push_error(keyword_span.clone(), RETURN_IN_RULE_BODY_ERROR);
         }
     }
 

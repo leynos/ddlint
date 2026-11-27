@@ -19,7 +19,7 @@ use crate::{
     SyntaxKind,
     parser::{
         ast::{BinaryOp, Expr, Pattern},
-        expression::parse_expression,
+        expression::parse_rule_body_expression,
         pattern::parse_pattern,
         span_utils::shift_errors,
     },
@@ -48,7 +48,7 @@ pub(super) fn parse_rule_body_term(
         }
     }
 
-    match parse_expression(raw.trim()) {
+    match parse_rule_body_expression(raw.trim()) {
         Ok(expr) => {
             let mut ctx = ClassificationContext {
                 literal_span: &literal_span,
@@ -57,8 +57,16 @@ pub(super) fn parse_rule_body_term(
             };
             classify_expression(expr, &mut ctx)
         }
-        Err(mut errs) => {
-            errors.append(&mut errs);
+        Err(errs) => {
+            // The expression parser reports spans relative to the trimmed
+            // literal, while the assignment branch reports file offsets. Shift
+            // these errors by the literal's start plus the leading whitespace
+            // `trim()` removed, so both branches speak one coordinate system.
+            let leading_whitespace = raw.len() - raw.trim_start().len();
+            errors.extend(shift_errors(
+                errs,
+                literal_span.start.saturating_add(leading_whitespace),
+            ));
             None
         }
     }
@@ -89,7 +97,7 @@ fn parse_assignment(
     };
 
     let value_base_offset = literal_span.start.saturating_add(parts.value_offset);
-    match parse_expression(&parts.value) {
+    match parse_rule_body_expression(&parts.value) {
         Ok(expr) => Ok(Some(RuleBodyTerm::Assignment(RuleAssignment {
             pattern,
             value: expr,

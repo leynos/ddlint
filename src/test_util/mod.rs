@@ -42,6 +42,9 @@ pub const BLOCK_ITEM_SEPARATOR_ERROR: &str =
 pub const EMPTY_BLOCK_ITEM_ERROR: &str = crate::parser::error_messages::EMPTY_BLOCK_ITEM_ERROR;
 /// Diagnostic emitted when a block reaches a delimiter without its `}`.
 pub const UNCLOSED_BLOCK_ERROR: &str = crate::parser::error_messages::UNCLOSED_BLOCK_ERROR;
+/// Diagnostic emitted for `return` outside a function or closure body.
+pub const RETURN_IN_RULE_BODY_ERROR: &str =
+    crate::parser::error_messages::RETURN_IN_RULE_BODY_ERROR;
 pub use expressions::{
     atom_delay,
     atom_diff,

@@ -22,7 +22,7 @@ pub use parser::observability::TelemetryObserver;
 pub use parser::{
     Parsed,
     ast,
-    diagnostics::{DiagnosticCategory, DiagnosticCode},
+    diagnostics::{DiagnosticCategory, DiagnosticCode, parse_error_message, parse_error_span},
     observability::{
         DiagnosticContext,
         DiagnosticSeverity,

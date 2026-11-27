@@ -452,6 +452,10 @@ where variables may appear.
 - `break` and `continue` are permitted only inside loop bodies.
 - `return` is permitted in function/closure bodies; it is not valid in rule
   bodies. Misuse must be reported with a clear diagnostic.
+- The enclosing body decides, not the outermost context. A closure body nested
+  in a rule body is still a closure body, so both `|ignored| return head_x` and
+  `Source(|ignored| return head_x)` are accepted, while `Source(return head_x)`
+  is rejected.
 
 ### 5.11 Conditions and assignments in the rule right-hand side (RHS)
 
@@ -1020,6 +1024,8 @@ ______________________________________________________________________
   noted that `;` separates block items rather than acting as an operator.
 - Added block, collection-literal, and malformed-collection examples to the
   error and validation sections, and `EBlock` to the AST crosswalk.
+- Clarified section 5.10 that the innermost enclosing body decides `return`
+  placement, so a closure body nested in a rule body still permits it.
 
 ______________________________________________________________________
 
